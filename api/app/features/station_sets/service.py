@@ -14,9 +14,16 @@ from app.features.attempts import service_reads as attempts_reads
 from app.features.attempts.errors import AttemptNotFinished, AttemptNotReady
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
+from app.features.entitlements import service as entitlements
 from app.features.station_sets import domain, errors, repository
 from app.features.station_sets.models import StationSet, StationSetEntry
-from app.features.station_sets.schemas import EntryRead, FlaggedEntryRead, SetRead, StartedAttempt
+from app.features.station_sets.schemas import (
+    EntryRead,
+    FlaggedEntryRead,
+    SetAllowance,
+    SetRead,
+    StartedAttempt,
+)
 from app.features.stations import service_reads as stations_reads
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
@@ -44,9 +51,60 @@ async def create_set(
     """
     exam = await resolve_exam(session, exam_code)
     await attempts.require_entitlement(session, user_id=owner_user_id, exam_id=exam.id, now=now)
+    await _ensure_within_trial(session, owner_user_id, exam.id, station_version_ids, now=now)
     station_set = await repository.create_set(session, owner_user_id, exam_id=exam.id, name=name)
     entries = await repository.add_entries(session, station_set.id, station_version_ids=station_version_ids)
     return await _set_read(session, station_set, exam.code, entries)
+
+
+async def allowance(
+    session: AsyncSession, owner_user_id: uuid.UUID, *, exam_code: str, now: datetime
+) -> SetAllowance:
+    """How many new stations a session for this exam may hold, so the setup screen caps its picker."""
+    exam = await resolve_exam(session, exam_code)
+    return SetAllowance(
+        free_stations_left=await _free_stations_left(session, owner_user_id, exam.id, now=now)
+    )
+
+
+async def _free_stations_left(
+    session: AsyncSession, owner_user_id: uuid.UUID, exam_id: uuid.UUID, *, now: datetime
+) -> int | None:
+    """How many more stations a free-trial learner may add, or None when they have paid access."""
+    trial = await attempts.trial_state_for(session, user_id=owner_user_id, exam_id=exam_id)
+    return await entitlements.free_stations_left(
+        session, user_id=owner_user_id, exam_id=exam_id, now=now, trial=trial
+    )
+
+
+async def _ensure_within_trial(
+    session: AsyncSession,
+    owner_user_id: uuid.UUID,
+    exam_id: uuid.UUID,
+    station_version_ids: list[uuid.UUID],
+    *,
+    now: datetime,
+) -> None:
+    """Refuse a free-trial set that needs more new stations than the trial has left.
+
+    Counted by station, not version, as the trial counts. A station already sat in any of this
+    person's sets costs nothing more, so editing a set around it is never refused for it.
+    """
+    stations_left = await _free_stations_left(session, owner_user_id, exam_id, now=now)
+    if stations_left is None:
+        return
+    sat = await repository.sat_version_ids(session, owner_user_id, exam_id)
+    stations = await stations_reads.stations_by_version_id(session, [*station_version_ids, *sat])
+
+    def station_of(version_id: uuid.UUID) -> uuid.UUID:
+        """The station a version belongs to, so two versions of one case count once."""
+        found = stations.get(version_id)
+        return found.station_id if found is not None else version_id
+
+    requested = {station_of(version_id) for version_id in station_version_ids}
+    new_stations = requested - {station_of(version_id) for version_id in sat}
+    if len(new_stations) > stations_left:
+        raise errors.TrialStationLimitError(details={"stations_left": stations_left})
 
 
 async def read_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> SetRead:
@@ -77,6 +135,7 @@ async def replace_entries(
     set_id: uuid.UUID,
     *,
     station_version_ids: list[uuid.UUID],
+    now: datetime,
 ) -> SetRead:
     """Swap a set's stations for a different list, in this order — the legacy "edit session" screen.
 
@@ -105,6 +164,7 @@ async def replace_entries(
             summary = summaries.get(version_id)
             if summary is None or summary.status != "published" or summary.exam_id != station_set.exam_id:
                 raise errors.StationVersionNotUsableError()
+    await _ensure_within_trial(session, owner_user_id, station_set.exam_id, station_version_ids, now=now)
 
     existing_entries = await repository.entries_for(session, set_id)
     # Bucket the existing entries by the version they point at, in the order they
@@ -387,11 +447,16 @@ async def _set_read(
     latest_status_by_entry = await attempts_reads.latest_status_by_set_entry(
         session, [entry.id for entry in entries]
     )
+    # Titles only for stations sat here: a station's name gives its case away before then.
+    sat_summaries = await stations_reads.summaries_by_version_id(
+        session, None, [entry.station_version_id for entry in entries if entry.attempts > 0]
+    )
     entry_reads = []
     any_feedback_ready = False
     for entry in entries:
         last_status = latest_status_by_entry.get(entry.id)
         entry_feedback_ready = last_status == "evaluated"
+        summary = sat_summaries.get(entry.station_version_id) if entry.attempts > 0 else None
         any_feedback_ready = any_feedback_ready or entry_feedback_ready
         entry_reads.append(
             EntryRead(
@@ -404,6 +469,7 @@ async def _set_read(
                 last_attempt_status=last_status,
                 feedback_ready=entry_feedback_ready,
                 flagged_at=entry.flagged_at,
+                station_title=summary.title if summary is not None else None,
             )
         )
     return SetRead(

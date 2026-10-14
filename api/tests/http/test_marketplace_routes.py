@@ -249,3 +249,16 @@ async def test_withdrawing_a_claimed_slot_cancels_its_session(client: AsyncClien
     assert [(booked["id"], booked["status"]) for booked in taker_sessions] == [(as_taker["id"], "cancelled")]
     joined = await client.post(f"/api/v1/me/peer-sessions/{as_taker['id']}/join", headers=bearer(taker))
     assert (joined.status_code, joined.json()["code"]) == (409, "peer_session_not_open")
+
+
+async def test_my_posts_reports_a_withdrawn_slot_as_cancelled(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    owner = await make_actor("cancelled-owner@example.com")
+    taker = await make_actor("cancelled-taker@example.com")
+    post, _ = await offer_and_claim(client, owner, taker)
+    post_id = post["id"]
+
+    withdrawn = await client.delete(f"/api/v1/marketplace/slots/{post_id}", headers=bearer(owner))
+    assert withdrawn.status_code == 204, withdrawn.text
+
+    mine = (await client.get("/api/v1/me/marketplace/posts", headers=bearer(owner))).json()["items"]
+    assert [(row["id"], row["status"]) for row in mine] == [(post_id, "cancelled")]

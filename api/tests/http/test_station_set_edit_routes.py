@@ -2,7 +2,9 @@
 
 `/me/station-sets` was a GET and a POST, so a learner could build a session and
 never take it back apart — while the retiring client's own list offered a
-rename and a delete on every row. Both writes are owner-only, and the shape of
+rename and a delete on every row. Since 2026-10-14 a learner may build a set but
+not change or delete it: both writes are platform-admin only (`forbidden`), and
+still owner-only within that, and the shape of
 the refusal is the point: a stranger is told `set_not_found` rather than
 `forbidden`, because a set id is somebody's private list and an answer that
 distinguishes "not yours" from "does not exist" confirms which ids are real.
@@ -24,6 +26,11 @@ from tests.support.tokens import bearer
 pytestmark = pytest.mark.db
 
 
+async def an_admin(client: AsyncClient, db_session: AsyncSession, make_actor, email: str) -> str:  # type: ignore[no-untyped-def]
+    """Only staff edit or delete a set now; the rules below are theirs, on their own sets."""
+    return await a_learner(client, db_session, make_actor, email, platform_admin=True)
+
+
 async def a_set(client: AsyncClient, token: str, version: uuid.UUID, name: str = "Week one") -> dict:
     created = await client.post(
         "/api/v1/me/station-sets",
@@ -34,10 +41,41 @@ async def a_set(client: AsyncClient, token: str, version: uuid.UUID, name: str =
     return created.json()
 
 
+# --- who may change a set ----------------------------------------------------
+
+
+async def test_a_learner_builds_a_set_but_may_not_rename_restock_or_delete_it(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Product decision (2026-10-14): only staff change or delete an AI Practice session."""
+    token = await a_learner(client, db_session, make_actor, "set-learner-locked-out@example.com")
+    version = await a_station_version(db_session)
+    other = await a_station_version(db_session)
+    set_id = (await a_set(client, token, version))["id"]
+
+    for refused in (
+        await client.patch(
+            f"/api/v1/me/station-sets/{set_id}", json={"name": "Renamed"}, headers=bearer(token)
+        ),
+        await client.patch(
+            f"/api/v1/me/station-sets/{set_id}",
+            json={"name": "Week one", "station_version_ids": [str(version), str(other)]},
+            headers=bearer(token),
+        ),
+        await client.delete(f"/api/v1/me/station-sets/{set_id}", headers=bearer(token)),
+    ):
+        assert refused.status_code == 403, refused.text
+        assert refused.json()["code"] == "forbidden"
+
+    kept = (await client.get(f"/api/v1/me/station-sets/{set_id}", headers=bearer(token))).json()
+    assert kept["name"] == "Week one"
+    assert [e["station_version_id"] for e in kept["entries"]] == [str(version)]
+
+
 # --- renaming ---------------------------------------------------------------
 
 
-async def test_a_learner_renames_their_own_set(
+async def test_an_admin_renames_their_own_set(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
     """The name, and only the name.
@@ -46,7 +84,7 @@ async def test_a_learner_renames_their_own_set(
     change: a set carries no description, and how long it takes is the exam's
     timings summed over its stations.
     """
-    token = await a_learner(client, db_session, make_actor, "set-rename@example.com")
+    token = await an_admin(client, db_session, make_actor, "set-rename@example.com")
     version = await a_station_version(db_session)
     set_id = (await a_set(client, token, version))["id"]
 
@@ -69,7 +107,7 @@ async def test_renaming_someone_elses_set_is_a_404_and_changes_nothing(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
     owner = await a_learner(client, db_session, make_actor, "set-owner@example.com")
-    stranger = await a_learner(client, db_session, make_actor, "set-stranger@example.com")
+    stranger = await an_admin(client, db_session, make_actor, "set-stranger@example.com")
     version = await a_station_version(db_session)
     set_id = (await a_set(client, owner, version, name="Mine"))["id"]
 
@@ -85,7 +123,7 @@ async def test_renaming_someone_elses_set_is_a_404_and_changes_nothing(
 
 async def test_a_set_keeps_a_name(client: AsyncClient, db_session: AsyncSession, make_actor) -> None:  # type: ignore[no-untyped-def]
     """Blank is not a rename. The create route has always said so."""
-    token = await a_learner(client, db_session, make_actor, "set-blank@example.com")
+    token = await an_admin(client, db_session, make_actor, "set-blank@example.com")
     set_id = (await a_set(client, token, await a_station_version(db_session)))["id"]
 
     for blank in ("", "   "):
@@ -105,7 +143,7 @@ async def test_a_set_keeps_a_name(client: AsyncClient, db_session: AsyncSession,
 async def test_a_set_nobody_has_sat_in_is_thrown_away(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
-    token = await a_learner(client, db_session, make_actor, "set-delete@example.com")
+    token = await an_admin(client, db_session, make_actor, "set-delete@example.com")
     set_id = (await a_set(client, token, await a_station_version(db_session)))["id"]
 
     deleted = await client.delete(f"/api/v1/me/station-sets/{set_id}", headers=bearer(token))
@@ -121,7 +159,7 @@ async def test_deleting_someone_elses_set_is_a_404_and_takes_nothing(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
     owner = await a_learner(client, db_session, make_actor, "set-keep-owner@example.com")
-    stranger = await a_learner(client, db_session, make_actor, "set-keep-stranger@example.com")
+    stranger = await an_admin(client, db_session, make_actor, "set-keep-stranger@example.com")
     set_id = (await a_set(client, owner, await a_station_version(db_session)))["id"]
 
     response = await client.delete(f"/api/v1/me/station-sets/{set_id}", headers=bearer(stranger))
@@ -141,7 +179,7 @@ async def test_a_set_with_an_attempt_in_it_is_not_deleted(
     client threw the session's progress away and left the transcripts behind;
     this refuses rather than either orphaning a recording or erasing one.
     """
-    token = await a_learner(client, db_session, make_actor, "set-used@example.com")
+    token = await an_admin(client, db_session, make_actor, "set-used@example.com")
     built = await a_set(client, token, await a_station_version(db_session))
     entry_id = built["entries"][0]["id"]
     started = await client.post(
@@ -164,12 +202,12 @@ async def test_a_set_with_an_attempt_in_it_is_not_deleted(
 # --- replacing a set's stations (the legacy "edit session" screen) ---------
 
 
-async def test_a_learner_swaps_a_set_stations(
+async def test_an_admin_swaps_a_set_stations(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
     """Legacy's edit screen enforced no minimum or maximum station count, so
     neither does this: a set of one station becomes a set of two others."""
-    token = await a_learner(client, db_session, make_actor, "swap@example.com")
+    token = await an_admin(client, db_session, make_actor, "swap@example.com")
     original = await a_station_version(db_session)
     replacement_a = await a_station_version(db_session)
     replacement_b = await a_station_version(db_session)
@@ -202,7 +240,7 @@ async def test_swapping_stations_on_a_locked_set_is_refused(
 
     from app.features.station_sets.models import StationSet
 
-    token = await a_learner(client, db_session, make_actor, "swap-locked@example.com")
+    token = await an_admin(client, db_session, make_actor, "swap-locked@example.com")
     version = await a_station_version(db_session)
     other = await a_station_version(db_session)
     set_id = (await a_set(client, token, version))["id"]
@@ -223,7 +261,7 @@ async def test_swapping_in_an_unpublished_station_is_refused(
 ) -> None:  # type: ignore[no-untyped-def]
     from app.features.stations.models import Station, StationVersion
 
-    token = await a_learner(client, db_session, make_actor, "swap-draft@example.com")
+    token = await an_admin(client, db_session, make_actor, "swap-draft@example.com")
     version = await a_station_version(db_session)
     set_id = (await a_set(client, token, version))["id"]
     exam = await ensure_exam(db_session, "sca")
@@ -249,7 +287,7 @@ async def test_swapping_in_an_unpublished_station_is_refused(
 async def test_swapping_in_an_unknown_station_is_refused(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
-    token = await a_learner(client, db_session, make_actor, "swap-unknown@example.com")
+    token = await an_admin(client, db_session, make_actor, "swap-unknown@example.com")
     version = await a_station_version(db_session)
     set_id = (await a_set(client, token, version))["id"]
 
@@ -267,7 +305,7 @@ async def test_swapping_in_a_station_from_another_exam_is_refused(
 ) -> None:  # type: ignore[no-untyped-def]
     from app.features.stations.models import Station, StationVersion
 
-    token = await a_learner(client, db_session, make_actor, "swap-otherexam@example.com")
+    token = await an_admin(client, db_session, make_actor, "swap-otherexam@example.com")
     version = await a_station_version(db_session)
     set_id = (await a_set(client, token, version))["id"]
     other_exam = await ensure_exam(db_session, "misra")
@@ -298,7 +336,7 @@ async def test_a_station_kept_in_the_swap_keeps_its_attempt_counter(
     Its attempt counter is what an attempt points at (`RESTRICT`): swapping in
     a second station alongside it must not reset what the learner already sat.
     """
-    token = await a_learner(client, db_session, make_actor, "swap-keep@example.com")
+    token = await an_admin(client, db_session, make_actor, "swap-keep@example.com")
     kept = await a_station_version(db_session)
     added = await a_station_version(db_session)
     built = await a_set(client, token, kept)
@@ -325,7 +363,7 @@ async def test_a_station_kept_in_the_swap_keeps_its_attempt_counter(
 async def test_removing_a_station_with_no_attempts_succeeds(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
-    token = await a_learner(client, db_session, make_actor, "swap-remove@example.com")
+    token = await an_admin(client, db_session, make_actor, "swap-remove@example.com")
     to_remove = await a_station_version(db_session)
     to_keep = await a_station_version(db_session)
     built = await a_set(
@@ -359,7 +397,7 @@ async def test_removing_a_station_that_has_an_attempt_is_refused(
     Same shape as `set_has_attempts` on a whole-set delete, but its own code:
     here only one station in the set is in the way, not the set itself.
     """
-    token = await a_learner(client, db_session, make_actor, "swap-refuse@example.com")
+    token = await an_admin(client, db_session, make_actor, "swap-refuse@example.com")
     to_remove = await a_station_version(db_session)
     to_keep = await a_station_version(db_session)
     built = await a_set(client, token, to_remove)
@@ -393,7 +431,7 @@ async def test_a_set_whose_station_was_taken_out_of_it_still_deletes(
     recording, so the counters cannot answer whether a set holds one. This is
     the shape that catches a route that thought they could.
     """
-    token = await a_learner(client, db_session, make_actor, "set-twice@example.com")
+    token = await an_admin(client, db_session, make_actor, "set-twice@example.com")
     version = await a_station_version(db_session)
     first = await a_set(client, token, version, name="First")
     second = await a_set(client, token, version, name="Second")

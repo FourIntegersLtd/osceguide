@@ -4,6 +4,7 @@ import { HiOutlineVideoCamera } from "react-icons/hi2";
 import { Badge, Button } from "@/foundation/ui";
 import { useSession } from "@/foundation/session";
 import type { Slot } from "@/capabilities/peer-practice/api";
+import { openSlotLine, slotBadge } from "@/capabilities/peer-practice/marketplace/copy";
 import { clockTime, isPast, shortDate } from "@/capabilities/peer-practice/support/time";
 import { b2cCard } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
@@ -39,15 +40,9 @@ export function SlotCard({
   const available = slot.status === "available" && !past;
   const scheduled = claimed && !past;
   const completed = claimed && past;
-  const expired = (slot.status === "available" || slot.status === "expired") && past;
+  const expired = slot.status === "available" && past;
 
-  const badgeLabel = available
-    ? "Available"
-    : scheduled
-      ? "Scheduled"
-      : completed
-        ? "Completed"
-        : "Expired";
+  const badgeLabel = slotBadge(slot, past);
 
   const posterDisplay = slot.is_mine ? "You" : atHandle(slot.owner_username, "Anonymous");
   const claimerDisplay =
@@ -57,6 +52,8 @@ export function SlotCard({
 
   const scheduleLine = `${shortDate(slot.starts_at)}, ${clockTime(slot.starts_at)}`;
   const posterName = slot.is_mine ? "You" : slot.owner_username || "Anonymous";
+  const note = slot.note?.trim();
+  const showsPosterName = !claimed && !(slot.is_mine && !note);
   const description = completed
     ? slot.is_mine
       ? `You practised with ${claimerDisplay}`
@@ -65,7 +62,7 @@ export function SlotCard({
         : `${posterDisplay} practised with ${claimerDisplay}`
     : scheduled
       ? `Booked with ${slot.is_mine ? claimerDisplay : posterDisplay}`
-      : slot.note?.trim() || "is looking for a practice partner";
+      : note || openSlotLine(slot, past);
 
   return (
     <section className={cn(b2cCard, "flex w-full min-w-0 flex-col p-5")}>
@@ -74,9 +71,9 @@ export function SlotCard({
           {getInitial(posterName)}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-osce-body font-medium text-osce-ink-900">
-            {claimed ? `${posterDisplay} · ${claimerDisplay}` : posterDisplay}
-          </p>
+          {!showsPosterName ? null : (
+            <p className="truncate text-osce-body font-medium text-osce-ink-900">{posterDisplay}</p>
+          )}
           <p className="line-clamp-2 text-osce-meta text-b2c-text-muted">{description}</p>
         </div>
         <Badge tone={available || completed ? "success" : scheduled ? "accent" : "neutral"} dot={available}>
@@ -84,7 +81,7 @@ export function SlotCard({
         </Badge>
       </div>
 
-      <p className="mt-4 flex items-center gap-2 font-mono text-osce-meta tabular-nums text-osce-ink-700">
+      <p className="mt-4 flex items-center gap-2 text-osce-meta tabular-nums text-osce-ink-700">
         <HiOutlineVideoCamera className="h-4 w-4 shrink-0 text-b2c-text-muted" aria-hidden />
         {scheduleLine}
       </p>

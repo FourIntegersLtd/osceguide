@@ -14,12 +14,15 @@ export function StartGate({
   simulationSeconds,
   onStart,
   onStartAgain,
+  onBack,
 }: {
   gate: Gate;
   readingSeconds: number;
   simulationSeconds: number;
   onStart: () => void;
   onStartAgain: () => void;
+  /** Back to the session's instruction page. */
+  onBack: () => void;
 }) {
   const resuming = gate.kind === "resume";
   return (
@@ -42,6 +45,9 @@ export function StartGate({
               Start again
             </Button>
           ) : null}
+          <Button variant="secondary" onClick={onBack}>
+            Back
+          </Button>
         </div>
       </CardContent>
     </Card>

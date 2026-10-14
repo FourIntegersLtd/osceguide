@@ -6,7 +6,6 @@ export type SettingsTab =
   | "preferences"
   | "payments"
   | "referrals"
-  | "memory"
   | ProfilePart;
 
 /**
@@ -20,7 +19,6 @@ const TABS: { id: SettingsTab; label: string }[] = [
   { id: "preferences", label: "Preferences" },
   { id: "payments", label: "Payments" },
   { id: "referrals", label: "Referrals" },
-  { id: "memory", label: "Memory" },
 ];
 
 /**

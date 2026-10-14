@@ -18,7 +18,7 @@ import { useCurrentExam } from "@/foundation/session";
 import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { browseLibrary, type LibraryStation } from "@/capabilities/stations";
 import { createSet } from "@/domains/train/api";
-import { describeCreateSetFailure, incompleteVersionIds } from "@/domains/train/mocks/model";
+import { combineIntro, describeCreateSetFailure, incompleteVersionIds } from "@/domains/train/mocks/model";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 import {
   defaultExamCode,
@@ -123,10 +123,8 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
 
   return (
     <div className="space-y-6 pb-24">
-      <B2CHero eyebrow="Combine stations" title="Build a focused session from stations you've sat">
-        {incompleteIds.length === 0
-          ? "Available once you have attempted a few stations. You can then run the ones that went worst again together."
-          : "Pick the stations that went worst and run them again together."}
+      <B2CHero title="Build a focused session">
+        {combineIntro(incompleteIds.length > 0)}
       </B2CHero>
 
       {incompleteIds.length === 0 ? null : (

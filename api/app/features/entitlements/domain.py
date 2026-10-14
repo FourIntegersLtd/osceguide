@@ -83,6 +83,17 @@ def trial_available(trial: TrialState, *, now: datetime) -> bool:
     return trial.completed_station_count < ALLOWED_TRIAL_STATIONS
 
 
+def trial_stations_left(trial: TrialState, *, now: datetime) -> int:
+    """How many new stations the free trial still covers: none once its window has closed.
+
+    The two counters are weighed apart in `trial_available`, so the larger of them is what is used.
+    """
+    if trial.trial_started_at < now - timedelta(days=TRIAL_DAYS):
+        return 0
+    used = max(trial.set_station_count, trial.completed_station_count)
+    return max(0, ALLOWED_TRIAL_STATIONS - used)
+
+
 def decide(
     grants: Sequence[Grant],
     *,

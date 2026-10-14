@@ -5436,6 +5436,17 @@
             "title": "Position",
             "type": "integer"
           },
+          "station_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Title"
+          },
           "station_version_id": {
             "format": "uuid",
             "title": "Station Version Id",
@@ -5720,6 +5731,7 @@
               "trainee_not_found",
               "trainee_not_on_roster",
               "trainee_revoked",
+              "trial_station_limit",
               "tutor_note_not_found",
               "unauthenticated",
               "unavailable",
@@ -16998,6 +17010,27 @@
         "title": "SessionRead",
         "type": "object"
       },
+      "SetAllowance": {
+        "description": "How many new stations a session for this exam may hold: null when access is paid for.",
+        "properties": {
+          "free_stations_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Stations Left"
+          }
+        },
+        "required": [
+          "free_stations_left"
+        ],
+        "title": "SetAllowance",
+        "type": "object"
+      },
       "SetAutoAdvance": {
         "properties": {
           "enabled": {
@@ -21174,7 +21207,7 @@
         "type": "object"
       },
       "UpdateSet": {
-        "description": "What a learner may still change about a set they have built.\n\nThe name, and \u2014 since this replaces the legacy \"edit session\" screen \u2014 the\nstations themselves. Swapping the list does not touch an entry that stays\nin it: its counters are what an attempt points at, so `replace_entries`\nmatches kept versions back onto their existing entry rather than deleting\nand recreating it. A set carries no description and no timings \u2014 the\nlength of a session is the sum of its stations' exam timings, which the\nexam owns \u2014 so there is nothing else to write.\n\nWhitespace strips to nothing, which is then too short: a set called `\"   \"`\nis an unlabelled row in the list the learner has to keep.\n\n`station_version_ids` left out (`None`) means \"just the name\"; an empty\nlist is a real request to empty the set, and is rejected only if that\nwould mean removing a station that already has an attempt against it.",
+        "description": "What a platform admin may change about one of their own sets (a learner may not: `forbidden`).\n\nThe name, and \u2014 since this replaces the legacy \"edit session\" screen \u2014 the\nstations themselves. Swapping the list does not touch an entry that stays\nin it: its counters are what an attempt points at, so `replace_entries`\nmatches kept versions back onto their existing entry rather than deleting\nand recreating it. A set carries no description and no timings \u2014 the\nlength of a session is the sum of its stations' exam timings, which the\nexam owns \u2014 so there is nothing else to write.\n\nWhitespace strips to nothing, which is then too short: a set called `\"   \"`\nis an unlabelled row in the list the learner has to keep.\n\n`station_version_ids` left out (`None`) means \"just the name\"; an empty\nlist is a real request to empty the set, and is rejected only if that\nwould mean removing a station that already has an attempt against it.",
         "properties": {
           "name": {
             "maxLength": 200,
@@ -22202,6 +22235,11 @@
             "type": "string"
           },
           "status": {
+            "enum": [
+              "available",
+              "claimed",
+              "cancelled"
+            ],
             "title": "Status",
             "type": "string"
           }
@@ -35707,9 +35745,10 @@
                 }
               }
             },
-            "description": "not_entitled",
+            "description": "not_entitled, trial_station_limit",
             "x-codes": [
-              "not_entitled"
+              "not_entitled",
+              "trial_station_limit"
             ]
           },
           "404": {
@@ -35761,9 +35800,87 @@
         "x-capability": "signed_in"
       }
     },
+    "/api/v1/me/station-sets/allowance": {
+      "get": {
+        "description": "How many new stations a session may hold: the free trial's stations left, or null when paid.",
+        "operationId": "station_sets_read_allowance",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": true,
+            "schema": {
+              "maxLength": 32,
+              "minLength": 1,
+              "title": "Exam Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetAllowance"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_exam",
+            "x-codes": [
+              "unknown_exam"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Allowance",
+        "tags": [
+          "station-sets"
+        ],
+        "x-capability": "signed_in"
+      }
+    },
     "/api/v1/me/station-sets/{set_id}": {
       "delete": {
-        "description": "Throw a practice set away.\n\nRefused if the set holds any attempts, so a station somebody has already sat is never left\npointing at a deleted set. Use the platform console's progress-deletion route to remove a set's\nattempts first.",
+        "description": "Throw one of your own practice sets away. Platform admins only; a learner is refused `forbidden`.\n\nRefused if the set holds any attempts, so a station somebody has already sat is never left\npointing at a deleted set. Use the platform console's progress-deletion route to remove a set's\nattempts first.",
         "operationId": "station_sets_delete_set",
         "parameters": [
           {
@@ -35793,6 +35910,19 @@
             "x-codes": [
               "unauthenticated",
               "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
             ]
           },
           "404": {
@@ -35841,7 +35971,7 @@
         "tags": [
           "station-sets"
         ],
-        "x-capability": "signed_in"
+        "x-capability": "platform_admin"
       },
       "get": {
         "operationId": "station_sets_read_set",
@@ -35918,7 +36048,7 @@
         "x-capability": "signed_in"
       },
       "patch": {
-        "description": "Rename one of your own practice sets, and \u2014 the legacy \"edit session\" screen \u2014 swap its stations.\n\nOwner-only, and a set that is not yours answers 404 rather than 403: an id\nis not something a stranger should be able to confirm exists by the shape\nof the refusal. `station_version_ids` left out of the body changes only the\nname; given, it replaces the set's stations first (which can itself refuse:\nthe set is locked, a version cannot be used, or an entry being dropped has\nalready been attempted) and renames the result.",
+        "description": "Rename one of your own practice sets, and \u2014 the legacy \"edit session\" screen \u2014 swap its stations.\n\nPlatform admins only (a learner is refused `forbidden`), then owner-only,\nand a set that is not yours answers 404 rather than 403: an id\nis not something a stranger should be able to confirm exists by the shape\nof the refusal. `station_version_ids` left out of the body changes only the\nname; given, it replaces the set's stations first (which can itself refuse:\nthe set is locked, a version cannot be used, or an entry being dropped has\nalready been attempted) and renames the result.",
         "operationId": "station_sets_update_set",
         "parameters": [
           {
@@ -35965,6 +36095,20 @@
             "x-codes": [
               "unauthenticated",
               "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, trial_station_limit",
+            "x-codes": [
+              "forbidden",
+              "trial_station_limit"
             ]
           },
           "404": {
@@ -36015,7 +36159,7 @@
         "tags": [
           "station-sets"
         ],
-        "x-capability": "signed_in"
+        "x-capability": "platform_admin"
       }
     },
     "/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts": {

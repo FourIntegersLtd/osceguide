@@ -65,7 +65,7 @@ export function FoldSection({
             aria-hidden
           />
           {number !== undefined ? (
-            <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-osce-meta font-semibold text-ink-inverse">
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-b2c-surface-muted px-1.5 text-osce-caption font-semibold text-b2c-text-muted">
               {number}
             </span>
           ) : null}

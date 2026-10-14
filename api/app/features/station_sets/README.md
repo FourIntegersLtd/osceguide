@@ -16,9 +16,10 @@ Both produce rows in the one `attempts` table.
 - As a **consumer**, I re-attempt a station until I have used my attempts.
 - As a **consumer**, I talk an attempt through afterwards, against a separate limit.
 - As a **consumer**, I debrief a station I have already run.
-- As a **consumer**, I rename a set, and throw away one I have not started.
-- As a **consumer**, I edit a set's stations — the legacy "edit session" screen —
-  keeping, dropping and adding stations in one call.
+- As a **platform admin**, I rename a set, and throw away one nobody has started.
+- As a **platform admin**, I edit a set's stations — the legacy "edit session" screen —
+  keeping, dropping and adding stations in one call. A consumer may build a set but
+  not change or delete it (product decision, 2026-10-14): they are refused `forbidden`.
 - As a **consumer** whose access lapsed, my sets are still there when I renew.
 - As a **consumer**, I flag a station in one of my sets to come back to, and list
   every station I have flagged (the legacy "Flagged Stations" tab). Personal, and
@@ -33,8 +34,8 @@ Both produce rows in the one `attempts` table.
   Debriefs count against their own limit.
 - A locked set refuses new attempts and is never deleted **by the platform**:
   locking is what happens to somebody's work when their access lapses, and it
-  is not a reason to destroy it. The owner may still throw a locked set away,
-  because that is them choosing to.
+  is not a reason to destroy it. A platform admin may still throw away a
+  locked set of their own.
 - **A set is deletable; a recording is not.** An entry is what a set attempt
   points at, and the schema refuses to take an entry out from under a recording
   (`RESTRICT`, and the CHECK that a set attempt must name its entry). So the
@@ -62,10 +63,11 @@ Both produce rows in the one `attempts` table.
 ## Routes
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET/POST | `/api/v1/me/station-sets` | bearer | each set carries its own progress |
+| GET/POST | `/api/v1/me/station-sets` | bearer | each set carries its own progress. An entry's `station_title` is null until that entry has been sat (a title gives the case away). POST on the free trial refuses `trial_station_limit` (403, `details.stations_left`) when it needs more new stations than the trial has left |
+| GET | `/api/v1/me/station-sets/allowance?exam_code=` | bearer | `free_stations_left`: new stations a session may hold, null when a live grant covers the exam |
 | GET | `/api/v1/me/station-sets/{id}` | owner | `set_not_found` (404) |
-| PATCH | `/api/v1/me/station-sets/{id}` | owner | rename, and/or — the legacy "edit session" screen — replace its stations via `station_version_ids` (keeps entries for versions that stay, drops those with no attempts, adds the rest). `set_not_found` (404), blank name rejected, `set_locked` (409), `station_version_not_usable` (409), `set_entry_has_attempts` (409) |
-| DELETE | `/api/v1/me/station-sets/{id}` | owner | throw a set away with its entries. `set_not_found` (404); `set_has_attempts` (409) while a recording of a consultation still points at one of them |
+| PATCH | `/api/v1/me/station-sets/{id}` | platform admin, owner | `forbidden` (403) for a learner. Rename, and/or — the legacy "edit session" screen — replace its stations via `station_version_ids` (keeps entries for versions that stay, drops those with no attempts, adds the rest). `set_not_found` (404), blank name rejected, `set_locked` (409), `station_version_not_usable` (409), `set_entry_has_attempts` (409), `trial_station_limit` (403) |
+| DELETE | `/api/v1/me/station-sets/{id}` | platform admin, owner | `forbidden` (403) for a learner. Throw a set away with its entries. `set_not_found` (404); `set_has_attempts` (409) while a recording of a consultation still points at one of them |
 | POST | `/api/v1/me/station-sets/{id}/entries/{entry_id}/attempts` | owner | `attempt_limit_reached` (409), `set_locked` (409) |
 | POST | `/api/v1/me/station-sets/{id}/entries/{entry_id}/debriefs` | owner | Talk through an attempt already made; `nothing_to_debrief` (409), `attempt_limit_reached` (409) |
 | GET | `/api/v1/platform/users/{id}/stations` | platform admin | one row per station the person has sat: attempts that exist, how many were marked, the newest, and the counters on their set entries; `user_not_found` (404) |

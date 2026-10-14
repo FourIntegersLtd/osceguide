@@ -1,6 +1,6 @@
 "use client";
 
-import { PEER_JOIN_EARLY_MINUTES } from "@/capabilities/peer-practice/limits";
+import { HOW_IT_WORKS_DESCRIPTION, HOW_IT_WORKS_STEPS } from "@/capabilities/peer-practice/marketplace/copy";
 import { HiOutlineArrowPath, HiOutlineCalendarDays, HiOutlineVideoCamera } from "react-icons/hi2";
 import {
   Modal,
@@ -82,41 +82,22 @@ export function ClaimConfirmationModal({
   );
 }
 
-const STEPS = [
-  {
-    title: "Post availability",
-    text: "Pick a date and time for a video practice. Add an optional note.",
-  },
-  {
-    title: "Someone claims it",
-    text: "They claim your slot; you both get confirmed for the video call.",
-  },
-  {
-    title: "Join on the day",
-    text: `Join the video call up to ${PEER_JOIN_EARLY_MINUTES} minutes before. Roles (Doctor/Patient) are assigned automatically.`,
-  },
-  {
-    title: "Practice over video",
-    text: "Reading time, then simulation. Timers start when both join the call.",
-  },
-];
-
 export function MarketplaceHowItWorksModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal width="min(95vw, 600px)" height="fit-content" onClose={onClose}>
       <ModalBody>
         <ModalLead
           title="How it works"
-          description="Match with colleagues and practice together over video."
+          description={HOW_IT_WORKS_DESCRIPTION}
           icon={<HiOutlineVideoCamera className="h-5 w-5" />}
         />
         <ModalSection title="Steps">
           <ModalList>
-            {STEPS.map((step, index) => (
+            {HOW_IT_WORKS_STEPS.map((step, index) => (
               <ModalListRow
                 key={step.title}
                 marker={
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-b2c-surface-muted font-mono text-osce-caption font-semibold text-osce-ink-900">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-b2c-surface-muted text-osce-caption font-semibold text-osce-ink-900">
                     {index + 1}
                   </span>
                 }

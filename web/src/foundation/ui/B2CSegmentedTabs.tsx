@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { cn } from "@/foundation/ui/cn";
 import {
   b2cSegmentedControl,
@@ -13,7 +12,7 @@ import {
 
 export type B2CSegmentedTabItem<T extends string = string> = {
   id: T;
-  label: ReactNode;
+  label: string;
   disabled?: boolean;
 };
 

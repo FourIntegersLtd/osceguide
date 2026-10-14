@@ -1,5 +1,6 @@
 import { HiOutlineCheckCircle, HiOutlineEllipsisHorizontalCircle } from "react-icons/hi2";
 import { productTokens } from "@/foundation/ui";
+import { coverageSummary } from "./feedbackWords";
 
 /** One checklist item the live examiner watched for, and whether it was heard. */
 export interface CoverageEntry {
@@ -30,7 +31,7 @@ export function FeedbackLiveCoverage({ coverage }: { coverage: CoverageEntry[] }
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className={b2cSectionTitle}>What you covered as you went</h2>
         <span className="text-osce-meta tabular-nums text-b2c-text-muted">
-          {covered} of {coverage.length} fully
+          {coverageSummary(covered, coverage.length)}
         </span>
       </div>
       <p className="mb-4 text-osce-meta leading-relaxed text-b2c-text-muted">
@@ -60,7 +61,7 @@ export function FeedbackLiveCoverage({ coverage }: { coverage: CoverageEntry[] }
                 <p className="text-osce-data font-medium text-osce-ink-900">
                   {item.label}
                   {!item.covered && (
-                    <span className="ml-1 font-normal text-b2c-text-muted"> · partly</span>
+                    <span className="ml-1 font-normal text-b2c-text-muted"> · partly covered</span>
                   )}
                 </p>
                 {item.quote && (

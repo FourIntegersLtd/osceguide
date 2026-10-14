@@ -184,17 +184,19 @@ export function MockEnd({ setId }: { setId: string }) {
               {offersPeerPractice && peers ? (
                 <Card
                   title="Keep practising"
-                  description="Sit a station with a colleague playing the patient."
+                  description="Practise with another learner over video, one of you playing the patient."
                 >
                   <PracticeOptionCards
                     variant="inline"
                     onLivePractice={() => void handleJoinQueue()}
                     onSchedulePractice={() => router.push(hrefFor("/marketplace"))}
                     isJoiningQueue={isJoiningQueue || peers.queue.phase === "joining"}
-                    livePracticeLabel="Live practice"
-                    schedulePracticeLabel="Schedule practice"
-                    livePracticeActionLabel="Start now"
-                    schedulePracticeActionLabel="Browse marketplace"
+                    livePracticeLabel="Practise now"
+                    schedulePracticeLabel="Book a video session"
+                    livePracticeActionLabel="Find a partner"
+                    schedulePracticeActionLabel="Browse the Marketplace"
+                    livePracticeDescription="Get matched with a learner who is online now"
+                    schedulePracticeDescription="Pick a time with a colleague in the Marketplace"
                   />
                 </Card>
               ) : null}

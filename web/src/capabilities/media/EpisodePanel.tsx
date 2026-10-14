@@ -139,7 +139,7 @@ export function EpisodePanel({
                   backgroundSize: `${duration > 0 ? (position / duration) * 100 : 0}% 100%`,
                 }}
               />
-              <p className="mt-2 font-mono text-osce-meta tabular-nums text-b2c-text-muted">
+              <p className="mt-2 text-osce-meta tabular-nums text-b2c-text-muted">
                 {clockTime(position)} / {clockTime(duration)}
               </p>
             </div>

@@ -24,6 +24,7 @@ Owner: `content-owner` (staff queues `staff-console-owner`). Proof: `verify-cont
   all of it, not the shown rows. One `useStudySearch` per page, passed down; a list that reloads
   stays mounted so the search box keeps focus.
 - Marketplace: a claim is race-safe (`test_marketplace_claim_race`) and reminders are scheduled
+- A slot's `status` is `available | claimed | cancelled` (a `Literal` on `PostRead`, so the generated web type is a union). `peer-practice/marketplace/copy.ts` `slotBadge` switches over it exhaustively; add a status in the api and the web type check fails there. "Expired" is an unclaimed slot in the past, never a status. A walkthrough account has no SCA entitlement here, so seed a cancelled slot by SQL to see it in the browser.
   jobs. Peer practice: queue pairing is race-safe, the accept handshake and recording have state
   over time, transcripts are diarised (`peer_practice/diariser.py`).
 - Starting a peer room is `attempt-engine-owner`'s (`peer_practice/service_voice.py` is the join

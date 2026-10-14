@@ -81,7 +81,7 @@ export function ExamClock({
         // Announced at the minute rather than every second, which would make a
         // screen reader unusable for the whole station.
         aria-live={shown % 60 === 0 ? "polite" : "off"}
-        className="font-mono text-lg font-semibold tabular-nums"
+        className="text-lg font-semibold tabular-nums"
       >
         {formatClock(shown)}
       </span>

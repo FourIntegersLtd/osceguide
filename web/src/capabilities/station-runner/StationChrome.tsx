@@ -255,7 +255,7 @@ export function StationTabs({
               >
                 <span
                   className={cn(
-                    "flex h-5 w-5 items-center justify-center rounded-full font-mono text-osce-micro tabular-nums",
+                    "flex h-5 w-5 items-center justify-center rounded-full text-osce-micro tabular-nums",
                     isActive
                       ? "bg-osce-accent text-white"
                       : "bg-b2c-surface-muted text-b2c-text-secondary",

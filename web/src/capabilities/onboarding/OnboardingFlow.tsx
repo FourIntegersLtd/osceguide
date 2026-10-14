@@ -85,7 +85,7 @@ export function OnboardingFlow({ onComplete, onSkip = onComplete }: { onComplete
               aria-current={entry.id === step ? "step" : undefined}
               title={entry.label}
               className={cn(
-                "border-l border-osce-border px-4 font-mono text-osce-body tabular-nums first:border-l-0 first:pl-0",
+                "border-l border-osce-border px-4 text-osce-body tabular-nums first:border-l-0 first:pl-0",
                 entry.id === step ? "font-semibold text-osce-ink-900" : "text-b2c-text-muted",
               )}
             >

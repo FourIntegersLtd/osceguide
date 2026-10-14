@@ -1,6 +1,7 @@
 import type { SetEntry, StationSet } from "@/domains/train/api";
 import type { AttemptHistoryItem } from "@/capabilities/attempt-runner";
 import { describeRefusal } from "@/capabilities/stations/refusal";
+import { plural } from "@/foundation/format";
 
 /**
  * The arithmetic the mocks screens do, kept out of the components.
@@ -262,7 +263,7 @@ export interface TrialLimits {
 }
 
 /** The free trial's limits in words, as the server states them. */
-export function describeTrial(trial: TrialLimits): string {
+function describeTrial(trial: TrialLimits): string {
   return `It covers ${trial.stations} stations, each sat up to ${trial.attempts_per_station} times, within ${trial.days} days of signing up.`;
 }
 
@@ -290,4 +291,57 @@ export function nothingPickableMessage(input: {
  */
 export function describeCreateSetFailure(cause: unknown): string {
   return describeRefusal(cause, "We could not create this session. Please try again.");
+}
+
+/** What a learner needs before a session: nothing to buy, nothing that sounds like a lab. */
+export const BEFORE_YOU_START: readonly string[] = [
+  "The built-in microphone on your laptop or phone is fine",
+  "Headphones are optional. They cut down echo",
+  "Find somewhere you can talk without interruptions, with a stable connection",
+];
+
+/**
+ * The instruction page's rules. Rules 1 and 3 are the setup screen's BEFORE_YOU_START, so the two
+ * pages never drift. The clock is the station runner's: reading time first, then the
+ * consultation from Start simulation or the end of reading time, never from Start session.
+ */
+export function mockRules(attemptLimit: number): string[] {
+  const attempts = attemptLimit === 1 ? "once" : `up to ${attemptLimit} times`;
+  return [
+    `You talk to an AI patient out loud. ${BEFORE_YOU_START[0]}. ${BEFORE_YOU_START[1]}.`,
+    "Each station follows the same format. About halfway through, a prompt tells you to move from history taking to management.",
+    `${BEFORE_YOU_START[2]}. If something goes wrong, flag the station and message support.`,
+    `You can attempt each station ${attempts}. Each station opens with reading time, and the consultation starts when you press Start simulation or reading time runs out.`,
+  ];
+}
+
+/** The most stations a new session may hold: the free stations left on the trial, else all of them. */
+export function pickerMax(available: number, freeStationsLeft: number | null): number {
+  return freeStationsLeft === null ? available : Math.min(available, freeStationsLeft);
+}
+
+/** The setup hint for a trial learner; null when access is paid for. */
+export function trialStationsHint(freeStationsLeft: number | null): string | null {
+  if (freeStationsLeft === null) return null;
+  if (freeStationsLeft === 0) return "Your free trial has no stations left.";
+  return `Your free trial has ${plural(freeStationsLeft, "station")} left.`;
+}
+
+/**
+ * What a station in a session is called. The server sends a title only once the station has been
+ * sat (a name gives the case away), so before then it is its place in the session.
+ */
+export function stationLabel(entry: Pick<SetEntry, "station_title">, index: number): string {
+  return entry.station_title ?? `Station ${index + 1}`;
+}
+
+export function sessionUpdatedMessage(stationCount: number): string {
+  return `Session updated: ${plural(stationCount, "station")}`;
+}
+
+/** The line under the Combine tab's title: what it is for, or what unlocks it. */
+export function combineIntro(hasSatStations: boolean): string {
+  return hasSatStations
+    ? "Pick the stations you found hardest and sit them again as one session."
+    : "Available once you have sat a few stations. Then you can pick the ones you found hardest and sit them again as one session.";
 }

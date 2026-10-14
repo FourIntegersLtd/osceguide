@@ -1,4 +1,8 @@
-"""HTTP routes for a learner's own practice sets: build one, run or debrief its stations."""
+"""HTTP routes for a learner's own practice sets: build one, run or debrief its stations.
+
+Changing or deleting a set is platform-admin only (product decision, 2026-10-14): a learner builds
+a set and works through it, but may not rename, restock or delete it.
+"""
 
 from __future__ import annotations
 
@@ -9,10 +13,11 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.core.auth import CurrentPrincipal
 from app.core.db import SessionDep as Session
-from app.core.errors import Unauthenticated, error_responses
+from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.rate_limit import AI_SPEND, USER_WRITE, TooManyRequests, per_user
+from app.core.tenancy import PlatformAdmin
 from app.features.station_sets import errors, schemas, service
 
 router = APIRouter(tags=["station-sets"])
@@ -39,7 +44,13 @@ async def list_sets(
     "/me/station-sets",
     response_model=schemas.SetRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(TooManyRequests, errors.UnknownExamError, errors.NotEntitled, Unauthenticated),
+    responses=error_responses(
+        TooManyRequests,
+        errors.UnknownExamError,
+        errors.NotEntitled,
+        errors.TrialStationLimitError,
+        Unauthenticated,
+    ),
     dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def create_set(
@@ -53,6 +64,22 @@ async def create_set(
         station_version_ids=body.station_version_ids,
         now=clock.now(),
     )
+
+
+# Declared before `/{set_id}`, which would otherwise take "allowance" for an id and refuse it.
+@router.get(
+    "/me/station-sets/allowance",
+    response_model=schemas.SetAllowance,
+    responses=error_responses(Unauthenticated, errors.UnknownExamError),
+)
+async def read_allowance(
+    principal: CurrentPrincipal,
+    session: Session,
+    clock: ClockDep,
+    exam_code: Annotated[str, Query(min_length=1, max_length=32)],
+) -> schemas.SetAllowance:
+    """How many new stations a session may hold: the free trial's stations left, or null when paid."""
+    return await service.allowance(session, principal.user_id, exam_code=exam_code, now=clock.now())
 
 
 # Read one of the signed-in person's practice sets.
@@ -70,18 +97,21 @@ async def read_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Sess
     response_model=schemas.SetRead,
     responses=error_responses(
         Unauthenticated,
+        Forbidden,
         errors.SetNotFound,
         errors.SetLockedError,
         errors.StationVersionNotUsableError,
         errors.EntryHasAttemptsError,
+        errors.TrialStationLimitError,
     ),
 )
 async def update_set(
-    set_id: uuid.UUID, body: schemas.UpdateSet, principal: CurrentPrincipal, session: Session
+    set_id: uuid.UUID, body: schemas.UpdateSet, principal: PlatformAdmin, session: Session, clock: ClockDep
 ) -> schemas.SetRead:
     """Rename one of your own practice sets, and — the legacy "edit session" screen — swap its stations.
 
-    Owner-only, and a set that is not yours answers 404 rather than 403: an id
+    Platform admins only (a learner is refused `forbidden`), then owner-only,
+    and a set that is not yours answers 404 rather than 403: an id
     is not something a stranger should be able to confirm exists by the shape
     of the refusal. `station_version_ids` left out of the body changes only the
     name; given, it replaces the set's stations first (which can itself refuse:
@@ -90,7 +120,7 @@ async def update_set(
     """
     if body.station_version_ids is not None:
         await service.replace_entries(
-            session, principal.user_id, set_id, station_version_ids=body.station_version_ids
+            session, principal.user_id, set_id, station_version_ids=body.station_version_ids, now=clock.now()
         )
     return await service.rename_set(session, principal.user_id, set_id, name=body.name)
 
@@ -98,10 +128,10 @@ async def update_set(
 @router.delete(
     "/me/station-sets/{set_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(Unauthenticated, errors.SetNotFound, errors.SetHasAttemptsError),
+    responses=error_responses(Unauthenticated, Forbidden, errors.SetNotFound, errors.SetHasAttemptsError),
 )
-async def delete_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Session) -> None:
-    """Throw a practice set away.
+async def delete_set(set_id: uuid.UUID, principal: PlatformAdmin, session: Session) -> None:
+    """Throw one of your own practice sets away. Platform admins only; a learner is refused `forbidden`.
 
     Refused if the set holds any attempts, so a station somebody has already sat is never left
     pointing at a deleted set. Use the platform console's progress-deletion route to remove a set's

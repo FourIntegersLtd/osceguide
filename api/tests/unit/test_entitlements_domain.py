@@ -159,3 +159,15 @@ def test_somebody_whose_only_purchase_was_refunded_is_not_told_expired() -> None
     decision = domain.decide([grant(revoked=True)], now=NOW, trial=trial(age_days=30))
     assert decision.reason == "trial_exhausted"
     assert domain.decide([grant(revoked=True)], now=NOW).reason == "no_entitlement"
+
+
+@pytest.mark.parametrize(
+    ("set_stations", "completed", "age_days", "left"),
+    [(0, 0, 0, 3), (1, 0, 0, 2), (1, 2, 0, 1), (3, 3, 0, 0), (0, 0, 15, 0)],
+)
+def test_the_trial_stations_left_are_the_larger_counter_taken_from_three(
+    set_stations: int, completed: int, age_days: int, left: int
+) -> None:
+    """What the setup screen caps a free session at; a closed trial window leaves none."""
+    state = trial(set_stations=set_stations, completed=completed, age_days=age_days)
+    assert domain.trial_stations_left(state, now=NOW) == left

@@ -1,3 +1,4 @@
+import { gradeWord } from "@/capabilities/feedback/feedbackWords";
 import { toneVariant } from "@/capabilities/feedback/rubric";
 
 const TONE_CLASSES: Record<ReturnType<typeof toneVariant>, string> = {
@@ -16,8 +17,12 @@ const TONE_CLASSES: Record<ReturnType<typeof toneVariant>, string> = {
  * rule as one whose scale is G / A / R.
  */
 export function GradeCircle({ grade, tone }: { grade: string; tone: string | null }) {
+  const label = `Graded ${gradeWord(grade, tone)}`;
   return (
     <span
+      title={label}
+      aria-label={label}
+      role="img"
       className={`mr-2 inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full px-1.5 text-osce-body font-semibold ${TONE_CLASSES[toneVariant(tone)]}`}
     >
       {grade}

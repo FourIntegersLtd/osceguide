@@ -25,6 +25,8 @@ class EntryRead(BaseModel):
     feedback_ready: bool = False
     # When the owner flagged this station to come back to, or null.
     flagged_at: datetime | None = None
+    # The station's title, only once it has been sat here: before that its name gives the case away.
+    station_title: str | None = None
 
 
 # Flag or unflag one station in your own set.
@@ -58,6 +60,12 @@ class SetRead(BaseModel):
     feedback_ready: bool = False
 
 
+class SetAllowance(BaseModel):
+    """How many new stations a session for this exam may hold: null when access is paid for."""
+
+    free_stations_left: int | None
+
+
 class CreateSet(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     exam_code: str = Field(min_length=1, max_length=32)
@@ -65,7 +73,7 @@ class CreateSet(BaseModel):
 
 
 class UpdateSet(BaseModel):
-    """What a learner may still change about a set they have built.
+    """What a platform admin may change about one of their own sets (a learner may not: `forbidden`).
 
     The name, and — since this replaces the legacy "edit session" screen — the
     stations themselves. Swapping the list does not touch an entry that stays

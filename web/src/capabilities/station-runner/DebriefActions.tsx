@@ -26,7 +26,7 @@ export function DebriefActions({
     <AsyncBoundary state={markedState} loading={null} isEmpty={() => false}>
       {(results) =>
         results.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
             <Button type="button" variant="ghost" onClick={onExplain} className="gap-2">
               <HiOutlineInformationCircle className="h-4 w-4" aria-hidden />
               How debrief works

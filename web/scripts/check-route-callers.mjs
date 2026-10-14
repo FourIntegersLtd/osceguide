@@ -78,9 +78,11 @@ const ROUTE_ALLOW = allowList(
     "/api/v1/orgs/{}/trainees/bulk/resend-invitation": "GAP B-36: no screen; the roster resends one invitation at a time",
     "/api/v1/orgs/{}/trainees/bulk/revoke": "GAP B-36: no screen; the roster revokes one trainee at a time",
     "/api/v1/orgs/{}/practice-access/{}/revoke": "no caller by design (B-10): the web uses the /entitlements routes",
+    "/api/v1/me/tutor-memory": "the Memory tab left Settings (owner decision 2026-10); the api keeps the routes and erasure still clears the memory",
+    "/api/v1/me/tutor-memory/notes/{}": "the Memory tab left Settings (owner decision 2026-10); the api keeps the routes",
     "/api/v1/platform/generate/summary": "driven by staff scripts and the media pipeline, no screen",
   },
-  33, // lower only
+  35, // lower only (33 + the two tutor-memory routes parked when the Memory tab was removed)
 );
 
 // ---- collect the paths the source spells ----------------------------------------------------

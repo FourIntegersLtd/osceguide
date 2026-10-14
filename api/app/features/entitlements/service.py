@@ -81,6 +81,24 @@ async def require(
     return decision
 
 
+async def free_stations_left(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    exam_id: uuid.UUID,
+    now: datetime,
+    trial: domain.TrialState | None,
+) -> int | None:
+    """New stations the free trial still covers for this exam, or None when a live grant does.
+
+    `trial` is None for somebody with no account to weigh, who then has none left.
+    """
+    decision = await decide(session, user_id=user_id, exam_id=exam_id, now=now)
+    if decision.allowed:
+        return None
+    return domain.trial_stations_left(trial, now=now) if trial is not None else 0
+
+
 async def grant(
     session: AsyncSession,
     *,

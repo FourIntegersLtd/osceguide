@@ -60,7 +60,7 @@ export function DebriefDetail({ id }: { id: string }) {
                         key={index}
                         className="flex gap-4 py-2.5 text-osce-body text-osce-ink-900 first:pt-0 last:pb-0"
                       >
-                        <span className="w-6 shrink-0 font-mono text-osce-meta tabular-nums text-b2c-text-muted">
+                        <span className="w-6 shrink-0 text-osce-meta tabular-nums text-b2c-text-muted">
                           {String(index + 1).padStart(2, "0")}
                         </span>
                         {action}

@@ -159,15 +159,14 @@ export function FlaggedStations() {
   return (
     <div className="space-y-6">
       <B2CHero
-        eyebrow="Flagged stations"
-        title="Stations to come back to"
+        title="Revisit flagged stations"
         action={
           <ButtonLink href="?tab=combine" variant="primary" size="md">
             Combine into a session
           </ButtonLink>
         }
       >
-        Stations you flagged during practice. Open one to review it, or combine them into a new session.
+        Open a station you flagged to review it, or sit several together as one session.
       </B2CHero>
       <div>
         <label className="relative block w-full max-w-md">

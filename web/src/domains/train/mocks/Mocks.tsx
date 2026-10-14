@@ -53,22 +53,22 @@ export function Mocks() {
 
   return (
     <div className="w-full">
-      <B2CPageHeader
-        title="Practice"
-        action={
-          <ButtonLink href={hrefFor("/mocks/list")} variant="secondary" size="md">
-            View all sessions
-          </ButtonLink>
-        }
-      />
+      <B2CPageHeader title="Practice" />
 
-      <B2CSegmentedTabs
-        className="mb-6"
-        items={items}
-        value={activeTab}
-        onChange={handleTabChange}
-        aria-label="AI Practice"
-      />
+      {/* One row: the tabs, and the sessions link right-aligned; on a phone the link wraps below. */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <B2CSegmentedTabs
+          compact
+          className="min-w-0 max-w-full"
+          items={items}
+          value={activeTab}
+          onChange={handleTabChange}
+          aria-label="AI Practice"
+        />
+        <ButtonLink href={hrefFor("/mocks/list")} variant="secondary" size="md" className="ml-auto">
+          View all sessions
+        </ButtonLink>
+      </div>
 
       <div className="w-full">
         {activeTab === "flagged" ? (
@@ -78,7 +78,7 @@ export function Mocks() {
           <FlaggedStations />
         ) : activeTab === "tips" ? (
           <div className="space-y-6">
-            <B2CHero eyebrow="Consultation tips" title="One consultation skill at a time">
+            <B2CHero title="One consultation skill at a time">
               A skill from the RCGP SCA Consultation Toolkit, with exercises to try in your next station.
             </B2CHero>
             <TipContent />

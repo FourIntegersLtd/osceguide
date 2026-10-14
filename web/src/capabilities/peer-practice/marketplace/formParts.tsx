@@ -49,7 +49,7 @@ export function TimeSlotList({
             onClick={() => onSelect(option.value)}
             className={`w-full px-4 py-2.5 text-left text-osce-body outline-none transition-colors focus:ring-2 focus:ring-inset focus:ring-osce-accent/20 ${
               isSelected
-                ? "bg-osce-ink-900 font-medium text-white"
+                ? "bg-osce-accent font-medium text-white"
                 : "text-b2c-text-secondary hover:bg-b2c-surface-muted"
             }`}
           >

@@ -2,11 +2,6 @@
 
 import { useState } from "react";
 import {
-  HiOutlineClock,
-  HiOutlinePresentationChartLine,
-} from "react-icons/hi2";
-import { HiMicrophone } from "react-icons/hi";
-import {
   Alert,
   B2CSegmentedTabs,
   Modal,
@@ -17,6 +12,7 @@ import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { AttemptFeedback, readResults, readTranscript } from "@/capabilities/feedback";
 import { DebriefHistory, DebriefChooseModal } from "@/capabilities/debrief";
 import { DebriefTips } from "@/capabilities/debrief/DebriefInformation";
+import { FEEDBACK_VS_DEBRIEF } from "@/capabilities/debrief/debriefCopy";
 import { type AttemptBrief, type AttemptReview } from "@/capabilities/attempt-runner";
 import { FeedbackHistory } from "./FeedbackHistory";
 import { DebriefActions } from "./DebriefActions";
@@ -24,36 +20,9 @@ import { DebriefActions } from "./DebriefActions";
 type FeedbackTab = "latest" | "history" | "debriefs";
 
 const TABS: B2CSegmentedTabItem<FeedbackTab>[] = [
-  {
-    id: "latest",
-    label: (
-      <span className="inline-flex items-center gap-1.5">
-        <HiOutlinePresentationChartLine className="h-4 w-4" aria-hidden />
-        <span className="sm:hidden">Latest</span>
-        <span className="hidden sm:inline">Latest Feedback</span>
-      </span>
-    ),
-  },
-  {
-    id: "history",
-    label: (
-      <span className="inline-flex items-center gap-1.5">
-        <HiOutlineClock className="h-4 w-4" aria-hidden />
-        <span className="sm:hidden">History</span>
-        <span className="hidden sm:inline">Feedback History</span>
-      </span>
-    ),
-  },
-  {
-    id: "debriefs",
-    label: (
-      <span className="inline-flex items-center gap-1.5">
-        <HiMicrophone className="h-4 w-4" aria-hidden />
-        <span className="sm:hidden">Debriefs</span>
-        <span className="hidden sm:inline">Debrief History</span>
-      </span>
-    ),
-  },
+  { id: "latest", label: "Feedback" },
+  { id: "history", label: "History" },
+  { id: "debriefs", label: "Debriefs" },
 ];
 
 export function FeedbackStep({
@@ -117,20 +86,23 @@ export function FeedbackStep({
 
   return (
     <div className="space-y-4">
-      <DebriefActions
-        markedState={hasFeedback}
-        loadingDebrief={loadingDebrief}
-        onExplain={() => setExplaining(true)}
-        onStart={() => openDebrief()}
-      />
-
-      <B2CSegmentedTabs
-        className="mb-4"
-        items={TABS}
-        value={tab}
-        onChange={setTab}
-        aria-label="Feedback sections"
-      />
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <B2CSegmentedTabs
+          compact
+          className="min-w-0 max-w-full"
+          items={TABS}
+          value={tab}
+          onChange={setTab}
+          aria-label="Feedback sections"
+        />
+        <DebriefActions
+          markedState={hasFeedback}
+          loadingDebrief={loadingDebrief}
+          onExplain={() => setExplaining(true)}
+          onStart={() => openDebrief()}
+        />
+      </div>
+      {marked ? <p className="text-osce-meta text-b2c-text-muted">{FEEDBACK_VS_DEBRIEF}</p> : null}
 
       {tab === "latest" && <AttemptFeedback attemptId={attemptId} showLiveCoverage />}
       {tab === "history" && (

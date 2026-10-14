@@ -123,7 +123,7 @@ export function UpcomingSessions({
               <div className="rounded-osce-lg border border-dashed border-osce-border px-5 py-10 text-center">
                 <p className="text-osce-body font-medium text-osce-ink-900">No upcoming sessions</p>
                 <p className="mt-1 text-osce-meta text-b2c-text-muted">
-                  Claim a slot from the available sessions to schedule one.
+                  Booked sessions appear here once someone claims your slot or you claim theirs. Slots you have posted are under My sessions.
                 </p>
               </div>
             </>

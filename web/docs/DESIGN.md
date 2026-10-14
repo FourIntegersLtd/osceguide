@@ -55,8 +55,10 @@ product preference, not a default.
 - Never raw `text-sm` / `text-lg` / `text-[Npx]`.
 - Headings are fluid already, so **never pair a token with a responsive
   step-up** (`text-osce-title sm:text-osce-heading` double-scales).
-- Fonts: Inter (UI), Archivo (`font-heading`), IBM Plex Mono (`font-mono`,
-  eyebrows, marks and timestamps).
+- Fonts: the train surface is Open Sauce for everything, numbers, dates and
+  timers included (use `tabular-nums`, never `font-mono`), with Fraunces for page
+  titles only (`font-heading`). Mono is kept for ids, codes and emails in staff
+  and authoring screens; `src/capabilities/noMono.test.ts` guards the rest.
 
 ## Help dock
 

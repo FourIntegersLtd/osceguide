@@ -129,7 +129,7 @@ function PreferencesForm({ me }: { me: Me }) {
   return (
     <>
       <div className="space-y-6">
-        <Panel title="Preferences" description="Accessibility, AI consent and notifications">
+        <Panel title="Preferences" description="Accessibility, AI consent and notifications. Athena adapts to your past sessions.">
           <SettingsRows className="rounded-none border-0">
             <SettingsRow
               icon={HiOutlineSparkles}

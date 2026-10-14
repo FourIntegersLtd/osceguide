@@ -8,18 +8,18 @@
   (lands on `/mocks/{id}`), **View All Sessions** (`/mocks/list`). An account
   with no exam date gets the "Exam date" modal first; a `not_entitled` create
   opens the plan picker.
-- `/mocks/list`: "<EXAM> Sessions", cards with pencil (`/mocks/{id}/update`)
+- `/mocks/list`: "<EXAM> Sessions", cards (the edit pencil and bin are hidden for learners since 2026-10-14)
   and bin (Confirm deletion modal, then a "Session deleted" toast).
 - `/mocks/{id}`: rules, the microphone check, **Start Session** (or "Allow your
   microphone to start", aria-disabled), then the stations table once attempted.
-- `/mocks/{id}/update`: rename only; stations are listed read-only.
+- `/mocks/{id}/update`: redirects to the detail page for learners (edit screen commented out).
 - `/mocks/{id}/complete`: "Well done", station outcomes, **New session** /
   **Review session**, and for SCA the "Keep practising" peer cards.
 
 ## How to get to it (user POV)
 Nav **AI Practice** → Setup → **Create Session** → the rules page → **Start
 Session**. After the last station, the complete page. **View All Sessions**
-reaches the list, where each card can be renamed or deleted.
+reaches the list (no rename or delete for learners).
 
 ## Driving it with playwright-core
 ```js

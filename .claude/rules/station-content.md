@@ -16,6 +16,12 @@ Owner: `content-owner`. Proof: `verify-content`.
   last version deletes the station: a screen must not assume the station survives a delete.
 - Stations are filed under an exam that has an owner (ADR 0017); audiences for anything social:
   ADR 0014. Station sets (mocks) have entry flags; sets are edited by revision (stale edits refused).
+- **A learner builds a set but never changes or deletes it**: `PATCH`/`DELETE /me/station-sets/{id}` are
+  `PlatformAdmin` (a learner gets `forbidden`, 403); create, run, debrief and flag stay the learner's.
+- A set entry's `station_title` is null until the entry has been sat (`attempts > 0`): screens show
+  "Station N" (`stationLabel`), and Edit Session adds a random unsat station, never one picked by
+  title. A trial learner's create or edit is capped at the free stations left
+  (`trial_station_limit`, `GET /me/station-sets/allowance`), counted by station minus ones already sat.
 - A published station needs `patient_information` or a template layout, or its attempts render
   degraded and are never marked. Templates are platform-authored or copied (`station_template_copies`).
 - Generation profiles and prompts are per exam in `exams.settings`; never branch on an exam code.

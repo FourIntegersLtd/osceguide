@@ -4,16 +4,6 @@ import { cn } from "@/foundation/ui";
 // The pieces every settings tab is drawn from beside the shared `Panel`: a list
 // of rows with a grey icon tile, a switch and a status pill.
 
-/** A label over a card of rows, for a list that stands outside a card. */
-export function SettingsSection({ eyebrow, children }: { eyebrow: ReactNode; children: ReactNode }) {
-  return (
-    <section className="min-w-0">
-      <h2 className="px-1 pb-2 text-osce-meta font-medium text-ink-muted">{eyebrow}</h2>
-      {children}
-    </section>
-  );
-}
-
 export function SettingsRows({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div

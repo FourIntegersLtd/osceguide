@@ -9,6 +9,7 @@ export type SetEntry = components["schemas"]["EntryRead"];
 export type StartedAttempt = components["schemas"]["StartedAttempt"];
 export type Entitlement = components["schemas"]["EntitlementSummary"];
 export type Plan = components["schemas"]["PlanRead"];
+export type SetAllowance = components["schemas"]["SetAllowance"];
 
 /** The whole home screen in one request. */
 export function readDashboard(signal?: AbortSignal): Promise<Dashboard> {
@@ -24,6 +25,14 @@ export function readSet(setId: string, signal?: AbortSignal): Promise<StationSet
   return platformRequest<StationSet>(`/api/v1/me/station-sets/${encodeURIComponent(setId)}`, {
     signal,
   });
+}
+
+/** How many new stations a session for this exam may hold: the free trial's stations left, or null when paid. */
+export function readSetAllowance(examCode: string, signal?: AbortSignal): Promise<SetAllowance> {
+  return platformRequest<SetAllowance>(
+    `/api/v1/me/station-sets/allowance?exam_code=${encodeURIComponent(examCode)}`,
+    { signal },
+  );
 }
 
 /**

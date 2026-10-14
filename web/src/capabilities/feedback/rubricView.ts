@@ -1,3 +1,4 @@
+import { gradeWord } from "./feedbackWords";
 import {
   bandFor,
   bandName,
@@ -326,8 +327,11 @@ function passLineText(aggregate: Display["domain"]["aggregate"], passAtLeast: nu
 export function totalCaption(display: Display | null, rating: Rating): string {
   switch (display?.total.aggregate) {
     case "ragShare":
-    case "ragCounts":
-      return `of ratings at ${rating.scale?.[0] ?? "the best grade"}`;
+    case "ragCounts": {
+      const best = rating.scale?.[0];
+      const tone = display?.tones.find((rule) => rule.value !== undefined && rule.value === best)?.tone ?? null;
+      return best === undefined ? "of competencies at the best grade" : `of competencies graded ${gradeWord(best, tone)}`;
+    }
     case "percentAchieved":
       return "achieved";
     case "mean":

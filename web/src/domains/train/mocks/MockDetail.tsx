@@ -16,15 +16,15 @@ import { useSession } from "@/foundation/session";
 import { practiceTimers } from "@/capabilities/attempt-runner";
 import { hasCode } from "@/foundation/platform-client";
 import { listExams } from "@/capabilities/stations";
-import { loadStationCatalogue, readSet } from "@/domains/train/api";
+import { readSet } from "@/domains/train/api";
 import { MockRules } from "@/domains/train/mocks/MockRules";
 import { MockStationsTable, type StationRow } from "@/domains/train/mocks/MockStationsTable";
 import { B2CHero } from "@/foundation/ui/B2CHero";
-import { entriesInOrder, sessionMinutes } from "@/domains/train/mocks/model";
+import { entriesInOrder, sessionMinutes, stationLabel } from "@/domains/train/mocks/model";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-[104px] rounded-osce-lg border border-osce-border bg-osce-surface px-4 py-3">
+    <div className="min-w-[104px] rounded-osce-lg border border-osce-border bg-osce-surface px-4 py-3 text-center">
       <p className="text-osce-meta text-b2c-text-muted">{label}</p>
       <p className="mt-0.5 text-osce-data font-semibold tabular-nums text-osce-ink-900">{value}</p>
     </div>
@@ -52,16 +52,11 @@ export function MockDetail({ setId }: { setId: string }) {
         throw cause;
       });
       if (set === null) return null;
-      // Entries carry a station version id and no title, so the library is the
-      // lookup. One request for the exam beats one per entry.
-      const [library, exams] = await Promise.all([
-        loadStationCatalogue(set.exam_code, signal),
-        listExams(signal),
-      ]);
-      const titles = new Map(library.map((station) => [station.version_id, station.title]));
-      const rows: StationRow[] = entriesInOrder(set).map((entry) => ({
+      const exams = await listExams(signal);
+      // The server names a station only once it has been sat; before that it is "Station N".
+      const rows: StationRow[] = entriesInOrder(set).map((entry, index) => ({
         entry,
-        title: titles.get(entry.station_version_id) ?? "Station",
+        title: stationLabel(entry, index),
       }));
       const exam = exams.items.find((item) => item.code === set.exam_code) ?? null;
       return { set, rows, exam };
@@ -96,7 +91,6 @@ export function MockDetail({ setId }: { setId: string }) {
           const readingMinutes = Math.round(timers.readingSeconds / 60);
           const simulationMinutes = Math.round(timers.simulationSeconds / 60);
           const duration = sessionMinutes(set.total_entries, exam ? timers : null);
-          const stationsLabel = `${set.total_entries} ${set.total_entries === 1 ? "station" : "stations"}`;
           const first = rows[0]?.entry ?? null;
           const startsHere = !attempted && !set.locked;
           // A session with no stations has nowhere to start; the button stays inert.
@@ -107,6 +101,7 @@ export function MockDetail({ setId }: { setId: string }) {
               <B2CPageHeader
                 back={{ href: hrefFor("/mocks/list"), label: "Sessions" }}
                 title={set.name}
+                /* Hidden for learners: only admins edit or delete sessions (2026-10-14). Edit link:
                 action={
                   set.locked ? undefined : (
                     <ButtonLink
@@ -118,15 +113,15 @@ export function MockDetail({ setId }: { setId: string }) {
                     </ButtonLink>
                   )
                 }
+                */
               />
 
               <B2CHero
-                eyebrow={`${duration} minutes, ${stationsLabel}`}
                 title={`For each station: ${readingMinutes} minutes reading, then ${simulationMinutes} minutes with the patient`}
                 aside={
                   <>
-                    <Stat label="Duration" value={`${duration} min`} />
                     <Stat label="Stations" value={String(set.total_entries)} />
+                    <Stat label="Duration" value={`${duration} min`} />
                   </>
                 }
                 action={
@@ -147,7 +142,7 @@ export function MockDetail({ setId }: { setId: string }) {
                   ) : undefined
                 }
               >
-                Sit them back to back. Feedback for each station arrives while you sit the next.
+                Sit them back to back. Feedback for each station is prepared while you sit the next.
               </B2CHero>
 
               {attempted ? (

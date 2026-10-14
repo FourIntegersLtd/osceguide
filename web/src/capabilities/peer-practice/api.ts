@@ -45,7 +45,7 @@ export function listSlots(
     cursor?: string | null;
     orgId?: string | null;
     examCode?: string | null;
-    status?: "available" | "claimed" | null;
+    status?: Exclude<Slot["status"], "cancelled"> | null;
     when?: "upcoming" | "past" | null;
     limit?: number;
   },

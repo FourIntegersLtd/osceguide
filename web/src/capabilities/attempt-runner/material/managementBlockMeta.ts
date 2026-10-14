@@ -29,8 +29,8 @@ const LEGACY_GROUP_ORDER = [
 ];
 
 const MANAGEMENT_BLOCK_META: Record<string, ManagementBlockMeta> = {
-  explanation: { tone: "education", group: null },
-  description: { tone: "education", group: null },
+  explanation: { tone: "history", group: null },
+  description: { tone: "history", group: null },
   differential_diagnosis: { tone: "reasoning", group: CLINICAL_ASSESSMENT },
   diagnostic_criteria: { tone: "reasoning", group: CLINICAL_ASSESSMENT },
   assessment: { title: "Assessment steps", tone: "reasoning", group: CLINICAL_ASSESSMENT },
@@ -121,4 +121,12 @@ export function managementLayout(sections: AudienceSection[]): ManagementLayout 
     return entries ? [{ title, collapsible: title !== CLINICAL_ASSESSMENT, entries }] : [];
   });
   return { lead, groups };
+}
+
+/** The model answer's heading: what the section shows, said once. */
+export const MODEL_ANSWER_HEADING = "What a thorough plan covers";
+
+/** Under the heading: the station, and the one thing to do with the section. */
+export function modelAnswerLine(stationTitle: string): string {
+  return `${stationTitle}. Compare it with your transcript.`;
 }

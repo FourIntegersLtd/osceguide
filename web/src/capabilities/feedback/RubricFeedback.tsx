@@ -15,6 +15,7 @@ import {
 import { Dropdown } from "@/foundation/table";
 import { Badge, B2CEmptyState, B2CPanelCard, B2CPanelCardBody, B2CPanelCardHeader, cn, productTokens } from "@/foundation/ui";
 import { GradeCircle } from "@/capabilities/feedback/GradeCircle";
+import { gradeTallyText, gradeWord } from "@/capabilities/feedback/feedbackWords";
 import { toneVariant, type MarkedResult, type MarkingRubric } from "@/capabilities/feedback/rubric";
 import {
   feedbackModel,
@@ -90,7 +91,7 @@ export function RubricFeedback({
           <p className={b2cMonoEyebrow}>{model.header.heading}</p>
           {model.header.total ? (
             <p className="mt-1.5 text-osce-title font-semibold text-osce-ink-900">
-              <span className="font-mono tabular-nums">{model.header.total}</span>{" "}
+              <span className="tabular-nums">{model.header.total}</span>{" "}
               <span className="font-normal text-b2c-text-muted">{model.header.caption}</span>
             </p>
           ) : null}
@@ -154,12 +155,14 @@ export function RubricFeedback({
 }
 
 function DomainCard({ domain }: { domain: DomainView }) {
+  // Scale grades are counted in words at the foot, so the header leaves its letter counts out.
+  const countByGrade = gradeCountsOf(domain.competencies);
   return (
     <section className="flex flex-col rounded-osce-lg border border-osce-border bg-osce-surface">
       <header className="flex items-start gap-3 px-5 pb-1 pt-[18px]">
         <h3 className="min-w-0 flex-1 text-osce-subheading font-semibold text-osce-ink-900">{domain.title}</h3>
-        {domain.aggregate ? (
-          <span className="shrink-0 font-mono text-osce-body font-medium tabular-nums text-osce-ink-900">
+        {domain.aggregate && countByGrade.size === 0 ? (
+          <span className="shrink-0 text-osce-body font-medium tabular-nums text-osce-ink-900">
             {domain.aggregate}
           </span>
         ) : null}
@@ -185,7 +188,7 @@ function DomainCard({ domain }: { domain: DomainView }) {
             <Answers answers={domain.answers} />
           </div>
         ) : null}
-        <GradeCounts competencies={domain.competencies} />
+        <GradeCounts countByGrade={countByGrade} />
       </div>
     </section>
   );
@@ -196,22 +199,29 @@ function DomainCard({ domain }: { domain: DomainView }) {
  * legacy domain cards showed. Only scale grades are counted; a domain marked
  * with numbers or ticks has no foot.
  */
-function GradeCounts({ competencies }: { competencies: CompetencyView[] }) {
+function gradeCountsOf(competencies: CompetencyView[]): Map<string, { tone: string | null; count: number }> {
   const countByGrade = new Map<string, { tone: string | null; count: number }>();
   for (const competency of competencies) {
     if (competency.rating?.shape !== "grade") continue;
     const tally = countByGrade.get(competency.rating.text) ?? { tone: competency.rating.tone, count: 0 };
     countByGrade.set(competency.rating.text, { ...tally, count: tally.count + 1 });
   }
+  return countByGrade;
+}
+
+function GradeCounts({ countByGrade }: { countByGrade: ReturnType<typeof gradeCountsOf> }) {
   if (countByGrade.size === 0) return null;
   return (
     <div className="mt-auto flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-b2c-border pt-4">
-      {[...countByGrade].map(([grade, tally]) => (
-        <span key={grade} className="inline-flex items-center text-osce-body text-b2c-text-secondary">
-          <GradeCircle grade={grade} tone={tally.tone} />
-          <span className="font-semibold text-osce-ink-900">{tally.count}</span>
-        </span>
-      ))}
+      {[...countByGrade].map(([grade, tally]) => {
+        const text = gradeTallyText(tally.count, grade, tally.tone);
+        return text ? (
+          <span key={grade} className="inline-flex items-center text-osce-body text-b2c-text-secondary">
+            <GradeCircle grade={grade} tone={tally.tone} />
+            {text}
+          </span>
+        ) : null;
+      })}
     </div>
   );
 }
@@ -222,6 +232,11 @@ function CompetencyRow({ competency }: { competency: CompetencyView }) {
       <div className="flex items-start gap-1">
         {competency.rating ? <RatingMark rating={competency.rating} /> : null}
         <span className="pt-0.5 font-medium text-osce-ink-900">{competency.label}</span>
+        {competency.rating?.shape === "grade" && competency.rating.tone ? (
+          <span className="pt-0.5 text-osce-meta text-b2c-text-muted">
+            · {gradeWord(competency.rating.text, competency.rating.tone)}
+          </span>
+        ) : null}
       </div>
       {competency.answers.length > 0 ? (
         <div className="space-y-2 sm:pl-9">

@@ -5,7 +5,7 @@ import { tabsFor } from "@/capabilities/account/settings/settingsTabs";
 test("every consumer account sees the Referrals tab and no Exam tab (the exam type is on Profile)", () => {
   assert.deepEqual(
     tabsFor("train").map((tab) => tab.id),
-    ["profile", "preferences", "payments", "referrals", "memory"],
+    ["profile", "preferences", "payments", "referrals"],
   );
 });
 

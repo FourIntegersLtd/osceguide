@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -20,7 +21,8 @@ class PostRead(BaseModel):
     starts_at: datetime
     duration_minutes: int
     note: str | None
-    status: str
+    # Spelled out so the generated web types carry the union and a screen must handle each.
+    status: Literal["available", "claimed", "cancelled"]
     is_mine: bool
     audience: AudienceOut
 

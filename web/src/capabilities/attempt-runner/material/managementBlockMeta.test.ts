@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { managementLayout } from "./managementBlockMeta";
+import { MODEL_ANSWER_HEADING, managementLayout, modelAnswerLine } from "./managementBlockMeta";
 import type { AudienceSection } from "./sectionsByAudience";
 
 function section(id: string, title: string, blocks: Record<string, unknown>): AudienceSection {
@@ -59,4 +59,16 @@ test("a block the map does not know is grouped under its own section's title, af
       ["Key Concerns", true],
     ],
   );
+});
+
+test("the explanation reads as information, not a warning: no amber tone leads the model answer", () => {
+  const layout = managementLayout([
+    section("management_plan", "Management Plan", { explanation: "Irritant contact dermatitis.", description: "A rash." }),
+  ]);
+  assert.deepEqual(layout.lead.map((entry) => entry.tone), ["history", "history"]);
+});
+
+test("the model answer is headed by what it shows, with one line that adds the action", () => {
+  assert.equal(MODEL_ANSWER_HEADING, "What a thorough plan covers");
+  assert.equal(modelAnswerLine("Contact dermatitis"), "Contact dermatitis. Compare it with your transcript.");
 });

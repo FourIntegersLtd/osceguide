@@ -3,6 +3,7 @@
 import { Card } from "@/foundation/ui";
 import { MicrophoneCheck } from "@/foundation/livekit";
 import type { Exam } from "@/capabilities/stations";
+import { mockRules } from "@/domains/train/mocks/model";
 
 /**
  * What happens next, before the clock starts (canvas `train-session`).
@@ -25,12 +26,7 @@ export function MockRules({
 }) {
   const attemptLimit = exam?.station_attempt_limit ?? 3;
 
-  const rules = [
-    "You hold a spoken consultation with an AI patient, so you need a working microphone. Headphones help avoid echo.",
-    "Each station follows a structured format. A cue about halfway through tells you to move from history taking to management.",
-    "Find a quiet space with stable internet. If something goes wrong, flag the station and message support.",
-    `You get up to ${attemptLimit} attempts at each station. The timer starts as soon as you press Start session.`,
-  ];
+  const rules = mockRules(attemptLimit);
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
@@ -38,7 +34,7 @@ export function MockRules({
         <ol className="divide-y divide-osce-border-light">
           {rules.map((rule, index) => (
             <li key={rule} className="flex gap-4 py-3 first:pt-0 last:pb-0">
-              <span className="w-6 shrink-0 font-mono text-osce-meta tabular-nums text-b2c-text-muted">
+              <span className="w-6 shrink-0 text-osce-meta tabular-nums text-b2c-text-muted">
                 {String(index + 1).padStart(2, "0")}
               </span>
               <span className="text-osce-body leading-relaxed text-osce-ink-900">{rule}</span>

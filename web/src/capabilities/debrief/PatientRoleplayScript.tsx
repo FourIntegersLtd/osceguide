@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  HiOutlineClipboardDocumentList,
-  HiOutlineInformationCircle,
-  HiOutlineLightBulb,
-  HiOutlineUser,
-} from "react-icons/hi2";
+import { HiOutlineUser } from "react-icons/hi2";
 import { B2CSectionIconBadge, B2CSegmentedTabs } from "@/foundation/ui";
 import { b2cGroupedRowSubtitle, b2cReadingTones, b2cSectionTitle } from "@/foundation/ui/productTokens";
 import { BlockView, sectionsFor, type AudienceSection } from "@/capabilities/attempt-runner/material/AudienceSections";
@@ -18,20 +13,11 @@ import {
   type PatientScriptTab,
 } from "@/capabilities/debrief/patientScriptMeta";
 
-const TAB_ITEMS: Array<{ id: PatientScriptTab; label: React.ReactNode }> = [
-  { id: "history", label: <TabLabel icon={<HiOutlineClipboardDocumentList aria-hidden />} text="History" /> },
-  { id: "ice", label: <TabLabel icon={<HiOutlineLightBulb aria-hidden />} text="ICE & Concerns" /> },
-  { id: "persona", label: <TabLabel icon={<HiOutlineInformationCircle aria-hidden />} text="Persona" /> },
+const TAB_ITEMS: Array<{ id: PatientScriptTab; label: string }> = [
+  { id: "history", label: "History" },
+  { id: "ice", label: "ICE & Concerns" },
+  { id: "persona", label: "Persona" },
 ];
-
-function TabLabel({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      {icon}
-      {text}
-    </span>
-  );
-}
 
 /**
  * The actor's script, as the legacy b2c `PatientPreparation`: a header, then

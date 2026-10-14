@@ -23,6 +23,8 @@ export function PracticeOptionCards({
   schedulePracticeLabel = "Schedule practice",
   livePracticeActionLabel = "Start now",
   schedulePracticeActionLabel = "Post availability",
+  livePracticeDescription = "Get matched immediately",
+  schedulePracticeDescription = "Practice at your convenience",
 }: {
   onLivePractice: () => void;
   onSchedulePractice: () => void;
@@ -32,6 +34,8 @@ export function PracticeOptionCards({
   schedulePracticeLabel?: string;
   livePracticeActionLabel?: string;
   schedulePracticeActionLabel?: string;
+  livePracticeDescription?: string;
+  schedulePracticeDescription?: string;
 }) {
   const content = (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -49,7 +53,7 @@ export function PracticeOptionCards({
             <h3 className="mb-0.5 text-osce-body font-semibold text-osce-ink-900">
               {livePracticeLabel}
             </h3>
-            <p className="text-osce-meta text-b2c-text-muted">Get matched immediately</p>
+            <p className="text-osce-meta text-b2c-text-muted">{livePracticeDescription}</p>
           </div>
           {isJoiningQueue ? (
             <div className="flex items-center gap-2 text-osce-accent">
@@ -78,7 +82,7 @@ export function PracticeOptionCards({
             <h3 className="mb-0.5 text-osce-body font-semibold text-osce-ink-900">
               {schedulePracticeLabel}
             </h3>
-            <p className="text-osce-meta text-b2c-text-muted">Practice at your convenience</p>
+            <p className="text-osce-meta text-b2c-text-muted">{schedulePracticeDescription}</p>
           </div>
           <div className="flex items-center gap-2 text-osce-accent transition-all duration-200 group-hover:gap-2.5">
             <span className="text-osce-body font-medium">{schedulePracticeActionLabel}</span>

@@ -1,18 +1,18 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import type { AttemptReview } from "@/capabilities/attempt-runner/api";
 import { StationComments } from "@/capabilities/community/StationComments";
-import { Dropdown } from "@/foundation/table";
-import { Card, MarkdownRenderer, cn } from "@/foundation/ui";
+import { B2CPanelCard, B2CPanelCardBody, B2CPanelCardHeader, Card, MarkdownRenderer, cn } from "@/foundation/ui";
 import { b2cReadingTones } from "@/foundation/ui/productTokens";
 import { AudienceSections, BlockView, sectionsFor } from "./AudienceSections";
-import { managementLayout, type ManagementEntry } from "./managementBlockMeta";
+import { MODEL_ANSWER_HEADING, managementLayout, modelAnswerLine, type ManagementEntry } from "./managementBlockMeta";
 import { prepareListItem } from "./managementListHelpers";
 import { asText } from "./sectionsByAudience";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 
 /**
- * The model answer once the consultation is over: a "Model answer" hero, the
+ * The model answer once the consultation is over: a "What a thorough plan covers" hero, the
  * blocks as stage-coloured cards grouped by consultation stage
  * (`managementBlockMeta`), then the candidate's brief for reference.
  */
@@ -27,9 +27,7 @@ export function ManagementPlan({
 
   return (
     <div className="max-w-full select-none space-y-6 overflow-x-hidden">
-      <B2CHero eyebrow="Model answer" title={review.station_title}>
-        What a competent plan covers. Compare it with your transcript.
-      </B2CHero>
+      <B2CHero title={MODEL_ANSWER_HEADING}>{modelAnswerLine(review.station_title)}</B2CHero>
 
       {!hasModelAnswer ? (
         <p className="text-osce-body text-b2c-text-muted">There is no model answer for this station.</p>
@@ -39,9 +37,9 @@ export function ManagementPlan({
 
       {layout.groups.map((group) =>
         group.collapsible ? (
-          <Dropdown key={group.title} title={group.title} className="mt-0">
+          <RoundedDropdown key={group.title} title={group.title}>
             <ToneCardGrid entries={group.entries} />
-          </Dropdown>
+          </RoundedDropdown>
         ) : (
           <section key={group.title} className="space-y-3">
             <h3 className="text-osce-subheading font-semibold text-osce-ink-900">{group.title}</h3>
@@ -60,6 +58,25 @@ export function ManagementPlan({
 
       <StationComments stationId={review.station_id} />
     </div>
+  );
+}
+
+/**
+ * A collapsible stage. Unlike the shared `Dropdown` (sharp edges by design, for table-style
+ * sections), a stage sits between rounded cards, so its shell keeps the platform's rounded corners.
+ */
+function RoundedDropdown({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <B2CPanelCard className="mt-0">
+      <button type="button" className="w-full text-left" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+        <B2CPanelCardHeader className="cursor-pointer select-none hover:bg-b2c-secondary">
+          <span className="min-w-0 flex-1 truncate">{title}</span>
+          <span className="shrink-0 text-osce-body leading-none text-b2c-text-muted">{open ? "−" : "+"}</span>
+        </B2CPanelCardHeader>
+      </button>
+      {open ? <B2CPanelCardBody>{children}</B2CPanelCardBody> : null}
+    </B2CPanelCard>
   );
 }
 

@@ -38,8 +38,11 @@ async def start(client: AsyncClient, attempt_id: str) -> None:
     assert response.status_code == 200, response.text
 
 
-async def a_learner(client: AsyncClient, db_session: AsyncSession, make_actor, email: str) -> str:  # type: ignore[no-untyped-def]
-    token = await make_actor(email)
+async def a_learner(  # type: ignore[no-untyped-def]
+    client: AsyncClient, db_session: AsyncSession, make_actor, email: str, *, platform_admin: bool = False
+) -> str:
+    """A signed-in person with paid access to SCA; `platform_admin` makes them staff as well."""
+    token = await make_actor(email, platform_admin=platform_admin)
     user = await identity_repo.user_by_email(db_session, email)
     assert user is not None
     exam = await ensure_exam(db_session, "sca")

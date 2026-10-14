@@ -1,4 +1,5 @@
 import { hasCode, isPlatformError } from "@/foundation/platform-client/errors";
+import { plural } from "@/foundation/format";
 
 /**
  * What to tell somebody the API refused, by the code (and, for access, the reason) it answered with.
@@ -20,6 +21,11 @@ export function describeRefusal(cause: unknown, fallback: string): string {
       return "Your access to this exam has ended. Ask your organisation to renew it, or subscribe, to keep practising.";
     }
     return "You do not have access to this exam yet. Ask your organisation for access, or subscribe, to practise it.";
+  }
+  if (hasCode(cause, "trial_station_limit")) {
+    const left = isPlatformError(cause) ? Number(cause.details?.stations_left ?? 0) : 0;
+    if (left === 0) return "Your free trial has no stations left. Subscribe to add new stations.";
+    return `Your free trial has ${plural(left, "station")} left. Choose ${left} or fewer new stations, or subscribe for more.`;
   }
   if (hasCode(cause, "set_locked")) {
     return "This session is locked because your access has ended. You can still review it.";

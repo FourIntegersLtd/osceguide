@@ -58,7 +58,7 @@ export function MockStationsTable({
           return (
             <li key={entry.id}>
               <div className="flex min-h-[54px] flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
-                <span className="inline-flex h-[22px] min-w-[28px] items-center justify-center rounded-[6px] bg-b2c-surface-muted px-1.5 font-mono text-osce-meta tabular-nums text-osce-ink-900">
+                <span className="inline-flex h-[22px] min-w-[28px] items-center justify-center rounded-[6px] bg-b2c-surface-muted px-1.5 text-osce-meta tabular-nums text-osce-ink-900">
                   {index + 1}
                 </span>
                 <div className="min-w-0 flex-1 basis-40">

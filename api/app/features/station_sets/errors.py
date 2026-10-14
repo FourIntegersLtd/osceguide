@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.errors import Conflict, NotFound
+from app.core.errors import Conflict, Forbidden, NotFound
 
 # Starting an attempt runs the entitlement check, so `not_entitled` is part of
 # this slice's error vocabulary even though the class belongs to `entitlements`.
@@ -86,6 +86,17 @@ class EntryHasAttemptsError(Conflict):
 
     code = "set_entry_has_attempts"
     default_message = "This set has a station that has already been attempted and cannot be removed"
+
+
+class TrialStationLimitError(Forbidden):
+    """A free-trial learner asked for more new stations than their trial has left.
+
+    `details.stations_left` says how many it does have, so the screen can say so. A station they
+    have already sat costs nothing; paid access is never capped.
+    """
+
+    code = "trial_station_limit"
+    default_message = "Your free trial does not have that many stations left"
 
 
 class NothingToDebriefError(Conflict):

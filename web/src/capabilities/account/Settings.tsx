@@ -17,7 +17,6 @@ export type { SettingsTab };
 import PreferencesPanel from "@/capabilities/account/settings/PreferencesPanel";
 import PaymentsPanel from "@/capabilities/account/settings/PaymentsPanel";
 import ReferralsPanel from "@/capabilities/account/settings/ReferralsPanel";
-import TutorMemoryPanel from "@/capabilities/account/settings/TutorMemoryPanel";
 
 /** A tab an arm adds beside the account's own. */
 export interface ExtraSettingsTab {
@@ -138,7 +137,6 @@ function SettingsFrame({
       {tab === "preferences" ? <PreferencesPanel /> : null}
       {tab === "payments" ? <PaymentsPanel /> : null}
       {tab === "referrals" ? <ReferralsPanel /> : null}
-      {tab === "memory" ? <TutorMemoryPanel /> : null}
       {extraTabs.map((entry) => (tab === entry.id ? <div key={entry.id}>{entry.panel}</div> : null))}
     </>
   );

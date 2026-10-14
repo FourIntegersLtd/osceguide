@@ -22,10 +22,6 @@ export type MyEntitlements = components["schemas"]["MyEntitlements"];
 export type Plan = components["schemas"]["PlanRead"];
 export type Receipt = components["schemas"]["ReceiptRead"];
 export type Referral = components["schemas"]["ReferralRead"];
-export type TutorMemory = components["schemas"]["TutorMemoryRead"];
-export type TutorNote = components["schemas"]["NoteRead"];
-export type TutorEvent = components["schemas"]["EventRead"];
-export type ForgottenCounts = components["schemas"]["ForgottenCounts"];
 export type Achievements = components["schemas"]["AchievementsRead"];
 
 export function readMe(signal?: AbortSignal): Promise<Me> {
@@ -213,31 +209,6 @@ export async function recordActivity(event: ActivityIn): Promise<void> {
   } catch {
     // The tutor's notes are a nicety; the page the person is on is not.
   }
-}
-
-export function readTutorMemory(signal?: AbortSignal): Promise<TutorMemory> {
-  return platformRequest<TutorMemory>("/api/v1/me/tutor-memory", { signal });
-}
-
-/**
- * Forget the lot, and say how much was forgotten.
- *
- * Debrief summaries are opt-in on the way out: they are also this doctor's own
- * record of what a debrief concluded, shown on their results, so clearing the
- * tutor's memory does not silently delete them unless asked.
- */
-export function forgetTutorMemory(includeDebriefs: boolean): Promise<ForgottenCounts> {
-  return platformRequest<ForgottenCounts>("/api/v1/me/tutor-memory", {
-    method: "DELETE",
-    query: { include_debriefs: includeDebriefs },
-  });
-}
-
-export function forgetTutorNote(noteId: string): Promise<void> {
-  return platformRequest<void>(
-    `/api/v1/me/tutor-memory/notes/${encodeURIComponent(noteId)}`,
-    { method: "DELETE" },
-  );
 }
 
 export type UpdateMe = components["schemas"]["UpdateMe"];

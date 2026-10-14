@@ -8,9 +8,11 @@ import { HiArrowRight } from "react-icons/hi";
 import { HiOutlineClock, HiOutlineLockClosed } from "react-icons/hi2";
 import { B2CEmptyState, ButtonLink, cn, productTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
+import { plural } from "@/foundation/format";
 import type { Exam } from "@/capabilities/stations";
 import type { StationSet } from "@/domains/train/api";
-import { SessionCardActions } from "@/domains/train/mocks/SessionCardActions";
+// Hidden for learners: only admins edit or delete sessions (2026-10-14).
+// import { SessionCardActions } from "@/domains/train/mocks/SessionCardActions";
 import { SessionGroup } from "@/domains/train/mocks/SessionGroup";
 import { groupSets, sessionAction, sessionMinutes, sessionState } from "@/domains/train/mocks/model";
 
@@ -93,7 +95,7 @@ function StatusPill({ dot, children }: { dot: string; children: ReactNode }) {
 const SessionCard = memo(function SessionCard({
   set,
   exam,
-  onChanged,
+  onChanged: _onChanged, // unused while SessionCardActions is hidden
 }: {
   set: StationSet;
   exam: Exam | null;
@@ -131,7 +133,8 @@ const SessionCard = memo(function SessionCard({
           ) : null}
           {set.feedback_ready ? <StatusPill dot="bg-osce-accent">Feedback</StatusPill> : null}
         </span>
-        <SessionCardActions set={set} onChanged={onChanged} />
+        {/* Hidden for learners: only admins edit or delete sessions (2026-10-14). */}
+        {/* <SessionCardActions set={set} onChanged={onChanged} /> */}
       </div>
 
       <Link href={hrefFor(`/mocks/${set.id}`)} className="flex flex-1 flex-col gap-3 after:absolute after:inset-0 after:content-['']">
@@ -149,7 +152,7 @@ const SessionCard = memo(function SessionCard({
             {minutes} mins
           </span>
           <span className="whitespace-nowrap">
-            {set.total_entries} {set.total_entries === 1 ? "station" : "stations"}
+            {plural(set.total_entries, "station")}
           </span>
           <span className="ml-auto flex items-center gap-1 whitespace-nowrap font-medium text-osce-accent">
             {sessionAction(set)}

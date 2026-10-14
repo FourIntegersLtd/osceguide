@@ -21,7 +21,7 @@ describe("feedback rendered from the rubric", () => {
     assert.deepEqual(model.header, {
       heading: "Your mark",
       total: "10%",
-      caption: "of ratings at G",
+      caption: "of competencies graded Good",
       outcome: null,
       passed: null,
       band: null,

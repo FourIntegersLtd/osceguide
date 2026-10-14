@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { AthenaIdentity, Button } from "@/foundation/ui";
+import { HiOutlineLightBulb } from "react-icons/hi2";
+import { Button } from "@/foundation/ui";
 import { b2cBodyText, b2cReadingTones } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
 import { consultationToolkit } from "./consultationToolkit";
@@ -13,7 +14,6 @@ interface Activity {
 }
 
 const tipTone = b2cReadingTones.tip;
-const practiceTone = b2cReadingTones.practice;
 
 /** RCGP-style display labels. do not rename toolkit keys. */
 const SKILL_LABELS: Record<string, string> = {
@@ -125,42 +125,44 @@ const TipContent = () => {
       transition={{ duration: 0.3 }}
       className="grid grid-cols-1 gap-3"
     >
-      <section className={cn("flex flex-col rounded-osce-lg border p-4 sm:p-5", tipTone.card)}>
-        <p className={cn("text-osce-meta font-medium", tipTone.title)}>Consultation tip</p>
-        <div className="mt-3">
-          <AthenaIdentity
-            layout="inline"
-            title={skillLabel(currentTip.skill)}
-            description={categoryLabel(currentTip.category)}
-          />
+      <section className="flex flex-col rounded-osce-lg border border-b2c-border bg-osce-surface p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <HiOutlineLightBulb className="mt-0.5 h-5 w-5 shrink-0 text-osce-accent" aria-hidden />
+          <div className="min-w-0">
+            <h3 className="text-osce-body font-semibold text-osce-ink-900">{skillLabel(currentTip.skill)}</h3>
+            <p className="text-osce-meta text-b2c-text-muted">{categoryLabel(currentTip.category)}</p>
+          </div>
         </div>
-        <p className={cn("mt-4 flex-1", b2cBodyText, tipTone.body)}>{currentTip.activity.about}</p>
-        <p className="mt-4 text-osce-meta text-b2c-text-muted">Adapted from the RCGP SCA Consultation Toolkit</p>
-      </section>
+        <p className={cn("mt-3", b2cBodyText, tipTone.body)}>{currentTip.activity.about}</p>
 
-      <section className={cn("flex flex-col rounded-osce-lg border p-4 sm:p-5", practiceTone.card)}>
-        <div className="flex items-center justify-between gap-2">
-          <p className={cn("text-osce-meta font-medium", practiceTone.title)}>Try this</p>
-          <span className="font-mono text-osce-meta tabular-nums text-b2c-text-muted">
-            {currentActivityIndex + 1} of {currentTip.activity.educationalActivity.length}
-          </span>
+        <div className={cn("mt-4 flex flex-col rounded-osce-lg border p-4", tipTone.card)}>
+          <div className="flex items-center justify-between gap-2">
+            <p className={cn("text-osce-meta font-medium", tipTone.title)}>Try this</p>
+            <span className="text-osce-meta tabular-nums text-b2c-text-muted">
+              {currentActivityIndex + 1} of {currentTip.activity.educationalActivity.length}
+            </span>
+          </div>
+          <motion.p
+            key={currentActivityIndex}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn("mt-2", b2cBodyText, tipTone.body)}
+          >
+            {currentTip.activity.educationalActivity[currentActivityIndex]}
+          </motion.p>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button type="button" variant="secondary" size="sm" onClick={() => navigateActivity("prev")}>
+              Previous
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => navigateActivity("next")}>
+              Next
+            </Button>
+          </div>
         </div>
-        <motion.p
-          key={currentActivityIndex}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={cn("mt-3 flex-1", b2cBodyText, practiceTone.body)}
-        >
-          {currentTip.activity.educationalActivity[currentActivityIndex]}
-        </motion.p>
-        <div className="mt-5 flex flex-wrap items-center gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={() => navigateActivity("prev")}>
-            Previous
-          </Button>
-          <Button type="button" variant="secondary" size="sm" onClick={() => navigateActivity("next")}>
-            Next
-          </Button>
-          <Button type="button" size="sm" onClick={getRandomTip} className="ml-auto">
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-osce-meta text-b2c-text-muted">Adapted from the RCGP SCA Consultation Toolkit</p>
+          <Button type="button" variant="secondary" size="sm" onClick={getRandomTip}>
             Show another skill
           </Button>
         </div>

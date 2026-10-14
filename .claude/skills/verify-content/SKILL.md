@@ -41,6 +41,7 @@ poetry run pytest -q \
   tests/http/test_station_autogenerate_routes.py tests/http/test_library_station_reads.py \
   tests/http/test_platform_stations_routes.py tests/http/test_platform_user_station_routes.py \
   tests/http/test_station_sets_routes.py tests/http/test_station_set_edit_routes.py \
+  tests/http/test_station_set_trial_routes.py \
   tests/http/test_generation_routes.py tests/http/test_media_routes.py \
   tests/http/test_media_production_routes.py tests/http/test_community_routes.py \
   tests/http/test_cv_routes.py tests/http/test_public_site_routes.py \

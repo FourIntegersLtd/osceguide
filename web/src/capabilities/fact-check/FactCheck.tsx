@@ -440,14 +440,7 @@ export function FactCheck({
             onChange={setChosen}
             items={TABS.map((entry) => ({
               id: entry.id,
-              label: (
-                <span className="flex items-center gap-1.5">
-                  {entry.label}
-                  <span className="tabular-nums text-ink-subtle">
-                    {counts[entry.id]}
-                  </span>
-                </span>
-              ),
+              label: `${entry.label} ${counts[entry.id]}`,
             }))}
           />
           {!progress &&

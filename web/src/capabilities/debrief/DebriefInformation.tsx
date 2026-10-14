@@ -6,6 +6,7 @@ import {
   productTokens,
 } from "@/foundation/ui";
 import { useCurrentExam, hasStationSubtypes } from "@/foundation/session";
+import { DEBRIEF_HEADING, DEBRIEF_INTRO } from "./debriefCopy";
 
 const {
   b2cGroupedRow,
@@ -51,7 +52,7 @@ const ORTHO_FEATURES = [
   {
     icon: <HiRefresh className="h-5 w-5 text-osce-success-text" aria-hidden />,
     title: "Practice & Role-play",
-    desc: "Rehearse difficult questions, rephrase management plans, or practice portfolio answers with Athena.",
+    desc: "Rehearse difficult questions, rephrase management plans, or practise portfolio answers with Athena.",
     bg: "bg-osce-success-bg",
   },
 ];
@@ -70,7 +71,7 @@ const DEFAULT_STEPS = [
   {
     step: "03",
     title: "Engage in Role-play",
-    text: "Ask Athena to practice a specific difficult moment again. She can play the patient while you refine your approach.",
+    text: "Ask Athena to practise a specific difficult moment again. She can play the patient while you refine your approach.",
   },
 ];
 
@@ -121,12 +122,10 @@ export function DebriefTips() {
           <HiSparkles className="h-3 w-3" aria-hidden /> Powered by Athena
         </div>
         <h2 className="text-osce-body font-semibold tracking-tight text-osce-ink-900">
-          {ortho ? "Master your ortho stations" : "Master your consultations"}
+          {ortho ? DEBRIEF_HEADING.ortho : DEBRIEF_HEADING.default}
         </h2>
         <p className="mx-auto max-w-xl text-osce-body leading-relaxed text-b2c-text-muted">
-          {ortho
-            ? "Athena uses your transcript and station feedback to run a structured debrief on clinical reasoning, prioritisation, communication, or portfolio, aligned to ST3 T&O standards."
-            : "Athena analyzes your consultation transcript to provide a structured, interactive debrief session focused on your specific growth areas."}
+          {ortho ? DEBRIEF_INTRO.ortho : DEBRIEF_INTRO.default}
         </p>
       </div>
 

@@ -75,10 +75,14 @@ const GATE_ALLOW = allowList(
       "Gated at the control, not the handler: fired only from StationTemplatesSection's `write` AuthoringRowActions (or the import dialog, author only)",
     "POST /api/v1/orgs/{org_slug}/station-templates/{template_id}/versions/{version}/archive  (src/capabilities/authoring/api/templates.ts#archiveStationTemplateVersion)":
       "Gated at the control, not the handler: fired only from StationTemplatesSection's `write` AuthoringRowActions (or the import dialog, author only)",
+    "PATCH /api/v1/me/station-sets/{set_id}  (src/domains/train/api.ts#updateSet)":
+      "Hidden for learners (2026-10-14): the edit screen's only entry points are commented out and its route redirects; the api refuses non-admins",
+    "DELETE /api/v1/me/station-sets/{set_id}  (src/domains/train/api.ts#deleteSet)":
+      "Hidden for learners (2026-10-14): SessionCardActions is no longer rendered; the api refuses non-admins",
     "src/capabilities/staff-media/api.ts#generateContent":
       "Takes its path as an argument; its one caller, generateBlog, passes /platform/generate/blog, reached from the staff console only",
   },
-  14,
+  16,
 );
 
 /** What a check must admit: the rung, or `rung|platform` when a platform admin also passes. */

@@ -7,6 +7,7 @@ import {
   AsyncBoundary,
   B2CPageHeader,
   B2CSegmentedTabs,
+  type B2CSegmentedTabItem,
   Button,
   ConfirmModal,
   Modal,
@@ -22,10 +23,6 @@ import {
   withdrawSlot,
   type Slot,
 } from "@/capabilities/peer-practice/api";
-import {
-  MARKETPLACE_TABS,
-  type MarketplaceTab,
-} from "@/capabilities/peer-practice/marketplace/tabs";
 import { MarketplaceIntroCard } from "@/capabilities/peer-practice/marketplace/MarketplaceIntroCard";
 import {
   ClaimConfirmationModal,
@@ -57,6 +54,14 @@ type Notice = { id: number; type: "success" | "error"; text: string };
  * supplies it. The component itself knows only that an audience exists, which
  * is what lets an institution have this without a second implementation.
  */
+type MarketplaceTab = "available" | "myPosts" | "upcoming";
+
+const MARKETPLACE_TABS: B2CSegmentedTabItem<MarketplaceTab>[] = [
+  { id: "available", label: "All sessions" },
+  { id: "myPosts", label: "My sessions" },
+  { id: "upcoming", label: "Upcoming sessions" },
+];
+
 export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
   const shared = usePeerPractice();
   if (!shared || shared.orgId !== orgId) {

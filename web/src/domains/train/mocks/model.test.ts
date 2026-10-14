@@ -7,6 +7,7 @@ import {
   attemptedVersionIds,
   attemptsWithTranscript,
   checkMilestone,
+  combineIntro,
   chooseStations,
   flaggedEntryPath,
   groupSets,
@@ -18,6 +19,12 @@ import {
   type AttemptStatusRecord,
   describeCreateSetFailure,
   nothingPickableMessage,
+  BEFORE_YOU_START,
+  mockRules,
+  pickerMax,
+  sessionUpdatedMessage,
+  stationLabel,
+  trialStationsHint,
 } from "@/domains/train/mocks/model";
 
 function set(over: Partial<StationSet> = {}): StationSet {
@@ -287,5 +294,82 @@ describe("describeCreateSetFailure", () => {
   it("falls back to the server's message, then a generic sentence", () => {
     assert.equal(describeCreateSetFailure(refusal(500, "internal_error")), "server wording");
     assert.equal(describeCreateSetFailure(undefined), "We could not create this session. Please try again.");
+  });
+});
+
+describe("trial_station_limit", () => {
+  const limit = (stationsLeft: number) =>
+    new PlatformError(403, {
+      code: "trial_station_limit",
+      message: "server wording",
+      details: { stations_left: stationsLeft },
+    } as ConstructorParameters<typeof PlatformError>[1]);
+
+  it("says how many free stations are left", () => {
+    assert.equal(
+      describeCreateSetFailure(limit(2)),
+      "Your free trial has 2 stations left. Choose 2 or fewer new stations, or subscribe for more.",
+    );
+    assert.equal(
+      describeCreateSetFailure(limit(0)),
+      "Your free trial has no stations left. Subscribe to add new stations.",
+    );
+  });
+});
+
+describe("session setup copy", () => {
+  it("does not ask for equipment the learner has to buy", () => {
+    assert.deepEqual(BEFORE_YOU_START, [
+      "The built-in microphone on your laptop or phone is fine",
+      "Headphones are optional. They cut down echo",
+      "Find somewhere you can talk without interruptions, with a stable connection",
+    ]);
+  });
+
+  it("caps the picker at the free stations left, and only on the trial", () => {
+    assert.equal(pickerMax(40, 2), 2);
+    assert.equal(pickerMax(1, 3), 1);
+    assert.equal(pickerMax(40, null), 40);
+  });
+
+  it("tells a trial learner how many stations they have left", () => {
+    assert.equal(trialStationsHint(2), "Your free trial has 2 stations left.");
+    assert.equal(trialStationsHint(1), "Your free trial has 1 station left.");
+    assert.equal(trialStationsHint(0), "Your free trial has no stations left.");
+    assert.equal(trialStationsHint(null), null);
+  });
+});
+
+describe("mockRules", () => {
+  it("reads as four plain instructions, with the clock described correctly", () => {
+    assert.deepEqual(mockRules(3), [
+      "You talk to an AI patient out loud. The built-in microphone on your laptop or phone is fine. Headphones are optional. They cut down echo.",
+      "Each station follows the same format. About halfway through, a prompt tells you to move from history taking to management.",
+      "Find somewhere you can talk without interruptions, with a stable connection. If something goes wrong, flag the station and message support.",
+      "You can attempt each station up to 3 times. Each station opens with reading time, and the consultation starts when you press Start simulation or reading time runs out.",
+    ]);
+    assert.match(mockRules(1)[3] ?? "", /^You can attempt each station once\./);
+  });
+});
+
+describe("stationLabel", () => {
+  it("names a station only once it has been sat", () => {
+    assert.equal(stationLabel({ station_title: null }, 0), "Station 1");
+    assert.equal(stationLabel({ station_title: undefined }, 3), "Station 4");
+    assert.equal(stationLabel({ station_title: "Chest pain" }, 1), "Chest pain");
+  });
+});
+
+describe("sessionUpdatedMessage", () => {
+  it("confirms the save with the station count", () => {
+    assert.equal(sessionUpdatedMessage(4), "Session updated: 4 stations");
+    assert.equal(sessionUpdatedMessage(1), "Session updated: 1 station");
+  });
+});
+
+describe("combineIntro", () => {
+  it("invites a pick once stations were sat, and says what unlocks it before", () => {
+    assert.equal(combineIntro(true), "Pick the stations you found hardest and sit them again as one session.");
+    assert.match(combineIntro(false), /^Available once you have sat a few stations/);
   });
 });

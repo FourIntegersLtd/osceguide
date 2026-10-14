@@ -198,6 +198,22 @@ async def entries_for_owner_by_versions(
     return list((await session.execute(stmt)).scalars())
 
 
+async def sat_version_ids(
+    session: AsyncSession, owner_user_id: uuid.UUID, exam_id: uuid.UUID
+) -> set[uuid.UUID]:
+    """The station versions this person has sat in any of their sets for this exam."""
+    stmt = (
+        select(StationSetEntry.station_version_id)
+        .join(StationSet, StationSet.id == StationSetEntry.set_id)
+        .where(
+            StationSet.owner_user_id == owner_user_id,
+            StationSet.exam_id == exam_id,
+            StationSetEntry.attempts > 0,
+        )
+    )
+    return set((await session.execute(stmt)).scalars())
+
+
 def _owned_entry_ids(owner_user_id: uuid.UUID, version_ids: Collection[uuid.UUID]) -> Any:
     """A subquery of this owner's set-entry ids that point at any of these station versions.
 

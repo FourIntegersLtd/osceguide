@@ -25,6 +25,7 @@ import { useSurface } from "@/capabilities";
 import { StartFailureAlert } from "@/capabilities/station-runner/StartFailureAlert";
 import { phaseElapsedSeconds } from "@/capabilities/station-runner/stationClock";
 import { StartGate } from "@/capabilities/station-runner/StartGate";
+import { endOutcome, type EndReason } from "@/capabilities/station-runner/sessionEnd";
 import {
   ConsultationPanel,
   ConsultationScreen,
@@ -84,8 +85,6 @@ export interface StationScreenProps {
   /** The learner's own flag, where the arm has somewhere to keep it. */
   comeBack?: ComeBackFlag | null;
 }
-
-type EndReason = "manual" | "timer" | null;
 
 export function StationScreen(props: StationScreenProps) {
   const {
@@ -167,23 +166,34 @@ export function StationScreen(props: StationScreenProps) {
     forgetStationAttempt(stationKey);
     const reason = endReasonRef.current;
     endReasonRef.current = null;
-    const isLast = nextHref === null;
+    const outcome = endOutcome({
+      reason,
+      isLast: nextHref === null,
+      consulted: hasConsultedRef.current,
+    });
 
-    if (reason === "timer") {
-      if (!isLast) {
+    switch (outcome) {
+      case "time-up":
         registerBackgroundMarking();
         setSimulationTimeUp(true);
-        return;
-      }
-      if (!hasConsultedRef.current) {
+        break;
+      case "next":
+        registerBackgroundMarking();
+        if (nextHref) router.push(nextHref);
+        break;
+      case "summary":
         if (completeHref) router.push(completeHref);
-        return;
+        break;
+      case "mark":
+        setMarking(true);
+        break;
+      case "none": // the button that ended it navigates itself
+        break;
+      default: {
+        const unhandled: never = outcome;
+        return unhandled;
       }
-      setMarking(true);
-      return;
     }
-
-    setMarking(true);
   }, [nextHref, completeHref, router, stationKey, registerBackgroundMarking]);
 
   const session = useAttemptSession({
@@ -226,17 +236,6 @@ export function StationScreen(props: StationScreenProps) {
     setStepAndUrl("simulation");
     setConfirmingStart(false);
   }, [setStepAndUrl]);
-
-  const handleTabChange = useCallback(
-    (next: StationStep) => {
-      if (next === "simulation" && effectiveAction === "attempt" && step === "patient") {
-        setConfirmingStart(true);
-        return;
-      }
-      setStepAndUrl(next);
-    },
-    [effectiveAction, step, setStepAndUrl],
-  );
 
   const endActiveConsultation = useCallback(async () => {
     // Moving on while in line gives the place up for whoever is behind.
@@ -308,14 +307,9 @@ export function StationScreen(props: StationScreenProps) {
   }
 
   const leaveHref = backHref ?? completeHref;
+  const goBack = () => (leaveHref ? router.push(leaveHref) : router.back());
   if (attempt.error) {
-    return (
-      <StartFailureAlert
-        cause={attempt.error}
-        onRetry={attempt.reload}
-        onBack={() => (leaveHref ? router.push(leaveHref) : router.back())}
-      />
-    );
+    return <StartFailureAlert cause={attempt.error} onRetry={attempt.reload} onBack={goBack} />;
   }
 
   if (attempt.gate) {
@@ -326,6 +320,7 @@ export function StationScreen(props: StationScreenProps) {
         simulationSeconds={simulationSeconds}
         onStart={attempt.start}
         onStartAgain={attempt.startAgain}
+        onBack={goBack}
       />
     );
   }
@@ -363,6 +358,35 @@ export function StationScreen(props: StationScreenProps) {
   const hideStationNav =
     isLast && (effectiveAction === "review" || activeStep === "feedback");
 
+  // Shared by the header (live, review) and the reading row.
+  const stationNav = hideStationNav ? null : (
+    <Button
+      type="button"
+      variant={demoteStationNav ? "secondary" : "primary"}
+      onClick={() =>
+        isLast
+          ? handleCompleteSessionIntent()
+          : onReading
+            ? leaveGuard.leaveTo(nextHref!)
+            : handleNextStation()
+      }
+      disabled={live}
+      className="gap-2"
+    >
+      {isLast ? (
+        <>
+          <HiOutlineCheckCircle className="h-4 w-4" aria-hidden />
+          <span>{onReading ? "Skip to complete session" : "Complete session"}</span>
+        </>
+      ) : (
+        <>
+          <HiOutlineArrowRight className="h-4 w-4" aria-hidden />
+          <span>{onReading ? "Skip to next station" : "Next station"}</span>
+        </>
+      )}
+    </Button>
+  );
+
   return (
     <div
       className={cn(
@@ -379,59 +403,42 @@ export function StationScreen(props: StationScreenProps) {
         comeBack={comeBack}
         backHref={backHref}
         aside={
-          <>
-            {timer}
-            <div className="flex flex-wrap gap-2">
-              {hideStationNav ? null : (
-                <Button
-                  type="button"
-                  variant={onReading ? "ghost" : demoteStationNav ? "secondary" : "primary"}
-                  onClick={() =>
-                    isLast
-                      ? handleCompleteSessionIntent()
-                      : onReading
-                        ? leaveGuard.leaveTo(nextHref!)
-                        : handleNextStation()
-                  }
-                  disabled={live}
-                  className="gap-2"
-                >
-                  {isLast ? (
-                    <>
-                      <HiOutlineCheckCircle className="h-4 w-4" aria-hidden />
-                      <span>{onReading ? "Skip to complete session" : "Complete session"}</span>
-                    </>
-                  ) : (
-                    <>
-                      <HiOutlineArrowRight className="h-4 w-4" aria-hidden />
-                      <span>{onReading ? "Skip to next station" : "Next station"}</span>
-                    </>
-                  )}
-                </Button>
-              )}
-              {onReading && (
-                <Button type="button" onClick={() => setConfirmingStart(true)} className="gap-2">
-                  <HiOutlineMicrophone className="h-4 w-4" aria-hidden />
-                  <span>Start simulation</span>
-                </Button>
-              )}
-            </div>
-          </>
+          onReading ? null : (
+            <>
+              {timer}
+              {stationNav}
+            </>
+          )
         }
       />
 
-      <StationTabs
-        steps={steps}
-        active={activeStep}
-        onChange={handleTabChange}
-        feedbackReady={hasFeedbackReady}
-      />
-
       {onReading && (
-        <p className="mt-3 text-osce-meta text-b2c-text-muted">
-          Read the brief, then start the simulation. If reading time runs out, it starts on its
-          own.
-        </p>
+        <>
+          {/* One row: start on the left, the clock and the skip on the right; it wraps on a phone. */}
+          <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
+            <Button type="button" onClick={() => setConfirmingStart(true)} className="gap-2">
+              <HiOutlineMicrophone className="h-4 w-4" aria-hidden />
+              <span>Start simulation</span>
+            </Button>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+              {timer}
+              {stationNav}
+            </div>
+          </div>
+          <p className="mt-3 text-osce-meta text-b2c-text-muted">
+            Read the brief, then start the simulation. If reading time runs out, it starts on its
+            own.
+          </p>
+        </>
+      )}
+
+      {effectiveAction === "review" && (
+        <StationTabs
+          steps={steps}
+          active={activeStep}
+          onChange={setStepAndUrl}
+          feedbackReady={hasFeedbackReady}
+        />
       )}
 
       <div className={cn("mt-5", inRoom && b2cRoomFill)}>
