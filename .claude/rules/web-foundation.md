@@ -72,4 +72,8 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
 - A live room (`b2cRoomOverlay`: station, peer) is its own scroller. Its fill chain (`b2cRoomFill`, min-h-0 flex-1)
   is `lg:` only: below lg the panes stack at natural height. A fixed-height flex column on a phone clipped the
   doctor information and nothing scrolled. `e2e/train/phone-layout.spec.ts` (TRAIN-8) guards every route at 390px.
+- `dismissOverlays` checks once (`isVisible` does not wait): a modal mounting after it (the exam-date prompt after a
+  capability gate bounces `/stations` to `/mocks`) holds the page. Skip it by its sessionStorage key. A journey that
+  starts a station uses its own world account (`runner`): a session with an attempt cannot be deleted,
+  and TRAIN-3 expects the consumer's one session.
 - Open items: `docs/BACKLOG.md`; delete a row when you land it.

@@ -9,8 +9,15 @@ import { world } from "../support/world";
 // column: the stacked panes were squeezed into it and clipped, and nothing scrolled.
 test.use(PHONE);
 
+// The exam-date prompt is a modal (its own journey is exam-date.spec.ts) and would hold the scroll.
+// A fresh account has no exam date, so every role here would meet it on a practice page.
+test.beforeEach(async ({ context }) => {
+  await context.addInitScript(() => sessionStorage.setItem("exam_date_prompt_skipped", "1"));
+});
+
 test("TRAIN-8 the station room scrolls to the end of the doctor information on a phone", async ({ page, context }) => {
-  await signedInAs(context, "consumer");
+  // Its own learner: the attempt this starts keeps the session undeletable (SetHasAttemptsError).
+  await signedInAs(context, "runner");
   await openPage(page, "/app/me/mocks");
   await page.getByRole("button", { name: "Create session" }).click();
   await expect(page.getByRole("heading", { level: 1, name: /^Session \d+$/ })).toBeVisible();
@@ -49,13 +56,11 @@ test.describe("the peer room on a small phone", () => {
 });
 
 const LEARNER_ROUTES = ["dashboard", "mocks", "mocks/list", "library", "stations", "summary", "podcast", "slides", "articles", "achievements", "debriefs", "transcripts", "discussion", "marketplace", "notifications", "settings"].map((route) => `/app/me/${route}`);
-const ORG_ROUTES = ["", "/sittings", "/sittings/new", "/trainees", "/team", "/programmes", "/authoring", "/reporting", "/settings", "/stations"];
+const ORG_ROUTES = ["", "/mocks", "/sittings", "/sittings/new", "/trainees", "/team", "/programmes", "/authoring", "/reporting", "/settings", "/stations"];
 const STAFF_ROUTES = ["", "/users", "/organizations", "/billing", "/audit", "/ops", "/media", "/moderation", "/announcements", "/growth", "/settings", "/station-flags", "/team", "/messages", "/authoring"].map((route) => `/staff${route}`);
 
 test("TRAIN-8 every learner page scrolls to its end on a phone", async ({ page, context }) => {
   test.setTimeout(480_000); // a route each, compiled on first visit by the dev server
-  // The exam-date prompt is a modal (its own journey is exam-date.spec.ts); it would hold the scroll here.
-  await context.addInitScript(() => sessionStorage.setItem("exam_date_prompt_skipped", "1"));
   await signedInAs(context, "consumer");
   await expectPagesReachable(page, LEARNER_ROUTES);
 });

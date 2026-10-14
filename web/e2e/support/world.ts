@@ -20,6 +20,9 @@ export const ROLES = [
   "trainee",
   "consumer",
   "newcomer",
+  // A learner of its own for TRAIN-8's station room: starting a station leaves an attempt, and a
+  // session with one cannot be deleted, so the consumer's session list (TRAIN-3) stays untouched.
+  "runner",
   "hireAdmin",
   "hireCandidate",
   "partnerAdmin",

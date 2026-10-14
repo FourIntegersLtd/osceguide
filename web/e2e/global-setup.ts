@@ -84,6 +84,7 @@ export default async function globalSetup(): Promise<void> {
     trainee: person("trainee", "Tess Trainee"),
     consumer: person("learner", "Lena Learner"),
     newcomer: person("newcomer", "Nia Newcomer"),
+    runner: person("runner", "Remi Runner"),
     hireAdmin: person("hire-admin", "Hugo Hirer"),
     hireCandidate: person("hire-candidate", "Cass Candidate"),
     partnerAdmin: person("partner-admin", "Pia Partner"),
@@ -122,9 +123,10 @@ export default async function globalSetup(): Promise<void> {
     });
   }
 
-  // A learner who has picked their exam; the newcomer has not, so sees the exam picker.
-  const learner = await login(accounts.consumer.email, PASSWORD);
-  await call(learner, "/api/v1/me", { method: "PATCH", body: { exam_code: "sca" } });
+  // Learners who have picked their exam; the newcomer has not, so sees the exam picker.
+  for (const role of ["consumer", "runner"] as const) {
+    await call(await login(accounts[role].email, PASSWORD), "/api/v1/me", { method: "PATCH", body: { exam_code: "sca" } });
+  }
 
   // The admin sets the institution up the way the console would.
   const admin = await switchWorkspace(await login(accounts.admin.email, PASSWORD), slug);

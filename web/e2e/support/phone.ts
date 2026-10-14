@@ -7,8 +7,9 @@ export const PHONE = { viewport: { width: 390, height: 844 }, hasTouch: true, is
 /** A small Android screen, where the peer room's call and script split what little height there was. */
 export const PHONE_SMALL = { viewport: { width: 360, height: 640 } } as const;
 
-/** Thumb scrolls before checking the end: enough for the longest page in the sweep. */
-const SCROLL_ROUNDS = 20;
+/** Thumb scrolls stop once nothing moved for this many in a row, or at the cap. */
+const STILL_ROUNDS = 2;
+const MAX_ROUNDS = 40;
 const SCROLL_SETTLE_MS = 100;
 
 /**
@@ -16,19 +17,31 @@ const SCROLL_SETTLE_MS = 100;
  * moves, then require `last` (by default the last piece of content in <main>)
  * on screen. The check is an IntersectionObserver, so content clipped by a box
  * that cannot scroll fails, as the station room's doctor information did.
- * Nothing may scroll sideways.
+ * Nothing may scroll sideways. An open dialog locks the scroll, so one fails at
+ * once by name rather than as an unreachable end (CI once met the exam-date prompt).
  */
 export async function expectReachableOnPhone(page: Page, label: string, last?: Locator): Promise<void> {
+  await expect(page.getByRole("dialog"), `${label}: no dialog holds the page`).toHaveCount(0);
   const { width, height } = page.viewportSize() ?? PHONE.viewport;
-  for (let round = 0; round < SCROLL_ROUNDS; round += 1) {
+  let still = 0;
+  let previous = await scrolled(page);
+  for (let round = 0; round < MAX_ROUNDS && still < STILL_ROUNDS; round += 1) {
     await page.mouse.move(width / 2, height / 2);
     await page.mouse.wheel(0, 1500);
     await page.waitForTimeout(SCROLL_SETTLE_MS);
+    const now = await scrolled(page);
+    still = now === previous ? still + 1 : 0;
+    previous = now;
   }
   if (last) await expect(last, `${label}: the end of the page is reachable by scrolling`).toBeInViewport();
   else await expect.poll(() => lastContentOnScreen(page), { message: `${label}: the end of the page is reachable by scrolling` }).toBe(true);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow, `${label}: nothing scrolls sideways`).toBeLessThanOrEqual(0);
+}
+
+/** How far every scroller on the page has moved, summed: unchanged means the wheel reached the end. */
+function scrolled(page: Page): Promise<number> {
+  return page.evaluate(() => [...document.querySelectorAll("*")].reduce((sum, el) => sum + el.scrollTop, window.scrollY));
 }
 
 /** Whether the last visible piece of content in <main> is on screen and not clipped. */
