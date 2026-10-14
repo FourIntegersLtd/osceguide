@@ -430,6 +430,7 @@ def test_a_backend_that_sends_no_clock_gets_the_behaviour_it_had_before(fake_age
 
 
 def test_faq_help_with_credentials_runs_on_gpt_live(fake_agent, monkeypatch) -> None:
+    monkeypatch.setenv("ASSISTANT_GPT_LIVE_ENABLED", "1")
     monkeypatch.setenv("OPENAI_API_KEY", "k")
     monkeypatch.setattr(session_module, "register_gpt_live_session_policy", MagicMock())
     bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", instructions="Help.", gpt_live=GPT_LIVE, extras={"voice_help_intent": "faq"})
@@ -442,6 +443,7 @@ def test_faq_help_with_credentials_runs_on_gpt_live(fake_agent, monkeypatch) -> 
 
 
 def test_faq_help_stays_on_the_pipeline_when_the_backend_sends_no_gpt_live_instructions(fake_agent, monkeypatch) -> None:
+    monkeypatch.setenv("ASSISTANT_GPT_LIVE_ENABLED", "1")
     monkeypatch.setenv("OPENAI_API_KEY", "k")
     bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", instructions="Help.", extras={"voice_help_intent": "faq"})
     voice, _, _ = _run(bootstrap)

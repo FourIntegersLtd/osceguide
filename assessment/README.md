@@ -71,8 +71,9 @@ tool budget, transcript, handlers). Help sessions post their transcript once
 to `POST .../assistant-sessions/{session_id}/transcript`; GPT-Live help posts
 usage to `POST /api/worker/sessions/{session_id}/complete`.
 
-Voice-only FAQ help runs speech-to-speech on GPT-Live when the backend sent
-`gpt_live` and an OpenAI key is present (falling back to the pipeline if it
+Voice-only FAQ help runs speech-to-speech on GPT-Live only when
+`ASSISTANT_GPT_LIVE_ENABLED=1` (off by default, so every assistant session
+runs the pipeline), the backend sent `gpt_live` and an OpenAI key is present (falling back to the pipeline if it
 cannot start), with the session cap and idle handling from the legacy worker
 as defaults (`GPT_LIVE_MAX_SECONDS`, `GPT_LIVE_HARD_WARNING_SECONDS`,
 `GPT_LIVE_IDLE_WARNING_SECONDS`, `GPT_LIVE_IDLE_GRACE_SECONDS` override

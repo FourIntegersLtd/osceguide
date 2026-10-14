@@ -16,8 +16,9 @@ class VoiceRuntime(StrEnum):
 
 
 def gpt_live_enabled() -> bool:
-    """GPT-Live is available when the worker has an OpenAI API key."""
-    return bool(os.getenv("OPENAI_API_KEY", "").strip())
+    """GPT-Live runs only when ASSISTANT_GPT_LIVE_ENABLED=1 and the worker has an OpenAI API key."""
+    # Off by default: every assistant session runs the pipeline (Athena on Deepgram first); set the variable to bring GPT-Live back.
+    return os.getenv("ASSISTANT_GPT_LIVE_ENABLED", "").strip() == "1" and bool(os.getenv("OPENAI_API_KEY", "").strip())
 
 
 def select_voice_runtime(*, worker_type: str, voice_help_intent: str | None, screen_ui_guidance: bool, gpt_live_offered: bool = True) -> VoiceRuntime:

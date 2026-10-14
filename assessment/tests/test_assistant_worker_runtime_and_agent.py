@@ -12,7 +12,14 @@ from livekit_assistant_worker.bootstrap import GPTLiveInstructions
 from livekit_assistant_worker.runtime_policy import VoiceRuntime, select_voice_runtime
 
 
+def test_faq_help_is_pipeline_unless_gpt_live_is_opted_into(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    monkeypatch.delenv("ASSISTANT_GPT_LIVE_ENABLED", raising=False)
+    assert select_voice_runtime(worker_type="help", voice_help_intent="faq", screen_ui_guidance=False) is VoiceRuntime.PIPELINE
+
+
 def test_gpt_live_only_for_faq_help_with_credentials(monkeypatch) -> None:
+    monkeypatch.setenv("ASSISTANT_GPT_LIVE_ENABLED", "1")
     monkeypatch.setenv("OPENAI_API_KEY", "k")
     assert select_voice_runtime(worker_type="help", voice_help_intent="faq", screen_ui_guidance=False) is VoiceRuntime.GPT_LIVE
     assert select_voice_runtime(worker_type="onboarding", voice_help_intent=None, screen_ui_guidance=False) is VoiceRuntime.PIPELINE
