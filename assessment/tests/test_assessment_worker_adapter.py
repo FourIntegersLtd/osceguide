@@ -28,7 +28,7 @@ def _fake_livekit():
         build_tools=lambda ctx, names, context, clock: [f"tool:{n}" for n in names],
         build_stt=lambda: "stt",
         build_llm=lambda role: f"llm:{role}",
-        build_tts=lambda role, gender: f"tts:{role}:{gender}",
+        build_tts=lambda role, gender, voice_key="": f"tts:{role}:{gender}",
         build_turn_handling_options=lambda: "turn",
         build_room_options=lambda **kw: kw,
         ConversationLatencyTracker=lambda **kw: MagicMock(),
@@ -190,3 +190,39 @@ def test_a_pacing_plan_starts_the_clock_when_the_session_opens_and_disconnect_st
         assert agent.system_lines == ["[Notice: first mark.]"], "a mark due after disconnect never lands"
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("scenario_gender", "pool"),
+    [
+        ("female", ("2f251ac3-89a9-4a77-a452-704b474ccd01", "dc30854e-e398-4579-9dc8-16f6cb2c19b9", "fb02b554-7d64-4f90-841e-e57fc88f410c", "db408a93-859c-4a0a-b6a2-220c074cc90d")),
+        ("Male", ("ef191366-f52f-447a-a398-ed8c0f2943a1", "4bc3cb8c-adb9-4bb8-b5d5-cbbef950b991", "d3e3d5d5-07b0-484f-9967-dbc8f15b60d5", "bbee10a8-4f08-4c5c-8282-e69299115055")),
+        ("F", ("2f251ac3-89a9-4a77-a452-704b474ccd01", "dc30854e-e398-4579-9dc8-16f6cb2c19b9", "fb02b554-7d64-4f90-841e-e57fc88f410c", "db408a93-859c-4a0a-b6a2-220c074cc90d")),
+        ("M", ("ef191366-f52f-447a-a398-ed8c0f2943a1", "4bc3cb8c-adb9-4bb8-b5d5-cbbef950b991", "d3e3d5d5-07b0-484f-9967-dbc8f15b60d5", "bbee10a8-4f08-4c5c-8282-e69299115055")),
+    ],
+)
+def test_station_gender_reaches_the_patient_voice_pool(monkeypatch, scenario_gender, pool) -> None:
+    """Scenario patient_gender -> adapter -> the real build_tts: the Cartesia voice is from that gender's pool."""
+    from voice_infra import speech
+
+    cartesia_tts = MagicMock(return_value="cartesia")
+    monkeypatch.setattr(speech.cartesia, "TTS", cartesia_tts)
+    monkeypatch.setattr(speech.deepgram_tts, "TTS", MagicMock())
+    monkeypatch.setattr(speech.openai, "TTS", MagicMock())
+    monkeypatch.setattr(speech.tts, "FallbackAdapter", MagicMock())
+    monkeypatch.setattr(adapter_module, "build_tts", speech.build_tts)
+
+    async def scenario():
+        ctx = FakeJobContext()
+        adapter = LiveKitInteractionAdapter(ctx, candidate_identity="candidate-42", gender=scenario_gender)
+        task, _, _ = await _run_until(adapter, ctx, None)
+        ctx.room.emit("participant_disconnected", participant("candidate-42"))
+        await task
+
+    asyncio.run(scenario())
+    assert cartesia_tts.call_args.kwargs["voice"] in pool
+
+
+def test_a_patient_with_no_gender_is_female_and_logged(caplog) -> None:
+    assert adapter_module.voice_gender(PROFILE, None) == "Female"
+    assert "missing or unrecognised" in caplog.text

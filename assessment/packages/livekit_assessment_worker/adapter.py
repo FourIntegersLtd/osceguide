@@ -35,9 +35,16 @@ def role_for(profile: AIInteractionProfile) -> str:
 
 
 def voice_gender(profile: AIInteractionProfile, default: str | None) -> str:
-    """The profile's ``voice`` names the gendered voice; the scenario's patient gender is the fallback."""
+    """The profile's ``voice`` names the gendered voice; the scenario's patient gender is the fallback.
+
+    platform-api already reduces the station's wording to ``male``/``female``. A patient with neither
+    is Female and logged, so a missing field is visible; the tutor has no gender and is always Female.
+    """
     chosen = (profile.voice or default or "").strip().lower()
-    return "Male" if chosen == "male" else "Female"
+    gender = {"male": "Male", "m": "Male", "female": "Female", "f": "Female"}.get(chosen)
+    if gender is None and profile.mode is InteractionMode.PATIENT:
+        logger.warning("patient gender %r is missing or unrecognised; defaulting to a female voice", chosen)
+    return gender or "Female"
 
 
 class LiveKitInteractionAdapter:
@@ -71,7 +78,7 @@ class LiveKitInteractionAdapter:
         session_kwargs: dict[str, Any] = dict(
             stt=build_stt(),
             llm=build_llm(role),
-            tts=build_tts(role, voice_gender(profile, self._default_gender)),
+            tts=build_tts(role, voice_gender(profile, self._default_gender), voice_key=self._ctx.room.name),
             turn_handling=build_turn_handling_options(),
             min_consecutive_speech_delay=MIN_CONSECUTIVE_SPEECH_DELAY,
             max_tool_steps=profile.max_tool_steps,

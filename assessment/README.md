@@ -112,7 +112,7 @@ provider's default, and on a reasoning model that costs seconds before the
 first word.
 
 The patient and the tutor are deliberately given different voices and
-different spoken styles (`VOICE_DEEPGRAM_FEMALE_VOICE` against
+different spoken styles (`VOICE_DEEPGRAM_FEMALE_VOICES` against
 `VOICE_DEEPGRAM_TUTOR_VOICE`, `VOICE_PATIENT_TTS_STYLE` against
 `VOICE_TTS_STYLE`). Two roles sharing one voice is the part of role confusion
 a listener notices first.

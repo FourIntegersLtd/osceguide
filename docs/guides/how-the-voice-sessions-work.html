@@ -396,7 +396,7 @@
 <tr><td class="k">Tutor brain</td><td><code>tutor_llm</code></td><td><code>gpt-5.4-mini</code></td></tr>
 <tr><td class="k">Help brain (sees screenshots)</td><td><code>vision_llm</code></td><td>Anthropic <code>claude-haiku-4-5</code></td></tr>
 <tr><td class="k">Back-up brain, any role</td><td><code>fallback_llm</code></td><td><code>claude-haiku-4-5</code>, used when the first model fails</td></tr>
-<tr><td class="k">Patient voice</td><td><code>deepgram_female_voice</code> / <code>deepgram_male_voice</code></td><td><code>aura-2-thalia-en</code> / <code>aura-2-hermes-en</code>; then OpenAI <code>gpt-4o-mini-tts</code>; then Cartesia</td></tr>
+<tr><td class="k">Patient voice</td><td><code>deepgram_female_voices</code> / <code>deepgram_male_voices</code> (pools, one voice per consultation)</td><td><code>aura-2-vesta-en</code>, <code>aura-2-cordelia-en</code> / <code>aura-2-draco-en</code>, <code>aura-2-pluto-en</code>, <code>aura-2-mars-en</code>; then OpenAI <code>gpt-4o-mini-tts</code>; then Cartesia (a four-voice pool per gender; the tutor falls back to fixed Lucy)</td></tr>
 <tr><td class="k">Tutor voice</td><td><code>deepgram_tutor_voice</code></td><td><code>aura-2-athena-en</code>, with the same fallbacks</td></tr>
 <tr><td class="k">Speech-to-speech help</td><td>fixed in code</td><td><code>gpt-live-1</code>, answering with <code>gpt-5.6-luna</code></td></tr>
 <tr><td class="k">Thinking effort</td><td><code>patient_reasoning_effort</code>, <code>tutor_reasoning_effort</code></td><td><code>none</code>: live voice cannot wait for a model to think</td></tr>

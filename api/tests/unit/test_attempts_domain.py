@@ -328,6 +328,8 @@ def test_a_definition_frozen_without_a_scenario_still_yields_one() -> None:
 def test_patient_gender_is_read_from_whichever_key_the_station_uses() -> None:
     assert domain_definition.patient_gender({"patient_information": {"gender": "female"}}) == "female"
     assert domain_definition.patient_gender({"patient_info": {"sex": "M"}}) == "male"
+    assert domain_definition.patient_gender({"patient_information": {"gender": "Woman"}}) == "female"
+    assert domain_definition.patient_gender({"patient_information": {"gender": "nonsense"}}) is None
     assert domain_definition.patient_gender({"patient_information": {"persona": "x"}}) is None
     assert domain_definition.patient_gender({}) is None
     assert domain_definition.patient_gender(None) is None

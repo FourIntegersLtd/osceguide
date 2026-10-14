@@ -9,15 +9,32 @@ from livekit.plugins import deepgram
 
 from voice_infra import speech
 
+DG_FEMALE_POOL = ("aura-2-vesta-en", "aura-2-cordelia-en")
+DG_MALE_POOL = ("aura-2-draco-en", "aura-2-pluto-en", "aura-2-mars-en")
+LUCY = "2f251ac3-89a9-4a77-a452-704b474ccd01"
+FEMALE_POOL = (
+    LUCY,
+    "dc30854e-e398-4579-9dc8-16f6cb2c19b9",  # Victoria
+    "fb02b554-7d64-4f90-841e-e57fc88f410c",  # Ailsa
+    "db408a93-859c-4a0a-b6a2-220c074cc90d",  # Hana
+)
+MALE_POOL = (
+    "ef191366-f52f-447a-a398-ed8c0f2943a1",  # Archie
+    "4bc3cb8c-adb9-4bb8-b5d5-cbbef950b991",  # George
+    "d3e3d5d5-07b0-484f-9967-dbc8f15b60d5",  # Ronan
+    "bbee10a8-4f08-4c5c-8282-e69299115055",  # Ben
+)
+
 # Who each default voice sounds like. A chain that mixes voices is the fallback a
 # listener hears as a different person; add a voice here when a default changes.
 VOICE_GENDERS = {
     "aura-2-athena-en": "Female",
-    "aura-2-thalia-en": "Female",
-    "aura-2-hermes-en": "Male",
+    **dict.fromkeys(DG_FEMALE_POOL, "Female"),
+    **dict.fromkeys(DG_MALE_POOL, "Male"),
     "coral": "Female",
-    speech.CARTESIA_FEMALE_VOICE_ID: "Female",
-    speech.CARTESIA_MALE_VOICE_ID: "Male",
+    LUCY: "Female",
+    **dict.fromkeys(FEMALE_POOL, "Female"),
+    **dict.fromkeys(MALE_POOL, "Male"),
 }
 
 
@@ -49,13 +66,13 @@ def test_tutor_tts_is_deepgram_then_openai_then_cartesia(monkeypatch) -> None:
     assert openai_tts.call_args.kwargs["model"] == "gpt-4o-mini-tts"
 
 
-@pytest.mark.parametrize(("gender", "model", "voice"), [("Female", "aura-2-thalia-en", speech.CARTESIA_FEMALE_VOICE_ID), ("Male", "aura-2-hermes-en", speech.CARTESIA_MALE_VOICE_ID)])
+@pytest.mark.parametrize(("gender", "model", "voice"), [("Female", DG_FEMALE_POOL, FEMALE_POOL), ("Male", DG_MALE_POOL, MALE_POOL)])
 def test_patient_tts_is_gendered(monkeypatch, gender, model, voice) -> None:
     _, deepgram_tts, cartesia_tts, fallback = _patch_tts(monkeypatch)
-    speech.build_tts("patient", gender)
+    speech.build_tts("patient", gender, voice_key="room-1")
     assert fallback.call_args.args[0] == ["deepgram", "openai", "cartesia"]
-    assert deepgram_tts.call_args.kwargs["model"] == model
-    assert cartesia_tts.call_args.kwargs["voice"] == voice
+    assert deepgram_tts.call_args.kwargs["model"] in model
+    assert cartesia_tts.call_args.kwargs["voice"] in voice
 
 
 def test_llm_primary_by_role_with_shared_fallback(monkeypatch) -> None:
@@ -76,7 +93,7 @@ def test_every_tutor_voice_is_the_one_female_persona(monkeypatch) -> None:
     speech.build_tts("tutor")
     voices = [deepgram_tts.call_args.kwargs["model"], openai_tts.call_args.kwargs["voice"], cartesia_tts.call_args.kwargs["voice"]]
     assert [VOICE_GENDERS.get(v) for v in voices] == ["Female", "Female", "Female"]
-    assert voices == ["aura-2-athena-en", speech.TUTOR_VOICE, speech.CARTESIA_FEMALE_VOICE_ID]
+    assert voices == ["aura-2-athena-en", speech.TUTOR_VOICE, LUCY]
 
 
 def test_every_cloud_tutor_voice_is_the_one_female_persona(cloud, monkeypatch) -> None:
@@ -90,7 +107,7 @@ def test_every_cloud_tutor_voice_is_the_one_female_persona(cloud, monkeypatch) -
 @pytest.mark.parametrize("gender", ["Female", "Male"])
 def test_patient_voices_match_the_gender_in_the_voice_table(monkeypatch, gender) -> None:
     _, deepgram_tts, cartesia_tts, _ = _patch_tts(monkeypatch)
-    speech.build_tts("patient", gender)
+    speech.build_tts("patient", gender, voice_key="room-1")
     voices = [deepgram_tts.call_args.kwargs["model"], cartesia_tts.call_args.kwargs["voice"]]
     assert [VOICE_GENDERS.get(v) for v in voices] == [gender, gender]
 
@@ -129,7 +146,7 @@ def test_the_patient_does_not_share_the_tutor_voice(monkeypatch) -> None:
     _, deepgram_tts, _, _ = _patch_tts(monkeypatch)
     speech.build_tts("tutor")
     tutor_voice = deepgram_tts.call_args.kwargs["model"]
-    speech.build_tts("patient", "Female")
+    speech.build_tts("patient", "Female", voice_key="room-1")
     assert deepgram_tts.call_args.kwargs["model"] != tutor_voice
 
 
@@ -137,7 +154,7 @@ def test_the_patient_is_not_spoken_in_the_tutor_style(monkeypatch) -> None:
     openai_tts, _, _, _ = _patch_tts(monkeypatch)
     speech.build_tts("tutor")
     tutor_style = openai_tts.call_args.kwargs["instructions"]
-    speech.build_tts("patient", "Female")
+    speech.build_tts("patient", "Female", voice_key="room-1")
     patient_style = openai_tts.call_args.kwargs["instructions"]
     assert patient_style != tutor_style
     assert "clinical education assistant" not in patient_style
@@ -258,22 +275,97 @@ def test_non_cloud_llm_and_vision_stay_on_the_plugins(monkeypatch, not_cloud) ->
 def test_cloud_tts_chain_is_cartesia_then_aura_then_openai(cloud, monkeypatch) -> None:
     openai_tts, _, _, fallback = _patch_tts(monkeypatch)
     fallback.side_effect = lambda chain: chain
-    chain = speech.build_tts("patient", "Male")
+    chain = speech.build_tts("patient", "Male", voice_key="room-1")
     assert [type(t) for t in chain[:2]] == [speech.inference.TTS, speech.inference.TTS]
     assert [t.model for t in chain[:2]] == ["cartesia/sonic-3.5", "deepgram/aura-2"]
-    assert [t._opts.voice for t in chain[:2]] == [speech.CARTESIA_MALE_VOICE_ID, "aura-2-hermes-en"]
+    assert [t._opts.voice for t in chain[:2]] == ["bbee10a8-4f08-4c5c-8282-e69299115055", "aura-2-draco-en"]
+    assert chain[0]._opts.voice in MALE_POOL
     assert chain[2] == "openai"
     assert openai_tts.call_args.kwargs["model"] == "gpt-4o-mini-tts"
 
 
-def test_cloud_tutor_tts_uses_the_tutor_voices(cloud, monkeypatch) -> None:
+def test_cloud_tutor_chain_starts_with_athena_then_fixed_lucy(cloud, monkeypatch) -> None:
     _, _, _, fallback = _patch_tts(monkeypatch)
     fallback.side_effect = lambda chain: chain
-    chain = speech.build_tts("tutor")
-    assert [t._opts.voice for t in chain[:2]] == [speech.CARTESIA_FEMALE_VOICE_ID, "aura-2-athena-en"]
+    chain = speech.build_tts("tutor", voice_key="room-1")
+    assert [t._opts.voice for t in chain[:2]] == ["aura-2-athena-en", LUCY]
+    assert [t.model for t in chain[:2]] == ["deepgram/aura-2", "cartesia/sonic-3.5"]
+
+
+def test_self_hosted_tutor_chain_starts_with_athena(monkeypatch, not_cloud) -> None:
+    _, deepgram_tts, cartesia_tts, fallback = _patch_tts(monkeypatch)
+    speech.build_tts("tutor", voice_key="room-1")
+    assert fallback.call_args.args[0][0] == "deepgram"
+    assert deepgram_tts.call_args.kwargs["model"] == "aura-2-athena-en"
+    assert cartesia_tts.call_args.kwargs["voice"] == LUCY
+
+
+def _cartesia_voice(monkeypatch, gender, key):
+    _, _, cartesia_tts, _ = _patch_tts(monkeypatch)
+    speech.build_tts("patient", gender, voice_key=key)
+    return cartesia_tts.call_args.kwargs["voice"]
+
+
+@pytest.mark.parametrize("gender", ["Female", "Male"])
+def test_same_consultation_keeps_the_same_voice(monkeypatch, gender) -> None:
+    assert _cartesia_voice(monkeypatch, gender, "room-abc") == _cartesia_voice(monkeypatch, gender, "room-abc")
+
+
+def test_consultations_vary_and_pools_never_cross(monkeypatch) -> None:
+    keys = [f"attempt-{i}" for i in range(40)]
+    female = {_cartesia_voice(monkeypatch, "Female", k) for k in keys}
+    male = {_cartesia_voice(monkeypatch, "Male", k) for k in keys}
+    assert female == set(FEMALE_POOL)
+    assert male == set(MALE_POOL)
+
+
+def test_a_single_voice_env_overrides_the_pool(monkeypatch) -> None:
+    monkeypatch.setenv("VOICE_CARTESIA_MALE_VOICES", "only-one")
+    assert _cartesia_voice(monkeypatch, "Male", "room-1") == "only-one"
 
 
 def test_non_cloud_tts_stays_on_the_plugins(monkeypatch, not_cloud) -> None:
     _, _, _, fallback = _patch_tts(monkeypatch)
     speech.build_tts("tutor")
     assert fallback.call_args.args[0] == ["deepgram", "openai", "cartesia"]
+
+
+def test_deepgram_patient_voice_is_picked_per_consultation_from_its_pool(monkeypatch, not_cloud) -> None:
+    monkeypatch.setenv("VOICE_DEEPGRAM_FEMALE_VOICES", "aura-2-a-en,aura-2-b-en,aura-2-c-en")
+    _, deepgram_tts, _, _ = _patch_tts(monkeypatch)
+    seen = set()
+    for i in range(30):
+        speech.build_tts("patient", "Female", voice_key=f"attempt-{i}")
+        seen.add(deepgram_tts.call_args.kwargs["model"])
+    assert seen == {"aura-2-a-en", "aura-2-b-en", "aura-2-c-en"}
+    speech.build_tts("patient", "Male", voice_key="attempt-1")
+    assert deepgram_tts.call_args.kwargs["model"] in DG_MALE_POOL
+
+
+def test_a_patient_needs_a_voice_key_and_an_empty_pool_is_refused(monkeypatch) -> None:
+    _patch_tts(monkeypatch)
+    with pytest.raises(ValueError, match="voice_key"):
+        speech.build_tts("patient", "Female")
+    monkeypatch.setenv("VOICE_CARTESIA_FEMALE_VOICES", ",")
+    with pytest.raises(ValueError, match="empty"):
+        speech.build_tts("patient", "Female", voice_key="room-1")
+
+
+def test_a_known_room_always_gets_the_same_literal_voice() -> None:
+    """sha256 of the key, so the answer is the same in every process (``hash()`` would differ)."""
+    assert speech._pick_voice("a,b,c,d", "room-1") == "d"
+
+
+def test_each_provider_indexes_its_own_pool_by_the_same_key(monkeypatch, not_cloud) -> None:
+    """room-1 hashes to 3 mod 4, 1 mod 2 and 0 mod 3, so pool sizes decide each provider's pick."""
+    _, deepgram_tts, cartesia_tts, _ = _patch_tts(monkeypatch)
+    speech.build_tts("patient", "Female", voice_key="room-1")
+    assert (deepgram_tts.call_args.kwargs["model"], cartesia_tts.call_args.kwargs["voice"]) == (
+        "aura-2-cordelia-en",
+        "db408a93-859c-4a0a-b6a2-220c074cc90d",
+    )
+    speech.build_tts("patient", "Male", voice_key="room-1")
+    assert (deepgram_tts.call_args.kwargs["model"], cartesia_tts.call_args.kwargs["voice"]) == (
+        "aura-2-draco-en",
+        "bbee10a8-4f08-4c5c-8282-e69299115055",
+    )

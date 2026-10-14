@@ -16,6 +16,7 @@ runnable without a deploy, and a rollback a variable rather than a release.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from dataclasses import dataclass, fields
@@ -44,8 +45,20 @@ REASONING_MODEL_PREFIX = "gpt-5"
 # Deepgram's ``aura-2-athena-en`` that the speech-to-speech model also offers.
 TUTOR_VOICE = "coral"
 TUTOR_TTS_MODEL = "gpt-4o-mini-tts"
-CARTESIA_FEMALE_VOICE_ID = "794f9389-aac1-45b6-b726-9d9369183238"
-CARTESIA_MALE_VOICE_ID = "95856005-0332-41b0-935f-352e296aa0df"
+# Patients draw one voice per consultation from these pools; the tutor's Cartesia fallback is fixed.
+CARTESIA_FEMALE_VOICES = (
+    "2f251ac3-89a9-4a77-a452-704b474ccd01",
+    "dc30854e-e398-4579-9dc8-16f6cb2c19b9",
+    "fb02b554-7d64-4f90-841e-e57fc88f410c",
+    "db408a93-859c-4a0a-b6a2-220c074cc90d",
+)
+CARTESIA_MALE_VOICES = (
+    "ef191366-f52f-447a-a398-ed8c0f2943a1",
+    "4bc3cb8c-adb9-4bb8-b5d5-cbbef950b991",
+    "d3e3d5d5-07b0-484f-9967-dbc8f15b60d5",
+    "bbee10a8-4f08-4c5c-8282-e69299115055",
+)
+CARTESIA_TUTOR_VOICE_ID = "2f251ac3-89a9-4a77-a452-704b474ccd01"  # Lucy; its own literal so editing the pool never changes the tutor
 
 
 @dataclass(frozen=True)
@@ -75,10 +88,12 @@ class SpeechSettings:
     deepgram_tutor_voice: str = "aura-2-athena-en"
     # Distinct from the tutor: sharing one voice across two roles is the part of
     # role confusion a listener notices first.
-    deepgram_female_voice: str = "aura-2-thalia-en"
-    deepgram_male_voice: str = "aura-2-hermes-en"
-    cartesia_female_voice: str = CARTESIA_FEMALE_VOICE_ID
-    cartesia_male_voice: str = CARTESIA_MALE_VOICE_ID
+    deepgram_female_voices: str = "aura-2-vesta-en,aura-2-cordelia-en"  # comma-separated pools; each provider indexes its own by the same key
+    deepgram_male_voices: str = "aura-2-draco-en,aura-2-pluto-en,aura-2-mars-en"
+    # Comma-separated pools; a single id in the variable pins every patient to it.
+    cartesia_female_voices: str = ",".join(CARTESIA_FEMALE_VOICES)
+    cartesia_male_voices: str = ",".join(CARTESIA_MALE_VOICES)
+    cartesia_tutor_voice: str = CARTESIA_TUTOR_VOICE_ID
     # LiveKit Cloud only (Inference "provider/model" ids), EU-served for Frankfurt.
     # The fallback is also the vision model: Gemini reads images.
     cloud_fallback_llm: str = "google/gemini-3.1-flash-lite"
@@ -156,6 +171,14 @@ def build_vision_llm(settings: SpeechSettings | None = None) -> llm.LLM:
     return llm.FallbackAdapter([anthropic.LLM(model=settings.vision_llm), _fallback_llm(settings)])
 
 
+def _pick_voice(pool: str, key: str) -> str:
+    """One voice from a comma-separated pool, stable for a key (``hash()`` is salted per process, so use sha256)."""
+    voices = [voice.strip() for voice in pool.split(",") if voice.strip()]
+    if not voices:
+        raise ValueError("a voice pool setting is empty; set at least one voice id")
+    return voices[int(hashlib.sha256(key.encode()).hexdigest(), 16) % len(voices)]
+
+
 def _openai_tts(settings: SpeechSettings, style: str) -> tts.TTS:
     return openai.TTS(model=settings.tutor_tts_model, voice=settings.tutor_voice, instructions=style)
 
@@ -164,26 +187,31 @@ def build_tts(
     role: Role,
     gender: Gender = "Female",
     *,
+    voice_key: str = "",
     settings: SpeechSettings | None = None,
 ) -> tts.TTS:
     """Fallback chain of voices: the tutor uses the shared voice, the patient is gendered.
 
-    Deepgram, OpenAI, then Cartesia; on LiveKit Cloud, Cartesia and Deepgram as
-    Inference voices, then OpenAI. One order for every session type.
+    Self-hosted: Deepgram, OpenAI, then Cartesia. LiveKit Cloud: the patient is Cartesia
+    then Deepgram (Inference), the tutor Deepgram Athena then Cartesia Lucy; OpenAI last.
+    ``voice_key`` (the room name, required for a patient) picks the Deepgram and Cartesia voices
+    from the gender's pools, so a fallback, reconnect or worker restart in one consultation keeps the same voice.
     """
     settings = settings or SpeechSettings.from_env()
     style = settings.tts_style if role == "tutor" else settings.patient_tts_style
     if role == "tutor":
-        deepgram_voice, cartesia_voice = settings.deepgram_tutor_voice, settings.cartesia_female_voice
-    elif gender == "Female":
-        deepgram_voice, cartesia_voice = settings.deepgram_female_voice, settings.cartesia_female_voice
+        deepgram_voice, cartesia_voice = settings.deepgram_tutor_voice, settings.cartesia_tutor_voice
     else:
-        deepgram_voice, cartesia_voice = settings.deepgram_male_voice, settings.cartesia_male_voice
+        if not voice_key:
+            raise ValueError("a patient voice needs the consultation's voice_key, or every patient gets one voice")
+        female = gender == "Female"
+        deepgram_pool = settings.deepgram_female_voices if female else settings.deepgram_male_voices
+        cartesia_pool = settings.cartesia_female_voices if female else settings.cartesia_male_voices
+        deepgram_voice, cartesia_voice = _pick_voice(deepgram_pool, voice_key), _pick_voice(cartesia_pool, voice_key)
     openai_voice = _openai_tts(settings, style)
     if is_livekit_cloud():
-        others = [
-            inference.TTS(model=settings.cloud_tts_model, voice=cartesia_voice),
-            inference.TTS(model="deepgram/aura-2", voice=deepgram_voice),
-        ]
-        return tts.FallbackAdapter([*others, openai_voice])
+        cartesia_voice_tts = inference.TTS(model=settings.cloud_tts_model, voice=cartesia_voice)
+        deepgram_voice_tts = inference.TTS(model="deepgram/aura-2", voice=deepgram_voice)
+        order = [deepgram_voice_tts, cartesia_voice_tts] if role == "tutor" else [cartesia_voice_tts, deepgram_voice_tts]
+        return tts.FallbackAdapter([*order, openai_voice])
     return tts.FallbackAdapter([deepgram_tts.TTS(model=deepgram_voice), openai_voice, cartesia.TTS(voice=cartesia_voice)])

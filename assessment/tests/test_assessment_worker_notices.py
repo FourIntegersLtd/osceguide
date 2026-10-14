@@ -98,7 +98,7 @@ def test_adapter_wires_time_warnings_for_the_running_session() -> None:
         build_tools=lambda ctx, names, context, clock: [],
         build_stt=lambda: "stt",
         build_llm=lambda role: "llm",
-        build_tts=lambda role, gender: "tts",
+        build_tts=lambda role, gender, voice_key="": "tts",
         build_turn_handling_options=lambda: "turn",
         build_room_options=lambda **kw: kw,
         ConversationLatencyTracker=lambda **kw: MagicMock(),
