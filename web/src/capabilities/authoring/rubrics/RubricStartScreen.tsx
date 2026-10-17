@@ -61,7 +61,7 @@ function RubricStartScreenForm() {
       backHref={rubricsListPath(hrefFor)}
       backLabel="Marking schemes"
     >
-      <div className="space-y-5">
+      <div className="space-y-5 p-5 sm:p-6">
         <div className="max-w-lg">
           <label htmlFor={titleId} className="block text-osce-meta font-medium text-ink-muted">
             Title
