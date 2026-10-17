@@ -225,11 +225,11 @@ async def structure_for_version(session: AsyncSession, version_id: uuid.UUID) ->
 
 
 async def has_published_version(session: AsyncSession, org_id: uuid.UUID) -> bool:
-    """Whether a published template version is the organisation's own or the platform's."""
+    """Whether the organisation has published a template of its own (written or copied)."""
     stmt = (
         select(StationTemplateVersion.id)
         .where(
-            visible_to(StationTemplateVersion, org_id),
+            StationTemplateVersion.org_id == org_id,
             StationTemplateVersion.status == lifecycle.Status.PUBLISHED,
         )
         .limit(1)

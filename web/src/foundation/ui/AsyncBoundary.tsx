@@ -57,7 +57,7 @@ export function AsyncBoundary<T>({
     if (loadingView !== undefined) return <>{loadingView}</>;
     return (
       <div className="flex items-center justify-center py-16">
-        <Spinner />
+        <Spinner size="lg" className="text-ink-subtle" />
       </div>
     );
   }

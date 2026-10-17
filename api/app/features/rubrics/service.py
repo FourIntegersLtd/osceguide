@@ -449,5 +449,5 @@ def version_read(version: RubricVersion) -> RubricVersionRead:
 
 
 async def has_published_rubric(session: AsyncSession, org_id: uuid.UUID) -> bool:
-    """Whether the organisation has a published marking scheme it can use: its own or the platform's."""
+    """Whether the organisation has published a marking scheme of its own, not the platform's."""
     return await repository.has_published_version(session, org_id)

@@ -35,13 +35,23 @@ export interface SessionState {
    */
   sessionExpired: boolean;
   /**
+   * Where this tab goes after signing out on purpose, or null. Plain `/login`
+   * by default: the next sign-in may be somebody else's, so the page they were
+   * on is not offered back. Only on the page they signed out from (spent once
+   * they leave it, and cleared when a session loads again), so a protected
+   * page opened later keeps its own `next`.
+   */
+  signedOutTo: string | null;
+  /**
    * Who this is could not be asked: `/me` failed with something other than a
    * 401 and nothing is known yet. Asked again in the background regardless;
    * a gate shows an error with a retry rather than a spinner that never ends.
    */
   unavailable: boolean;
-  refresh: () => Promise<void>;
-  signOut: () => Promise<void>;
+  /** Re-reads `/me` with the tokens stored now (never a load started before them); answers the session, or null. */
+  refresh: () => Promise<Session | null>;
+  /** `to` is where the sign-in page should open, e.g. with a notice; `/login` otherwise. */
+  signOut: (to?: string) => Promise<void>;
   /** `null` is the person's own practice. */
   selectWorkspace: (orgSlug: string | null) => Promise<void>;
 }

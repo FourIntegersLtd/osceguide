@@ -42,7 +42,7 @@ function Resolved({ slug, children }: { slug: string; children: ReactNode }) {
   if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Spinner label="Loading" />
+        <Spinner label="Loading" size="lg" className="text-ink-subtle" />
       </div>
     );
   }
@@ -50,15 +50,15 @@ function Resolved({ slug, children }: { slug: string; children: ReactNode }) {
   const workspace = resolveWorkspace(slug, session?.user ?? null);
   if (!workspace) notFound();
 
-  return <Frame workspace={workspace}>{children}</Frame>;
+  return <Frame workspace={workspace} userId={session?.user.id ?? null}>{children}</Frame>;
 }
 
-function Frame({ workspace, children }: { workspace: Workspace; children: ReactNode }) {
+function Frame({ workspace, userId, children }: { workspace: Workspace; userId: string | null; children: ReactNode }) {
   // Remembered so `/app` and the next visit land where they left off, rather
   // than in whichever workspace happens to be first in a list.
   useEffect(() => {
-    rememberWorkspace(workspace.slug);
-  }, [workspace.slug]);
+    if (userId) rememberWorkspace(userId, workspace.slug);
+  }, [userId, workspace.slug]);
   // The first `organization_suspended` from any panel replaces the whole shell.
   const suspended = useOrgSuspended(workspace.slug);
   if (suspended) return <OrganisationSuspended name={workspace.name} />;

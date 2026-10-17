@@ -83,7 +83,6 @@ export { QuietCard } from "@/foundation/ui/QuietCard";
 export { B2CSkeleton } from "@/foundation/ui/B2CSkeleton";
 export { default as Back } from "@/foundation/ui/Back";
 export { default as Confetti } from "@/foundation/ui/Confetti";
-export { default as LoadingSpinner } from "@/foundation/ui/LoadingSpinner";
 export { default as MarkdownRenderer } from "@/foundation/ui/MarkdownRenderer";
 export { default as Pagination } from "@/foundation/ui/Pagination";
 export { default as PhotoUpload, type PhotoUploadResult } from "@/foundation/ui/PhotoUpload";

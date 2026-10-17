@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, LoadingSpinner } from "@/foundation/ui";
+import { Alert, Spinner } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { readAttemptBrief } from "@/capabilities/attempt-runner";
@@ -61,7 +61,7 @@ export function AttemptLanding({ attemptId }: { attemptId: string }) {
 
   return (
     <div className="flex justify-center py-16">
-      <LoadingSpinner />
+      <Spinner size="md" className="text-ink-subtle" />
     </div>
   );
 }

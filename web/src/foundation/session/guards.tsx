@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Alert, Button, Spinner } from "@/foundation/ui";
 import { loginHref } from "@/foundation/session/loginHref";
-import { sanitizeReturnTo } from "@/foundation/session/returnTo";
+import { lastSessionUser, nextAfterSignIn } from "@/foundation/session/sessionUser";
 import { useSession } from "@/foundation/session/SessionProvider";
 import { can } from "@/foundation/session/types";
 import type { Permission } from "@/foundation/session/permissions";
@@ -13,7 +13,7 @@ import type { Permission } from "@/foundation/session/permissions";
 function Resolving() {
   return (
     <div className="flex min-h-[40vh] items-center justify-center">
-      <Spinner label="Checking your session" />
+      <Spinner label="Checking your session" size="lg" className="text-ink-subtle" />
     </div>
   );
 }
@@ -23,7 +23,7 @@ function Resolving() {
  * the page nor a sign-in redirect is the honest answer. The provider keeps
  * asking in the background; the button asks now.
  */
-function Unavailable({ retry }: { retry: () => Promise<void> }) {
+function Unavailable({ retry }: { retry: () => Promise<unknown> }) {
   return (
     <div className="mx-auto max-w-md px-4 py-16">
       <Alert tone="danger" title="We could not check your session">
@@ -60,7 +60,7 @@ export function RequireSession({
   children: ReactNode;
   allowMustChange?: boolean;
 }) {
-  const { status, ready, session, sessionExpired, unavailable, refresh } = useSession();
+  const { status, ready, session, sessionExpired, signedOutTo, unavailable, refresh } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const mustChange = !allowMustChange && session?.user.must_change_password === true;
@@ -69,13 +69,13 @@ export function RequireSession({
     if (!ready) return;
     const next = encodeURIComponent(pathname ?? "/");
     if (status === "anonymous") {
-      router.replace(loginHref(pathname ?? "/", sessionExpired));
+      router.replace(signedOutTo ?? loginHref(pathname ?? "/", sessionExpired));
       return;
     }
     if (mustChange) {
       router.replace(`/change-password?next=${next}`);
     }
-  }, [ready, status, sessionExpired, mustChange, pathname, router]);
+  }, [ready, status, sessionExpired, signedOutTo, mustChange, pathname, router]);
 
   if (unavailable) return <Unavailable retry={refresh} />;
   if (!ready || status === "loading") return <Resolving />;
@@ -96,11 +96,14 @@ export function RequireSession({
  * sends a signed-in one on to their workspace.
  */
 export function RequireAnonymous({ children }: { children: ReactNode }) {
-  const { status, ready } = useSession();
+  const { status, ready, session } = useSession();
   const router = useRouter();
-  // Where `/login?next=` was heading: signed in already, go there rather than to the picker.
+  // Who held this tab's session when the form opened, before a sign-in here replaces it.
+  const [previousUser] = useState(lastSessionUser);
+  // Where `/login?next=` was heading, if it was this person's: go there rather than to the picker.
   const params = useSearchParams();
-  const next = sanitizeReturnTo(params.get("next") ?? params.get("returnTo"));
+  const userId = session?.user.id ?? null;
+  const next = userId ? nextAfterSignIn(params, previousUser, userId) : null;
 
   useEffect(() => {
     if (ready && status === "authenticated") router.replace(next ?? "/app");

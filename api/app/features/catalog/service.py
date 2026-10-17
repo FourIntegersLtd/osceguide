@@ -262,5 +262,12 @@ async def org_exam_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UU
 
 
 async def has_published_exam(session: AsyncSession, org_id: uuid.UUID) -> bool:
-    """Whether the organisation has a published exam it can use: its own or the platform's."""
+    """Whether the organisation has published an exam of its own, not the platform's."""
     return await repository.has_published_exam(session, org_id)
+
+
+async def offers_platform_exam(
+    session: AsyncSession, org_id: uuid.UUID, *, with_rubric: bool = False
+) -> bool:
+    """Whether an offerable programme of the organisation offers a published platform exam (adopted)."""
+    return await repository.offers_platform_exam(session, org_id)

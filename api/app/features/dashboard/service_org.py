@@ -51,9 +51,13 @@ async def build_org_dashboard(session: AsyncSession, org_id: uuid.UUID) -> OrgDa
     # count, so a catalogue-only institution was told to keep setting up while
     # it was already running examinations.
     stations_available = counts.stations > 0 or counts.library_stations > 0
+    # A step is done only when the organisation acted: it built its own, or it
+    # offers a platform exam (adopted, and the rubric comes with the exam).
+    # Platform rows existing for the consumer catalogue tick nothing.
+    adopted_exam = await catalog.offers_platform_exam(session, org_id)
     setup = OrgSetup(
-        rubric_published=await rubrics.has_published_rubric(session, org_id),
-        exam_published=await catalog.has_published_exam(session, org_id),
+        rubric_published=adopted_exam or await rubrics.has_published_rubric(session, org_id),
+        exam_published=adopted_exam or await catalog.has_published_exam(session, org_id),
         template_published=await stations.has_published_template(session, org_id),
         sitting_scheduled=counts.sittings > 0,
         trainees_added=counts.trainees > 0,

@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { RequireCapability, RequireSession } from "@/foundation/session";
+import { Redirecting } from "@/foundation/routing/Redirecting";
 import { surfaceManifest } from "@/surfaces";
 import { ShellFallback } from "@/surfaces/ShellFallback";
 
@@ -20,14 +21,18 @@ const staffManifest = surfaceManifest("platform");
  * The OSCE Guide staff console.
  *
  * The one workspace shell, without a workspace: the sidebar names the console
- * and the footer links back to the staff member's own practice.
+ * and the footer links back to the staff member's own practice. The gate is
+ * outside the shell: anyone else who opens `/staff` goes to `/app`, which
+ * picks their own workspace, never seeing the staff sidebar around a "no access" message.
  */
 export default function StaffLayout({ children }: { children: ReactNode }) {
   return (
     <RequireSession>
-      <WorkspaceShell manifest={staffManifest} basePath="/staff">
-        <RequireCapability permission="administer_platform">{children}</RequireCapability>
-      </WorkspaceShell>
+      <RequireCapability permission="administer_platform" fallback={<Redirecting to="/app" />}>
+        <WorkspaceShell manifest={staffManifest} basePath="/staff">
+          {children}
+        </WorkspaceShell>
+      </RequireCapability>
     </RequireSession>
   );
 }

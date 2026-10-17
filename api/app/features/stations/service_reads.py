@@ -214,5 +214,5 @@ def _flatten(value: Any) -> list[str]:
 
 
 async def has_published_template(session: AsyncSession, org_id: uuid.UUID) -> bool:
-    """Whether the organisation has a published station template it can use: its own or the platform's."""
+    """Whether the organisation has published a station template of its own, not the platform's."""
     return await repository_templates.has_published_version(session, org_id)

@@ -23,7 +23,7 @@ export default function WorkspaceIndex() {
 
   return (
     <div className="flex min-h-[40vh] items-center justify-center">
-      <Spinner label="Loading" />
+      <Spinner label="Loading" size="lg" className="text-ink-subtle" />
     </div>
   );
 }

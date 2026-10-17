@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { HiOutlineArrowRight } from "react-icons/hi2";
-import { Alert, AthenaIdentity, Button, LoadingSpinner, ModalBody, cn } from "@/foundation/ui";
+import { Alert, AthenaIdentity, Button, ModalBody, Spinner, cn } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { VoiceRoom } from "@/foundation/livekit";
@@ -124,7 +124,7 @@ export function OnboardingFlow({ onComplete, onSkip = onComplete }: { onComplete
 
       {step === "demo" && voice.loadingScenes && (
         <div className="space-y-2.5 text-center">
-          <LoadingSpinner />
+          <Spinner size="md" className="text-ink-subtle" />
           <p className="text-osce-meta text-ink-muted">Loading the demo…</p>
         </div>
       )}

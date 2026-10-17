@@ -198,11 +198,11 @@ async def test_the_library_counts_only_what_is_published_for_an_exam_offered(
 async def test_an_empty_org_is_told_what_it_is_missing(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor, slug="empty")
     body = (await client.get("/api/v1/orgs/empty/dashboard", headers=bearer(admin))).json()
-    # `org_with_admin` also publishes a platform `sca` exam and its rubric, and
-    # an organisation may use those, so the two flags read true here.
+    # `org_with_admin` also publishes a platform `sca` exam and its rubric. They
+    # are the shared catalogue: they tick nothing until the organisation acts.
     assert body["setup"] == {
-        "rubric_published": True,
-        "exam_published": True,
+        "rubric_published": False,
+        "exam_published": False,
         "template_published": False,
         "sitting_scheduled": False,
         "trainees_added": False,
@@ -211,6 +211,50 @@ async def test_an_empty_org_is_told_what_it_is_missing(client: AsyncClient, make
         "programme_exam_rubric_ready": False,
         "ready_to_run": False,
     }
+
+
+async def test_platform_content_ticks_nothing_until_the_org_adopts_or_builds(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    from tests.http.test_station_template_routes import STRUCTURE
+
+    _, admin = await org_with_admin(client, make_actor, slug="adopt")
+    root = await make_actor("root2-adopt@osceguide.com", platform_admin=True)
+    # A published platform template sits alongside the platform exam and rubric.
+    made = await client.post(
+        "/api/v1/platform/station-templates",
+        json={"title": "Platform shape", "structure": STRUCTURE},
+        headers=bearer(root),
+    )
+    assert made.status_code == 201, made.text
+    source_id = made.json()["id"]
+    published = await client.post(
+        f"/api/v1/platform/station-templates/{source_id}/publish", headers=bearer(root)
+    )
+    assert published.status_code == 200, published.text
+
+    async def steps() -> tuple[bool, bool, bool]:
+        setup = (await client.get("/api/v1/orgs/adopt/dashboard", headers=bearer(admin))).json()["setup"]
+        return setup["rubric_published"], setup["exam_published"], setup["template_published"]
+
+    assert await steps() == (False, False, False)
+    # A draft programme is not offered, so it adopts nothing.
+    programme_id = await add_programme(client, admin, org_slug="adopt", exam_code="sca", active=False)
+    assert await steps() == (False, False, False)
+
+    # Copying the platform template makes an org-owned, published row.
+    copied = await client.post(
+        f"/api/v1/orgs/adopt/station-templates/{source_id}/copy", headers=bearer(admin)
+    )
+    assert copied.status_code == 201, copied.text
+    assert await steps() == (False, False, True)
+
+    # Offering the platform exam adopts the exam and its rubric.
+    activated = await client.patch(
+        f"/api/v1/orgs/adopt/programmes/{programme_id}", json={"status": "active"}, headers=bearer(admin)
+    )
+    assert activated.status_code == 200, activated.text
+    assert await steps() == (True, True, True)
 
 
 async def _without_platform_catalogue(db_session: AsyncSession) -> None:

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { loginHref } from "@/foundation/session/loginHref";
+import { loginHref, signedOutDestination } from "@/foundation/session/loginHref";
 
 describe("login redirect", () => {
   it("does not call a first visit an expired session", () => {
@@ -13,5 +13,18 @@ describe("login redirect", () => {
       loginHref("/app/me/settings", true),
       "/login?next=%2Fapp%2Fme%2Fsettings&reason=session_expired",
     );
+  });
+});
+
+describe("where a sign-out sends you", () => {
+  it("applies only on the page the person signed out from", () => {
+    const signedOut = { to: "/login?deleted=1", from: "/app/me/settings" };
+    assert.equal(signedOutDestination(signedOut, "/app/me/settings"), "/login?deleted=1");
+  });
+
+  it("is spent once the person has moved on, so a later protected page keeps its next", () => {
+    const signedOut = { to: "/login?deleted=1", from: "/app/me/settings" };
+    assert.equal(signedOutDestination(signedOut, "/app/me/dashboard"), null);
+    assert.equal(signedOutDestination(null, "/app/me/dashboard"), null);
   });
 });

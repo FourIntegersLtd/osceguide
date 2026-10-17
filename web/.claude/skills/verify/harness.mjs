@@ -65,8 +65,12 @@ function note(run, line) {
  * Sign in through the real form. `/login` must be fully hydrated first: a
  * submit on the server-rendered HTML posts the form as a GET, and every later
  * page then bounces to /login?next= — which looks exactly like a session bug.
+ *
+ * `onThisPage` fills the form already on screen instead of opening a fresh
+ * `/login`, keeping its `?next=` (switching accounts in one tab). An account
+ * that needs a second factor still goes the cookie way, which drops it.
  */
-export async function signIn(run, account = ACCOUNT) {
+export async function signIn(run, account = ACCOUNT, { onThisPage = false } = {}) {
   const { page } = run;
   const probe = await fetch(`${API}/api/v1/auth/login`, {
     method: "POST",
@@ -95,7 +99,8 @@ export async function signIn(run, account = ACCOUNT) {
     note(run, `signed in as ${account.email} -> ${page.url().replace(WEB, "")}`);
     return;
   }
-  await page.goto(`${WEB}/login`, { waitUntil: "networkidle", timeout: 90_000 });
+  if (onThisPage) await page.waitForLoadState("networkidle", { timeout: 90_000 });
+  else await page.goto(`${WEB}/login`, { waitUntil: "networkidle", timeout: 90_000 });
   await page.waitForTimeout(1500);
   // A fresh browser gets the cookie dialog, and its scrim swallows every click.
   const decline = page.getByRole("button", { name: "Continue without analytics" });

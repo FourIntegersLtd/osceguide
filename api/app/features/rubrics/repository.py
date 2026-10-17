@@ -286,10 +286,10 @@ async def set_current_version(
 
 
 async def has_published_version(session: AsyncSession, org_id: uuid.UUID) -> bool:
-    """Whether a published marking scheme version is the organisation's own or the platform's."""
+    """Whether the organisation has published a marking scheme of its own (written or copied)."""
     stmt = (
         select(RubricVersion.id)
-        .where(visible_to(RubricVersion, org_id), RubricVersion.status == lifecycle.Status.PUBLISHED)
+        .where(RubricVersion.org_id == org_id, RubricVersion.status == lifecycle.Status.PUBLISHED)
         .limit(1)
     )
     return (await session.execute(stmt)).first() is not None

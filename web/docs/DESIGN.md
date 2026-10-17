@@ -187,7 +187,7 @@ Every staff screen imports layout pieces from `foundation/ui` directly.
 | `PageHeader`, `PlatformPageHeader`, `B2CPageHeader` | page titles |
 | `B2CGroupedList` | settings-style navigation |
 | `B2CSegmentedTabs`, `PlatformTabbedScreen` | page-level tabs |
-| `EmptyState`, `B2CEmptyState`, `B2CSkeleton`, `AsyncBoundary` | empty, loading and failed states |
+| `EmptyState`, `B2CEmptyState`, `B2CSkeleton`, `AsyncBoundary`, `Spinner` | empty, loading and failed states |
 | `Modal`, `ConfirmModal`, toast | floating surfaces |
 | `DatePicker` | picking one day (react-day-picker painted with tokens); `dateDay.ts` converts `YYYY-MM-DD` without shifting the day |
 | `B2BIconChip` (`capabilities/authoring/structure/b2b/components/ui`) | tinted icon squares |

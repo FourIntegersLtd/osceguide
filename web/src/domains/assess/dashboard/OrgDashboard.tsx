@@ -24,7 +24,7 @@ import { useSurface } from "@/capabilities";
 import { readOrgDashboard, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
 import { LiveNow } from "@/domains/assess/dashboard/LiveNow";
 import { SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
-import { nextSetupAction, setupSteps } from "@/domains/assess/dashboard/support";
+import { homeCommits, nextSetupAction, setupSteps } from "@/domains/assess/dashboard/support";
 import { greetingFor } from "@/domains/assess/trainee/support";
 
 /**
@@ -65,7 +65,7 @@ function Body({
 }) {
   const { hrefFor } = useSurface();
   const { session } = useSession();
-  const step = nextSetupAction(data.setup, can(session, "author_content"));
+  const commits = homeCommits(data.setup, can(session, "schedule_sittings"), can(session, "author_content"));
   const sittings = data.recent_sittings ?? [];
 
   return (
@@ -75,20 +75,16 @@ function Body({
         eyebrow={data.name}
         title={greetingFor(session?.user.name, new Date())}
         action={
-          !can(session, "schedule_sittings") ? null : data.setup.ready_to_run ? (
+          commits === "header" ? (
             <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
               <LuPlus className="h-4 w-4" aria-hidden />
               Schedule a sitting
-            </ButtonLink>
-          ) : step ? (
-            <ButtonLink href={hrefFor(step.path)} themeType="b2b" variant="commit">
-              Continue setting up
             </ButtonLink>
           ) : null
         }
       />
 
-      <Setup data={data} />
+      <Setup data={data} commit={commits === "card"} />
 
       {/* What is happening now comes before what exists: on an examination
           morning it is the only thing anybody wants. */}
@@ -145,7 +141,7 @@ function Body({
  * `ready_to_run` stays the backend's judgement of whether a sitting can be
  * scheduled; this is the longer road to a fully built institution.
  */
-function Setup({ data }: { data: Data }) {
+function Setup({ data, commit }: { data: Data; commit: boolean }) {
   const { hrefFor } = useSurface();
   const router = useRouter();
   const steps = setupSteps(data.setup);
@@ -162,7 +158,7 @@ function Setup({ data }: { data: Data }) {
         onSelect={(id) => router.push(hrefFor(steps.find((step) => step.id === id)!.path))}
         line={next.line}
       >
-        <ButtonLink href={hrefFor(next.path)} themeType="b2b" variant="commit">
+        <ButtonLink href={hrefFor(next.path)} themeType="b2b" variant={commit ? "commit" : "secondary"}>
           {next.label}
         </ButtonLink>
       </StepGuide>

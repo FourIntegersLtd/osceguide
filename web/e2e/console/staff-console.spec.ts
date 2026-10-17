@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { expectMenu, expectPageHeading } from "../support/menu";
-import { openPage, signedInAs } from "../support/session";
-import { needRole } from "../support/world";
+import { signIn } from "../../.claude/skills/verify/harness.mjs";
+import { openPage, signedInAs, signInOnThisPage } from "../support/session";
+import { needRole, world } from "../support/world";
 
 // CONSOLE-1: a platform admin runs the staff console; nobody else gets in.
 test("CONSOLE-1 a platform admin opens the console and finds the organisations @staging", async ({ page, context }) => {
@@ -15,22 +16,39 @@ test("CONSOLE-1 a platform admin opens the console and finds the organisations @
   await expectPageHeading(page);
 });
 
-// CONSOLE-2: the page itself is refused, with a stated reason, and no console data renders.
-test("CONSOLE-2 a learner who opens the console is told they have no access @staging", async ({ page, context }) => {
+const STAFF_MENU = ["Organisations", "Users", "Audit log"];
+
+// CONSOLE-2: someone without the console who opens it is sent to their own workspace; the staff
+// menu never renders (it used to wrap a "You do not have access to this" body).
+test("CONSOLE-2 a learner who opens the console lands in their own workspace @staging", async ({ page, context }) => {
   needRole("consumer");
   await signedInAs(context, "consumer");
   await page.goto("/staff/organizations", { waitUntil: "domcontentloaded" });
-  // The positive outcome: the access message, or sent away from /staff.
-  await expect(page.getByText("You do not have access to this").or(page.getByRole("heading", { name: "Page not found" }))).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByRole("heading", { level: 1, name: "Organisations" })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/app\/me(\/|$)/, { timeout: 60_000 });
+  await expectMenu(page, { shows: [], hides: STAFF_MENU });
+  await expect(page.getByText("You do not have access to this")).toHaveCount(0);
 });
 
-// Found by CONSOLE-2: the console shell renders its menu outside the capability gate, so a
-// learner who types /staff sees the staff menu labels (the content is refused). Cosmetic, no data.
-test.fixme("CONSOLE-3 a learner is not shown the staff menu @staging", async ({ page, context }) => {
-  needRole("consumer");
-  await signedInAs(context, "consumer");
-  await page.goto("/staff/organizations", { waitUntil: "domcontentloaded" });
-  await expect(page.getByText("You do not have access to this")).toBeVisible({ timeout: 60_000 });
-  await expectMenu(page, { shows: [], hides: ["Organisations", "Audit log"] });
+test("CONSOLE-3 an institution admin who opens the console lands in their institution @staging", async ({ page, context }) => {
+  needRole("admin");
+  await signedInAs(context, "admin");
+  await page.goto("/staff", { waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(new RegExp(`/app/${world().slug}(/|$)`), { timeout: 60_000 });
+  await expectMenu(page, { shows: [], hides: STAFF_MENU });
+});
+
+// CONSOLE-4: two people, one tab. A platform admin signed out of /staff/users and an institution
+// admin signed in on the same form: `/login?next=/staff/users` sent them to the staff console.
+test("CONSOLE-4 signing out of the console does not send the next person there @staging", async ({ page }, testInfo) => {
+  needRole("platform", "admin");
+  const run = { page, dir: testInfo.outputDir, steps: [], problems: [] };
+  await signIn(run, { email: world().accounts.platform.email, password: world().accounts.platform.password });
+  await openPage(page, "/staff/users");
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+
+  // The next person signs in on the form the sign-out left, not a fresh /login.
+  await signInOnThisPage(page, world().accounts.admin);
+  await expect(page).toHaveURL(new RegExp(`/app/${world().slug}(/|$)`), { timeout: 60_000 });
+  await expectMenu(page, { shows: [], hides: STAFF_MENU });
 });

@@ -16,7 +16,7 @@ import {
   Button,
   ConfirmModal,
   LeaveConfirmModal,
-  LoadingSpinner,
+  Spinner,
   Timer,
   cn,
 } from "@/foundation/ui";
@@ -301,7 +301,7 @@ export function StationScreen(props: StationScreenProps) {
   if (attempt.loading) {
     return (
       <div className="flex justify-center py-16">
-        <LoadingSpinner />
+        <Spinner size="md" className="text-ink-subtle" />
       </div>
     );
   }

@@ -180,7 +180,9 @@ partner screens open and the institution's Sittings and People never appear.
 | ID | Journey | Local | Spec |
 |---|---|---|---|
 | CONSOLE-1 | Platform admin opens `/staff`, Organisations and Users | yes, `@staging` | `console/staff-console.spec.ts` |
-| CONSOLE-2 | A learner who opens `/staff/organizations` is not shown the console | yes, `@staging` | `console/staff-console.spec.ts` |
+| CONSOLE-2 | A learner who opens `/staff/organizations` lands on `/app/me`, no staff menu | yes, `@staging` | `console/staff-console.spec.ts` |
+| CONSOLE-3 | An institution admin who opens `/staff` lands on `/app/<org>`, no staff menu | yes, `@staging` | `console/staff-console.spec.ts` |
+| CONSOLE-4 | Platform admin signs out of `/staff/users`; an institution admin signs in on the same tab and lands on `/app/<org>` | yes, `@staging` | `console/staff-console.spec.ts` |
 
 ## ROLES: the role matrix
 
@@ -189,6 +191,14 @@ admin, supervisor, trainee, consumer, employer admin, employer candidate,
 partner admin, platform admin), reads the links in the sidebar it is shown,
 opens each, and fails on any 401/403/404 from the page's own api calls or a
 "Page not found" heading.
+
+## SWITCH: one tab, more than one person
+
+| ID | Journey | Local | Spec |
+|---|---|---|---|
+| SWITCH-1 | A learner on `/app/me` signs out; an institution admin signs in on that tab and lands on `/app/<org>` | yes | `roles/switch-account.spec.ts` |
+| SWITCH-2 | A session ends on `/app/<org>/sittings`: the same admin signs back in to it, a learner signing in instead lands on `/app/me` | yes | `roles/switch-account.spec.ts` |
+| SWITCH-3 | Deleting an account ends on `/login?deleted=1` with its notice | yes | `roles/switch-account.spec.ts` |
 
 ## Running in CI and against staging
 

@@ -44,3 +44,10 @@ Proof: `verify-access`. Anything that touches auth is ask-first.
 - web `scripts/check-route-gates.mjs` fails a write whose screen checks no permission admitting the
   route's rung. A gate on the button (`AuthoringButton write`) is invisible to it: allow-list with why.
 - Account-close and 2FA-off copy (`capabilities/account/settings/CloseAccount.tsx`, `TwoFactorPanel.tsx`): there are no Stripe subscriptions (A-34), so never say a subscription is cancelled; say paid access ends with the account, no refund. Each destructive step is `ConfirmModal`, with a success toast after 2FA-off.
+- **One tab, many people.** `signOut(to = "/login")` sets `signedOutTo`, which `RequireSession` follows
+  (no `next`; CloseAccount passes `/login?deleted=1`, never its own replace: it lost the race). After
+  an expiry, `next` is followed only by the same person: `nextAfterSignIn` against `lastSessionUser()`
+  (sessionStorage), in both `Login.land` and `RequireAnonymous`. The last workspace is per user id.
+  The sign-out destination holds only on the page signed out from (`signedOutDestination`). After a
+  sign-in, `refresh()` never joins a `/me` load started with the old tokens (`sessionLoads.after`).
+  A surface's capability gate goes outside its shell. Journeys: CONSOLE-4, SWITCH-1..3.

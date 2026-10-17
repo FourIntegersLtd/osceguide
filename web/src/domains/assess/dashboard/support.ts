@@ -46,8 +46,9 @@ const SETUP: {
 
 /**
  * The steps to a first examination, in the order they are built. A marking
- * scheme, exam, template or station the platform publishes for the organisation
- * counts as done, as the API reads it.
+ * scheme, exam or template is done only when the organisation acted: its own,
+ * or (scheme, exam) a platform exam one of its programmes offers. Platform rows
+ * alone tick nothing. A library station of an exam it offers counts as a station.
  */
 export function setupSteps(setup: OrgSetup): SetupStep[] {
   return SETUP.map(({ id, label, todo, done, path }) => {
@@ -66,6 +67,16 @@ export function nextSetupAction(setup: OrgSetup, authors: boolean): SetupAction 
   if (!authors) return null;
   const step = SETUP.find((item) => !item.done(setup));
   return step ? { step: step.id, path: step.path, line: step.line, label: step.action } : null;
+}
+
+/**
+ * Which of the home screen's two possible commit buttons show: "Schedule a sitting" in the
+ * header, or the Getting started card's action. At most one, so the screen has one primary
+ * action; once a sitting can be scheduled, that wins and the card's button goes quiet.
+ */
+export function homeCommits(setup: OrgSetup, schedules: boolean, authors: boolean): "header" | "card" | null {
+  if (schedules && setup.ready_to_run) return "header";
+  return nextSetupAction(setup, authors) !== null ? "card" : null;
 }
 
 /* ------------------------------------------------------------------------

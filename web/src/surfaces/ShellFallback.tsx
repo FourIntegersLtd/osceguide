@@ -6,7 +6,7 @@ import { Spinner } from "@/foundation/ui";
 export function ShellFallback() {
   return (
     <div className="flex min-h-[50vh] items-center justify-center bg-b2c-surface-muted">
-      <Spinner label="Loading" />
+      <Spinner label="Loading" size="lg" className="text-ink-subtle" />
     </div>
   );
 }

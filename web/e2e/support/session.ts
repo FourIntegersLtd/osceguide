@@ -1,6 +1,7 @@
-import type { BrowserContext, Page } from "@playwright/test";
+import { test, type BrowserContext, type Page } from "@playwright/test";
+import { signIn } from "../../.claude/skills/verify/harness.mjs";
 import { loginPatiently, WEB, type Session } from "./api";
-import { world, type Role } from "./world";
+import { world, type Account, type Role } from "./world";
 
 const cache = new Map<Role, Session>();
 
@@ -19,12 +20,20 @@ export async function sessionFor(role: Role): Promise<Session> {
  * journey starts from the screen it is about. The form itself is exercised by
  * train/sign-in.spec.ts through the verify harness.
  */
-export async function signedInAs(context: BrowserContext, role: Role): Promise<void> {
-  const session = await sessionFor(role);
+export async function signedInAs(context: BrowserContext, who: Role | Pick<Account, "email" | "password">): Promise<void> {
+  const session = typeof who === "string" ? await sessionFor(who) : await loginPatiently(who.email, who.password);
   const stored = await context.request.post(`${WEB}/api/session`, {
     data: { access_token: session.access_token, refresh_token: session.refresh_token, expires_in: session.expires_in },
   });
   if (!stored.ok()) throw new Error(`session cookie ${stored.status()}`);
+}
+
+/**
+ * Sign in on the login form already on screen, keeping its `?next=` (a fresh `/login` would
+ * drop it, and switching accounts in one tab is about that query).
+ */
+export async function signInOnThisPage(page: Page, account: Pick<Account, "email" | "password">): Promise<void> {
+  await signIn({ page, dir: test.info().outputDir, steps: [], problems: [] }, account, { onThisPage: true });
 }
 
 /**

@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import Select, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import visible_to
@@ -283,24 +283,27 @@ async def exams_by_ids(session: AsyncSession, exam_ids: Sequence[uuid.UUID]) -> 
     return list((await session.execute(stmt)).scalars())
 
 
+def _offered_exam_stmt(org_id: uuid.UUID) -> Select[tuple[uuid.UUID]]:
+    """Programmes of the organisation that can be sat now: offerable status, published exam."""
+    return (
+        select(Programme.id)
+        .join(Exam, Exam.id == Programme.exam_id)
+        .where(
+            Programme.org_id == org_id,
+            Programme.status.in_(OFFERABLE_PROGRAMME_STATUSES),
+            Exam.status == ExamStatus.PUBLISHED,
+        )
+    )
+
+
 async def count_programmes_with_markable_exam(session: AsyncSession, org_id: uuid.UUID) -> int:
     """Active programmes whose exam is published and names a rubric version.
 
     Only an active programme can be scheduled (the new-sitting screen offers no
     other), so a draft one must not tick the setup checklist (B-3).
     """
-    stmt = (
-        select(func.count())
-        .select_from(Programme)
-        .join(Exam, Exam.id == Programme.exam_id)
-        .where(
-            Programme.org_id == org_id,
-            Programme.status.in_(OFFERABLE_PROGRAMME_STATUSES),
-            Exam.status == ExamStatus.PUBLISHED,
-            Exam.rubric_version_id.isnot(None),
-        )
-    )
-    return int((await session.execute(stmt)).scalar_one())
+    stmt = _offered_exam_stmt(org_id).where(Exam.rubric_version_id.isnot(None))
+    return int((await session.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one())
 
 
 async def org_exam_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
@@ -310,6 +313,16 @@ async def org_exam_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UU
 
 
 async def has_published_exam(session: AsyncSession, org_id: uuid.UUID) -> bool:
-    """Whether a published exam is the organisation's own or the platform's."""
-    stmt = select(Exam.id).where(visible_to(Exam, org_id), Exam.status == ExamStatus.PUBLISHED).limit(1)
+    """Whether the organisation has published an exam of its own."""
+    stmt = select(Exam.id).where(Exam.org_id == org_id, Exam.status == ExamStatus.PUBLISHED).limit(1)
+    return (await session.execute(stmt)).first() is not None
+
+
+async def offers_platform_exam(session: AsyncSession, org_id: uuid.UUID) -> bool:
+    """Whether an offerable programme of the organisation offers a published platform exam.
+
+    A published exam always names a rubric (`ck_exams_published_has_rubric`), so adopting
+    the exam adopts its marking scheme too.
+    """
+    stmt = _offered_exam_stmt(org_id).where(Exam.org_id.is_(None)).limit(1)
     return (await session.execute(stmt)).first() is not None

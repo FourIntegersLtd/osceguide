@@ -6,6 +6,7 @@ import {
   boardOrder,
   candidatesLabel,
   circuitStatus,
+  homeCommits,
   nextSetupAction,
   recordingMissing,
   setupSteps,
@@ -169,4 +170,13 @@ test("finished runs are headed by the day they ended, newest first", () => {
 
 test("somebody who cannot author is never sent to the screens that build things", () => {
   assert.equal(nextSetupAction(setup(), false), null);
+});
+
+test("the home screen has one commit button while setup is unfinished", () => {
+  const todo = setup();
+  const ready = setup({ ready_to_run: true });
+  assert.deepEqual(homeCommits(todo, true, true), "card");
+  assert.deepEqual(homeCommits(ready, true, true), "header");
+  assert.deepEqual(homeCommits(ready, false, true), "card");
+  assert.deepEqual(homeCommits(ready, true, false), "header");
 });

@@ -8,7 +8,7 @@ import { Alert, Button } from "@/foundation/ui";
 import { hasCode, login, type components, type MfaChallenge } from "@/foundation/platform-client";
 import { examAuthHref, normalizeExamCode, rememberLandingExam } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
-import { useSession } from "@/foundation/session";
+import { can, useSession } from "@/foundation/session";
 import {
   authButtonPrimary,
   authFooterLink,
@@ -20,7 +20,7 @@ import AuthFormField from "@/capabilities/account/AuthFormField";
 import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
 import { readSsoSignIn, startSsoSignIn, type SsoSignIn } from "@/capabilities/account/api";
 import { SUPPORT_EMAIL } from "@/foundation/support";
-import { sanitizeReturnTo } from "@/foundation/session/returnTo";
+import { lastSessionUser, nextAfterSignIn } from "@/foundation/session/sessionUser";
 import {
   loginSchema,
   validateWith,
@@ -161,9 +161,12 @@ export default function Login() {
   // workspace from where they were last.
   const land = async (authenticated: AuthResult) => {
     rememberLandingExam(authenticated.user.id, examCode);
-    await refresh();
-    const returnTo = sanitizeReturnTo(searchParams.get("next") ?? searchParams.get("returnTo"));
-    const landing = authenticated.user.is_platform_admin
+    // Read before `refresh`, which records the person now signing in.
+    const previousUser = lastSessionUser();
+    const session = await refresh();
+    const returnTo = nextAfterSignIn(searchParams, previousUser, authenticated.user.id);
+    // The staff layout's and `/app`'s check, read off the session `refresh` just loaded.
+    const landing = can(session, "administer_platform")
       ? "/staff"
       : examCode
         ? `/app/${PERSONAL_SLUG}`

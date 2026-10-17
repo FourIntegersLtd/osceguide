@@ -2,7 +2,6 @@
 
 import { ACCOUNT_REOPEN_DAYS } from "@/foundation/config/copyNumbers";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { HiOutlineArrowPath, HiOutlineTrash } from "react-icons/hi2";
 import { Button, ConfirmModal, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
@@ -23,7 +22,6 @@ const { b2cInputBase } = productTokens;
  * Platform admins are refused here, as they were on the old screen.
  */
 export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
-  const router = useRouter();
   const { signOut } = useSession();
   const [step, setStep] = useState<"closed" | "form" | "final">("closed");
   const [confirmText, setConfirmText] = useState("");
@@ -43,8 +41,9 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
     setError(null);
     try {
       await closeAccount({ password: password || null, confirm: confirmText.trim().toLowerCase() });
-      await signOut();
-      router.replace("/login?deleted=1");
+      // Through `signOut`: RequireSession sends a signed-out tab to the page it names, and a
+      // separate replace here lost the race to it (the notice never showed).
+      await signOut("/login?deleted=1");
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {

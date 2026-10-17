@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Spinner } from "@/foundation/ui";
-import { isPlatformAdmin, RequireSession, useSession } from "@/foundation/session";
+import { can, RequireSession, useSession } from "@/foundation/session";
 import { workspaceBasePath } from "@/foundation/routing";
 import { lastWorkspace } from "@/foundation/routing/lastWorkspace";
+import { Redirecting } from "@/foundation/routing/Redirecting";
 import { landingWorkspace } from "@/surfaces";
 
 /**
@@ -25,22 +23,12 @@ export default function AppIndex() {
 
 function Redirect() {
   const { session, ready } = useSession();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!ready) return;
-    // Platform staff have a console rather than a workspace; their own
-    // practice is one link away from it.
-    if (isPlatformAdmin(session)) {
-      router.replace("/staff");
-      return;
-    }
-    router.replace(workspaceBasePath(landingWorkspace(session?.user ?? null, lastWorkspace())));
-  }, [ready, session, router]);
-
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <Spinner label="Loading" />
-    </div>
-  );
+  // Platform staff have a console rather than a workspace. The same check as
+  // the staff layout's gate, so the two can never send each other back.
+  const to = !ready
+    ? null
+    : can(session, "administer_platform")
+      ? "/staff"
+      : workspaceBasePath(landingWorkspace(session?.user ?? null, session ? lastWorkspace(session.user.id) : null));
+  return <Redirecting to={to} />;
 }
