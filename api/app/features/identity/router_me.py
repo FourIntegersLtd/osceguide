@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Query, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from app.core.auth import CurrentPrincipal
@@ -122,34 +122,24 @@ async def close_me(
 
 @router.get(
     "/me/export",
-    response_model=schemas.MyDataExport,
     responses={
         **error_responses(Unauthenticated, AccountNotFound),
         200: {
-            "description": "The export: JSON by default, the same data as a PDF with `format=pdf`.",
+            "description": "Everything this account owns, as a PDF to save.",
             "content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}},
         },
     },
 )
-async def export_me(
-    principal: CurrentPrincipal,
-    session: SessionDep,
-    response: Response,
-    export_format: Annotated[Literal["json", "pdf"], Query(alias="format")] = "json",
-) -> schemas.MyDataExport | Response:
-    """Download everything this account owns: profile, attempts with their
-    transcripts and marks, and payments. Offered as an attachment, so the
-    browser saves it rather than rendering it. `format=pdf` is the same data
-    as a file a person can read and print."""
-    if export_format == "pdf":
-        payload = await service_export.export_my_data_pdf(session, user_id=principal.user_id)
-        return Response(
-            content=payload,
-            media_type="application/pdf",
-            headers={"Content-Disposition": 'attachment; filename="my-data.pdf"'},
-        )
-    response.headers["Content-Disposition"] = "attachment; filename=my-data.json"
-    return await service_export.export_my_data(session, user_id=principal.user_id)
+async def export_me(principal: CurrentPrincipal, session: SessionDep) -> Response:
+    """Download everything this account owns as a PDF a person can read and print:
+    profile, attempts with their marks and transcripts, and payments. Offered as
+    an attachment, so the browser saves it rather than rendering it."""
+    payload = await service_export.export_my_data_pdf(session, user_id=principal.user_id)
+    return Response(
+        content=payload,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="my-data.pdf"'},
+    )
 
 
 @router.get(

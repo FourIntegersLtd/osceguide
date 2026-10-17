@@ -1814,10 +1814,9 @@ export interface paths {
         };
         /**
          * Export Me
-         * @description Download everything this account owns: profile, attempts with their
-         *     transcripts and marks, and payments. Offered as an attachment, so the
-         *     browser saves it rather than rendering it. `format=pdf` is the same data
-         *     as a file a person can read and print.
+         * @description Download everything this account owns as a PDF a person can read and print:
+         *     profile, attempts with their marks and transcripts, and payments. Offered as
+         *     an attachment, so the browser saves it rather than rendering it.
          */
         get: operations["identity_export_me"];
         put?: never;
@@ -10519,117 +10518,6 @@ export interface components {
             /** Station Subtypes */
             station_subtypes?: components["schemas"]["StationSubtype"][];
         };
-        /**
-         * ExportedAttempt
-         * @description One attempt this person ran, with its own transcript and marks.
-         */
-        ExportedAttempt: {
-            /** Completed At */
-            completed_at?: string | null;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Kind */
-            kind: string;
-            /** Results */
-            results?: components["schemas"]["ExportedResult"][];
-            /** Started At */
-            started_at?: string | null;
-            /** Status */
-            status: string;
-            transcript: components["schemas"]["ExportedTranscript"];
-        };
-        /**
-         * ExportedPayment
-         * @description One payment this person made.
-         */
-        ExportedPayment: {
-            /** Amount Tax Pence */
-            amount_tax_pence: number;
-            /** Amount Total Pence */
-            amount_total_pence: number;
-            /** Currency */
-            currency: string;
-            /**
-             * Paid At
-             * Format: date-time
-             */
-            paid_at: string;
-            /** Receipt Id */
-            receipt_id?: string | null;
-            /** Receipt Url */
-            receipt_url?: string | null;
-        };
-        /**
-         * ExportedProfile
-         * @description The account fields the export carries about the person themselves.
-         */
-        ExportedProfile: {
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Email */
-            email: string;
-            /** Exam Code */
-            exam_code?: string | null;
-            /** Exam Date */
-            exam_date?: string | null;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Name */
-            name: string;
-        };
-        /**
-         * ExportedResult
-         * @description One mark the engine produced for an attempt.
-         */
-        ExportedResult: {
-            /** Framework Id */
-            framework_id: string;
-            /** Payload */
-            payload: {
-                [key: string]: unknown;
-            };
-            /** Policy Version */
-            policy_version: string;
-            /**
-             * Scored At
-             * Format: date-time
-             */
-            scored_at: string;
-        };
-        /**
-         * ExportedTranscript
-         * @description One attempt's delivery record and the turns it carries.
-         */
-        ExportedTranscript: {
-            /** Complete */
-            complete: boolean;
-            /** Messages */
-            messages?: components["schemas"]["ExportedTranscriptMessage"][];
-        };
-        /**
-         * ExportedTranscriptMessage
-         * @description One spoken turn, as the export hands it back.
-         */
-        ExportedTranscriptMessage: {
-            /** Message */
-            message: string;
-            /** Role */
-            role: string;
-            /**
-             * Spoken At
-             * Format: date-time
-             */
-            spoken_at: string;
-        };
         /** ExtendClock */
         ExtendClock: {
             /** Reason */
@@ -11851,17 +11739,6 @@ export interface components {
             code?: string | null;
             /** Recovery Code */
             recovery_code?: string | null;
-        };
-        /**
-         * MyDataExport
-         * @description Everything `GET /me/export` hands back: one person's own data.
-         */
-        MyDataExport: {
-            /** Attempts */
-            attempts?: components["schemas"]["ExportedAttempt"][];
-            /** Payments */
-            payments?: components["schemas"]["ExportedPayment"][];
-            profile: components["schemas"]["ExportedProfile"];
         };
         /**
          * MyEntitlements
@@ -22580,22 +22457,20 @@ export interface operations {
     };
     identity_export_me: {
         parameters: {
-            query?: {
-                format?: "json" | "pdf";
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description The export: JSON by default, the same data as a PDF with `format=pdf`. */
+            /** @description Everything this account owns, as a PDF to save. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MyDataExport"];
+                    "application/json": unknown;
                     "application/pdf": string;
                 };
             };
@@ -22606,15 +22481,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

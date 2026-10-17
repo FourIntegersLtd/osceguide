@@ -189,7 +189,7 @@ async def test_a_word_file_with_a_published_template_goes_straight_to_a_station(
 async def test_a_job_with_no_model_configured_fails_the_import_and_tells_the_uploader(  # type: ignore[no-untyped-def]
     client: AsyncClient, make_actor, db_session
 ) -> None:
-    """`OPENAI_API_KEY` is blanked in `conftest`, so the real model call is refused."""
+    """The OpenAI and Anthropic keys are blanked in `conftest`, so the real model call is refused."""
     _, admin = await org_with_admin(client, make_actor)
     import_id = (await upload_import(client, admin)).json()["id"]
     db_session.info.pop(PENDING_KEY, None)

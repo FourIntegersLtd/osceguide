@@ -40,6 +40,9 @@ os.environ.setdefault("AWS_REGION", "eu-west-2")
 # `e2e_env` fixture puts it back, and e2e runs alone (`-m e2e`).
 os.environ.setdefault("E2E_OPENAI_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
 os.environ["OPENAI_API_KEY"] = ""
+# A local Anthropic key is blanked too: `stations/station_ai.py` falls back to it,
+# so "no model configured" tests would call the real model.
+os.environ["ANTHROPIC_API_KEY"] = ""
 # Set, not `setdefault`: a developer's `.env` namespaces their agents so two
 # people can share one LiveKit project, and that prefix must not change what
 # the dispatch tests assert the worker is called.

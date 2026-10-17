@@ -276,7 +276,7 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=1, max_length=512)
 
 
-# --- The personal data export (E-5): `GET /me/export`.
+# --- The personal data export (E-5): the shape `GET /me/export`'s PDF is built from.
 
 
 class ExportedTranscriptMessage(BaseModel):
@@ -338,7 +338,7 @@ class ExportedProfile(BaseModel):
 
 
 class MyDataExport(BaseModel):
-    """Everything `GET /me/export` hands back: one person's own data."""
+    """The export the PDF is built from: one person's own data."""
 
     profile: ExportedProfile
     attempts: list[ExportedAttempt] = Field(default_factory=list)

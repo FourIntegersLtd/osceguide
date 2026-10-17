@@ -239,26 +239,9 @@ export function closeAccount(input: { password: string | null; confirm: string |
   });
 }
 
-export type MyDataExport = components["schemas"]["MyDataExport"];
-
-/**
- * Everything this account owns, as one JSON object: profile, attempts with
- * their transcripts and marks, and payments (E-5, the self-serve subject
- * access request).
- *
- * `platformRequest` always parses the body as JSON regardless of the
- * backend's `Content-Disposition` header — that header only matters to a
- * browser navigating there directly, not to a `fetch` call — so the caller
- * turns this object into a download itself, the same way `ReceiptList`
- * turns a receipt document into one.
- */
-export function exportMyData(signal?: AbortSignal): Promise<MyDataExport> {
-  return platformRequest<MyDataExport>("/api/v1/me/export", { signal });
-}
-
-/** The same data as a PDF a person can read and print (`?format=pdf`). */
+/** Everything this account owns, as a PDF a person can read and print (E-5, A-31). */
 export async function exportMyDataPdf(signal?: AbortSignal): Promise<Blob> {
-  const { blob } = await platformDownload("/api/v1/me/export", { query: { format: "pdf" }, signal });
+  const { blob } = await platformDownload("/api/v1/me/export", { signal });
   return blob;
 }
 

@@ -16,6 +16,7 @@ from httpx import AsyncClient
 from pypdf import PdfReader
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.attempts import repository_transcript
 from app.features.identity import repository as identity_repo
 from app.features.identity.service_erasure import erase_due_accounts
 from app.features.peer_practice import repository_sessions as peer_repository_sessions
@@ -502,11 +503,16 @@ async def test_a_peer_recording_is_deleted_only_once_both_sides_are_erased(
     assert deleted_keys == ["peer_practice/sca/session-1/consultation.ogg"]
 
 
+def _pdf_text(content: bytes) -> str:
+    return "".join(page.extract_text() for page in PdfReader(io.BytesIO(content)).pages)
+
+
 async def test_the_export_route_returns_only_the_callers_own_data(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     await ensure_exam(db_session, "sca")
     token = (await register(client)).json()["access_token"]
+    await register(client, email="other@example.com")
     sat = await _entitled_attempt(db_session, "new@example.com")
     await finish_consultation(db_session, sat.attempt_id)
     await db_session.commit()
@@ -514,34 +520,42 @@ async def test_the_export_route_returns_only_the_callers_own_data(
     response = await client.get("/api/v1/me/export", headers=bearer(token))
 
     assert response.status_code == 200
-    assert response.headers["content-disposition"] == "attachment; filename=my-data.json"
-    body = response.json()
-    assert body["profile"]["email"] == "new@example.com"
-    assert len(body["attempts"]) == 1
-    assert body["attempts"][0]["id"] == str(sat.attempt_id)
-    assert body["attempts"][0]["transcript"]["messages"][0]["message"] == "What brought you in today?"
-    assert body["payments"] == []
+    text = _pdf_text(response.content)
+    assert "new@example.com" in text
+    assert str(sat.attempt_id) in text
+    assert "other@example.com" not in text
 
 
-async def test_the_export_comes_as_a_pdf_with_the_same_data_when_asked(
+async def test_the_export_is_a_pdf_with_the_mark_tables_and_the_transcript(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """A-31: the same export, as a file a person can read and print."""
+    """A-31: a file a person can read and print, not a dump of the stored JSON."""
     await ensure_exam(db_session, "sca")
     token = (await register(client)).json()["access_token"]
     sat = await _entitled_attempt(db_session, "new@example.com")
     await finish_consultation(db_session, sat.attempt_id)
+    await repository_transcript.save_result(
+        db_session,
+        sat.attempt_id,
+        framework_id="sca",
+        policy_version="v1",
+        payload={"consulting": {"opens_well": {"score": "G"}}},
+        model_used=None,
+        at=datetime.now(UTC),
+    )
     await db_session.commit()
 
-    response = await client.get("/api/v1/me/export", params={"format": "pdf"}, headers=bearer(token))
+    response = await client.get("/api/v1/me/export", headers=bearer(token))
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
     assert response.headers["content-disposition"] == 'attachment; filename="my-data.pdf"'
     assert response.content.startswith(b"%PDF-")
-    text = "".join(page.extract_text() for page in PdfReader(io.BytesIO(response.content)).pages)
-    assert "new@example.com" in text
+    text = _pdf_text(response.content)
+    assert "Consulting" in text
+    assert "1 of 1" in text
     assert "What brought you in today?" in text
+    assert "opens_well" not in text
 
 
 async def test_the_pdf_export_keeps_cjk_and_emoji_in_a_name(client: AsyncClient) -> None:
@@ -550,21 +564,13 @@ async def test_the_pdf_export_keeps_cjk_and_emoji_in_a_name(client: AsyncClient)
     name = "王小明 田中 😀"
     token = (await register(client, name=name)).json()["access_token"]
 
-    response = await client.get("/api/v1/me/export", params={"format": "pdf"}, headers=bearer(token))
+    response = await client.get("/api/v1/me/export", headers=bearer(token))
 
     assert response.status_code == 200
-    text = "".join(page.extract_text() for page in PdfReader(io.BytesIO(response.content)).pages)
+    text = _pdf_text(response.content)
     assert "王小明" in text
     assert "田中" in text
     assert "😀" in text
-
-
-async def test_the_export_refuses_a_format_it_does_not_make(client: AsyncClient) -> None:
-    token = (await register(client)).json()["access_token"]
-
-    response = await client.get("/api/v1/me/export", params={"format": "docx"}, headers=bearer(token))
-
-    assert response.status_code == 422
 
 
 async def test_changing_the_password_keeps_this_device_signed_in_and_ends_the_others(
