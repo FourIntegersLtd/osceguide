@@ -54,7 +54,7 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
   pass `VERIFY_WEB_URL`; `npx playwright test` starts its own :3101, so stop yours first, and
   its global setup registers accounts (api rate-limits: wait a minute between runs).
 - The shell (`surfaces/Workspace*`): Help is an outline-variant button with Athena's face in the toolbar (md up) and the
-  floating `AthenaFab` on phones (`md:hidden`); both fire `osce:open-athena`, and the dock shows the FAB
+  floating `AthenaFab` on phones (`md:hidden`); both fire `osce:open-athena`, and the dock shows the FAB on Train and the staff console only (`athenaOffered`, `capabilities/surface.ts`), and there
   on every route, never behind a route gate. The toolbar carries the Notifications bell (the inbox, path `/notifications`, `/inbox`
   redirects) with the unread count; the sidebar item has no badge. The exam countdown is one line under
   the workspace name (`examDetail`), never in the footer. Voice Athena is off Contact, Notifications,

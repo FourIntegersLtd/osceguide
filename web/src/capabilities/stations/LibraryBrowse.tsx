@@ -20,7 +20,7 @@ import type { LibraryStation } from "@/capabilities/stations/api";
  * institutions had no way to see it at all.
  */
 export function LibraryBrowse() {
-  const { hrefFor, orgSlug } = useSurface();
+  const { hrefFor, orgSlug, surface } = useSurface();
   // Inside an organisation this is its own library, not the signed-in user's consumer exam's.
   const library = useStationLibrary({ orgSlug });
 
@@ -42,10 +42,10 @@ export function LibraryBrowse() {
       <AsyncBoundary
         state={state}
         failure={
-          state.error && libraryFailure(state.error).paywall
+          state.error && libraryFailure(state.error, surface).paywall
             ? (error) => (
                 <Alert tone="warning" title="This exam's stations are not open to you">
-                  <p>{libraryFailure(error).text}</p>
+                  <p>{libraryFailure(error, surface).text}</p>
                 </Alert>
               )
             : undefined
@@ -89,7 +89,7 @@ export function LibraryBrowse() {
 
             {library.moreError && (
               <Alert tone="danger" title="More stations did not load">
-                <p>{libraryFailure(library.moreError).text}</p>
+                <p>{libraryFailure(library.moreError, surface).text}</p>
               </Alert>
             )}
             {library.hasMore && (

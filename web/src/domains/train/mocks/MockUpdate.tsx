@@ -87,6 +87,7 @@ function UpdateForm({
   cancelHref: string;
 }) {
   const toast = useToast();
+  const { surface } = useSurface();
   const [name, setName] = useState(set.name);
   const [stations, setStations] = useState(() => sessionStations(set));
   const [isSaving, setIsSaving] = useState(false);
@@ -119,7 +120,7 @@ function UpdateForm({
       setStations(sessionStations(updated));
       toast.success(sessionUpdatedMessage(updated.total_entries));
     } catch (cause) {
-      setError(describeRefusal(cause, "Could not update the session. Try again."));
+      setError(describeRefusal(cause, "Could not update the session. Try again.", surface));
     } finally {
       setIsSaving(false);
     }

@@ -44,3 +44,9 @@ export function assistantSurfaceFor(surface: Surface): AssistantSurface {
 export function isSurface(value: string): value is Surface {
   return (SURFACES as readonly string[]).includes(value);
 }
+
+/** An institution's, employer's or partner's workspace: access is arranged by an administrator, never bought. */
+export const isOrgSurface = (surface: string): boolean => surface === "assess" || surface === "hire" || surface === "partner";
+
+/** Athena is the consumer's tutor and the staff console's helper; an institution, employer or partner never sees her. */
+export const athenaOffered = (surface: string): boolean => !isOrgSurface(surface);

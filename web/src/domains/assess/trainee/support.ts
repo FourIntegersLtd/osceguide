@@ -1,6 +1,5 @@
 import { PlatformError } from "@/foundation/platform-client";
 import { errorMessage } from "@/foundation/hooks/useAsync";
-import { workspaceBasePath } from "@/foundation/routing";
 import type { MySitting, MySlot, OrgStation } from "@/domains/assess/trainee/api";
 
 /**
@@ -72,9 +71,6 @@ export function progressOf(sitting: MySitting): Progress {
 export function activeSlot(sitting: MySitting): MySlot | null {
   return (sitting.slots ?? []).find((slot) => slot.is_active) ?? null;
 }
-
-/** Where a trainee goes to practise on their own, outside any organisation. */
-export const PERSONAL_PRACTICE_HREF = `${workspaceBasePath("me")}/dashboard`;
 
 /** Whether this person may enter a room right now, as the backend decided. */
 export function joinable(sitting: MySitting): boolean {

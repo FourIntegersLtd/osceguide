@@ -16,7 +16,6 @@ import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { acknowledgeResult, downloadMyResult, readMyResult, stationScoreLabel } from "@/domains/assess/trainee/api";
 import { useSurface } from "@/capabilities";
-import { PERSONAL_PRACTICE_HREF } from "@/domains/assess/trainee/support";
 
 /**
  * A candidate's own result, once it has been released and not before.
@@ -153,14 +152,6 @@ export function MyResult({ sittingId }: { sittingId: string }) {
                       href={hrefFor("/trainee/practice")}
                     >
                       Self practice
-                    </ButtonLink>
-                    <ButtonLink
-                      themeType="b2b"
-                      variant="secondary"
-                      size="sm"
-                      href={PERSONAL_PRACTICE_HREF}
-                    >
-                      Open personal practice
                     </ButtonLink>
                   </>
                 }

@@ -15,6 +15,7 @@ import Alert from "@/foundation/forms/Alert";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { isPlatformAdmin, useSession } from "@/foundation/session";
 import { useCurrentExam } from "@/foundation/session/useCurrentExam";
+import { isOrgSurface } from "@/capabilities/surface";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { readMe, updateMe, uploadAvatar, type Me } from "@/capabilities/account/api";
 import type { ProfilePart } from "@/capabilities/account/settings/settingsTabs";
@@ -310,7 +311,8 @@ function initials(name: string): string {
  * would do nothing.
  */
 function Organisations({ user }: { user: Me }) {
-  const { hrefFor } = useSurface();
+  const { hrefFor, surface } = useSurface();
+  const consumer = !isOrgSurface(surface);
   const memberships = user.memberships ?? [];
   if (memberships.length === 0) return null;
 
@@ -329,16 +331,18 @@ function Organisations({ user }: { user: Me }) {
           </div>
         ))}
         <p className={settingsSub}>
-          They see your sittings, marks, released results and practice on their stations. They never
-          see your personal practice, debriefs, plan or Athena&apos;s notes unless you share a station
-          for review.
+          {consumer
+            ? "They see your sittings, marks, released results and practice on their stations. They never see your personal practice, debriefs, plan or Athena\u2019s notes unless you share a station for review."
+            : "They see your sittings, marks, released results and practice on their stations."}
         </p>
-        <Link
-          href={`${hrefFor("/settings")}?tab=payments`}
-          className="inline-block text-osce-data font-medium text-accent hover:text-accent-hover"
-        >
-          How this affects your plan
-        </Link>
+        {consumer ? (
+          <Link
+            href={`${hrefFor("/settings")}?tab=payments`}
+            className="inline-block text-osce-data font-medium text-accent hover:text-accent-hover"
+          >
+            How this affects your plan
+          </Link>
+        ) : null}
       </div>
     </Panel>
   );

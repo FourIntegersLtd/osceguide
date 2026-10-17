@@ -1,7 +1,7 @@
 import { LuBookA, LuPodcast, LuPresentation } from "react-icons/lu";
 import type { CapabilityModule } from "@/capabilities/contract";
 
-const SURFACES = ["train", "assess"] as const;
+const SURFACES = ["train"] as const;
 
 /**
  * Study material as separate nav items, matching the retiring B2C sidebar
@@ -13,7 +13,6 @@ export const studyAToZCapability: CapabilityModule = {
   description: "Condition summaries from A to Z and by specialty.",
   surfaces: SURFACES,
   permission: null,
-  staffRefusedOn: ["assess"],
   section: "practice",
   path: "/summary",
   icon: LuBookA,
@@ -25,7 +24,6 @@ export const studySlidesCapability: CapabilityModule = {
   description: "Video presentations by topic.",
   surfaces: SURFACES,
   permission: null,
-  staffRefusedOn: ["assess"],
   section: "practice",
   path: "/slides",
   icon: LuPresentation,
@@ -37,7 +35,6 @@ export const studyPodcastCapability: CapabilityModule = {
   description: "Podcast episodes to listen between stations.",
   surfaces: SURFACES,
   permission: null,
-  staffRefusedOn: ["assess"],
   section: "practice",
   path: "/podcast",
   icon: LuPodcast,

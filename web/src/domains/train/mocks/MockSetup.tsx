@@ -19,6 +19,7 @@ import { useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { createSet, readSetAllowance } from "@/domains/train/api";
 import { AddExamDate } from "@/capabilities/account/AddExamDate";
+import { isOrgSurface } from "@/capabilities/surface";
 import { UpgradePlans } from "@/domains/train/mocks/SetupPrompts";
 import {
   BEFORE_YOU_START,
@@ -62,7 +63,9 @@ function examDatePromptSkipped(): boolean {
  */
 export function MockSetup({ workspace, onCreated }: { workspace: MockWorkspace; onCreated: () => void }) {
   const router = useRouter();
-  const { hrefFor } = useSurface();
+  const { hrefFor, surface } = useSurface();
+  // An institution's trainee practises what the organisation granted: no trial, no plans.
+  const org = isOrgSurface(surface);
   const { session, refresh } = useSession();
   const { code: currentExam } = useCurrentExam();
   const examCode = defaultExamCode(workspace, currentExam);
@@ -124,9 +127,9 @@ export function MockSetup({ workspace, onCreated }: { workspace: MockWorkspace; 
       onCreated();
       router.push(hrefFor(`/mocks/${set.id}`));
     } catch (cause) {
-      setError(describeCreateSetFailure(cause));
+      setError(describeCreateSetFailure(cause, surface));
       // The old backend flagged this refusal with `show_upgrade_modal`.
-      setShowUpgradeModal(hasCode(cause, "not_entitled"));
+      setShowUpgradeModal(!org && hasCode(cause, "not_entitled"));
     } finally {
       setIsSubmitting(false);
     }
@@ -134,20 +137,22 @@ export function MockSetup({ workspace, onCreated }: { workspace: MockWorkspace; 
 
   return (
     <div className="w-full space-y-6 pb-24">
-      <StationCompletionProgressBar
-        subscriptionExpired={access.subscriptionExpired}
-        completedCount={attempted.size}
-        totalCount={stations.length}
-        hasPaid={access.hasPaid}
-        freeLimit={workspace.trial.stations}
-      />
+      {org ? null : (
+        <StationCompletionProgressBar
+          subscriptionExpired={access.subscriptionExpired}
+          completedCount={attempted.size}
+          totalCount={stations.length}
+          hasPaid={access.hasPaid}
+          freeLimit={workspace.trial.stations}
+        />
+      )}
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <Panel title="Session setup">
           <AsyncBoundary state={allowance}>
             {({ free_stations_left: freeStationsLeft }) => {
               const maxStations = pickerMax(stations.length, freeStationsLeft);
-              const hint = trialStationsHint(freeStationsLeft);
+              const hint = trialStationsHint(freeStationsLeft, surface);
               return (
                 <div className="flex flex-col gap-4">
                   {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
@@ -158,6 +163,7 @@ export function MockSetup({ workspace, onCreated }: { workspace: MockWorkspace; 
                         hasPaid: access.hasPaid,
                         subscriptionExpired: access.subscriptionExpired,
                         trial: workspace.trial,
+                        surface,
                       })}
                     </Alert>
                   ) : null}

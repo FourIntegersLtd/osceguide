@@ -1,3 +1,5 @@
+import { isOrgSurface } from "@/capabilities/surface";
+
 /** Staff settings split the Profile tab in three; `ProfilePanel` renders one part. */
 export type ProfilePart = "account" | "security" | "data";
 
@@ -9,10 +11,10 @@ export type SettingsTab =
   | ProfilePart;
 
 /**
- * Referrals is for everyone: checkout accepts a code from any buyer and
- * `POST /me/referral-code` issues one to any signed-in account. (The old
- * screen hid it from non-admins, which left a referee with no way to find
- * their own code.)
+ * Referrals and Payments are for consumers: checkout accepts a code from any
+ * buyer and `POST /me/referral-code` issues one to any signed-in account. An
+ * institution's or employer's access is arranged offline, so those arms get
+ * Profile and Preferences only.
  */
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "profile", label: "Profile" },
@@ -31,4 +33,7 @@ const PLATFORM_TABS: { id: SettingsTab; label: string }[] = [
   { id: "data", label: "Data" },
 ];
 
-export const tabsFor = (surface: string) => (surface === "platform" ? PLATFORM_TABS : TABS);
+const ORG_TABS = TABS.filter((tab) => tab.id === "profile" || tab.id === "preferences");
+
+export const tabsFor = (surface: string) =>
+  surface === "platform" ? PLATFORM_TABS : isOrgSurface(surface) ? ORG_TABS : TABS;

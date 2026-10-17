@@ -33,3 +33,6 @@ catalogue (ADR 0017); do not build against an open decision in `web/docs/BACKLOG
   Four skins share tokens (`docs/DESIGN.md`): no literal colours.
 - A feature touching these files runs every arm's journey that renders them
   (`docs/CORE-JOURNEYS.md`, `npm run e2e:assess` against a local api on :8002).
+- Institution and hire are not consumers: no Payments/Referrals tabs, plan or trial copy, upgrade modal,
+  "personal practice" link, Community, A to Z, Slides, Podcast or Athena (`athenaOffered` in
+  `surfaces/jumpTo.ts`). Shared train screens take `surface !== "train"` and use the "ask your administrator" wording.

@@ -1,3 +1,4 @@
+import type { Surface } from "@/capabilities/surface";
 import { hasCode } from "@/foundation/platform-client";
 import { describeRefusal } from "@/capabilities/stations/refusal";
 import type { LibraryPage, LibraryStation } from "@/capabilities/stations/api";
@@ -44,7 +45,7 @@ export function uniqueById(stations: readonly LibraryStation[]): LibraryStation[
   return stations.filter((station) => !seen.has(station.id) && seen.add(station.id));
 }
 
-/** What the library says when a page could not be had: a paywall for a refused exam, else the failure. */
-export function libraryFailure(error: Error): { paywall: boolean; text: string } {
-  return { paywall: hasCode(error, "not_entitled"), text: describeRefusal(error, "Please try again.") };
+/** What the library says when a page could not be had: a refused exam, else the failure. */
+export function libraryFailure(error: Error, surface: Surface): { paywall: boolean; text: string } {
+  return { paywall: hasCode(error, "not_entitled"), text: describeRefusal(error, "Please try again.", surface) };
 }

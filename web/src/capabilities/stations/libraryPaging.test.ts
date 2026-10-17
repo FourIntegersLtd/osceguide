@@ -80,10 +80,10 @@ describe("libraryFailure", () => {
       message: "no",
       details: { reason: "expired" },
     } as ConstructorParameters<typeof PlatformError>[1]);
-    assert.deepEqual(libraryFailure(lapsed), {
+    assert.deepEqual(libraryFailure(lapsed, "assess"), {
       paywall: true,
-      text: "Your access to this exam has ended. Ask your organisation to renew it, or subscribe, to keep practising.",
+      text: "Your organisation hasn't given you access to this yet, so ask your administrator.",
     });
-    assert.deepEqual(libraryFailure(new Error("boom")), { paywall: false, text: "Please try again." });
+    assert.deepEqual(libraryFailure(new Error("boom"), "assess"), { paywall: false, text: "Please try again." });
   });
 });

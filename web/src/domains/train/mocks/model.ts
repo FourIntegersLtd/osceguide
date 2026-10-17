@@ -1,6 +1,7 @@
 import type { SetEntry, StationSet } from "@/domains/train/api";
 import type { AttemptHistoryItem } from "@/capabilities/attempt-runner";
-import { describeRefusal } from "@/capabilities/stations/refusal";
+import { isOrgSurface, type Surface } from "@/capabilities/surface";
+import { ORG_NO_ACCESS, describeRefusal } from "@/capabilities/stations/refusal";
 import { plural } from "@/foundation/format";
 
 /**
@@ -275,7 +276,10 @@ export function nothingPickableMessage(input: {
   hasPaid: boolean | undefined;
   subscriptionExpired: boolean;
   trial: TrialLimits;
+  /** Where the trainee is: an institution's or employer's gets no trial, no subscribing. */
+  surface?: Surface;
 }): string {
+  if (input.surface && isOrgSurface(input.surface) && (input.subscriptionExpired || input.hasPaid === false)) return ORG_NO_ACCESS;
   if (input.subscriptionExpired) {
     return "Your access to this exam has ended, so there is nothing new to practise. Subscribe or ask your organisation to renew it.";
   }
@@ -289,8 +293,8 @@ export function nothingPickableMessage(input: {
  * What to tell somebody whose new session was refused, by the code the API answered with.
  * Access and unpublished stations read the same as when starting a station.
  */
-export function describeCreateSetFailure(cause: unknown): string {
-  return describeRefusal(cause, "We could not create this session. Please try again.");
+export function describeCreateSetFailure(cause: unknown, surface?: Surface): string {
+  return describeRefusal(cause, "We could not create this session. Please try again.", surface);
 }
 
 /** What a learner needs before a session: nothing to buy, nothing that sounds like a lab. */
@@ -321,8 +325,8 @@ export function pickerMax(available: number, freeStationsLeft: number | null): n
 }
 
 /** The setup hint for a trial learner; null when access is paid for. */
-export function trialStationsHint(freeStationsLeft: number | null): string | null {
-  if (freeStationsLeft === null) return null;
+export function trialStationsHint(freeStationsLeft: number | null, surface?: Surface): string | null {
+  if ((surface && isOrgSurface(surface)) || freeStationsLeft === null) return null;
   if (freeStationsLeft === 0) return "Your free trial has no stations left.";
   return `Your free trial has ${plural(freeStationsLeft, "station")} left.`;
 }

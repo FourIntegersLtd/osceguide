@@ -10,6 +10,7 @@ import {
 import { AsyncBoundary, Button, Input, Modal, Panel } from "@/foundation/ui";
 import { useAsync, useToast } from "@/foundation/hooks";
 import { useCurrentExam, useSession } from "@/foundation/session";
+import { isOrgSurface } from "@/capabilities/surface";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { OnboardingFlow, rememberOnboardingSeen } from "@/capabilities/onboarding";
 import { readMe, updateMe, type Me } from "@/capabilities/account/api";
@@ -57,7 +58,7 @@ function PreferencesForm({ me }: { me: Me }) {
   // Practice-only rows: peer practice and Athena's tour belong to a person's
   // own practice, not to an institution's workspace. The waiting-colleague
   // email is offered only where `settings.peer_waiting_email` says so.
-  const practising = surface === "train";
+  const practising = !isOrgSurface(surface);
   const offersWaitingEmail = practising && settings.peer_waiting_email;
 
   const [prefs, setPrefs] = useState<Record<PreferenceField, boolean>>({
@@ -129,21 +130,30 @@ function PreferencesForm({ me }: { me: Me }) {
   return (
     <>
       <div className="space-y-6">
-        <Panel title="Preferences" description="Accessibility, AI consent and notifications. Athena adapts to your past sessions.">
+        <Panel
+          title="Preferences"
+          description={
+            practising
+              ? "Accessibility, AI consent and notifications. Athena adapts to your past sessions."
+              : "Accessibility and notifications."
+          }
+        >
           <SettingsRows className="rounded-none border-0">
-            <SettingsRow
-              icon={HiOutlineSparkles}
-              title="AI training consent"
-              meta="Allow OSCE Guide to use anonymised transcripts of your practice consultations to improve the AI patients and the feedback they give. Your name and email are never included, and you can turn this off at any time"
-              trailing={
-                <Switch
-                  checked={prefs.ai_training_consent}
-                  disabled={saving.has("ai_training_consent")}
-                  onChange={(next) => void save("ai_training_consent", next)}
-                  label="AI training consent"
-                />
-              }
-            />
+            {practising ? (
+              <SettingsRow
+                icon={HiOutlineSparkles}
+                title="AI training consent"
+                meta="Allow OSCE Guide to use anonymised transcripts of your practice consultations to improve the AI patients and the feedback they give. Your name and email are never included, and you can turn this off at any time"
+                trailing={
+                  <Switch
+                    checked={prefs.ai_training_consent}
+                    disabled={saving.has("ai_training_consent")}
+                    onChange={(next) => void save("ai_training_consent", next)}
+                    label="AI training consent"
+                  />
+                }
+              />
+            ) : null}
             <SettingsRow
               icon={HiOutlineClock}
               title="Extra reading time"

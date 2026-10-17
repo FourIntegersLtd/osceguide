@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { athenaOffered } from "@/capabilities/surface";
 import { matchingSections, moveActive } from "./jumpTo";
 
 const items = [{ label: "Dashboard" }, { label: "AI Practice" }, { label: "Podcast" }];
@@ -21,4 +22,12 @@ test("the arrows stop at the first and last row", () => {
 
 test("arrowing through an empty list stays on row zero", () => {
   assert.equal(moveActive(0, "ArrowDown", 0), 0);
+});
+
+test("Athena is offered on Train and the staff console, never on institution, hire or partner", () => {
+  assert.equal(athenaOffered("train"), true);
+  assert.equal(athenaOffered("platform"), true);
+  assert.equal(athenaOffered("assess"), false);
+  assert.equal(athenaOffered("hire"), false);
+  assert.equal(athenaOffered("partner"), false);
 });

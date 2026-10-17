@@ -41,7 +41,7 @@ const COMBINE_STATIONS_PAGE_LIMIT = 25;
  */
 export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
   const router = useRouter();
-  const { hrefFor } = useSurface();
+  const { hrefFor, surface } = useSurface();
   const { code: currentExam } = useCurrentExam();
   const examCode = defaultExamCode(workspace, currentExam);
   const [mockName, setMockName] = useState("");
@@ -115,7 +115,7 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
         router.push(hrefFor("/mocks/list"));
       }, 700);
     } catch (cause) {
-      setErrorText(describeCreateSetFailure(cause));
+      setErrorText(describeCreateSetFailure(cause, surface));
     } finally {
       setIsCreating(false);
     }

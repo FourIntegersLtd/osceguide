@@ -14,6 +14,7 @@ import {
 import { InboxUnreadProvider, useInboxUnread } from "@/capabilities/inbox";
 import ChooseExam from "@/capabilities/account/ChooseExam";
 import { LazyB2CHelpDock } from "@/capabilities/help/LazyB2CHelpDock";
+import { athenaOffered } from "@/capabilities/surface";
 import { PeerPracticeProvider } from "@/capabilities/peer-practice/PeerPracticeProvider";
 import { PendingFeedbackProvider } from "@/capabilities/pending-feedback";
 import type { HelpNavItem } from "@/capabilities/help/api";
@@ -45,6 +46,7 @@ export function WorkspaceShell({
 }: WorkspaceShellProps) {
   const { session } = useSession();
   const isTrain = manifest.id === "train";
+  const athena = athenaOffered(manifest.id);
   const staff = manifest.id === "platform";
   // The marketplace is SCA-only in navigation, like the retiring `scaOnly`.
   const { code: examCode } = useCurrentExam();
@@ -146,6 +148,7 @@ export function WorkspaceShell({
             basePath={basePath}
             examCode={examCode ?? null}
             consumer={isTrain}
+            athena={athena}
           />
           <main
             id="main"
@@ -162,13 +165,15 @@ export function WorkspaceShell({
           </main>
         </div>
 
-        <LazyB2CHelpDock
-          navItems={helpNav}
-          isExpanded={helpExpanded}
-          setIsExpanded={setHelpExpanded}
-          isWide={helpWide}
-          setIsWide={setHelpWide}
-        />
+        {athena ? (
+          <LazyB2CHelpDock
+            navItems={helpNav}
+            isExpanded={helpExpanded}
+            setIsExpanded={setHelpExpanded}
+            isWide={helpWide}
+            setIsWide={setHelpWide}
+          />
+        ) : null}
       </div>
       </InboxUnreadProvider>
     </SurfaceProvider>

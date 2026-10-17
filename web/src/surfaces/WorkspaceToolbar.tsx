@@ -20,6 +20,8 @@ export interface WorkspaceToolbarProps {
   examCode: string | null;
   /** Train only: the station library is searchable from here. */
   consumer: boolean;
+  /** Institution and hire have no Athena: no Help button, no "ask" rows in the search. */
+  athena: boolean;
 }
 
 /**
@@ -34,6 +36,7 @@ export function WorkspaceToolbar({
   basePath,
   examCode,
   consumer,
+  athena,
 }: WorkspaceToolbarProps) {
   const pathname = usePathname() ?? "";
   const [jumpOpen, setJumpOpen] = useState(false);
@@ -84,15 +87,19 @@ export function WorkspaceToolbar({
         <LuSearch className="h-4 w-4" aria-hidden />
       </button>
       <NotificationsBell />
-      <button
-        type="button"
-        onClick={() => openAthena()}
-        className={getButtonClassName({ variant: "outline", size: "sm", className: "gap-2" })}
-      >
-        <LuCircleHelp className="h-4 w-4" aria-hidden />
-        Help
-      </button>
-      {jumpOpen ? <WorkspaceJumpTo items={items} scope={scope} basePath={basePath} onClose={closeJump} /> : null}
+      {athena ? (
+        <button
+          type="button"
+          onClick={() => openAthena()}
+          className={getButtonClassName({ variant: "outline", size: "sm", className: "gap-2" })}
+        >
+          <LuCircleHelp className="h-4 w-4" aria-hidden />
+          Help
+        </button>
+      ) : null}
+      {jumpOpen ? (
+        <WorkspaceJumpTo items={items} scope={scope} basePath={basePath} athena={athena} onClose={closeJump} />
+      ) : null}
     </div>
   );
 }

@@ -16,7 +16,7 @@ export const stationsCapability: CapabilityModule = {
   permission: null,
   section: "practice",
   path: "/stations",
-  staffRefusedOn: ["assess"],
+  staffRefusedOn: ["assess", "hire"],
   unmountedGoesTo: "/mocks",
   icon: LuStethoscope,
 };

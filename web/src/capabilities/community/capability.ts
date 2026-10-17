@@ -4,18 +4,16 @@ import type { CapabilityModule } from "@/capabilities/contract";
 /**
  * Questions and answers.
  *
- * Mounted on Train and Assess. The backend's `audience` scopes a thread to
- * everyone, to one organisation or to one group, so an institution gets a
- * private cohort discussion from these same screens.
+ * Consumer only. The backend's `audience` can scope a thread to one
+ * organisation, but the institution arm does not mount the screens.
  */
 export const communityCapability: CapabilityModule = {
   id: "community",
   title: "Community",
   description: "Ask the community a question, and answer other people's.",
-  surfaces: ["train", "assess"],
+  surfaces: ["train"],
   permission: null,
   section: "connect",
   path: "/discussion",
-  staffRefusedOn: ["assess"],
   icon: LuUsers,
 };

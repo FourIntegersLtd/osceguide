@@ -1,4 +1,5 @@
 import { hasCode, isPlatformError } from "@/foundation/platform-client/errors";
+import { isOrgSurface, type Surface } from "@/capabilities/surface";
 import { plural } from "@/foundation/format";
 
 /**
@@ -9,9 +10,13 @@ import { plural } from "@/foundation/format";
  * `expired`, `no_entitlement`), so a lapsed grant, a used-up trial and no access read differently.
  * Never the server's own message for the coded refusals: `station_not_published` carries the
  * circuit builder's wording, which means nothing to a person who only pressed Start.
- * `fallback` is what an unknown, non-API failure says.
+ * `fallback` is what an unknown, non-API failure says. `surface` is where the person is: an institution's or employer's
+ * person access is arranged by an administrator, so no refusal mentions a trial or buying.
  */
-export function describeRefusal(cause: unknown, fallback: string): string {
+export const ORG_NO_ACCESS = "Your organisation hasn't given you access to this yet, so ask your administrator.";
+
+export function describeRefusal(cause: unknown, fallback: string, surface?: Surface): string {
+  if (surface && isOrgSurface(surface) && (hasCode(cause, "not_entitled") || hasCode(cause, "trial_station_limit"))) return ORG_NO_ACCESS;
   if (hasCode(cause, "not_entitled")) {
     const reason = isPlatformError(cause) ? cause.details?.reason : null;
     if (reason === "trial_exhausted") {

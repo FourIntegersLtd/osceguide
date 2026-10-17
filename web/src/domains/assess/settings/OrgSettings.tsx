@@ -1,5 +1,6 @@
 "use client";
 
+import { isOrgSurface } from "@/capabilities/surface";
 import { useState } from "react";
 import { Alert, AsyncBoundary, Badge, Button, Input, Panel } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
@@ -25,7 +26,7 @@ import { ScimTokens } from "@/domains/assess/settings/ScimTokens";
 export function WorkspaceSettings() {
   const { surface, orgSlug } = useSurface();
   const { session } = useSession();
-  const runsOrg = (surface === "assess" || surface === "hire") && orgSlug && can(session, "manage_team");
+  const runsOrg = isOrgSurface(surface) && orgSlug && can(session, "manage_team");
 
   return (
     <Settings

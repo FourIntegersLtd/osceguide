@@ -4,14 +4,14 @@ import { CAPABILITIES, capabilitiesFor } from "@/capabilities/registry";
 import { SURFACES } from "@/capabilities/surface";
 
 describe("capability registry", () => {
-  it("mounts study material and discussion for institutions, not just consumers", () => {
+  it("keeps study material and discussion off the institution arm", () => {
     // This is the product requirement, pinned: institutions asked for the
     // features that used to be consumer-only. If someone narrows either of
     // these back to `train`, this fails rather than the institution quietly
     // losing a section.
     const assess = capabilitiesFor("assess").map((capability) => capability.id);
-    assert.ok(assess.includes("study-a-to-z"), "study material should mount on assess");
-    assert.ok(assess.includes("community"), "discussion should mount on assess");
+    assert.ok(!assess.includes("study-a-to-z"), "A to Z is consumer only");
+    assert.ok(!assess.includes("community"), "community is consumer only");
 
     const train = capabilitiesFor("train").map((capability) => capability.id);
     assert.ok(train.includes("study-slides"));
@@ -41,10 +41,10 @@ describe("capability registry", () => {
       (c) => c.id === "study-a-to-z",
     );
     const [institution] = capabilitiesFor("assess", { basePath: "/app/kings" }).filter(
-      (c) => c.id === "study-a-to-z",
+      (c) => c.id === "stations",
     );
     assert.equal(consumer?.href, "/app/me/summary");
-    assert.equal(institution?.href, "/app/kings/summary");
+    assert.equal(institution?.href, "/app/kings/stations");
   });
 
   it("hides a capability the backend has not granted", () => {
@@ -56,8 +56,8 @@ describe("capability registry", () => {
     assert.equal(withoutGrant.length, 1);
 
     // And the real path: a permissionless capability is always shown.
-    const study = capabilitiesFor("assess", { can: {} }).find((c) => c.id === "study-podcast");
-    assert.ok(study, "study material has no permission gate, so no grant is needed");
+    const stations = capabilitiesFor("assess", { can: {} }).find((c) => c.id === "stations");
+    assert.ok(stations, "the station library has no permission gate, so no grant is needed");
   });
 
   it("shows the marketplace in navigation to SCA candidates only", () => {
@@ -90,14 +90,22 @@ describe("capability registry", () => {
   it("refuses a staff member the trainee pages by URL, but not the page their own Build entry opens", () => {
     const staff = { run_circuits: true };
     const byUrl = capabilitiesFor("assess", { can: staff, includeHidden: true }).map((c) => c.id);
-    for (const id of ["community", "stations", "study-a-to-z", "study-podcast"]) {
-      assert.ok(!byUrl.includes(id), `${id} should be refused to staff by URL`);
+    assert.ok(!byUrl.includes("stations"), "stations should be refused to staff by URL");
+    const hireStaff = capabilitiesFor("hire", { can: staff, includeHidden: true }).map((c) => c.id);
+    assert.ok(!hireStaff.includes("stations"), "hire staff are refused the station library");
+    const hireCandidate = capabilitiesFor("hire", { can: {}, includeHidden: true }).map((c) => c.id);
+    assert.ok(hireCandidate.includes("stations"));
+    for (const surface of ["assess", "hire", "partner"] as const) {
+      const ids = capabilitiesFor(surface, { can: {}, includeHidden: true }).map((c) => c.id);
+      for (const id of ["community", "study-a-to-z", "study-slides", "study-podcast", "media", "help"]) {
+        assert.ok(!ids.includes(id), `${id} is not on ${surface}`);
+      }
     }
     assert.ok(byUrl.includes("authoring"), "Build opens /authoring, so it stays reachable");
     const nav = capabilitiesFor("assess", { can: staff }).map((c) => c.id);
     assert.ok(!nav.includes("authoring"), "the arm lists Build itself, so the catalogue entry stays out of nav");
     const trainee = capabilitiesFor("assess", { can: {}, includeHidden: true }).map((c) => c.id);
-    assert.ok(trainee.includes("community") && trainee.includes("study-a-to-z"));
+    assert.ok(trainee.includes("stations"));
   });
 
   it("never mounts a capability on a surface it does not declare", () => {

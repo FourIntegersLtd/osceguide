@@ -3,9 +3,7 @@
 import Link from "next/link";
 import {
   HiOutlineAcademicCap,
-  HiOutlineBookOpen,
   HiOutlineCalendarDays,
-  HiOutlineChatBubbleLeftRight,
   HiOutlineClock,
   HiOutlineSparkles,
 } from "react-icons/hi2";
@@ -14,10 +12,8 @@ import {
   AsyncBoundary,
   B2CGroupedRowLink,
   B2CGroupedSection,
-  B2CHero,
   B2CPageHeader,
   Badge,
-  ButtonLink,
   EmptyState,
 } from "@/foundation/ui";
 import { useAsync, useEventStream } from "@/foundation/hooks";
@@ -36,7 +32,6 @@ import {
   greeting,
   isExam,
   liveSittings,
-  PERSONAL_PRACTICE_HREF,
   progressOf,
   sittingForSlot,
   slotById,
@@ -181,9 +176,9 @@ function SittingRow({ sitting }: { sitting: MySitting }) {
 /**
  * The rest of the arm, named.
  *
- * Self practice is this domain's; A to Z and the community are capabilities
- * mounted on this surface, reached through `hrefFor`. Personal practice is the
- * person's own workspace, a different base path.
+ * Self practice is this domain's; the practice history is a capability
+ * mounted on this surface, reached through `hrefFor`. An institution's trainee
+ * has no personal-practice workspace to be sent to.
  */
 function Explore() {
   const { hrefFor, surface } = useSurface();
@@ -192,22 +187,6 @@ function Explore() {
 
   return (
     <>
-      <B2CHero
-        eyebrow="Your personal practice"
-        title="Practise on your own"
-        action={
-          <ButtonLink
-            themeType="b2b"
-            variant="secondary"
-            size="sm"
-            href={PERSONAL_PRACTICE_HREF}
-          >
-            Open personal practice
-          </ButtonLink>
-        }
-      >
-        The full station library for your exam, with feedback and debriefs only you see.
-      </B2CHero>
       <B2CGroupedSection eyebrow="Practise">
         <B2CGroupedRowLink
           href={hrefFor("/trainee/practice")}
@@ -215,8 +194,7 @@ function Explore() {
           title="Self practice"
           meta="From your organisation"
         />
-        {/* Only what this workspace mounts: a link to a page it does not (Hire has no study
-            material or community) would open a 404. */}
+        {/* Only what this workspace mounts: a link to a page it does not would open a 404. */}
         {/* Every practice attempt, with its transcript and debrief, from the list the person already owns (T-5). */}
         {mounted.includes("transcripts") ? (
           <B2CGroupedRowLink
@@ -224,17 +202,6 @@ function Explore() {
             icon={HiOutlineClock}
             title="Practice history"
             meta="Past attempts, transcripts and debriefs"
-          />
-        ) : null}
-        {mounted.includes("study-a-to-z") ? (
-          <B2CGroupedRowLink href={hrefFor("/summary")} icon={HiOutlineBookOpen} title="A to Z" />
-        ) : null}
-        {mounted.includes("community") ? (
-          <B2CGroupedRowLink
-            href={hrefFor("/discussion")}
-            icon={HiOutlineChatBubbleLeftRight}
-            title="Community"
-            meta="Ask your cohort"
           />
         ) : null}
       </B2CGroupedSection>

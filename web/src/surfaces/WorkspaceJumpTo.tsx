@@ -37,11 +37,13 @@ export function WorkspaceJumpTo({
   items,
   scope,
   basePath,
+  athena,
   onClose,
 }: {
   items: NavItem[];
   scope: JumpToScope;
   basePath: string;
+  athena: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -99,7 +101,7 @@ export function WorkspaceJumpTo({
       icon: LuStethoscope,
       run: go(stationHref((path) => `${basePath}${path}`, station.id)),
     }));
-    const articles: Row[] = remote.articles.map((article) => ({
+    const articles: Row[] = (athena ? remote.articles : []).map((article) => ({
       key: `article:${article.slug}`,
       group: "Help",
       label: article.title,
@@ -107,7 +109,7 @@ export function WorkspaceJumpTo({
       run: askAthena(article.title),
     }));
     const persona = helpPersona(voice);
-    const ask: Row[] = searchable
+    const ask: Row[] = athena && searchable
       ? [
           {
             key: "ask",
@@ -119,7 +121,7 @@ export function WorkspaceJumpTo({
         ]
       : [];
     return [...nav, ...stations, ...articles, ...ask];
-  }, [items, query, remote, searchable, text, basePath, onClose, router, voice]);
+  }, [items, query, remote, searchable, text, basePath, onClose, router, voice, athena]);
 
   return (
     <Modal

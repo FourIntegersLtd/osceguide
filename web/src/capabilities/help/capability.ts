@@ -4,7 +4,7 @@ import type { CapabilityModule } from "@/capabilities/contract";
 /**
  * Ask for help by voice, wherever you are.
  *
- * Mounted on all four surfaces. The panel sends the surface and the shell's
+ * Mounted on Train and the staff console, never on an institution or hire. The panel sends the surface and the shell's
  * own navigation labels with the session, so the same component answers an
  * institution admin's question about sittings and a candidate's about mocks —
  * the difference comes from the backend's content packs, not from a fork here.
@@ -16,7 +16,7 @@ export const helpCapability: CapabilityModule = {
   id: "help",
   title: "Help",
   description: "Ask a question by voice and get answers about this product.",
-  surfaces: ["train", "assess", "hire", "platform"],
+  surfaces: ["train", "platform"],
   permission: null,
   path: "/help",
   icon: LuCircleHelp,

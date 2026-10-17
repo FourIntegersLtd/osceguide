@@ -7,7 +7,6 @@ import {
   AsyncBoundary,
   B2CGroupedRow,
   B2CGroupedSection,
-  B2CHero,
   B2CPageHeader,
   ButtonLink,
   SectionSearchField,
@@ -16,7 +15,7 @@ import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { stationAttemptPath, stationFeedbackPath } from "@/capabilities/station-runner/stationPaths";
 import { listOrgStations, type OrgStation } from "@/domains/assess/trainee/api";
-import { PERSONAL_PRACTICE_HREF, practisable } from "@/domains/assess/trainee/support";
+import { practisable } from "@/domains/assess/trainee/support";
 
 /**
  * An organisation's own stations, sat alone — list only; the four-step runner
@@ -39,12 +38,7 @@ export function SelfPractice({ orgSlug }: { orgSlug: string }) {
         empty={{
           title: "No published stations yet",
           description:
-            "Your organisation has not added any stations yet. Until it does, you can still practise with the OSCE Guide library.",
-          action: (
-            <ButtonLink themeType="b2b" variant="secondary" size="sm" href={PERSONAL_PRACTICE_HREF}>
-              Open personal practice
-            </ButtonLink>
-          ),
+            "Your organisation has not added any stations yet. Ask your administrator when they will be ready.",
         }}
       >
         {(stations) => <StationList stations={stations} />}
@@ -92,22 +86,6 @@ function StationList({ stations }: { stations: readonly OrgStation[] }) {
           </div>
         ))}
       </B2CGroupedSection>
-      <B2CHero
-        eyebrow="Want every station for your exam?"
-        title="Your personal practice"
-        action={
-          <ButtonLink
-            themeType="b2b"
-            variant="secondary"
-            size="sm"
-            href={PERSONAL_PRACTICE_HREF}
-          >
-            Open personal practice
-          </ButtonLink>
-        }
-      >
-        The full OSCE Guide library for your exam, with debriefs only you see.
-      </B2CHero>
       {withheld > 0 ? (
         <p className="px-1 text-osce-meta text-b2b-mid">
           {withheld} more {withheld === 1 ? "is a draft" : "are drafts"} and cannot be sat until

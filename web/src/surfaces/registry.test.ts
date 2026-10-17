@@ -336,8 +336,11 @@ describe("surface registry", () => {
       assert.ok(!staffTitles.includes(title), `staff nav has no ${title}`);
     }
     assert.ok(staffTitles.includes("Settings"));
-    for (const title of ["Community", "Stations", "Slides", "A to Z", "Podcast", "Settings"]) {
+    for (const title of ["Stations", "Settings"]) {
       assert.ok(traineeTitles.includes(title), `trainee nav has ${title}`);
+    }
+    for (const title of ["Community", "Slides", "A to Z", "Podcast"]) {
+      assert.ok(!traineeTitles.includes(title), `trainee nav has no ${title}`);
     }
     assert.ok(!traineeTitles.includes("Articles"), "articles are the public /blogs pages, not a nav item");
   });

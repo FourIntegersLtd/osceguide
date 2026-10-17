@@ -1,9 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { notFound } from "next/navigation";
 import { AsyncBoundary, Back, Panel, Spinner } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { formatLongDateTime } from "@/foundation/format";
+import { isOrgSurface } from "@/capabilities/surface";
+import { useSurface } from "@/capabilities/SurfaceContext";
 import { readReferralHistory, type ReferralHistoryRow } from "@/capabilities/account/api";
 import { StatusPill, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
@@ -54,6 +57,13 @@ const FACTS = "grid grid-cols-[max-content_1fr] gap-x-7 gap-y-2.5 text-osce-body
  * already the person's own rows and holds every field this page draws.
  */
 export default function ReferralDetail({ referralId }: { referralId: string }) {
+  // Referrals belong to the consumer arm; an institution or hire URL is a 404.
+  const { surface } = useSurface();
+  if (isOrgSurface(surface)) notFound();
+  return <LoadedReferral referralId={referralId} />;
+}
+
+function LoadedReferral({ referralId }: { referralId: string }) {
   const state = useAsync(
     async (signal) => ({
       referral: await findReferral(referralId, signal),

@@ -15,3 +15,13 @@ test("staff settings carry no Referrals tab", () => {
     ["account", "security", "data"],
   );
 });
+
+test("institution, hire and partner settings carry no Payments or Referrals tab", () => {
+  for (const surface of ["assess", "hire", "partner"]) {
+    assert.deepEqual(
+      tabsFor(surface).map((tab) => tab.id),
+      ["profile", "preferences"],
+      surface,
+    );
+  }
+});
