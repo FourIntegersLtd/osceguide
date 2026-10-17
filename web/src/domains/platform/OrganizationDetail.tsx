@@ -10,7 +10,7 @@ import {
   DetailLayout,
   FactList,
   Panel,
-  PlatformPageHeader,
+  B2CPageHeader,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
@@ -73,14 +73,14 @@ export function OrganizationDetail({ slug }: { slug: string }) {
           const current = organization ?? loaded;
           return (
             <>
-              <PlatformPageHeader
+              <B2CPageHeader
                 title={current.name}
-                description={`${ORG_TYPES.find((type) => type.value === current.org_type)?.label ?? current.org_type} · /${current.slug}`}
+                subtitle={`${ORG_TYPES.find((type) => type.value === current.org_type)?.label ?? current.org_type} · /${current.slug}`}
                 back={{
                   href: hrefFor("/organizations"),
                   label: "Organisations",
                 }}
-                actions={<StatusBadge status={current.status} />}
+                action={<StatusBadge status={current.status} />}
               />
 
               <B2CSegmentedTabs

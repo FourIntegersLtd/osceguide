@@ -13,7 +13,6 @@ import {
   ConfirmModal,
   Input,
   LoadMore,
-  QuietCard,
   Textarea,
 } from "@/foundation/ui";
 import { formatLongDate } from "@/foundation/format";
@@ -88,7 +87,7 @@ export function Announcements() {
         action={
           composing ? undefined : (
             <Button
-              variant="primary"
+              themeType="b2b" variant="commit"
               size="sm"
               onClick={() => {
                 setOpened(null);
@@ -104,13 +103,12 @@ export function Announcements() {
       </B2CHero>
       {error ? <Alert tone="danger">{error}</Alert> : null}
       {composing ? (
-        <QuietCard
-          title="New announcement"
-          subtitle="Shown in the inbox of every learner, with an unread marker."
-          actions={
-            <>
+        <B2CGroupedSection
+          eyebrow="New announcement"
+          action={
+            <span className="flex flex-wrap items-center gap-2">
               <Button
-                variant="primary"
+                themeType="b2b" variant="commit"
                 size="sm"
                 disabled={busy || !subject.trim() || !body.trim()}
                 onClick={() => setConfirming(true)}
@@ -120,21 +118,21 @@ export function Announcements() {
               <Button variant="ghost" size="sm" disabled={busy} onClick={stopComposing}>
                 Cancel
               </Button>
-            </>
+            </span>
           }
         >
-          <div className="mb-4 flex flex-col gap-3">
+          <B2CGroupedRow title="Shown in the inbox of every learner, with an unread marker." />
+          <div className="flex flex-col gap-3 px-5 py-4">
             <Input label="Subject" value={subject} maxLength={200} onChange={(event) => setSubject(event.target.value)} />
             <Textarea label="Message" value={body} maxLength={5000} onChange={(event) => setBody(event.target.value)} />
           </div>
-        </QuietCard>
+        </B2CGroupedSection>
       ) : null}
       {opened ? (
-        <QuietCard
-          title={opened.subject}
-          subtitle={`${opened.sender_name ?? "OSCE Guide team"} · ${formatLongDate(opened.created_at)} · seen by ${opened.read_count}`}
-          actions={
-            <>
+        <B2CGroupedSection
+          eyebrow={opened.subject}
+          action={
+            <span className="flex flex-wrap items-center gap-2">
               {opened.withdrawn_at ? null : (
                 <Button variant="ghost" size="sm" disabled={busy} onClick={() => withdraw(opened)}>
                   Withdraw
@@ -143,11 +141,14 @@ export function Announcements() {
               <Button variant="ghost" size="sm" onClick={() => setOpened(null)}>
                 Close
               </Button>
-            </>
+            </span>
           }
         >
-          <p className="mb-4 whitespace-pre-wrap text-osce-body text-ink">{opened.body}</p>
-        </QuietCard>
+          <B2CGroupedRow title={`${opened.sender_name ?? "OSCE Guide team"} · ${formatLongDate(opened.created_at)} · seen by ${opened.read_count}`} />
+          <div className="flex flex-col gap-3 px-5 py-4">
+            <p className="whitespace-pre-wrap text-osce-body text-ink">{opened.body}</p>
+          </div>
+        </B2CGroupedSection>
       ) : null}
       <AsyncBoundary
         state={pages.state}

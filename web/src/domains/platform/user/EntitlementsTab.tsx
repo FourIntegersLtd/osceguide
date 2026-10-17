@@ -9,10 +9,9 @@ import {
   DetailLayout,
   Input,
   Panel,
-  Row,
-  RowList,
   Select,
 } from "@/foundation/ui";
+import Table from "@/foundation/table/Table";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { listExams } from "@/capabilities/stations";
 import {
@@ -49,33 +48,51 @@ export function EntitlementsTab({
   return (
     <DetailLayout
       main={
-        <Panel
-          title="Access"
-          description="Everything this person has been given access to, current or ended, oldest first."
-          padding="none"
-        >
-          <AsyncBoundary
-            state={state}
-            isEmpty={(page) => page.items.length === 0}
-            empty={{
-              title: "No grants",
-              description: "Only the free trial, if any of it is left.",
-              bare: true,
-            }}
-          >
-            {(page) => (
-              <RowList flush>
-                {page.items.map((grant) => (
-                  <EntitlementRow
-                    key={grant.id}
-                    grant={grant}
-                    onChanged={state.reload}
-                  />
-                ))}
-              </RowList>
-            )}
-          </AsyncBoundary>
-        </Panel>
+        <AsyncBoundary state={state}>
+          {(page) => (
+            <Table<PlatformEntitlement>
+              rows={page.items}
+              themeType="b2b"
+              idField="id"
+              title="Access"
+              description="Everything this person has been given access to, current or ended, oldest first."
+              empty={{ title: "No grants", description: "Only the free trial, if any of it is left." }}
+              columns={[
+                {
+                  header: "Grant",
+                  key: "exam_code",
+                  priority: "primary",
+                  render: (grant) => (
+                    <div className="min-w-0">
+                      <p className="font-medium text-ink">
+                        {grant.exam_code} · {humanise(grant.source)}
+                      </p>
+                      <p className="text-osce-meta text-ink-subtle">
+                        {formatDay(grant.starts_at)} → {grant.ends_at ? formatDay(grant.ends_at) : "open-ended"}
+                        {grant.revoked_at ? ` · revoked ${formatDay(grant.revoked_at)}` : ""}
+                        {grant.source_ref ? ` · ${grant.source_ref}` : ""}
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  header: "Status",
+                  key: "live",
+                  render: (grant) => (
+                    <Badge dot tone={grant.live ? "success" : "neutral"}>
+                      {grant.live ? "Live" : grant.revoked_at ? "Revoked" : "Not live"}
+                    </Badge>
+                  ),
+                },
+                {
+                  header: "Actions",
+                  key: "id",
+                  render: (grant) => <EntitlementActions grant={grant} onChanged={state.reload} />,
+                },
+              ]}
+            />
+          )}
+        </AsyncBoundary>
       }
       rail={
         <GrantPanel
@@ -88,7 +105,7 @@ export function EntitlementsTab({
   );
 }
 
-function EntitlementRow({
+function EntitlementActions({
   grant,
   onChanged,
 }: {
@@ -101,59 +118,43 @@ function EntitlementRow({
   );
 
   return (
-    <Row className="flex-col items-stretch sm:flex-row sm:items-center">
-      <div className="min-w-0 flex-1">
-        <p className="text-osce-data font-medium text-ink">
-          {grant.exam_code} · {humanise(grant.source)}
-        </p>
-        <p className="text-osce-meta text-ink-subtle">
-          {formatDay(grant.starts_at)} →{" "}
-          {grant.ends_at ? formatDay(grant.ends_at) : "open-ended"}
-          {grant.revoked_at ? ` · revoked ${formatDay(grant.revoked_at)}` : ""}
-          {grant.source_ref ? ` · ${grant.source_ref}` : ""}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={grant.live ? "success" : "neutral"}>
-          {grant.live ? "Live" : grant.revoked_at ? "Revoked" : "Not live"}
-        </Badge>
-        {grant.revoked_at ? null : (
-          <>
-            <InlineAction
-              label="Extend"
-              confirmLabel="Save end date"
-              requireReason={false}
-              reasonLabel="Note"
-              onConfirm={async (note) => {
-                await extendEntitlement(grant.id, {
-                  endsAt: asContractDate(endsAt),
-                  note: note || null,
-                });
-                toast.success("End date saved");
-                onChanged();
-              }}
-            >
-              <Input
-                type="date"
-                label="Access ends"
-                value={endsAt}
-                onChange={(event) => setEndsAt(event.target.value)}
-                hint="Leave empty for open-ended."
-              />
-            </InlineAction>
-            <InlineAction
-              label="Revoke"
-              tone="danger"
-              onConfirm={async (reason) => {
-                await revokeEntitlement(grant.id, reason);
-                toast.success("Access revoked");
-                onChanged();
-              }}
+    <div className="flex flex-wrap items-center gap-2">
+      {grant.revoked_at ? null : (
+        <>
+          <InlineAction
+            label="Extend"
+            confirmLabel="Save end date"
+            requireReason={false}
+            reasonLabel="Note"
+            onConfirm={async (note) => {
+              await extendEntitlement(grant.id, {
+                endsAt: asContractDate(endsAt),
+                note: note || null,
+              });
+              toast.success("End date saved");
+              onChanged();
+            }}
+          >
+            <Input
+              type="date"
+              label="Access ends"
+              value={endsAt}
+              onChange={(event) => setEndsAt(event.target.value)}
+              hint="Leave empty for open-ended."
             />
-          </>
-        )}
-      </div>
-    </Row>
+          </InlineAction>
+          <InlineAction
+            label="Revoke"
+            tone="danger"
+            onConfirm={async (reason) => {
+              await revokeEntitlement(grant.id, reason);
+              toast.success("Access revoked");
+              onChanged();
+            }}
+          />
+        </>
+      )}
+    </div>
   );
 }
 

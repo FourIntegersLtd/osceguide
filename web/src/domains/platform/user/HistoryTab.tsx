@@ -1,6 +1,7 @@
 "use client";
 
-import { AsyncBoundary, Panel, Row, RowList } from "@/foundation/ui";
+import { AsyncBoundary } from "@/foundation/ui";
+import Table, { type Column, type TableMore } from "@/foundation/table/Table";
 import { useAsync } from "@/foundation/hooks";
 import {
   listUserAudit,
@@ -16,38 +17,30 @@ export function HistoryTab({ userId }: { userId: string }) {
     [userId],
   );
   return (
-    <Panel
-      title="History"
-      description="What was done to this account and what it did, newest first."
-      padding="none"
-    >
-      <AsyncBoundary
-        state={state}
-        isEmpty={(page) => page.items.length === 0}
-        empty={{
-          title: "No history",
-          description: "Nothing has been recorded about this account.",
-          bare: true,
-        }}
-      >
-        {(page) => (
-          <RowList flush>
-            {page.items.map((entry) => (
-              <PlatformAuditRow key={entry.id} entry={entry} />
-            ))}
-          </RowList>
-        )}
-      </AsyncBoundary>
-    </Panel>
+    <AsyncBoundary state={state}>
+      {(page) => (
+        <AuditTable
+          rows={page.items}
+          title="History"
+          description="What was done to this account and what it did, newest first."
+          empty={{
+            title: "No history",
+            description: "Nothing has been recorded about this account.",
+          }}
+        />
+      )}
+    </AsyncBoundary>
   );
 }
 
-export function PlatformAuditRow({ entry }: { entry: PlatformAuditEntry }) {
-  const detail = formatDetail(entry.meta);
-  return (
-    <Row className="flex-col items-stretch sm:flex-row sm:items-center">
-      <div className="min-w-0 flex-1">
-        <p className="text-osce-data font-medium text-ink">{humanise(entry.action)}</p>
+const auditColumns: Column<PlatformAuditEntry>[] = [
+  {
+    header: "Action",
+    key: "action",
+    priority: "primary",
+    render: (entry) => (
+      <div className="min-w-0">
+        <p className="font-medium text-ink">{humanise(entry.action)}</p>
         <p className="truncate text-osce-meta text-ink-subtle">
           {entry.actor_email ?? "system"} · {formatMoment(entry.at)}
           {entry.org_id ? "" : " · platform"}
@@ -56,10 +49,47 @@ export function PlatformAuditRow({ entry }: { entry: PlatformAuditEntry }) {
             : ""}
         </p>
       </div>
-      <div className="max-w-md text-osce-meta text-ink-muted">
-        {entry.summary ? <p className="truncate">{entry.summary}</p> : null}
-        {detail ? <p className="truncate">{detail}</p> : null}
-      </div>
-    </Row>
+    ),
+  },
+  {
+    header: "Detail",
+    key: "summary",
+    render: (entry) => {
+      const detail = formatDetail(entry.meta);
+      return (
+        <div className="max-w-md text-osce-meta text-ink-muted">
+          {entry.summary ? <p className="truncate">{entry.summary}</p> : null}
+          {detail ? <p className="truncate">{detail}</p> : null}
+        </div>
+      );
+    },
+  },
+];
+
+/** The audit entries as a table: this account's history and the platform-wide log both draw it. */
+export function AuditTable({
+  rows,
+  more,
+  title,
+  description,
+  empty,
+}: {
+  rows: PlatformAuditEntry[];
+  more?: TableMore;
+  title?: string;
+  description?: string;
+  empty: { title: string; description?: string };
+}) {
+  return (
+    <Table<PlatformAuditEntry>
+      rows={rows}
+      more={more}
+      themeType="b2b"
+      idField="id"
+      title={title}
+      description={description}
+      empty={empty}
+      columns={auditColumns}
+    />
   );
 }

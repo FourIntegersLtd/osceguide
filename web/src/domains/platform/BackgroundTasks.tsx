@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Table from "@/foundation/table/Table";
 import { humanise } from "@/foundation/format";
 import {
   Alert,
@@ -8,9 +9,6 @@ import {
   B2CSegmentedTabs,
   Badge,
   Button,
-  Panel,
-  Row,
-  RowList,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
 import { errorMessage, type AsyncState } from "@/foundation/hooks";
@@ -119,104 +117,114 @@ export function BackgroundTasks({
   };
 
   return (
-      <Panel
-        title="Background tasks"
-        description="A task whose worker stopped mid-run is tried once more after three minutes, then marked failed. Retry a failed task here; to retry a failed marking, open the attempt it belongs to."
-        actions={
-          <B2CSegmentedTabs
-            items={JOB_TABS}
-            value={status}
-            onChange={onStatus}
-            compact
-            aria-label="Task status"
-          />
-        }
-        padding="none"
-      >
-        {jobFailure ? <Alert tone="danger">{jobFailure}</Alert> : null}
-        <AsyncBoundary
-          state={jobs}
-          isEmpty={(page) => page.items.length === 0}
-          empty={{
-            title: "No tasks",
-            description: `Nothing is ${JOB_LABELS[status].toLowerCase()}.`,
-            bare: true,
-          }}
-        >
-          {(page) => (
-            <>
-            <RowList flush>
-              {mergeOlderJobs(page.items, olderHere?.items ?? []).map((job) => {
-                const running = jobRunningLabel(job, new Date());
-                return (
-                <Row key={job.id}>
-                  <div className="min-w-0">
-                    <p className="text-osce-data font-medium text-ink">
-                      #{job.id} · {jobTaskLabel(job.task_name)}
-                    </p>
-                    <p className="truncate text-osce-meta text-ink-subtle">
-                      {[
-                        formatDetail(job.args),
-                        `${job.attempts} ${job.attempts === 1 ? "run" : "runs"}`,
-                        running?.text,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                    {job.status === "failed" && (job.events ?? []).length > 0 ? (
-                      <p className="text-osce-meta text-ink-subtle">
-                        {(job.events ?? [])
-                          .map((event) => `${JOB_EVENT_LABELS[event.type] ?? humanise(event.type)} ${formatMoment(event.at)}`)
-                          .join(" → ")}
-                        . The error itself is in the worker log.
+    <div className="flex flex-col gap-4">
+      <B2CSegmentedTabs
+        items={JOB_TABS}
+        value={status}
+        onChange={onStatus}
+        compact
+        aria-label="Task status"
+      />
+      {jobFailure ? <Alert tone="danger">{jobFailure}</Alert> : null}
+      <AsyncBoundary state={jobs}>
+        {(page) => (
+          <Table<Job>
+            rows={mergeOlderJobs(page.items, olderHere?.items ?? [])}
+            themeType="b2b"
+            idField="id"
+            title="Background tasks"
+            description="A task whose worker stopped mid-run is tried once more after three minutes, then marked failed. Retry a failed task here; to retry a failed marking, open the attempt it belongs to."
+            empty={{
+              title: "No tasks",
+              description: `Nothing is ${JOB_LABELS[status].toLowerCase()}.`,
+            }}
+            more={{
+              hasMore: nextBeforeId !== null,
+              loadingMore: jobWorking === -1,
+              moreError: null,
+              loadMore: () => void showOlder(),
+            }}
+            columns={[
+              {
+                header: "Task",
+                key: "task_name",
+                priority: "primary",
+                render: (job) => {
+                  const running = jobRunningLabel(job, new Date());
+                  return (
+                    <div className="min-w-0">
+                      <p className="font-medium text-ink">
+                        #{job.id} · {jobTaskLabel(job.task_name)}
                       </p>
-                    ) : null}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {job.status === "failed" && job.task_name !== SCORING_TASK ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        isLoading={jobWorking === job.id}
-                        disabled={jobWorking !== null}
-                        onClick={() => actOnJob(job, retryJob)}
-                      >
-                        Retry
-                      </Button>
-                    ) : null}
-                    {job.status === "todo" || (running?.cancellable ?? false) ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        isLoading={jobWorking === job.id}
-                        disabled={jobWorking !== null}
-                        onClick={() => actOnJob(job, cancelJob)}
-                      >
-                        Cancel
-                      </Button>
-                    ) : null}
-                    <Badge tone={jobStatusTone(job.status)}>{jobLabel(job.status)}</Badge>
-                  </div>
-                </Row>
-                );
-              })}
-            </RowList>
-            {nextBeforeId !== null ? (
-              <div className="px-4 py-3">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  isLoading={jobWorking === -1}
-                  disabled={jobWorking !== null}
-                  onClick={() => showOlder()}
-                >
-                  Show older
-                </Button>
-              </div>
-            ) : null}
-            </>
-          )}
-        </AsyncBoundary>
-      </Panel>
+                      <p className="truncate text-osce-meta text-ink-subtle">
+                        {[
+                          formatDetail(job.args),
+                          `${job.attempts} ${job.attempts === 1 ? "run" : "runs"}`,
+                          running?.text,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                      {job.status === "failed" && (job.events ?? []).length > 0 ? (
+                        <p className="text-osce-meta text-ink-subtle">
+                          {(job.events ?? [])
+                            .map((event) => `${JOB_EVENT_LABELS[event.type] ?? humanise(event.type)} ${formatMoment(event.at)}`)
+                            .join(" → ")}
+                          . The error itself is in the worker log.
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                },
+              },
+              {
+                header: "Status",
+                key: "status",
+                render: (job) => (
+                  <Badge tone={jobStatusTone(job.status)} dot>
+                    {jobLabel(job.status)}
+                  </Badge>
+                ),
+              },
+              {
+                header: "",
+                key: "id",
+                render: (job) => {
+                  const running = jobRunningLabel(job, new Date());
+                  return (
+                    <div className="flex items-center gap-2">
+                      {job.status === "failed" && job.task_name !== SCORING_TASK ? (
+                        <Button
+                          themeType="b2b"
+                          variant="secondary"
+                          size="sm"
+                          isLoading={jobWorking === job.id}
+                          disabled={jobWorking !== null}
+                          onClick={() => actOnJob(job, retryJob)}
+                        >
+                          Retry
+                        </Button>
+                      ) : null}
+                      {job.status === "todo" || (running?.cancellable ?? false) ? (
+                        <Button
+                          themeType="b2b"
+                          variant="secondary"
+                          size="sm"
+                          isLoading={jobWorking === job.id}
+                          disabled={jobWorking !== null}
+                          onClick={() => actOnJob(job, cancelJob)}
+                        >
+                          Cancel
+                        </Button>
+                      ) : null}
+                    </div>
+                  );
+                },
+              },
+            ]}
+          />
+        )}
+      </AsyncBoundary>
+    </div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { Badge, Panel, StatGrid, StatTile } from "@/foundation/ui";
-import { HiOutlineArrowPath, HiOutlineChartBarSquare, HiOutlineScale } from "react-icons/hi2";
 import type { DashboardSummary } from "@/capabilities/staff-growth/api";
 
 type Report = DashboardSummary["reconciliation"];
@@ -39,13 +38,12 @@ export function ReconciliationPanel({ report }: { report: Report }) {
       }
     >
       <StatGrid>
-        <StatTile label="Our records" value={String(report.ledger_raw_count)} icon={HiOutlineChartBarSquare} />
+        <StatTile label="Our records" value={String(report.ledger_raw_count)} />
         <StatTile
           label="Website tracker"
           value={report.mixpanel_raw_count != null ? String(report.mixpanel_raw_count) : "-"}
-          icon={HiOutlineArrowPath}
         />
-        <StatTile label="Difference" value={difference} icon={HiOutlineScale} />
+        <StatTile label="Difference" value={difference} />
       </StatGrid>
     </Panel>
   );

@@ -8,11 +8,10 @@ import {
   Button,
   ConfirmModal,
   DetailLayout,
-  EmptyPanel,
   FactList,
   Panel,
-  Row,
-  RowList,
+  B2CGroupedRow,
+  B2CGroupedSection,
 } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import {
@@ -183,39 +182,26 @@ export function AccountTab({
               <ReissuePasswordPanel userId={user.id} email={user.email} />
             ) : null}
 
-            <Panel title="Memberships" padding="none">
+            <B2CGroupedSection eyebrow="Memberships">
               {memberships.length === 0 ? (
-                <EmptyPanel
-                  bare
-                  title="No memberships"
-                  description="This account belongs to no organisation."
-                />
+                <B2CGroupedRow title="No memberships" meta="This account belongs to no organisation." />
               ) : (
-                <RowList flush>
-                  {memberships.map((membership) => (
-                    <Row key={membership.id}>
-                      <div className="min-w-0">
-                        <p className="truncate text-osce-data font-medium text-ink">
-                          {membership.org_name ?? membership.org_slug ?? "Organisation"}
-                        </p>
-                        <p className="truncate text-osce-meta text-ink-subtle">
-                          {roleLabel(membership.role)}
-                          {membership.product_surface ? ` · ${membership.product_surface}` : ""}
-                          {membership.invited ? " · invited, not signed in" : ""}
-                        </p>
-                      </div>
-                      <Badge
-                        tone={
-                          membership.status === "active" ? "success" : "neutral"
-                        }
-                      >
+                memberships.map((membership) => (
+                  <B2CGroupedRow
+                    key={membership.id}
+                    title={membership.org_name ?? membership.org_slug ?? "Organisation"}
+                    meta={`${roleLabel(membership.role)}${
+                      membership.product_surface ? ` · ${membership.product_surface}` : ""
+                    }${membership.invited ? " · invited, not signed in" : ""}`}
+                    trailing={
+                      <Badge dot tone={membership.status === "active" ? "success" : "neutral"}>
                         {membership.status}
                       </Badge>
-                    </Row>
-                  ))}
-                </RowList>
+                    }
+                  />
+                ))
               )}
-            </Panel>
+            </B2CGroupedSection>
           </>
         }
         rail={

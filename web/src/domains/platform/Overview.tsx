@@ -2,25 +2,18 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import {
-  LuBuilding2,
-  LuScrollText,
-  LuTriangleAlert,
-  LuUsers,
-} from "react-icons/lu";
+import { LuBuilding2, LuScrollText, LuUsers } from "react-icons/lu";
 import {
   AsyncBoundary,
+  B2CGroupedRowLink,
+  B2CGroupedSection,
   B2CHero,
-  Button,
+  B2CPageHeader,
   ButtonLink,
-  EmptyPanel,
-  Panel,
-  PlatformPageHeader,
-  RowLink,
-  RowList,
   StatGrid,
   StatTile,
 } from "@/foundation/ui";
+import Table from "@/foundation/table/Table";
 import { useAsync } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
@@ -60,9 +53,9 @@ export function PlatformOverview() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PlatformPageHeader
+      <B2CPageHeader
         title={firstName ? `Hello, ${firstName}.` : "Platform"}
-        description="Everything across every organisation, in one place."
+        subtitle="Everything across every organisation, in one place."
       />
 
       <AsyncBoundary state={state}>
@@ -97,49 +90,33 @@ export function PlatformOverview() {
               </B2CHero>
 
               <StatGrid>
-                <StatTile
-                  label="Organisations"
-                  value={overview.organizations}
-                  icon={LuBuilding2}
-                />
-                <StatTile label="Users" value={overview.users} icon={LuUsers} />
+                <StatTile label="Organisations" value={overview.organizations} />
+                <StatTile label="Users" value={overview.users} />
               </StatGrid>
 
               <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-                <Panel title="Needs attention" padding="none">
-                  {attention.length === 0 ? (
-                    <EmptyPanel
-                      bare
-                      title="All clear"
-                      description="None is suspended, lapsed or ending within thirty days."
-                    />
-                  ) : (
-                    <AttentionList attention={attention} hrefFor={hrefFor} />
-                  )}
-                </Panel>
+                <AttentionList attention={attention} hrefFor={hrefFor} />
 
-                <Panel title="Go to" padding="none">
-                  <RowList flush>
-                    <RowLink
-                      href={hrefFor("/organizations")}
-                      title="Provision an organisation"
-                      subtitle="Opens the organisations list, where Provision is"
-                      icon={LuBuilding2}
-                    />
-                    <RowLink
-                      href={hrefFor("/users")}
-                      title="Find a user"
-                      subtitle="Search accounts by name or email"
-                      icon={LuUsers}
-                    />
-                    <RowLink
-                      href={hrefFor("/audit")}
-                      title="Audit log"
-                      subtitle="Who changed what, across the platform"
-                      icon={LuScrollText}
-                    />
-                  </RowList>
-                </Panel>
+                <B2CGroupedSection eyebrow="Go to">
+                  <B2CGroupedRowLink
+                    href={hrefFor("/organizations")}
+                    title="Provision an organisation"
+                    meta="Opens the organisations list, where Provision is"
+                    icon={LuBuilding2}
+                  />
+                  <B2CGroupedRowLink
+                    href={hrefFor("/users")}
+                    title="Find a user"
+                    meta="Search accounts by name or email"
+                    icon={LuUsers}
+                  />
+                  <B2CGroupedRowLink
+                    href={hrefFor("/audit")}
+                    title="Audit log"
+                    meta="Who changed what, across the platform"
+                    icon={LuScrollText}
+                  />
+                </B2CGroupedSection>
               </div>
             </>
           );
@@ -160,55 +137,47 @@ function AttentionList({
   const [pages, setPages] = useState(1);
   const shown = pageOf(attention, pages);
   return (
-    <>
-      <RowList flush>
-        {shown.map((risk) => (
-          <AttentionRow
-            key={risk.slug}
-            organization={risk}
-            href={hrefFor(`/organizations/${encodeURIComponent(risk.slug)}`)}
-          />
-        ))}
-      </RowList>
-      {shown.length < attention.length ? (
-        <div className="flex justify-center p-3">
-          <Button variant="ghost" size="sm" onClick={() => setPages(pages + 1)}>
-            Show more ({attention.length - shown.length} left)
-          </Button>
-        </div>
-      ) : null}
-    </>
-  );
-}
-
-function AttentionRow({
-  organization,
-  href,
-}: {
-  organization: OrgAtRisk;
-  href: string;
-}) {
-  return (
-    <li>
-      <Link
-        href={href}
-        className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-surface-raised sm:px-6"
-      >
-        <LuTriangleAlert
-          className="h-4 w-4 shrink-0 text-osce-warning-icon"
-          aria-hidden
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-osce-data font-medium text-ink">
-            {organization.name}
-          </span>
-          <span className="block truncate text-osce-meta text-ink-subtle">
-            /{organization.slug} · {atRiskLabel(organization.reason)}
-          </span>
-        </span>
-        <StatusBadge status={organization.status} />
-      </Link>
-    </li>
+    <Table<OrgAtRisk>
+      rows={shown}
+      themeType="b2b"
+      idField="slug"
+      title="Needs attention"
+      empty={{
+        title: "All clear",
+        description: "None is suspended, lapsed or ending within thirty days.",
+      }}
+      more={{
+        hasMore: shown.length < attention.length,
+        loadingMore: false,
+        moreError: null,
+        loadMore: () => setPages(pages + 1),
+      }}
+      columns={[
+        {
+          header: "Organisation",
+          key: "name",
+          priority: "primary",
+          render: (risk) => (
+            <div className="min-w-0">
+              <Link
+                href={hrefFor(`/organizations/${encodeURIComponent(risk.slug)}`)}
+                className="font-medium text-ink hover:underline"
+              >
+                {risk.name}
+              </Link>
+              <p className="truncate text-osce-meta text-ink-subtle">
+                /{risk.slug} · {atRiskLabel(risk.reason)}
+              </p>
+            </div>
+          ),
+        },
+        {
+          header: "Status",
+          key: "status",
+          render: (risk) => <StatusBadge status={risk.status} />,
+        },
+      ]}
+    />
   );
 }
 

@@ -13,7 +13,6 @@ import {
   Button,
   Checkbox,
   LoadMore,
-  QuietCard,
   Textarea,
   TextLink,
   type B2CSegmentedTabItem,
@@ -83,16 +82,13 @@ function MessageCard({
   };
 
   return (
-    <QuietCard
-      title={subjectOf(message)}
-      subtitle={`${kindLabel(message)} · ${senderOf(message)} · ${formatDay(message.created_at)}${
-        message.source ? ` · ${messageSourceLabel(message.source)}` : ""
-      }`}
-      actions={
-        <>
+    <B2CGroupedSection
+      eyebrow={subjectOf(message)}
+      action={
+        <span className="flex flex-wrap items-center gap-2">
           {inApp && !message.handled_at ? (
             <Button
-              variant="primary"
+              themeType="b2b" variant="commit"
               size="sm"
               isLoading={busy}
               disabled={!reply.trim()}
@@ -114,35 +110,40 @@ function MessageCard({
           <Button variant="ghost" size="sm" onClick={onClose}>
             Close
           </Button>
-        </>
+        </span>
       }
     >
-      <p className="mb-4 whitespace-pre-wrap text-osce-body text-ink">{message.body}</p>
-      {error ? (
-        <Alert tone="danger" className="mb-3">
-          {error}
-        </Alert>
-      ) : null}
-      {message.handled_at ? null : inApp ? (
-        <Textarea
-          label="Reply"
-          value={reply}
-          maxLength={5000}
-          hint="Goes to the sender's inbox in the app."
-          onChange={(event) => setReply(event.target.value)}
-        />
-      ) : (
-        <Alert tone="info" className="mb-3">
-          Sent without signing in, so there is no inbox to reply to.
-          {mailto ? (
-            <>
-              {" "}
-              Reply by email to <TextLink href={mailto}>{message.email}</TextLink>.
-            </>
-          ) : null}
-        </Alert>
-      )}
-    </QuietCard>
+      <B2CGroupedRow title={`${kindLabel(message)} · ${senderOf(message)} · ${formatDay(message.created_at)}${
+        message.source ? ` · ${messageSourceLabel(message.source)}` : ""
+      }`} />
+      <div className="flex flex-col gap-3 px-5 py-4">
+        <p className="whitespace-pre-wrap text-osce-body text-ink">{message.body}</p>
+        {error ? (
+          <Alert tone="danger" className="mb-3">
+            {error}
+          </Alert>
+        ) : null}
+        {message.handled_at ? null : inApp ? (
+          <Textarea
+            label="Reply"
+            value={reply}
+            maxLength={5000}
+            hint="Goes to the sender's inbox in the app."
+            onChange={(event) => setReply(event.target.value)}
+          />
+        ) : (
+          <Alert tone="info" className="mb-3">
+            Sent without signing in, so there is no inbox to reply to.
+            {mailto ? (
+              <>
+                {" "}
+                Reply by email to <TextLink href={mailto}>{message.email}</TextLink>.
+              </>
+            ) : null}
+          </Alert>
+        )}
+      </div>
+    </B2CGroupedSection>
   );
 }
 

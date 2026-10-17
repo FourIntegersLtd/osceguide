@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { B2CSegmentedTabs, type B2CSegmentedTabItem } from "@/foundation/ui/B2CSegmentedTabs";
-import { PlatformPageHeader } from "@/foundation/ui/PlatformPageHeader";
+import { B2CPageHeader } from "@/foundation/ui/B2CPageHeader";
 
 /**
  * Staff console screens that use underline tabs — one page title, then tabs, then body.
@@ -27,7 +27,7 @@ export function PlatformTabbedScreen<T extends string>({
 }) {
   return (
     <div className="flex w-full flex-col gap-6">
-      <PlatformPageHeader title={title} description={description} />
+      <B2CPageHeader title={title} subtitle={description} />
       <B2CSegmentedTabs
         items={tabs}
         value={value}

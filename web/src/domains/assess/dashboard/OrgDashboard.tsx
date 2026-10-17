@@ -14,6 +14,8 @@ import {
   B2CPageHeader,
   Badge,
   ButtonLink,
+  StatGrid,
+  StatTile,
   StepGuide,
   b2bTokens,
 } from "@/foundation/ui";
@@ -179,13 +181,10 @@ function Counts({ data }: { data: Data }) {
   ];
 
   return (
-    <section aria-label="At a glance" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <StatGrid label="At a glance">
       {tiles.map((tile) => (
-        <Link key={tile.label} href={hrefFor(tile.path)} className={b2bTokens.b2bStatCard}>
-          <span className={b2bTokens.b2bEyebrow}>{tile.label}</span>
-          <span className={b2bTokens.b2bStatCardValue}>{tile.value}</span>
-        </Link>
+        <StatTile key={tile.label} label={tile.label} value={tile.value} href={hrefFor(tile.path)} />
       ))}
-    </section>
+    </StatGrid>
   );
 }

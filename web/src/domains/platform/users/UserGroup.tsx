@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, QuietCard } from "@/foundation/ui";
+import { Button } from "@/foundation/ui";
 import type { DirectoryFilters } from "@/domains/platform/api";
 import { DirectoryUsersTable } from "@/domains/platform/users/DirectoryUsersTable";
 
@@ -30,28 +30,28 @@ export function UserGroup({
   const narrowed = Boolean(filters.q || filters.access || filters.status || filters.planCode);
 
   return (
-    <QuietCard title={title} subtitle={description}>
-      <DirectoryUsersTable
-        filters={filters}
-        hrefFor={hrefFor}
-        totalCount={totalCount}
-        empty={
-          narrowed
-            ? {
-                title: "Nobody matches those filters",
-                description: "Clear them to see everyone on this exam.",
-                action: onClear ? (
-                  <Button variant="secondary" size="sm" onClick={onClear}>
-                    Clear the filters
-                  </Button>
-                ) : undefined,
-              }
-            : {
-                title: "No accounts yet",
-                description: "Nobody has chosen this exam or been granted it.",
-              }
-        }
-      />
-    </QuietCard>
+    <DirectoryUsersTable
+      title={title}
+      description={description}
+      filters={filters}
+      hrefFor={hrefFor}
+      totalCount={totalCount}
+      empty={
+        narrowed
+          ? {
+              title: "Nobody matches those filters",
+              description: "Clear them to see everyone on this exam.",
+              action: onClear ? (
+                <Button variant="secondary" size="sm" onClick={onClear}>
+                  Clear the filters
+                </Button>
+              ) : undefined,
+            }
+          : {
+              title: "No accounts yet",
+              description: "Nobody has chosen this exam or been granted it.",
+            }
+      }
+    />
   );
 }

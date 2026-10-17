@@ -9,11 +9,9 @@ import {
   ConfirmModal,
   Input,
   Modal,
-  Panel,
-  Row,
-  RowList,
   Select,
 } from "@/foundation/ui";
+import Table from "@/foundation/table/Table";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { listExams } from "@/capabilities/stations";
 import {
@@ -57,52 +55,60 @@ export function PlansPanel() {
   };
 
   return (
-    <Panel
-      title="Prices"
-      description="Each plan is sold at full price, or at 10% off with a referral code. Both prices are set up in Stripe for you."
-      actions={
-        <Button size="sm" onClick={() => setCreating(true)}>
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <Button themeType="b2b" variant="commit" size="sm" onClick={() => setCreating(true)}>
           New price
         </Button>
-      }
-      padding="none"
-    >
-      {error ? (
-        <div className="px-5 pt-4 sm:px-6">
-          <Alert tone="danger">{error}</Alert>
-        </div>
-      ) : null}
-      <AsyncBoundary
-        state={plans}
-        isEmpty={(page) => page.items.length === 0}
-        empty={{
-          title: "Nothing is on sale",
-          description: "Add a price for a published exam.",
-          bare: true,
-        }}
-      >
+      </div>
+      {error ? <Alert tone="danger">{error}</Alert> : null}
+      <AsyncBoundary state={plans}>
         {(page) => (
-          <RowList flush>
-            {page.items.map((plan) => (
-              <Row key={plan.code}>
-                <div className="min-w-0">
-                  <p className="text-osce-data font-medium text-ink">
-                    {plan.exam_code} · {pounds(plan.amount_pence)} for{" "}
-                    {plan.duration_days} days
-                  </p>
-                  <p className="truncate text-osce-meta text-ink-subtle">
-                    {plan.code}
-                    {plan.referral_amount_pence != null
-                      ? ` · ${pounds(plan.referral_amount_pence)} with a referral code`
-                      : ""}
-                    {` · ${plan.stripe_price_id}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge tone={plan.active ? "success" : "neutral"}>
+          <Table<PlatformPlan>
+            rows={page.items}
+            themeType="b2b"
+            idField="code"
+            title="Prices"
+            description="Each plan is sold at full price, or at 10% off with a referral code. Both prices are set up in Stripe for you."
+            empty={{
+              title: "Nothing is on sale",
+              description: "Add a price for a published exam.",
+            }}
+            columns={[
+              {
+                header: "Plan",
+                key: "code",
+                priority: "primary",
+                render: (plan) => (
+                  <div className="min-w-0">
+                    <p className="font-medium text-ink">
+                      {plan.exam_code} · {pounds(plan.amount_pence)} for {plan.duration_days} days
+                    </p>
+                    <p className="truncate text-osce-meta text-ink-subtle">
+                      {plan.code}
+                      {plan.referral_amount_pence != null
+                        ? ` · ${pounds(plan.referral_amount_pence)} with a referral code`
+                        : ""}
+                      {` · ${plan.stripe_price_id}`}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                header: "Status",
+                key: "active",
+                render: (plan) => (
+                  <Badge tone={plan.active ? "success" : "neutral"} dot>
                     {plan.active ? "On sale" : "Retired"}
                   </Badge>
+                ),
+              },
+              {
+                header: "",
+                key: "stripe_price_id",
+                render: (plan) => (
                   <Button
+                    themeType="b2b"
                     size="sm"
                     variant="secondary"
                     disabled={busyCode !== null}
@@ -114,10 +120,10 @@ export function PlansPanel() {
                         ? "Retire"
                         : "Put on sale"}
                   </Button>
-                </div>
-              </Row>
-            ))}
-          </RowList>
+                ),
+              },
+            ]}
+          />
         )}
       </AsyncBoundary>
       <ConfirmModal
@@ -146,7 +152,7 @@ export function PlansPanel() {
           }}
         />
       ) : null}
-    </Panel>
+    </div>
   );
 }
 

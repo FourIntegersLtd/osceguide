@@ -12,6 +12,7 @@ import {
 } from "react-icons/hi2";
 import {
   Alert,
+  B2CPageHeader,
   Badge,
   Button,
   ConfirmModal,
@@ -434,97 +435,90 @@ export function MediaDetailScreen({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-2">
-          <AuthoringIconAction variant="ghost" label="Back to list" onClick={backToList}>
-            <HiOutlineArrowLeft className="h-4 w-4" aria-hidden />
-          </AuthoringIconAction>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-osce-title font-semibold text-ink">
-                {title.trim() || kindLabel}
-              </h1>
-              <Badge tone={item.status === "published" ? "success" : "warning"}>
-                {item.status}
-              </Badge>
-            </div>
-            <p className="mt-1 text-osce-meta text-ink-subtle">
-              {kindLabel} · {item.slug} ·{" "}
-              {examCode.trim() ? examCode.toUpperCase() : "Any exam"}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-1">
-          {previewHref && item.status === "published" ? (
-            <AuthoringIconAction variant="ghost" label="Preview as learner" href={previewHref}>
-              <HiOutlineEye className="h-4 w-4" aria-hidden />
-            </AuthoringIconAction>
-          ) : null}
-          {!isDraft ? (
-            <AuthoringIconAction
-              variant="ghost"
-              label="Unpublish"
-              disabled={action.busy !== null}
-              onClick={() => setConfirm("unpublish")}
-            >
-              <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
-            </AuthoringIconAction>
-          ) : null}
-          {isAvRunning(status) ? (
-            <AuthoringIconAction
-              variant="ghost"
-              label="Release stuck job"
-              disabled={action.busy !== null}
-              onClick={() => setConfirm("unlock")}
-            >
-              <HiOutlineLockOpen className="h-4 w-4" aria-hidden />
-            </AuthoringIconAction>
-          ) : null}
-          {isDraft ? (
-            <AuthoringIconAction variant="ghost" label="Edit as JSON" onClick={() => setJsonOpen(true)}>
-              <HiOutlineCodeBracket className="h-4 w-4" aria-hidden />
-            </AuthoringIconAction>
-          ) : null}
-          {isDraft ? (
-            <AuthoringIconAction
-              variant="danger"
-              label="Delete draft"
-              disabled={action.busy !== null}
-              onClick={() => setDeleteOpen(true)}
-            >
-              <HiOutlineTrash className="h-4 w-4" aria-hidden />
-            </AuthoringIconAction>
-          ) : null}
-          {/* A blog has no pipeline, so it keeps its save buttons here. */}
-          {!spoken ? (
-            <>
-              <span className="mx-1 hidden h-6 border-l border-border sm:block" aria-hidden />
-              {unsaved ? (
-                <span className="text-osce-meta text-ink-subtle">Unsaved changes</span>
-              ) : null}
-              {isDraft ? (
+      <B2CPageHeader
+        back={{ label: "Back to list", onClick: backToList }}
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            {title.trim() || kindLabel}
+            <Badge tone={item.status === "published" ? "success" : "warning"} dot>
+              {item.status}
+            </Badge>
+          </span>
+        }
+        subtitle={`${kindLabel} · ${item.slug} · ${examCode.trim() ? examCode.toUpperCase() : "Any exam"}`}
+        action={
+          <div className="flex flex-wrap items-center gap-1">
+            {previewHref && item.status === "published" ? (
+              <AuthoringIconAction variant="ghost" label="Preview as learner" href={previewHref}>
+                <HiOutlineEye className="h-4 w-4" aria-hidden />
+              </AuthoringIconAction>
+            ) : null}
+            {!isDraft ? (
+              <AuthoringIconAction
+                variant="ghost"
+                label="Unpublish"
+                disabled={action.busy !== null}
+                onClick={() => setConfirm("unpublish")}
+              >
+                <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
+              </AuthoringIconAction>
+            ) : null}
+            {isAvRunning(status) ? (
+              <AuthoringIconAction
+                variant="ghost"
+                label="Release stuck job"
+                disabled={action.busy !== null}
+                onClick={() => setConfirm("unlock")}
+              >
+                <HiOutlineLockOpen className="h-4 w-4" aria-hidden />
+              </AuthoringIconAction>
+            ) : null}
+            {isDraft ? (
+              <AuthoringIconAction variant="ghost" label="Edit as JSON" onClick={() => setJsonOpen(true)}>
+                <HiOutlineCodeBracket className="h-4 w-4" aria-hidden />
+              </AuthoringIconAction>
+            ) : null}
+            {isDraft ? (
+              <AuthoringIconAction
+                variant="danger"
+                label="Delete draft"
+                disabled={action.busy !== null}
+                onClick={() => setDeleteOpen(true)}
+              >
+                <HiOutlineTrash className="h-4 w-4" aria-hidden />
+              </AuthoringIconAction>
+            ) : null}
+            {/* A blog has no pipeline, so it keeps its save buttons here. */}
+            {!spoken ? (
+              <>
+                <span className="mx-1 hidden h-6 border-l border-border sm:block" aria-hidden />
+                {unsaved ? (
+                  <span className="text-osce-meta text-ink-subtle">Unsaved changes</span>
+                ) : null}
+                {isDraft ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={!title.trim() || action.busy !== null}
+                    isLoading={action.busy === "save-publish"}
+                    onClick={() => setConfirm("save-publish")}
+                  >
+                    {action.busy === "save-publish" ? "Publishing…" : "Save and publish"}
+                  </Button>
+                ) : null}
                 <Button
-                  variant="secondary"
                   size="sm"
                   disabled={!title.trim() || action.busy !== null}
-                  isLoading={action.busy === "save-publish"}
-                  onClick={() => setConfirm("save-publish")}
+                  isLoading={action.busy === "save"}
+                  onClick={() => save()}
                 >
-                  {action.busy === "save-publish" ? "Publishing…" : "Save and publish"}
+                  {action.busy === "save" ? "Saving…" : "Save"}
                 </Button>
-              ) : null}
-              <Button
-                size="sm"
-                disabled={!title.trim() || action.busy !== null}
-                isLoading={action.busy === "save"}
-                onClick={() => save()}
-              >
-                {action.busy === "save" ? "Saving…" : "Save"}
-              </Button>
-            </>
-          ) : null}
-        </div>
-      </div>
+              </>
+            ) : null}
+          </div>
+        }
+      />
 
       <ConfirmModal
         isOpen={deleteOpen}

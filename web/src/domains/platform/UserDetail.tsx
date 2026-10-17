@@ -8,7 +8,7 @@ import {
   Badge,
   Button,
   B2CSegmentedTabs,
-  PlatformPageHeader,
+  B2CPageHeader,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
@@ -70,15 +70,15 @@ export function UserDetail({ userId }: { userId: string }) {
           const access = facts.data ? accessOf(facts.data) : null;
           return (
             <>
-              <PlatformPageHeader
+              <B2CPageHeader
                 title={current.email}
-                description={`${current.name || "No name"} · joined ${formatDay(current.created_at)}${
+                subtitle={`${current.name || "No name"} · joined ${formatDay(current.created_at)}${
                   current.exam_code
                     ? ` · ${current.exam_code.toUpperCase()}`
                     : ""
                 }`}
                 back={{ href: hrefFor("/users"), label: "Users" }}
-                actions={
+                action={
                   <span className="flex flex-wrap items-center gap-1.5">
                     <Button variant="secondary" size="sm" onClick={() => setMessaging(true)}>
                       Send message

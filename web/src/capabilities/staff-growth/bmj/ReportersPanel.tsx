@@ -14,15 +14,14 @@ import {
   ModalLead,
   ModalPrimaryButton,
   ModalSecondaryButton,
-  Panel,
-  Row,
-  RowList,
 } from "@/foundation/ui";
+import Table from "@/foundation/table/Table";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { partnerDisplayName } from "@/capabilities/attribution-dashboard/viewModel";
 import {
   addPartnerReporter,
   listPartnerReporters,
+  type Reporter,
   revokePartnerReporter,
 } from "@/capabilities/staff-growth/api";
 import { isPartnerAddress } from "@/capabilities/staff-growth/bmj/partnerAddress";
@@ -55,59 +54,57 @@ export function ReportersPanel({ partner }: { partner: string }) {
 
   return (
     <>
-      <Panel
-        title={`${name} viewers`}
-        description={`People at ${name} who can sign in to see this dashboard.`}
-        padding="none"
-        actions={
-          <Button type="button" onClick={() => setAdding(true)}>
-            <HiOutlineUserPlus className="h-4 w-4" aria-hidden />
-            Add viewer
-          </Button>
-        }
-      >
-        <AsyncBoundary
-          state={state}
-          isEmpty={(rows) => rows.every((row) => row.revoked_at)}
-          empty={{
-            title: "No viewers yet",
-            description: `Add someone from ${name} to share this dashboard.`,
-            bare: true,
-          }}
-          failure={(error, retry) => (
-            <div className="p-5">
-              <Alert tone="danger" title="We couldn't load viewers">
-                <p>{error.message}</p>
-                <div className="mt-3">
-                  <Button variant="secondary" size="sm" onClick={retry}>
-                    Try again
-                  </Button>
-                </div>
-              </Alert>
+      <AsyncBoundary
+        state={state}
+        failure={(error, retry) => (
+          <Alert tone="danger" title="We couldn't load viewers">
+            <p>{error.message}</p>
+            <div className="mt-3">
+              <Button variant="secondary" size="sm" onClick={retry}>
+                Try again
+              </Button>
             </div>
-          )}
-        >
-          {(rows) => (
-            <RowList flush>
-              {rows
-                .filter((row) => !row.revoked_at)
-                .map((row) => (
-                  <Row key={row.email}>
-                    <div className="min-w-0">
-                      <p className="truncate text-osce-data font-medium text-ink">{row.email}</p>
-                      <p className="text-osce-meta text-ink-subtle">
-                        Added {row.created_at.slice(0, 10)}
-                      </p>
-                    </div>
-                    <Button variant="secondary" size="sm" onClick={() => setRemoving(row.email)}>
-                      Remove
-                    </Button>
-                  </Row>
-                ))}
-            </RowList>
-          )}
-        </AsyncBoundary>
-      </Panel>
+          </Alert>
+        )}
+      >
+        {(rows) => (
+          <Table<Reporter>
+            rows={rows.filter((row) => !row.revoked_at)}
+            themeType="b2b"
+            idField="email"
+            title={`${name} viewers`}
+            description={`People at ${name} who can sign in to see this dashboard.`}
+            empty={{
+              title: "No viewers yet",
+              description: `Add someone from ${name} to share this dashboard.`,
+            }}
+            columns={[
+              {
+                header: "Viewer",
+                key: "email",
+                priority: "primary",
+                render: (row) => <span className="font-medium text-ink">{row.email}</span>,
+              },
+              { header: "Added", key: "created_at", render: (row) => row.created_at.slice(0, 10) },
+              {
+                header: "",
+                key: "revoked_at",
+                render: (row) => (
+                  <Button variant="secondary" size="sm" onClick={() => setRemoving(row.email)}>
+                    Remove
+                  </Button>
+                ),
+              },
+            ]}
+          />
+        )}
+      </AsyncBoundary>
+      <div>
+        <Button themeType="b2b" variant="commit" type="button" onClick={() => setAdding(true)}>
+          <HiOutlineUserPlus className="h-4 w-4" aria-hidden />
+          Add viewer
+        </Button>
+      </div>
 
       {adding ? (
         <AddViewerModal

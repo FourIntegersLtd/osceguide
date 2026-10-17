@@ -6,7 +6,6 @@ import {
   Button,
   ButtonLink,
   ConfirmModal,
-  QuietCard,
   B2CGroupedRow,
   B2CGroupedSection,
   B2CHero,
@@ -93,11 +92,10 @@ export function ModerationHome() {
               title={`${plural(posts.length, "post")}${pages.hasMore ? " so far" : ""} in the last seven days`}
             />
             {open ? (
-              <QuietCard
-                title={postTitle(open)}
-                subtitle={`${open.author_name ?? "Someone"} · ${formatLongDate(open.created_at)}`}
-                actions={
-                  <>
+              <B2CGroupedSection
+                eyebrow={postTitle(open)}
+                action={
+                  <span className="flex flex-wrap items-center gap-2">
                     <ButtonLink href={postHref(open)} target="_blank" rel="noreferrer" variant="ghost" size="sm">
                       Open in context
                     </ButtonLink>
@@ -107,11 +105,14 @@ export function ModerationHome() {
                     <Button variant="ghost" size="sm" onClick={() => setOpen(null)}>
                       Close
                     </Button>
-                  </>
+                  </span>
                 }
               >
-                <p className="whitespace-pre-wrap text-osce-body text-ink">{open.body}</p>
-              </QuietCard>
+                <B2CGroupedRow title={`${open.author_name ?? "Someone"} · ${formatLongDate(open.created_at)}`} />
+                <div className="flex flex-col gap-3 px-5 py-4">
+                  <p className="whitespace-pre-wrap text-osce-body text-ink">{open.body}</p>
+                </div>
+              </B2CGroupedSection>
             ) : null}
             <B2CGroupedSection eyebrow="Last seven days">
               {posts.map((post) => (

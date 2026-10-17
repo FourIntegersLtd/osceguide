@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { AsyncBoundary, B2CSegmentedTabs, PlatformPageHeader } from "@/foundation/ui";
+import { AsyncBoundary, B2CSegmentedTabs, B2CPageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useAttributionState } from "@/capabilities/attribution-dashboard/useAttributionFilters";
 import { getDashboardCopy } from "@/capabilities/attribution-dashboard/copy";
@@ -74,10 +74,10 @@ export function BmjDashboard() {
     };
 
   return (
-    <div className="flex min-w-0 flex-col gap-5">
-      <PlatformPageHeader
+    <div className="flex min-w-0 flex-col gap-6">
+      <B2CPageHeader
         title="BMJ dashboard"
-        description="Visits, sign-ups, and money from BMJ links."
+        subtitle="Visits, sign-ups, and money from BMJ links."
       />
       <B2CSegmentedTabs
         items={tabsForMode("internal").map((item) => ({ id: item.id, label: item.label }))}

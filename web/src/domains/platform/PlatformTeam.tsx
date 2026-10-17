@@ -1,17 +1,14 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { LuShieldCheck } from "react-icons/lu";
 import {
   AsyncBoundary,
   Badge,
   Button,
   ConfirmModal,
-  Panel,
-  PlatformPageHeader,
-  Row,
-  RowList,
+  B2CPageHeader,
 } from "@/foundation/ui";
+import Table from "@/foundation/table/Table";
 import { InvitePlatformAdminModal } from "@/domains/platform/InvitePlatformAdminModal";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import {
@@ -52,10 +49,10 @@ export function PlatformTeam() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PlatformPageHeader
+      <B2CPageHeader
         title="Platform team"
-        actions={
-          <Button variant="primary" onClick={() => setInviteOpen(true)}>
+        action={
+          <Button themeType="b2b" variant="commit" onClick={() => setInviteOpen(true)}>
             Add team member
           </Button>
         }
@@ -67,64 +64,74 @@ export function PlatformTeam() {
         onInvited={() => state.reload()}
       />
 
-      <Panel title="Administrators" padding="none">
-        <AsyncBoundary
-          state={state}
-          isEmpty={(rows) => rows.length === 0}
-          empty={{
-            title: "No platform administrators",
-            description:
-              "Add someone by email. They will be invited to set a password if they are new.",
-            action: (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setInviteOpen(true)}
-              >
-                Add team member
-              </Button>
-            ),
-            bare: true,
-          }}
-        >
-          {(admins) => (
-            <RowList flush>
-              {admins.map((user) => {
-                const isSelf = selfId !== null && user.id === selfId;
-                return (
-                  <Row key={user.id}>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-osce-data font-medium text-ink">
-                        {user.email}
-                      </p>
-                      <p className="truncate text-osce-meta text-ink-subtle">
-                        {user.name || "No name"} · joined{" "}
-                        {formatDay(user.created_at)}
-                        {isSelf ? " · you" : ""}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Badge tone="success">
-                        <LuShieldCheck className="mr-1 h-3 w-3" aria-hidden />
-                        Console
-                      </Badge>
-                      {isSelf ? null : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setRevokeTarget(user)}
-                        >
-                          Revoke
-                        </Button>
-                      )}
-                    </div>
-                  </Row>
-                );
-              })}
-            </RowList>
-          )}
-        </AsyncBoundary>
-      </Panel>
+      <AsyncBoundary
+        state={state}
+        isEmpty={(rows) => rows.length === 0}
+        empty={{
+          title: "No platform administrators",
+          description:
+            "Add someone by email. They will be invited to set a password if they are new.",
+          action: (
+            <Button
+              themeType="b2b"
+              variant="secondary"
+              size="sm"
+              onClick={() => setInviteOpen(true)}
+            >
+              Add team member
+            </Button>
+          ),
+        }}
+      >
+        {(admins) => (
+          <Table<User>
+            rows={admins}
+            themeType="b2b"
+            idField="id"
+            title="Administrators"
+            columns={[
+              {
+                header: "Member",
+                key: "email",
+                priority: "primary",
+                render: (user) => (
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-ink">{user.email}</p>
+                    <p className="truncate text-osce-meta text-ink-subtle">
+                      {user.name || "No name"} · joined {formatDay(user.created_at)}
+                      {selfId !== null && user.id === selfId ? " · you" : ""}
+                    </p>
+                  </div>
+                ),
+              },
+              {
+                header: "Access",
+                key: "is_platform_admin" as keyof User,
+                render: () => (
+                  <Badge tone="success" dot>
+                    Console
+                  </Badge>
+                ),
+              },
+              {
+                header: "",
+                key: "id",
+                render: (user) =>
+                  selfId !== null && user.id === selfId ? null : (
+                    <Button
+                      themeType="b2b"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRevokeTarget(user)}
+                    >
+                      Revoke
+                    </Button>
+                  ),
+              },
+            ]}
+          />
+        )}
+      </AsyncBoundary>
 
       <ConfirmModal
         isOpen={revokeTarget !== null}

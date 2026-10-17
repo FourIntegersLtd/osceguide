@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { IconType } from "react-icons";
 import { HiOutlineChevronRight } from "react-icons/hi2";
 import { cn } from "@/foundation/ui/cn";
+import { Badge } from "@/foundation/ui/Badge";
 import { Button } from "@/foundation/ui/Button";
 import { EmptyState } from "@/foundation/ui/EmptyState";
 import { cardScrollBody } from "@/foundation/ui/Card";
+import * as b2bTokens from "@/foundation/ui/b2bTokens";
 
 /**
  * Staff console layout primitives.
@@ -65,9 +66,9 @@ export function FoldSection({
             aria-hidden
           />
           {number !== undefined ? (
-            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-b2c-surface-muted px-1.5 text-osce-caption font-semibold text-b2c-text-muted">
+            <Badge tone="neutral" size="xs">
               {number}
-            </span>
+            </Badge>
           ) : null}
           <span className="truncate">{title}</span>
           {meta ? <span className="flex shrink-0 gap-1">{meta}</span> : null}
@@ -141,98 +142,6 @@ export function Panel({
   );
 }
 
-/**
- * A card holding a divided list. Every listing on the console is one.
- *
- * `flush` drops the outer border for a list living inside a `Panel
- * padding="none"` body — a bordered list inside a bordered panel reads as a
- * box in a box, which is the exact clutter this kit exists to remove.
- */
-export function RowList({
-  children,
-  flush = false,
-  className,
-}: {
-  children: React.ReactNode;
-  flush?: boolean;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        flush
-          ? ""
-          : cn("rounded-osce-lg border border-border bg-surface", cardScrollBody),
-        className,
-      )}
-    >
-      <ul className="divide-y divide-border">{children}</ul>
-    </div>
-  );
-}
-
-export function Row({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <li
-      className={cn(
-        "flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 sm:px-6",
-        className,
-      )}
-    >
-      {children}
-    </li>
-  );
-}
-
-/** A `Row` that is a whole link — the destination pattern (directories, "go to"). */
-export function RowLink({
-  href,
-  title,
-  subtitle,
-  icon: Icon,
-  trailing,
-}: {
-  href: string;
-  title: string;
-  subtitle?: string;
-  icon?: IconType;
-  trailing?: React.ReactNode;
-}) {
-  return (
-    <li>
-      <Link
-        href={href}
-        className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-surface-raised sm:px-6"
-      >
-        {Icon ? (
-          <Icon className="h-4 w-4 shrink-0 text-ink-subtle" aria-hidden />
-        ) : null}
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-osce-data font-medium text-ink">
-            {title}
-          </span>
-          {subtitle ? (
-            <span className="block truncate text-osce-meta text-ink-subtle">
-              {subtitle}
-            </span>
-          ) : null}
-        </span>
-        {trailing}
-        <HiOutlineChevronRight
-          className="h-4 w-4 shrink-0 text-ink-subtle"
-          aria-hidden
-        />
-      </Link>
-    </li>
-  );
-}
-
 /** Cursor paging: the footer of a `padding="none"` panel's list, with the failure beside the button. */
 export function LoadMore({
   hasMore,
@@ -262,38 +171,51 @@ export function LoadMore({
   );
 }
 
-/** A grid of `StatTile` that fills the row whatever the count — three tiles never leave a hole. */
-export function StatGrid({ children }: { children: React.ReactNode }) {
+const STAT_COLUMNS = {
+  4: "sm:grid-cols-2 lg:grid-cols-4",
+  6: "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6",
+} as const;
+
+/** The assess dashboard's tile grid: `StatTile`s, four across from `lg` (six from `xl` for a wider set). */
+export function StatGrid({
+  children,
+  label,
+  columns = 4,
+}: {
+  children: React.ReactNode;
+  /** Names the group for assistive technology. */
+  label?: string;
+  columns?: keyof typeof STAT_COLUMNS;
+}) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+    <section aria-label={label} className={cn("grid grid-cols-1 gap-3", STAT_COLUMNS[columns])}>
       {children}
-    </div>
+    </section>
   );
 }
 
+/** One count, drawn as the assess stat card; a tile with an `href` is a link. */
 export function StatTile({
   label,
   value,
-  icon: Icon,
+  href,
 }: {
   label: string;
   value: number | string;
-  icon: IconType;
+  href?: string;
 }) {
-  return (
-    <div className="flex items-start justify-between gap-3 rounded-osce-lg border border-border bg-surface p-4">
-      <div className="min-w-0">
-        <p className="text-osce-caption font-semibold uppercase tracking-wide text-ink-subtle">
-          {label}
-        </p>
-        <p className="mt-1 truncate font-heading text-osce-heading font-semibold tabular-nums text-ink">
-          {value}
-        </p>
-      </div>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-osce-md bg-accent-subtle text-accent">
-        <Icon className="h-4 w-4" aria-hidden />
-      </span>
-    </div>
+  const body = (
+    <>
+      <span className={b2bTokens.b2bEyebrow}>{label}</span>
+      <span className={b2bTokens.b2bStatCardValue}>{value}</span>
+    </>
+  );
+  return href ? (
+    <Link href={href} className={b2bTokens.b2bStatCard}>
+      {body}
+    </Link>
+  ) : (
+    <div className={b2bTokens.b2bStatCard}>{body}</div>
   );
 }
 

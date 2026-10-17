@@ -14,7 +14,6 @@ import {
   ConfirmModal,
   Input,
   LoadMore,
-  QuietCard,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
 import { errorMessage, useAsync, useCursorPages } from "@/foundation/hooks";
@@ -157,15 +156,11 @@ function SettleCard({
   const paid = referral.payout_status === "paid";
   const amount = `${formatMoney(referral.earned_pence)} to ${referral.referrer_email}`;
   return (
-    <QuietCard
-      title={paid ? `Settled ${amount}` : `Mark ${amount} as paid`}
-      subtitle={`Referred ${referral.referred_email ?? "someone"}${
-        referral.payout_reference
-          ? ` · reference ${referral.payout_reference}`
-          : ""
-      }`}
-      actions={
-        paid ? (
+    <B2CGroupedSection
+      eyebrow={paid ? `Settled ${amount}` : `Mark ${amount} as paid`}
+      action={
+        <span className="flex flex-wrap items-center gap-2">
+          paid ? (
           <>
             <Button
               variant="ghost"
@@ -182,7 +177,7 @@ function SettleCard({
         ) : (
           <>
             <Button
-              variant="primary"
+              themeType="b2b" variant="commit"
               size="sm"
               disabled={busy}
               onClick={() =>
@@ -199,28 +194,36 @@ function SettleCard({
             </Button>
           </>
         )
+        </span>
       }
     >
-      {paid ? null : (
-        <>
-          {referral.payout_details ? (
-            <PayTo
-              details={referral.payout_details}
-              onCopyFailed={onCopyFailed}
+      <B2CGroupedRow title={`Referred ${referral.referred_email ?? "someone"}${
+        referral.payout_reference
+          ? ` · reference ${referral.payout_reference}`
+          : ""
+      }`} />
+      <div className="flex flex-col gap-3 px-5 py-4">
+        {paid ? null : (
+          <>
+            {referral.payout_details ? (
+              <PayTo
+                details={referral.payout_details}
+                onCopyFailed={onCopyFailed}
+              />
+            ) : (
+              <NoBankDetails />
+            )}
+            <Input
+              label="Payment reference"
+              value={reference}
+              onChange={(event) => onReference(event.target.value)}
+              placeholder="e.g. FT-2026-09-24"
+              hint="The bank transfer reference, so you can match it on a statement later. Optional."
             />
-          ) : (
-            <NoBankDetails />
-          )}
-          <Input
-            label="Payment reference"
-            value={reference}
-            onChange={(event) => onReference(event.target.value)}
-            placeholder="e.g. FT-2026-09-24"
-            hint="The bank transfer reference, so you can match it on a statement later. Optional."
-          />
-        </>
-      )}
-    </QuietCard>
+          </>
+        )}
+      </div>
+    </B2CGroupedSection>
   );
 }
 

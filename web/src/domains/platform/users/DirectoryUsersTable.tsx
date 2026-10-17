@@ -8,8 +8,6 @@ import Table, {
   type FetchPageResult,
 } from "@/foundation/table/Table";
 import { Badge } from "@/foundation/ui";
-import { b2cTableCellText } from "@/foundation/ui/productTokens";
-import { cn } from "@/foundation/ui/cn";
 import {
   readDirectory,
   type DirectoryFilters,
@@ -34,12 +32,16 @@ export function DirectoryUsersTable({
   filters,
   hrefFor,
   totalCount,
+  title,
+  description,
   empty,
 }: {
   filters: DirectoryFilters;
   hrefFor: (path: string) => string;
   /** From `directory/summary` when the active filters match a summary bucket. */
   totalCount?: number;
+  title?: string;
+  description?: string;
   empty: {
     title: string;
     description?: string;
@@ -75,12 +77,11 @@ export function DirectoryUsersTable({
           <div className="min-w-0">
             <Link
               href={hrefFor(`/users/${user.id}`)}
-              className={cn(b2cTableCellText, "font-medium text-ink hover:text-accent")}
+              className="font-medium text-ink hover:underline"
             >
               {user.email}
             </Link>
-            <p className={cn("mt-0.5 truncate text-osce-meta text-ink-subtle", b2cTableCellText,
-              )}>
+            <p className="mt-0.5 truncate text-osce-meta text-ink-subtle">
               {user.name || "No name"} · joined {formatDay(user.created_at)}
               {user.last_login_at
                 ? ` · last signed in ${formatDay(user.last_login_at)}`
@@ -147,6 +148,9 @@ export function DirectoryUsersTable({
       idField="id"
       defaultItemsPerPage={10}
       empty={empty}
+      title={title}
+      description={description}
+      themeType="b2b"
     />
   );
 }

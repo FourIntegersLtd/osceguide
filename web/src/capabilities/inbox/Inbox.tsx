@@ -11,7 +11,6 @@ import {
   Badge,
   Button,
   LoadMore,
-  QuietCard,
 } from "@/foundation/ui";
 import { formatLongDate } from "@/foundation/format";
 import { errorMessage, useCursorPages } from "@/foundation/hooks";
@@ -98,17 +97,21 @@ export function Inbox() {
             </B2CHero>
             {failure ? <p role="alert" className="text-osce-meta text-ink-muted">{failure}</p> : null}
             {opened ? (
-              <QuietCard
-                title={opened.subject}
-                subtitle={`${opened.from_label} · ${formatLongDate(opened.created_at)}`}
-                actions={
-                  <Button variant="ghost" size="sm" onClick={() => setOpened(null)}>
+              <B2CGroupedSection
+                eyebrow={opened.subject}
+                action={
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setOpened(null)}>
                     Close
                   </Button>
+                  </span>
                 }
               >
-                <p className="whitespace-pre-wrap text-osce-body text-ink">{opened.body}</p>
-              </QuietCard>
+                <B2CGroupedRow title={`${opened.from_label} · ${formatLongDate(opened.created_at)}`} />
+                <div className="flex flex-col gap-3 px-5 py-4">
+                  <p className="whitespace-pre-wrap text-osce-body text-ink">{opened.body}</p>
+                </div>
+              </B2CGroupedSection>
             ) : null}
             <B2CGroupedSection eyebrow="Messages">
               {items.map((message) => (

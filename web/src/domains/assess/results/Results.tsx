@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, B2CPageHeader, Button, EmptyState, StepGuide, b2bTokens } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CPageHeader, Button, EmptyState, StatGrid, StatTile, StepGuide } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
@@ -179,13 +179,10 @@ function OutcomeTiles({
     { label: "Awaiting marking", value: awaitingMarking },
   ];
   return (
-    <section aria-label="Outcomes" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <StatGrid label="Outcomes" columns={6}>
       {tiles.map((tile) => (
-        <div key={tile.label} className={b2bTokens.b2bStatCard}>
-          <span className={b2bTokens.b2bEyebrow}>{tile.label}</span>
-          <span className={b2bTokens.b2bStatCardValue}>{tile.value}</span>
-        </div>
+        <StatTile key={tile.label} label={tile.label} value={tile.value} />
       ))}
-    </section>
+    </StatGrid>
   );
 }

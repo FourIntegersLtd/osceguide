@@ -13,7 +13,6 @@ import {
   Button,
   ButtonLink,
   LoadMore,
-  QuietCard,
   Textarea,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
@@ -72,17 +71,16 @@ function AnswerCard({
   const open = flag.status === "open";
   const reporter = flag.reporter_name ?? "The reporter";
   return (
-    <QuietCard
-      title={stationName(flag)}
-      subtitle={`${reporter} reported ${formatMoment(flag.created_at)}`}
-      actions={
-        <>
+    <B2CGroupedSection
+      eyebrow={stationName(flag)}
+      action={
+        <span className="flex flex-wrap items-center gap-2">
           <ButtonLink href={stationLink(flag)} target="_blank" rel="noreferrer" variant="ghost" size="sm">
             Open station
           </ButtonLink>
           {open ? (
             <>
-              <Button variant="primary" size="sm" isLoading={busy} onClick={onAnswer}>
+              <Button themeType="b2b" variant="commit" size="sm" isLoading={busy} onClick={onAnswer}>
                 Send answer
               </Button>
               <Button variant="ghost" size="sm" disabled={busy} onClick={onClose}>
@@ -99,30 +97,33 @@ function AnswerCard({
               </Button>
             </>
           )}
-        </>
+        </span>
       }
     >
-      {flag.reason ? (
-        <p className="mb-3 whitespace-pre-wrap text-osce-body text-ink">
-          <span className="font-medium">{reporter} said: </span>
-          {flag.reason}
-        </p>
-      ) : null}
-      {open ? (
-        <Textarea
-          label="Answer to the reporter"
-          value={note}
-          maxLength={2000}
-          placeholder="Fixed in version 3. / Deliberate: the brief reads this way on purpose."
-          hint={`${reporter} gets this in their inbox, with the station's name.`}
-          onChange={(event) => onNote(event.target.value)}
-        />
-      ) : (
-        <p className="whitespace-pre-wrap text-osce-body text-ink">
-          {flag.resolution_note ?? "Answered without a note."}
-        </p>
-      )}
-    </QuietCard>
+      <B2CGroupedRow title={`${reporter} reported ${formatMoment(flag.created_at)}`} />
+      <div className="flex flex-col gap-3 px-5 py-4">
+        {flag.reason ? (
+          <p className="whitespace-pre-wrap text-osce-body text-ink">
+            <span className="font-medium">{reporter} said: </span>
+            {flag.reason}
+          </p>
+        ) : null}
+        {open ? (
+          <Textarea
+            label="Answer to the reporter"
+            value={note}
+            maxLength={2000}
+            placeholder="Fixed in version 3. / Deliberate: the brief reads this way on purpose."
+            hint={`${reporter} gets this in their inbox, with the station's name.`}
+            onChange={(event) => onNote(event.target.value)}
+          />
+        ) : (
+          <p className="whitespace-pre-wrap text-osce-body text-ink">
+            {flag.resolution_note ?? "Answered without a note."}
+          </p>
+        )}
+      </div>
+    </B2CGroupedSection>
   );
 }
 
@@ -172,11 +173,11 @@ export function StationFlags() {
   return (
     <div className="flex flex-col gap-6">
       <B2CPageHeader title="Station reports" subtitle="Cases readers said were wrong." />
-      {failure ? <Alert tone="danger">{failure}</Alert> : null}
       {/* The headline counts the open queue, so it comes from the one read and only on that tab. */}
       {status === "open" ? (
         <AsyncBoundary state={queue}>{(flags) => hero(flags, pages.hasMore)}</AsyncBoundary>
       ) : null}
+      {failure ? <Alert tone="danger">{failure}</Alert> : null}
       <B2CSegmentedTabs
         items={FILTERS}
         value={status}

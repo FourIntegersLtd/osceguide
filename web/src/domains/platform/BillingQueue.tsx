@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   B2CSegmentedTabs,
-  PlatformPageHeader,
+  B2CPageHeader,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
 import { BillingEvents } from "@/domains/platform/billing/BillingEvents";
@@ -22,9 +22,9 @@ export function BillingQueue() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PlatformPageHeader
+      <B2CPageHeader
         title="Billing"
-        description="Plans on sale and payment updates from Stripe. Failed ones come first."
+        subtitle="Plans on sale and payment updates from Stripe. Failed ones come first."
       />
       <PlansPanel />
       <BillingEvents

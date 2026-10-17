@@ -1,5 +1,6 @@
 "use client";
 
+import Table from "@/foundation/table/Table";
 import { useCallback, useState } from "react";
 import {
   ActionRail,
@@ -10,9 +11,7 @@ import {
   EmptyPanel,
   FactList,
   Panel,
-  PlatformPageHeader,
-  Row,
-  RowList,
+  B2CPageHeader,
 } from "@/foundation/ui";
 import { humanise } from "@/foundation/format";
 import { useAsync, useToast } from "@/foundation/hooks";
@@ -65,16 +64,16 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
           const diagnosis = diagnoseAttempt(attempt);
           return (
             <>
-              <PlatformPageHeader
+              <B2CPageHeader
                 title={`${attemptKindLabel(attempt.kind)} · ${formatMoment(attempt.created_at)}`}
-                description={`${attempt.id}${attempt.room_name ? ` · room ${attempt.room_name}` : ""}`}
+                subtitle={`${attempt.id}${attempt.room_name ? ` · room ${attempt.room_name}` : ""}`}
                 back={{
                   href: hrefFor(
                     `/users/${encodeURIComponent(attempt.user_id)}`,
                   ),
                   label: "Account",
                 }}
-                actions={
+                action={
                   <Badge tone={attemptStatusTone(attempt.status)}>
                     {attemptStatusLabel(attempt.status)}
                   </Badge>
@@ -93,38 +92,43 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
                       </div>
                     </Panel>
 
-                    <Panel
+                    <Table<PlatformAttemptDetail["jobs"][number]>
+                      rows={attempt.jobs}
+                      themeType="b2b"
+                      idField="id"
                       title="Marking runs"
                       description="Each time this attempt was sent for marking, newest first."
-                      padding="none"
-                    >
-                      {attempt.jobs.length === 0 ? (
-                        <EmptyPanel bare title="It was never sent for marking" />
-                      ) : (
-                        <RowList flush>
-                          {attempt.jobs.map((job) => (
-                            <Row key={job.id}>
-                              <div className="min-w-0">
-                                <p className="text-osce-data font-medium text-ink">
-                                  #{job.id} ·{" "}
-                                  {job.policy_version ?? "default policy"}
-                                </p>
-                                <p className="text-osce-meta text-ink-subtle">
-                                  {job.attempts} run
-                                  {job.attempts === 1 ? "" : "s"}
-                                  {job.scheduled_at
-                                    ? ` · scheduled ${formatMoment(job.scheduled_at)}`
-                                    : ""}
-                                </p>
-                              </div>
-                              <Badge tone={jobStatusTone(job.status)}>
-                                {job.status}
-                              </Badge>
-                            </Row>
-                          ))}
-                        </RowList>
-                      )}
-                    </Panel>
+                      empty={{ title: "It was never sent for marking" }}
+                      columns={[
+                        {
+                          header: "Run",
+                          key: "id",
+                          priority: "primary",
+                          render: (job) => (
+                            <div className="min-w-0">
+                              <p className="font-medium text-ink">
+                                #{job.id} · {job.policy_version ?? "default policy"}
+                              </p>
+                              <p className="text-osce-meta text-ink-subtle">
+                                {job.attempts} run{job.attempts === 1 ? "" : "s"}
+                                {job.scheduled_at
+                                  ? ` · scheduled ${formatMoment(job.scheduled_at)}`
+                                  : ""}
+                              </p>
+                            </div>
+                          ),
+                        },
+                        {
+                          header: "Status",
+                          key: "status",
+                          render: (job) => (
+                            <Badge tone={jobStatusTone(job.status)} dot>
+                              {job.status}
+                            </Badge>
+                          ),
+                        },
+                      ]}
+                    />
 
                     {/* What the candidate reads, drawn from the same rubric, so support
                         can see the feedback a complaint is about rather than infer it. */}

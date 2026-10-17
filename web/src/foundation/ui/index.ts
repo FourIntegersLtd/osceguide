@@ -80,7 +80,6 @@ export {
   type B2CSegmentedTabItem,
   type B2CSegmentedTabsProps,
 } from "@/foundation/ui/B2CSegmentedTabs";
-export { QuietCard } from "@/foundation/ui/QuietCard";
 export { B2CSkeleton } from "@/foundation/ui/B2CSkeleton";
 export { default as Back } from "@/foundation/ui/Back";
 export { default as Confetti } from "@/foundation/ui/Confetti";
@@ -112,7 +111,6 @@ export * as productTokens from "@/foundation/ui/productTokens";
 export * as b2bTokens from "@/foundation/ui/b2bTokens";
 
 /* Platform chrome — generic staff-console layout primitives. */
-export { PlatformPageHeader } from "@/foundation/ui/PlatformPageHeader";
 export { PlatformTabbedScreen } from "@/foundation/ui/PlatformTabbedScreen";
 export {
   PlatformFilterBar,
@@ -123,9 +121,6 @@ export {
 export {
   Panel,
   FoldSection,
-  RowList,
-  Row,
-  RowLink,
   LoadMore,
   StatGrid,
   StatTile,

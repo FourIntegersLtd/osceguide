@@ -7,10 +7,8 @@ import {
   Badge,
   Button,
   ConfirmModal,
-  Panel,
-  Row,
-  RowList,
 } from "@/foundation/ui";
+import Table, { type Column } from "@/foundation/table/Table";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
@@ -41,38 +39,61 @@ export function StationsTab({ userId }: { userId: string }) {
     (signal) => listUserStations(userId, signal),
     [userId],
   );
+  const columns: Column<StationProgress>[] = [
+    {
+      header: "Station",
+      key: "title",
+      priority: "primary",
+      render: (row) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-ink">
+            {row.title}{" "}
+            <span className="text-osce-meta font-normal text-ink-subtle">
+              · {row.exam_code.toUpperCase()}
+            </span>
+          </p>
+          <p className="truncate text-osce-meta text-ink-subtle">
+            {row.attempts} attempt{row.attempts === 1 ? "" : "s"} · {row.evaluated} marked · counter{" "}
+            {row.entry_attempts}
+            {row.last_attempt_at ? ` · last ${formatMoment(row.last_attempt_at)}` : ""}
+          </p>
+        </div>
+      ),
+    },
+    {
+      header: "Last status",
+      key: "last_status",
+      render: (row) =>
+        row.last_status ? (
+          <Badge dot tone={attemptStatusTone(row.last_status)}>
+            {attemptStatusLabel(row.last_status)}
+          </Badge>
+        ) : null,
+    },
+    {
+      header: "Actions",
+      key: "station_id",
+      render: (row) => <StationActions userId={userId} row={row} onChanged={state.reload} />,
+    },
+  ];
   return (
-    <Panel
-      title="Station progress"
-      description="Every station this person has taken. Their attempt limit is checked against this count."
-      padding="none"
-    >
-      <AsyncBoundary
-        state={state}
-        empty={{
-          title: "No stations yet",
-          description: "This person has not sat anything.",
-          bare: true,
-        }}
-      >
-        {(rows) => (
-          <RowList flush>
-            {rows.map((row) => (
-              <StationRow
-                key={row.station_id}
-                userId={userId}
-                row={row}
-                onChanged={state.reload}
-              />
-            ))}
-          </RowList>
-        )}
-      </AsyncBoundary>
-    </Panel>
+    <AsyncBoundary state={state}>
+      {(rows) => (
+        <Table<StationProgress>
+          rows={rows}
+          themeType="b2b"
+          idField="station_id"
+          title="Station progress"
+          description="Every station this person has taken. Their attempt limit is checked against this count."
+          empty={{ title: "No stations yet", description: "This person has not sat anything." }}
+          columns={columns}
+        />
+      )}
+    </AsyncBoundary>
   );
 }
 
-function StationRow({
+function StationActions({
   userId,
   row,
   onChanged,
@@ -132,56 +153,23 @@ function StationRow({
   };
 
   return (
-    <Row className="flex-col items-stretch gap-3">
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-osce-data font-medium text-ink">
-            {row.title}{" "}
-            <span className="text-osce-meta font-normal text-ink-subtle">
-              · {row.exam_code.toUpperCase()}
-            </span>
-          </p>
-          <p className="truncate text-osce-meta text-ink-subtle">
-            {row.attempts} attempt{row.attempts === 1 ? "" : "s"} ·{" "}
-            {row.evaluated} marked · counter {row.entry_attempts}
-            {row.last_attempt_at
-              ? ` · last ${formatMoment(row.last_attempt_at)}`
-              : ""}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {row.last_status ? (
-            <Badge tone={attemptStatusTone(row.last_status)}>
-              {attemptStatusLabel(row.last_status)}
-            </Badge>
-          ) : null}
-          {row.last_attempt_id ? (
-            <Link
-              href={hrefFor(
-                `/attempts/${encodeURIComponent(row.last_attempt_id)}`,
-              )}
-            >
-              <Button variant="ghost" size="sm">
-                Newest attempt
-              </Button>
-            </Link>
-          ) : null}
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={busy}
-            onClick={() => setConfirmReset(true)}
-          >
-            Reset attempts
+    <div className="flex flex-wrap items-center gap-2">
+      {row.last_attempt_id ? (
+        <Link href={hrefFor(`/attempts/${encodeURIComponent(row.last_attempt_id)}`)}>
+          <Button variant="ghost" size="sm">
+            Newest attempt
           </Button>
-          <InlineAction
-            label="Delete progress"
-            tone="danger"
-            description="Removes every attempt, transcript and marking at this station and takes it out of their practice sets. This cannot be undone."
-            onConfirm={remove}
-          />
-        </div>
-      </div>
+        </Link>
+      ) : null}
+      <Button variant="secondary" size="sm" disabled={busy} onClick={() => setConfirmReset(true)}>
+        Reset attempts
+      </Button>
+      <InlineAction
+        label="Delete progress"
+        tone="danger"
+        description="Removes every attempt, transcript and marking at this station and takes it out of their practice sets. This cannot be undone."
+        onConfirm={remove}
+      />
       <ConfirmModal
         isOpen={confirmReset}
         onCancel={() => {
@@ -195,6 +183,6 @@ function StationRow({
         confirmText="Yes, reset"
         message={`Reset attempts for "${row.title}" to 0? Their attempts and marking are kept; they may sit it again.`}
       />
-    </Row>
+    </div>
   );
 }

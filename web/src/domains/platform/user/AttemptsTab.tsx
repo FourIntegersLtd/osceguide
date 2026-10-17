@@ -1,16 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AsyncBoundary,
   Badge,
-  LoadMore,
-  Panel,
-  Row,
-  RowList,
-  Select,
+  PlatformFilterBar,
+  PlatformFilterSelect,
 } from "@/foundation/ui";
+import Table, { type Column } from "@/foundation/table/Table";
 import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { attemptKindLabel } from "@/capabilities/transcripts/kindLabel";
@@ -52,17 +50,60 @@ export function AttemptsTab({ userId }: { userId: string }) {
     [userId, status],
   );
 
+  const columns = useMemo<Column<PlatformAttempt>[]>(
+    () => [
+      {
+        header: "Attempt",
+        key: "kind",
+        priority: "primary",
+        render: (attempt) => {
+          const diagnosis = diagnoseAttempt(attempt);
+          return (
+            <Link
+              href={hrefFor(`/attempts/${encodeURIComponent(attempt.id)}`)}
+              className="block min-w-0"
+            >
+              <p className="truncate font-medium text-ink hover:underline">
+                {attemptKindLabel(attempt.kind)} · {formatMoment(attempt.created_at)}
+              </p>
+              <p className="truncate text-osce-meta text-ink-subtle">
+                {diagnosis
+                  ? diagnosis.problem
+                  : attempt.result_policy_versions.length > 0
+                    ? `Marked under ${attempt.result_policy_versions.join(", ")}`
+                    : attempt.scoring_job
+                      ? `Marking ${attempt.scoring_job.status}`
+                      : attempt.failed_reason
+                        ? `Failed: ${attempt.failed_reason}`
+                        : "-"}
+              </p>
+            </Link>
+          );
+        },
+      },
+      {
+        header: "Status",
+        key: "status",
+        render: (attempt) => (
+          <div className="flex flex-wrap items-center gap-2">
+            {diagnoseAttempt(attempt) ? <Badge tone="danger" dot>Needs attention</Badge> : null}
+            <Badge tone={attemptStatusTone(attempt.status)} dot>
+              {attemptStatusLabel(attempt.status)}
+            </Badge>
+          </div>
+        ),
+      },
+    ],
+    [hrefFor],
+  );
+
   return (
-    <Panel
-      title="Attempts"
-      description="Newest first. Each row says what, if anything, is wrong with it."
-      actions={
-        <Select
-          selectSize="sm"
+    <div className="flex flex-col gap-4">
+      <PlatformFilterBar>
+        <PlatformFilterSelect
           aria-label="Attempt status"
-          className="w-44"
           value={status}
-          onChange={(event) => setStatus(event.target.value)}
+          onChange={setStatus}
         >
           <option value="">Every status</option>
           {ATTEMPT_STATUSES.map((value) => (
@@ -70,77 +111,27 @@ export function AttemptsTab({ userId }: { userId: string }) {
               {attemptStatusLabel(value)}
             </option>
           ))}
-        </Select>
-      }
-      padding="none"
-    >
-      <AsyncBoundary
-        state={pages.state}
-        isEmpty={(items) => items.length === 0}
-        empty={{
-          title: "No attempts",
-          description: status
-            ? "None with that status."
-            : "This person has not sat anything yet.",
-          bare: true,
-        }}
-      >
+        </PlatformFilterSelect>
+      </PlatformFilterBar>
+      <AsyncBoundary state={pages.state}>
         {(items) => (
-          <>
-            <RowList flush>
-              {items.map((attempt) => (
-                <AttemptRow
-                  key={attempt.id}
-                  attempt={attempt}
-                  href={hrefFor(`/attempts/${encodeURIComponent(attempt.id)}`)}
-                />
-              ))}
-            </RowList>
-            <LoadMore
-              hasMore={pages.hasMore}
-              busy={pages.loadingMore}
-              onLoad={pages.loadMore}
-              error={pages.moreError}
-            />
-          </>
+          <Table<PlatformAttempt>
+            rows={items}
+            more={pages}
+            themeType="b2b"
+            idField="id"
+            title="Attempts"
+            description="Newest first. Each row says what, if anything, is wrong with it."
+            columns={columns}
+            empty={{
+              title: "No attempts",
+              description: status
+                ? "None with that status."
+                : "This person has not sat anything yet.",
+            }}
+          />
         )}
       </AsyncBoundary>
-    </Panel>
-  );
-}
-
-function AttemptRow({
-  attempt,
-  href,
-}: {
-  attempt: PlatformAttempt;
-  href: string;
-}) {
-  const diagnosis = diagnoseAttempt(attempt);
-  return (
-    <Row className="flex-col items-stretch sm:flex-row sm:items-center">
-      <Link href={href} className="min-w-0 flex-1">
-        <p className="truncate text-osce-data font-medium text-ink">
-          {attemptKindLabel(attempt.kind)} · {formatMoment(attempt.created_at)}
-        </p>
-        <p className="truncate text-osce-meta text-ink-subtle">
-          {diagnosis
-            ? diagnosis.problem
-            : attempt.result_policy_versions.length > 0
-              ? `Marked under ${attempt.result_policy_versions.join(", ")}`
-              : attempt.scoring_job
-                ? `Marking ${attempt.scoring_job.status}`
-                : attempt.failed_reason
-                  ? `Failed: ${attempt.failed_reason}`
-                  : "-"}
-        </p>
-      </Link>
-      <div className="flex shrink-0 items-center gap-2">
-        {diagnosis ? <Badge tone="danger">Needs attention</Badge> : null}
-        <Badge tone={attemptStatusTone(attempt.status)}>
-          {attemptStatusLabel(attempt.status)}
-        </Badge>
-      </div>
-    </Row>
+    </div>
   );
 }

@@ -4,17 +4,14 @@ import { Suspense, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AsyncBoundary,
-  LoadMore,
-  Panel,
   PlatformFilterBar,
   PlatformFilterDivider,
   PlatformFilterSearch,
-  PlatformPageHeader,
-  RowList,
+  B2CPageHeader,
 } from "@/foundation/ui";
 import { useCursorPages } from "@/foundation/hooks";
 import { listPlatformAudit } from "@/domains/platform/support/api";
-import { PlatformAuditRow } from "@/domains/platform/user/HistoryTab";
+import { AuditTable } from "@/domains/platform/user/HistoryTab";
 
 /**
  * The three audit filters, kept in the address (`?org=&actor=&action=`) so a
@@ -66,9 +63,9 @@ function AuditLog() {
   );
   return (
     <div className="flex flex-col gap-6">
-      <PlatformPageHeader
+      <B2CPageHeader
         title="Audit log"
-        description="Who changed what, across the platform."
+        subtitle="Who changed what, across the platform."
       />
       <PlatformFilterBar>
         <PlatformFilterSearch
@@ -90,31 +87,15 @@ function AuditLog() {
           aria-label="Action name or prefix"
         />
       </PlatformFilterBar>
-      <Panel padding="none">
-        <AsyncBoundary
-          state={pages.state}
-          isEmpty={(items) => items.length === 0}
-          empty={{
-            title: "Nothing recorded",
-            description: "No rows match.",
-            bare: true,
-          }}
-        >
-          {(items) => (
-            <RowList flush>
-              {items.map((entry) => (
-                <PlatformAuditRow key={entry.id} entry={entry} />
-              ))}
-            </RowList>
-          )}
-        </AsyncBoundary>
-        <LoadMore
-          hasMore={pages.hasMore}
-          busy={pages.loadingMore}
-          onLoad={pages.loadMore}
-          error={pages.moreError}
-        />
-      </Panel>
+      <AsyncBoundary state={pages.state}>
+        {(items) => (
+          <AuditTable
+            rows={items}
+            more={pages}
+            empty={{ title: "Nothing recorded", description: "No rows match." }}
+          />
+        )}
+      </AsyncBoundary>
     </div>
   );
 }

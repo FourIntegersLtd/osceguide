@@ -1,14 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import {
-  AsyncBoundary,
-  Badge,
-  LoadMore,
-  Panel,
-  Row,
-  RowList,
-} from "@/foundation/ui";
+import { AsyncBoundary, Badge } from "@/foundation/ui";
+import Table, { type Column } from "@/foundation/table/Table";
 import { useCursorPages, useToast } from "@/foundation/hooks";
 import {
   listBillingEvents,
@@ -52,42 +46,68 @@ export function BillingEvents({
   );
 
   return (
-    <Panel
-      title={title}
-      description={description}
-      actions={actions}
-      padding="none"
-    >
-      <AsyncBoundary
-        state={pages.state}
-        isEmpty={(items) => items.length === 0}
-        empty={{ ...empty, bare: true }}
-      >
+    <div className="flex flex-col gap-4">
+      {actions}
+      <AsyncBoundary state={pages.state}>
         {(items) => (
-          <>
-            <RowList flush>
-              {items.map((event) => (
-                <EventRow
-                  key={event.event_id}
-                  event={event}
-                  onChanged={pages.state.reload}
-                />
-              ))}
-            </RowList>
-            <LoadMore
-              hasMore={pages.hasMore}
-              busy={pages.loadingMore}
-              onLoad={pages.loadMore}
-              error={pages.moreError}
-            />
-          </>
+          <Table<StripeEvent>
+            rows={items}
+            more={pages}
+            themeType="b2b"
+            idField="event_id"
+            title={title}
+            description={description}
+            empty={empty}
+            columns={eventColumns(pages.state.reload)}
+          />
         )}
       </AsyncBoundary>
-    </Panel>
+    </div>
   );
 }
 
-function EventRow({
+function eventColumns(onChanged: () => void): Column<StripeEvent>[] {
+  return [
+    {
+      header: "Delivery",
+      key: "event_type",
+      priority: "primary",
+      render: (event) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-ink">
+            {event.event_type} · {event.customer_email ?? "no address"}
+          </p>
+          <p className="truncate text-osce-meta text-ink-subtle">
+            {formatMoment(event.received_at)} · {event.event_id}
+            {event.price_id ? ` · ${event.price_id}` : ""}
+          </p>
+          {event.failure ? (
+            <p className="mt-1 text-osce-meta text-ink-muted">{event.failure}</p>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      header: "Status",
+      key: "processed_at",
+      render: (event) => {
+        const refused = !event.processed_at && !!event.failure;
+        return (
+          <Badge tone={event.processed_at ? "success" : refused ? "danger" : "neutral"} dot>
+            {event.processed_at ? "Applied" : refused ? "Refused" : "Pending"}
+          </Badge>
+        );
+      },
+    },
+    {
+      header: "",
+      key: "event_id",
+      render: (event) => <ReplayAction event={event} onChanged={onChanged} />,
+    },
+  ];
+}
+
+function ReplayAction({
   event,
   onChanged,
 }: {
@@ -95,41 +115,18 @@ function EventRow({
   onChanged: () => void;
 }) {
   const toast = useToast();
-  const refused = !event.processed_at && !!event.failure;
+  if (event.processed_at) return null;
   return (
-    <Row>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-osce-data font-medium text-ink">
-          {event.event_type} · {event.customer_email ?? "no address"}
-        </p>
-        <p className="truncate text-osce-meta text-ink-subtle">
-          {formatMoment(event.received_at)} · {event.event_id}
-          {event.price_id ? ` · ${event.price_id}` : ""}
-        </p>
-        {event.failure ? (
-          <p className="mt-1 text-osce-meta text-ink-muted">{event.failure}</p>
-        ) : null}
-      </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <Badge
-          tone={event.processed_at ? "success" : refused ? "danger" : "neutral"}
-        >
-          {event.processed_at ? "Applied" : refused ? "Refused" : "Pending"}
-        </Badge>
-        {!event.processed_at ? (
-          <InlineAction
-            label="Try again"
-            requireReason={false}
-            reasonLabel="Note"
-            description="Tries this payment update again. It only works once the problem is fixed, for example once the account or the plan exists."
-            onConfirm={async () => {
-              const result = await replayBillingEvent(event.event_id);
-              toast.success(`Replay: ${humanise(result.status)}`);
-              onChanged();
-            }}
-          />
-        ) : null}
-      </div>
-    </Row>
+    <InlineAction
+      label="Try again"
+      requireReason={false}
+      reasonLabel="Note"
+      description="Tries this payment update again. It only works once the problem is fixed, for example once the account or the plan exists."
+      onConfirm={async () => {
+        const result = await replayBillingEvent(event.event_id);
+        toast.success(`Replay: ${humanise(result.status)}`);
+        onChanged();
+      }}
+    />
   );
 }

@@ -179,7 +179,7 @@ function Recording({ kind, url }: { kind: string; url: string }) {
       src={url}
       controls
       preload="metadata"
-      className="w-full max-w-3xl rounded-panel border border-border bg-black"
+      className="w-full max-w-3xl rounded-panel border border-border bg-ink"
     />
   ) : (
     // eslint-disable-next-line jsx-a11y/media-has-caption -- staff preview of the voiced audio

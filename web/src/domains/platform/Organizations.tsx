@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import Table, { type TableMore } from "@/foundation/table/Table";
-import { b2cTableCellText } from "@/foundation/ui/productTokens";
-import { cn } from "@/foundation/ui/cn";
 import {
   AsyncBoundary,
   Button,
@@ -13,7 +11,7 @@ import {
   PlatformFilterDivider,
   PlatformFilterSearch,
   PlatformFilterSelect,
-  PlatformPageHeader,
+  B2CPageHeader,
 } from "@/foundation/ui";
 import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
@@ -65,11 +63,11 @@ export function Organizations() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PlatformPageHeader
+      <B2CPageHeader
         title="Organisations"
-        description="Institutions and partners."
-        actions={
-          <Button variant="primary" onClick={() => setProvisioning(true)}>
+        subtitle="Institutions and partners."
+        action={
+          <Button themeType="b2b" variant="commit" onClick={() => setProvisioning(true)}>
             New organisation
           </Button>
         }
@@ -184,7 +182,7 @@ function Directory({
             href={hrefFor(
               `/organizations/${encodeURIComponent(organization.slug)}`,
             )}
-            className={cn(b2cTableCellText, "font-medium text-ink hover:text-accent")}
+            className="font-medium text-ink hover:underline"
           >
             {organization.name}
           </Link>
@@ -194,10 +192,8 @@ function Directory({
         header: "Type",
         key: "org_type" as keyof Organization,
         render: (organization: Organization) => (
-          <span className={b2cTableCellText}>
-            {ORG_TYPES.find((type) => type.value === organization.org_type)
-              ?.label ?? organization.org_type}
-          </span>
+          ORG_TYPES.find((type) => type.value === organization.org_type)
+            ?.label ?? organization.org_type
         ),
       },
       {
@@ -211,9 +207,7 @@ function Directory({
         header: "Contract ends",
         key: "contract_ends_at" as keyof Organization,
         render: (organization: Organization) => (
-          <span className={b2cTableCellText}>
-            {formatDay(organization.contract_ends_at)}
-          </span>
+          formatDay(organization.contract_ends_at)
         ),
       },
     ],
@@ -225,6 +219,7 @@ function Directory({
       idField="id"
       rows={rows}
       more={more}
+      themeType="b2b"
     />
   );
 }

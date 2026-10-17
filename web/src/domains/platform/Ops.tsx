@@ -9,7 +9,7 @@ import {
   Button,
   FactList,
   Panel,
-  PlatformPageHeader,
+  B2CPageHeader,
 } from "@/foundation/ui";
 import { errorMessage, useAsync, useEventStream } from "@/foundation/hooks";
 import {
@@ -49,10 +49,10 @@ export function Ops() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PlatformPageHeader
+      <B2CPageHeader
         title="System health"
-        description="Pushed live from the platform."
-        actions={
+        subtitle="Pushed live from the platform."
+        action={
           <Badge tone={live.tone}>{live.text}</Badge>
         }
       />

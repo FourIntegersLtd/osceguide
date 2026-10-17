@@ -10,8 +10,6 @@ import {
 } from "react-icons/hi2";
 import Table, { type TableMore } from "@/foundation/table/Table";
 import { Badge } from "@/foundation/ui";
-import { b2cTableCellText } from "@/foundation/ui/productTokens";
-import { cn } from "@/foundation/ui/cn";
 import {
   AuthoringIconAction,
   AuthoringRowActions,
@@ -62,10 +60,7 @@ export function MediaListTable({
           <button
             type="button"
             onClick={() => onOpen(item)}
-            className={cn(
-              b2cTableCellText,
-              "text-left font-medium text-ink hover:text-accent",
-            )}
+            className="text-left font-medium text-ink hover:text-accent"
           >
             {item.title}
           </button>
@@ -89,7 +84,7 @@ export function MediaListTable({
               <Badge tone="warning">Draft</Badge>
               {/* Where a spoken draft stands in its pipeline, so the list says what needs staff. */}
               {item.content && isSpokenKind(item.kind) ? (
-                <span className={cn(b2cTableCellText, "text-osce-meta text-ink-subtle")}>
+                <span className="text-osce-meta text-ink-subtle">
                   {stageOf(item.kind, item.content)}
                 </span>
               ) : null}
@@ -102,7 +97,7 @@ export function MediaListTable({
         className: "hidden lg:table-cell",
         priority: "detail" as const,
         render: (item: MediaItem) => (
-          <span className={cn(b2cTableCellText, "text-ink-subtle")}>
+          <span className="text-ink-subtle">
             {mediaDateLabel(item.created_at)}
           </span>
         ),

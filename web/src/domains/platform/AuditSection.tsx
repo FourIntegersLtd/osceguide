@@ -1,6 +1,7 @@
 "use client";
 
-import { AsyncBoundary, LoadMore, Panel, Row, RowList } from "@/foundation/ui";
+import { AsyncBoundary } from "@/foundation/ui";
+import Table, { type Column } from "@/foundation/table/Table";
 import { useCursorPages } from "@/foundation/hooks";
 import {
   listOrgAuditForSupport,
@@ -9,6 +10,30 @@ import {
 import { humanise } from "@/foundation/format";
 import { formatDay } from "@/domains/platform/support";
 
+const columns: Column<AuditEntry>[] = [
+  {
+    header: "Action",
+    key: "action",
+    priority: "primary",
+    render: (entry) => (
+      <div className="min-w-0">
+        <p className="font-medium text-ink">{humanise(entry.action)}</p>
+        <p className="text-osce-meta text-ink-subtle">
+          {entry.actor_email ?? "Unknown actor"} · {formatDay(entry.at)}
+        </p>
+      </div>
+    ),
+  },
+  {
+    header: "Detail",
+    key: "summary",
+    render: (entry) =>
+      entry.summary ? (
+        <p className="max-w-md truncate text-osce-meta text-ink-muted">{entry.summary}</p>
+      ) : null,
+  },
+];
+
 export function AuditSection({ slug }: { slug: string }) {
   const pages = useCursorPages(
     (cursor, signal) => listOrgAuditForSupport(slug, { limit: 50, cursor }, signal),
@@ -16,52 +41,19 @@ export function AuditSection({ slug }: { slug: string }) {
   );
 
   return (
-    <Panel
-      title="Audit log"
-      description="Recent actions inside this organisation."
-      padding="none"
-    >
-      <AsyncBoundary
-        state={pages.state}
-        isEmpty={(items) => items.length === 0}
-        empty={{
-          title: "No audit entries",
-          description: "Nothing has been recorded yet.",
-          bare: true,
-        }}
-      >
-        {(items) => (
-          <RowList flush>
-            {items.map((entry) => (
-              <AuditRow key={entry.id} entry={entry} />
-            ))}
-          </RowList>
-        )}
-      </AsyncBoundary>
-      <LoadMore
-        hasMore={pages.hasMore}
-        busy={pages.loadingMore}
-        onLoad={pages.loadMore}
-        error={pages.moreError}
-      />
-    </Panel>
-  );
-}
-
-function AuditRow({ entry }: { entry: AuditEntry }) {
-  return (
-    <Row className="flex-col items-stretch sm:flex-row sm:items-center">
-      <div className="min-w-0 flex-1">
-        <p className="text-osce-data font-medium text-ink">{humanise(entry.action)}</p>
-        <p className="text-osce-meta text-ink-subtle">
-          {entry.actor_email ?? "Unknown actor"} · {formatDay(entry.at)}
-        </p>
-      </div>
-      {entry.summary ? (
-        <p className="max-w-md truncate text-osce-meta text-ink-muted">
-          {entry.summary}
-        </p>
-      ) : null}
-    </Row>
+    <AsyncBoundary state={pages.state}>
+      {(items) => (
+        <Table<AuditEntry>
+          rows={items}
+          more={pages}
+          themeType="b2b"
+          idField="id"
+          title="Audit log"
+          description="Recent actions inside this organisation."
+          empty={{ title: "No audit entries", description: "Nothing has been recorded yet." }}
+          columns={columns}
+        />
+      )}
+    </AsyncBoundary>
   );
 }

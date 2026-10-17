@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  AsyncBoundary,
-  Badge,
-  LoadMore,
-  Panel,
-  Row,
-  RowList,
-} from "@/foundation/ui";
+import { AsyncBoundary, Badge } from "@/foundation/ui";
+import Table, { type Column } from "@/foundation/table/Table";
 import { useCursorPages, useToast } from "@/foundation/hooks";
 import {
   listUserPayments,
@@ -40,45 +34,70 @@ export function Payments({
   );
 
   return (
-    <Panel
-      title="Payments"
-      description="What was paid, and what each payment bought."
-      padding="none"
-    >
-      <AsyncBoundary
-        state={pages.state}
-        isEmpty={(items) => items.length === 0}
-        empty={{
-          title: "No payments",
-          description: "Nothing has been recorded against this account.",
-          bare: true,
-        }}
-      >
-        {(items) => (
-          <>
-            <RowList flush>
-              {items.map((payment) => (
-                <PaymentRow
-                  key={payment.id}
-                  payment={payment}
-                  onChanged={pages.state.reload}
-                />
-              ))}
-            </RowList>
-            <LoadMore
-              hasMore={pages.hasMore}
-              busy={pages.loadingMore}
-              onLoad={pages.loadMore}
-              error={pages.moreError}
-            />
-          </>
-        )}
-      </AsyncBoundary>
-    </Panel>
+    <AsyncBoundary state={pages.state}>
+      {(items) => (
+        <Table<PlatformPayment>
+          rows={items}
+          more={pages}
+          themeType="b2b"
+          idField="id"
+          title="Payments"
+          description="What was paid, and what each payment bought."
+          empty={{
+            title: "No payments",
+            description: "Nothing has been recorded against this account.",
+          }}
+          columns={paymentColumns(pages.state.reload)}
+        />
+      )}
+    </AsyncBoundary>
   );
 }
 
-function PaymentRow({
+const isGranted = (payment: PlatformPayment) =>
+  payment.entitlement_id !== null && !payment.access_revoked;
+
+function paymentColumns(onChanged: () => void): Column<PlatformPayment>[] {
+  return [
+    {
+      header: "Payment",
+      key: "id",
+      priority: "primary",
+      render: (payment) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-ink">
+            {formatMoney(payment.amount_total_pence, payment.currency)} ·{" "}
+            {payment.plan_code ?? "no plan"}
+          </p>
+          <p className="truncate text-osce-meta text-ink-subtle">
+            {formatMoment(payment.paid_at)} · {payment.receipt_id ?? "no receipt"} ·{" "}
+            {payment.stripe_payment_intent_id}
+          </p>
+        </div>
+      ),
+    },
+    {
+      header: "Access",
+      key: "entitlement_id",
+      render: (payment) => (
+        <Badge tone={isGranted(payment) ? "success" : "neutral"} dot>
+          {isGranted(payment)
+            ? "Granted"
+            : payment.entitlement_id
+              ? "Access withdrawn"
+              : "No grant"}
+        </Badge>
+      ),
+    },
+    {
+      header: "",
+      key: "paid_at",
+      render: (payment) => <RefundActions payment={payment} onChanged={onChanged} />,
+    },
+  ];
+}
+
+function RefundActions({
   payment,
   onChanged,
 }: {
@@ -86,55 +105,40 @@ function PaymentRow({
   onChanged: () => void;
 }) {
   const toast = useToast();
-  const granted = payment.entitlement_id !== null && !payment.access_revoked;
+  const granted = isGranted(payment);
   return (
-    <Row>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-osce-data font-medium text-ink">
-          {formatMoney(payment.amount_total_pence, payment.currency)} ·{" "}
-          {payment.plan_code ?? "no plan"}
-        </p>
-        <p className="truncate text-osce-meta text-ink-subtle">
-          {formatMoment(payment.paid_at)} · {payment.receipt_id ?? "no receipt"}{" "}
-          · {payment.stripe_payment_intent_id}
-        </p>
-      </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <Badge tone={granted ? "success" : "neutral"}>
-          {granted ? "Granted" : payment.entitlement_id ? "Access withdrawn" : "No grant"}
-        </Badge>
-        {/* Nothing to revoke once the grant is gone, so a second "refund" would only look like it did something. */}
-        {granted && payment.stripe_payment_intent_id.startsWith("pi_") ? (
-          <InlineAction
-            label="Refund"
-            tone="danger"
-            description="Refunds the full amount to the customer's card in Stripe, then removes the access this payment bought. If Stripe refuses, nothing changes."
-            onConfirm={async (reason) => {
-              await refundInStripe(payment.id, reason);
-              toast.success(
-                "Refunded in Stripe",
-                "The access this payment bought has been revoked.",
-              );
-              onChanged();
-            }}
-          />
-        ) : null}
-        {granted ? (
-          <InlineAction
-            label="Record refund"
-            tone="danger"
-            description="This does not move any money; use it for a refund made outside this screen. It removes the access this payment bought and keeps the payment on record."
-            onConfirm={async (reason) => {
-              await recordRefund(payment.id, reason);
-              toast.success(
-                "Refund recorded",
-                "The access this payment bought has been revoked.",
-              );
-              onChanged();
-            }}
-          />
-        ) : null}
-      </div>
-    </Row>
+    <div className="flex flex-wrap items-center gap-2">
+    {/* Nothing to revoke once the grant is gone, so a second "refund" would only look like it did something. */}
+    {granted && payment.stripe_payment_intent_id.startsWith("pi_") ? (
+      <InlineAction
+        label="Refund"
+        tone="danger"
+        description="Refunds the full amount to the customer's card in Stripe, then removes the access this payment bought. If Stripe refuses, nothing changes."
+        onConfirm={async (reason) => {
+          await refundInStripe(payment.id, reason);
+          toast.success(
+            "Refunded in Stripe",
+            "The access this payment bought has been revoked.",
+          );
+          onChanged();
+        }}
+      />
+    ) : null}
+    {granted ? (
+      <InlineAction
+        label="Record refund"
+        tone="danger"
+        description="This does not move any money; use it for a refund made outside this screen. It removes the access this payment bought and keeps the payment on record."
+        onConfirm={async (reason) => {
+          await recordRefund(payment.id, reason);
+          toast.success(
+            "Refund recorded",
+            "The access this payment bought has been revoked.",
+          );
+          onChanged();
+        }}
+      />
+    ) : null}
+    </div>
   );
 }
