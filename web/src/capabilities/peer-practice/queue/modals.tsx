@@ -2,7 +2,6 @@
 
 import { PEER_MATCH_WAIT_MINUTES } from "@/capabilities/peer-practice/limits";
 import {
-  HiOutlineArrowPath,
   HiOutlineClock,
   HiOutlineExclamationTriangle,
   HiOutlineUsers,
@@ -19,6 +18,7 @@ import {
   ModalLead,
   ModalPrimaryButton,
   ModalSecondaryButton,
+  Spinner,
 } from "@/foundation/ui";
 import type { PartnerGone } from "../support/sessionState";
 
@@ -59,7 +59,7 @@ export function LivePracticeModal({
           <ModalPrimaryButton onClick={onStartNow} disabled={isJoiningQueue} className="gap-2">
             {isJoiningQueue ? (
               <>
-                <HiOutlineArrowPath className="h-3.5 w-3.5 animate-spin" />
+                <Spinner size="xs" className="text-current" label="Working" />
                 Joining...
               </>
             ) : (
@@ -95,7 +95,7 @@ export function SearchingModal({
               continue browsing. We&apos;ll notify you when a match is found.
             </>
           }
-          icon={<HiOutlineArrowPath className="h-4 w-4 animate-spin" />}
+          icon={<Spinner size="sm" className="text-current" label="Searching" />}
         />
         <ModalFooterActions>
           <ModalDangerButton onClick={onCancelSearch}>Cancel search</ModalDangerButton>
@@ -209,7 +209,7 @@ export function PartnerLeftModal({
             <ModalPrimaryButton onClick={onRequeue} disabled={isRequeuing} className="w-full gap-2 sm:w-auto">
               {isRequeuing ? (
                 <>
-                  <HiOutlineArrowPath className="h-3.5 w-3.5 animate-spin" />
+                  <Spinner size="xs" className="text-current" label="Working" />
                   Requeuing...
                 </>
               ) : (
@@ -249,7 +249,7 @@ export function QueueIndicator({
             <HiOutlineUsers className="h-4 w-4 text-osce-accent sm:h-5 sm:w-5" />
           </div>
           <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-osce-ink-900 sm:h-5 sm:w-5">
-            <HiOutlineArrowPath className="h-2.5 w-2.5 animate-spin text-white sm:h-3 sm:w-3" />
+            <Spinner size="xs" className="h-2.5 w-2.5 text-white sm:h-3 sm:w-3" label="Searching" />
           </div>
         </div>
         <div className="min-w-0 flex-1">

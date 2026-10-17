@@ -2,7 +2,7 @@
 
 import { OTHER_DEVICES_SIGN_OUT_MINUTES } from "@/foundation/config/copyNumbers";
 import { useState } from "react";
-import { HiOutlineArrowPath, HiOutlineLockClosed } from "react-icons/hi2";
+import { HiOutlineLockClosed } from "react-icons/hi2";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { z } from "zod";
 import { changePassword, hasCode, requestPasswordReset, type PlatformErrorCode } from "@/foundation/platform-client";
@@ -15,6 +15,7 @@ import {
   ModalLead,
   ModalPrimaryButton,
   ModalSection,
+  Spinner,
 } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
 import { errorMessage, useToast } from "@/foundation/hooks";
@@ -189,7 +190,7 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
           <ModalPrimaryButton type="submit" disabled={isSubmitting} className="gap-2">
             {isSubmitting ? (
               <>
-                <HiOutlineArrowPath className="h-3.5 w-3.5 animate-spin" /> Updating...
+                <Spinner size="xs" className="text-current" label="Updating" /> Updating...
               </>
             ) : (
               "Update password"

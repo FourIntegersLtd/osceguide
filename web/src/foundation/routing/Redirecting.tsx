@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Spinner } from "@/foundation/ui";
+import { PageSpinner } from "@/foundation/ui";
 
 /**
  * A screen that only sends you on: a spinner while `router.replace(to)` runs.
@@ -14,8 +14,6 @@ export function Redirecting({ to }: { to: string | null }) {
     if (to) router.replace(to);
   }, [to, router]);
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <Spinner label="Loading" size="lg" className="text-ink-subtle" />
-    </div>
+    <PageSpinner />
   );
 }

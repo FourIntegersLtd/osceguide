@@ -3,7 +3,7 @@
 import { PODCAST_LENGTH_LABEL } from "@/capabilities/media/limits";
 import { useEffect, useRef, useState } from "react";
 import { HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlinePause, HiOutlinePlay } from "react-icons/hi2";
-import { Button } from "@/foundation/ui";
+import { Button, Spinner } from "@/foundation/ui";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 import { recordActivity } from "@/capabilities/account/api";
@@ -103,10 +103,7 @@ export function EpisodePanel({
           <div className="flex w-full flex-wrap items-center gap-3">
             <Button onClick={toggle} disabled={!url} aria-busy={loading} className="gap-2">
               {loading ? (
-                <span
-                  className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-                  aria-hidden
-                />
+                <Spinner size="sm" className="text-current" label="Loading audio" />
               ) : isPlaying ? (
                 <HiOutlinePause className="h-4 w-4" aria-hidden />
               ) : (

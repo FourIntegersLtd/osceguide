@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { HiInformationCircle } from "react-icons/hi";
-import { HiOutlineArrowPath, HiOutlineMagnifyingGlass } from "react-icons/hi2";
+import { HiOutlineMagnifyingGlass } from "react-icons/hi2";
 import Table, { type Column } from "@/foundation/table/Table";
 import {
   B2CPanelCard,
@@ -12,6 +12,7 @@ import {
   ButtonLink,
   productTokens,
   iconSearchInputClassName,
+  Spinner,
 } from "@/foundation/ui";
 import { errorMessage, useCursorPages, useToast, useSearchQuery } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
@@ -85,7 +86,7 @@ export function FlaggedStations() {
         <B2CPanelCardHeader>Flagged stations</B2CPanelCardHeader>
         <B2CPanelCardBody>
           <div className="flex items-center justify-center py-8">
-            <HiOutlineArrowPath className="h-8 w-8 animate-spin text-osce-accent" aria-hidden />
+            <Spinner size="md" />
           </div>
         </B2CPanelCardBody>
       </B2CPanelCard>

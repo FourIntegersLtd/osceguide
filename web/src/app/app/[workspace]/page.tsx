@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Spinner } from "@/foundation/ui";
+import { PageSpinner } from "@/foundation/ui";
 import { workspaceBasePath } from "@/foundation/routing";
 
 /**
@@ -22,8 +22,6 @@ export default function WorkspaceIndex() {
   }, [workspace, router]);
 
   return (
-    <div className="flex min-h-[40vh] items-center justify-center">
-      <Spinner label="Loading" size="lg" className="text-ink-subtle" />
-    </div>
+    <PageSpinner fill="section" />
   );
 }

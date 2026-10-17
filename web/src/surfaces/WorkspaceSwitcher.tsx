@@ -81,7 +81,7 @@ export function WorkspaceSwitcher({
       >
         {label}
         {busy ? (
-          <Spinner />
+          <Spinner className="text-current" />
         ) : (
           <LuChevronsUpDown className="h-4 w-4 shrink-0 text-ink-subtle" aria-hidden />
         )}

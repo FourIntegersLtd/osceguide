@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { HiCheck } from "react-icons/hi2";
+import { Spinner } from "./Spinner";
 
 export type RailStep<Id extends string = string> = {
   id: Id;
@@ -99,10 +100,7 @@ export function NextStepBar({
     >
       <p className="flex min-w-0 items-center gap-2 text-osce-body text-ink">
         {working ? (
-          <span
-            className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent text-ink-subtle"
-            aria-hidden
-          />
+          <Spinner label="Working" />
         ) : null}
         {line}
       </p>

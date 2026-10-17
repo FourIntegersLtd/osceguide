@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Alert, Button, Spinner } from "@/foundation/ui";
+import { Alert, Button, PageSpinner } from "@/foundation/ui";
 import { loginHref } from "@/foundation/session/loginHref";
 import { lastSessionUser, nextAfterSignIn } from "@/foundation/session/sessionUser";
 import { useSession } from "@/foundation/session/SessionProvider";
@@ -12,9 +12,7 @@ import type { Permission } from "@/foundation/session/permissions";
 
 function Resolving() {
   return (
-    <div className="flex min-h-[40vh] items-center justify-center">
-      <Spinner label="Checking your session" size="lg" className="text-ink-subtle" />
-    </div>
+    <PageSpinner label="Checking your session" fill="section" />
   );
 }
 

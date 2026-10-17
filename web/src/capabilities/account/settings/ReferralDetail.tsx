@@ -64,7 +64,7 @@ export default function ReferralDetail({ referralId }: { referralId: string }) {
   if (state.loading && state.data === null) {
     return (
       <div className="flex min-h-[200px] items-center justify-center gap-2">
-        <Spinner size="md" label="Loading" className="text-ink-subtle" />
+        <Spinner size="md" label="Loading" />
         <p className="text-osce-body text-ink-muted">Loading referral details...</p>
       </div>
     );

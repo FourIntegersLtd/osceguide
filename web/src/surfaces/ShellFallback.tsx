@@ -1,12 +1,10 @@
 "use client";
 
-import { Spinner } from "@/foundation/ui";
+import { PageSpinner } from "@/foundation/ui";
 
 /** Shown while a code-split shell chunk loads. */
 export function ShellFallback() {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center bg-b2c-surface-muted">
-      <Spinner label="Loading" size="lg" className="text-ink-subtle" />
-    </div>
+    <PageSpinner fill="section" className="min-h-[50vh] bg-b2c-surface-muted" />
   );
 }

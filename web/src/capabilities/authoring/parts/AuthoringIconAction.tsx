@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { AnchoredTooltip } from "@/foundation/ui";
+import { AnchoredTooltip, Spinner } from "@/foundation/ui";
 import {
   b2bIconButtonGhost,
   b2bIconButtonPrimarySm,
@@ -76,10 +76,7 @@ function variantClass(variant: AuthoringIconActionVariant, b2c: boolean): string
 
 function ActionSpinner() {
   return (
-    <span
-      className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-      aria-hidden
-    />
+    <Spinner size="sm" className="text-current" label="Working" />
   );
 }
 

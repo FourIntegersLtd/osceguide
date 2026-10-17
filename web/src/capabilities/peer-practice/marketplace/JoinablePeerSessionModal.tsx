@@ -10,6 +10,7 @@ import {
   ModalLead,
   ModalPrimaryButton,
   ModalSecondaryButton,
+  Spinner,
 } from "@/foundation/ui";
 import type { PeerSession } from "@/capabilities/peer-practice/api";
 import { longDate, meridiemTime } from "@/capabilities/peer-practice/support/time";
@@ -62,7 +63,7 @@ export function JoinablePeerSessionModal({
           <ModalPrimaryButton onClick={onJoin} disabled={isJoining} className="w-full gap-2 sm:flex-1">
             {isJoining ? (
               <>
-                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                <Spinner size="xs" className="text-current" label="Joining" />
                 Joining...
               </>
             ) : isActive ? (

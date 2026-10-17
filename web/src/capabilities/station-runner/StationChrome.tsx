@@ -159,7 +159,7 @@ export function StationHeader({
               className={productTokens.b2cIconButton}
             >
               {marking ? (
-                <Spinner label="Saving flag" />
+                <Spinner label="Saving flag" className="text-current" />
               ) : (
                 <LuFlag
                   aria-hidden
@@ -180,7 +180,7 @@ export function StationHeader({
               className={productTokens.b2cIconButton}
             >
               {reporting ? (
-                <Spinner label="Reporting" />
+                <Spinner label="Reporting" className="text-current" />
               ) : (
                 <LuMessageSquareWarning
                   aria-hidden

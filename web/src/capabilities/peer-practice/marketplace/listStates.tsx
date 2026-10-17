@@ -1,6 +1,7 @@
 "use client";
 
-import { HiOutlineArrowPath, HiOutlineExclamationCircle } from "react-icons/hi2";
+import { HiOutlineExclamationCircle } from "react-icons/hi2";
+import { Spinner } from "@/foundation/ui";
 
 /*
  * How a marketplace list looks while it loads and when it fails.
@@ -13,7 +14,7 @@ import { HiOutlineArrowPath, HiOutlineExclamationCircle } from "react-icons/hi2"
 export function ListLoading() {
   return (
     <div className="flex items-center justify-center py-12">
-      <HiOutlineArrowPath className="h-6 w-6 animate-spin text-osce-accent" />
+      <Spinner size="md" />
     </div>
   );
 }

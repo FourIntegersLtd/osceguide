@@ -276,7 +276,7 @@ export function CircuitBuilder({
             tooManyStations
           }
         >
-          {busy ? <Spinner label={submitLabel} /> : submitLabel}
+          {busy ? <Spinner label={submitLabel} className="text-current" /> : submitLabel}
         </Button>
       </div>
     </div>

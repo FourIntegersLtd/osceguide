@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ChangeEvent, type FormEvent } from "react";
-import { HiOutlineArrowPath } from "react-icons/hi2";
 import {
   AsyncBoundary,
   ModalField,
@@ -9,6 +8,7 @@ import {
   ModalPrimaryButton,
   ModalTitle,
   Panel,
+  Spinner,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import {
@@ -52,7 +52,7 @@ function BankDetailsLoading() {
   return (
     <Panel title="Bank details" className="h-full">
       <div className="flex items-center justify-center gap-2 py-8 text-osce-body text-ink-subtle">
-        <HiOutlineArrowPath className="h-4 w-4 animate-spin" />
+        <Spinner size="sm" />
         Loading bank details…
       </div>
     </Panel>

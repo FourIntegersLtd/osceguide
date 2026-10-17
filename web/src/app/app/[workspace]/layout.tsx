@@ -3,7 +3,7 @@
 import { use, useEffect } from "react";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { Spinner } from "@/foundation/ui";
+import { PageSpinner } from "@/foundation/ui";
 import { RequireSession, useSession } from "@/foundation/session";
 import { OrganisationSuspended, useOrgSuspended } from "@/foundation/session/OrganisationSuspended";
 import { rememberWorkspace, workspaceBasePath, type Workspace } from "@/foundation/routing";
@@ -40,11 +40,7 @@ function Resolved({ slug, children }: { slug: string; children: ReactNode }) {
   const { session, ready } = useSession();
 
   if (!ready) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spinner label="Loading" size="lg" className="text-ink-subtle" />
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   const workspace = resolveWorkspace(slug, session?.user ?? null);

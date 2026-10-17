@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  HiOutlineArrowPath,
   HiOutlineXMark,
 } from "react-icons/hi2";
 import {
@@ -12,6 +11,7 @@ import {
   Button,
   cn,
   productTokens,
+  Spinner,
 } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { useCurrentExam } from "@/foundation/session";
@@ -234,7 +234,7 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
 
             <div className="mt-5 flex justify-end">
               <Button type="submit" variant="primary" size="md" disabled={isCreating}>
-                {isCreating ? <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                {isCreating ? <Spinner size="sm" className="text-current" label="Creating" /> : null}
                 {isCreating ? "Creating" : "Create session"}
               </Button>
             </div>

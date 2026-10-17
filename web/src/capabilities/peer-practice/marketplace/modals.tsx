@@ -1,7 +1,7 @@
 "use client";
 
 import { HOW_IT_WORKS_DESCRIPTION, HOW_IT_WORKS_STEPS } from "@/capabilities/peer-practice/marketplace/copy";
-import { HiOutlineArrowPath, HiOutlineCalendarDays, HiOutlineVideoCamera } from "react-icons/hi2";
+import { HiOutlineCalendarDays, HiOutlineVideoCamera } from "react-icons/hi2";
 import {
   Modal,
   ModalBody,
@@ -13,6 +13,7 @@ import {
   ModalSecondaryButton,
   ModalSection,
   ModalSectionBullets,
+  Spinner,
 } from "@/foundation/ui";
 import type { Slot } from "@/capabilities/peer-practice/api";
 import { longDate, meridiemTime } from "@/capabilities/peer-practice/support/time";
@@ -70,7 +71,7 @@ export function ClaimConfirmationModal({
           <ModalPrimaryButton onClick={onConfirm} disabled={isClaiming} className="gap-2">
             {isClaiming ? (
               <>
-                <HiOutlineArrowPath className="h-3.5 w-3.5 animate-spin" /> Claiming...
+                <Spinner size="xs" className="text-current" label="Claiming" /> Claiming...
               </>
             ) : (
               "Claim"

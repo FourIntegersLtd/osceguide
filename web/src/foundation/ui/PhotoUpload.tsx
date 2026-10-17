@@ -1,6 +1,6 @@
 "use client";
 
-import { HiOutlineArrowPath, HiOutlineCloudArrowUp, HiOutlineXMark } from "react-icons/hi2";
+import { HiOutlineCloudArrowUp, HiOutlineXMark } from "react-icons/hi2";
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import Image from "next/image";
@@ -12,6 +12,7 @@ import {
   B2CPanelCardHeader,
 } from "@/foundation/ui/B2CPanelCard";
 import { b2cButtonCommit, b2cLink } from "@/foundation/ui/productTokens";
+import { Spinner } from "@/foundation/ui";
 
 /** What an upload did, so partial success can be reported as partial. */
 export interface PhotoUploadResult {
@@ -168,7 +169,7 @@ function PhotoUpload({ upload, handleSuccess, embedded = false }: PhotoUploadPro
           >
             {uploading ? (
               <>
-                <HiOutlineArrowPath className="h-4 w-4 animate-spin" />
+                <Spinner size="sm" className="text-current" label="Uploading" />
                 Uploading...
               </>
             ) : (

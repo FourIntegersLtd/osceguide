@@ -298,7 +298,7 @@ function NavigateHelpPanel({
           >
             {starting ? (
               <div className="flex items-center justify-center gap-1.5">
-                <Spinner label="Connecting" />
+                <Spinner label="Connecting" className="text-current" />
                 <span>Connecting…</span>
               </div>
             ) : (

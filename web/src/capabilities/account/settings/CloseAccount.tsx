@@ -2,8 +2,8 @@
 
 import { ACCOUNT_REOPEN_DAYS } from "@/foundation/config/copyNumbers";
 import { useState } from "react";
-import { HiOutlineArrowPath, HiOutlineTrash } from "react-icons/hi2";
-import { Button, ConfirmModal, productTokens } from "@/foundation/ui";
+import { HiOutlineTrash } from "react-icons/hi2";
+import { Button, ConfirmModal, productTokens, Spinner } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { closeAccount } from "@/capabilities/account/api";
@@ -69,7 +69,7 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
         >
           {busy ? (
             <>
-              <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden />
+              <Spinner size="sm" className="text-current" label="Deleting" />
               Deleting...
             </>
           ) : (

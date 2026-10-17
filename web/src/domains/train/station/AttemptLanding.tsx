@@ -61,7 +61,7 @@ export function AttemptLanding({ attemptId }: { attemptId: string }) {
 
   return (
     <div className="flex justify-center py-16">
-      <Spinner size="md" className="text-ink-subtle" />
+      <Spinner size="md" />
     </div>
   );
 }

@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { IconType } from "react-icons";
-import { HiOutlineArrowPath, HiOutlineExclamationTriangle } from "react-icons/hi2";
+import { HiOutlineExclamationTriangle } from "react-icons/hi2";
 import { useAsync, useMeEvents } from "@/foundation/hooks";
 import { readAttempt } from "@/capabilities/attempt-runner/api";
 import { HiOutlineFaceFrown } from "react-icons/hi2";
-import { AsyncBoundary, B2CEmptyState, cn, productTokens } from "@/foundation/ui";
+import { AsyncBoundary, B2CEmptyState, cn, productTokens, Spinner } from "@/foundation/ui";
 import { RubricFeedback } from "@/capabilities/feedback/RubricFeedback";
 import { SavedLiveCoverage } from "./SavedLiveCoverage";
 import { isTerminal, readFeedback, scoredAtLabel } from "@/capabilities/feedback/api";
@@ -81,7 +81,7 @@ export function AttemptFeedback({ attemptId, showLiveCoverage = false }: { attem
 
   if (pending) {
     return (
-      <FeedbackState icon={HiOutlineArrowPath} spinning title="Your feedback is being prepared">
+      <FeedbackState title="Your feedback is being prepared">
         Marking a consultation takes a minute or two. This page updates itself when it is ready.
       </FeedbackState>
     );
@@ -152,18 +152,17 @@ function Markings({ rubric, results }: { rubric: MarkingRubric | null; results: 
 function FeedbackState({
   icon: Icon,
   title,
-  spinning = false,
   children,
 }: {
-  icon: IconType;
+  /** Omit to show the spinner: the feedback is still being prepared. */
+  icon?: IconType;
   title: string;
-  spinning?: boolean;
   children: ReactNode;
 }) {
   return (
     <section className="flex items-start gap-4 rounded-osce-2xl bg-b2c-surface-muted p-6">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-osce-surface text-osce-ink-900">
-        <Icon className={spinning ? "h-4 w-4 animate-spin" : "h-4 w-4"} aria-hidden />
+        {Icon ? <Icon className="h-4 w-4" aria-hidden /> : <Spinner size="sm" className="text-current" label="Preparing" />}
       </span>
       <div className="min-w-0">
         <h2 className="text-osce-subheading font-semibold text-osce-ink-900">{title}</h2>

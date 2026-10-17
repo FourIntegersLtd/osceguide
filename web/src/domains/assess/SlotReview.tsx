@@ -243,14 +243,14 @@ function Editor({
                 <div className="flex justify-end gap-2">
                   {initial ? (
                     <Button themeType="b2b" variant="ghost" onClick={() => void withdraw()} disabled={busy !== null}>
-                      {busy === "withdraw" ? <Spinner /> : "Withdraw draft"}
+                      {busy === "withdraw" ? <Spinner className="text-current" /> : "Withdraw draft"}
                     </Button>
                   ) : null}
                   <Button themeType="b2b" variant="secondary" onClick={() => persist("draft")} disabled={busy !== null}>
-                    {busy === "draft" ? <Spinner /> : "Save draft"}
+                    {busy === "draft" ? <Spinner className="text-current" /> : "Save draft"}
                   </Button>
                   <Button themeType="b2b" variant="commit" onClick={() => persist("completed")} disabled={busy !== null}>
-                    {busy === "completed" ? <Spinner /> : "Submit review"}
+                    {busy === "completed" ? <Spinner className="text-current" /> : "Submit review"}
                   </Button>
                 </div>
               )}

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HiOutlineArrowPath, HiOutlineCheck } from "react-icons/hi2";
+import { HiOutlineCheck } from "react-icons/hi2";
 import {
   Alert,
   AsyncBoundary,
@@ -11,6 +11,7 @@ import {
   StationCompletionProgressBar,
   productTokens,
   Panel,
+  Spinner,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
@@ -217,7 +218,7 @@ export function MockSetup({ workspace, onCreated }: { workspace: MockWorkspace; 
                       onClick={submit}
                       disabled={isSubmitting || nothingPickable || maxStations === 0}
                     >
-                      {isSubmitting ? <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                      {isSubmitting ? <Spinner size="sm" className="text-current" label="Starting" /> : null}
                       {isSubmitting ? "Creating" : "Create session"}
                     </Button>
                   </div>

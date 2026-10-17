@@ -35,7 +35,7 @@ export function DebriefVoiceStage({ onEnd }: { onEnd: () => Promise<unknown> }) 
             void onEnd().finally(() => setEnding(false));
           }}
         >
-          {ending ? <Spinner label="Ending" /> : <HiOutlinePhoneXMark className="h-4 w-4" aria-hidden />}
+          {ending ? <Spinner label="Ending" className="text-current" /> : <HiOutlinePhoneXMark className="h-4 w-4" aria-hidden />}
           <span>{ending ? "Ending debrief…" : "End debrief"}</span>
         </button>
       )}

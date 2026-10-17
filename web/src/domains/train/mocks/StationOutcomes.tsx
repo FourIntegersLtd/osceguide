@@ -1,11 +1,11 @@
 "use client";
 
-import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import {
   Badge,
   B2CGroupedRow,
   B2CGroupedRowLink,
   B2CGroupedSection,
+  Spinner,
 } from "@/foundation/ui";
 import type { StationFeedbackState } from "@/domains/train/mocks/model";
 
@@ -51,10 +51,7 @@ export function StationOutcomes({
             trailing={
               row.feedback === "marking" ? (
                 <span className="inline-flex items-center gap-2 text-osce-meta text-b2c-text-muted">
-                  <AiOutlineLoading3Quarters
-                    className="h-3.5 w-3.5 animate-spin text-osce-accent"
-                    aria-hidden
-                  />
+                  <Spinner size="xs" label="Marking" />
                   Marking
                 </span>
               ) : (

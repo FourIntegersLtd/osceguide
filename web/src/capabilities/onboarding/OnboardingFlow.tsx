@@ -124,7 +124,7 @@ export function OnboardingFlow({ onComplete, onSkip = onComplete }: { onComplete
 
       {step === "demo" && voice.loadingScenes && (
         <div className="space-y-2.5 text-center">
-          <Spinner size="md" className="text-ink-subtle" />
+          <Spinner size="md" />
           <p className="text-osce-meta text-ink-muted">Loading the demo…</p>
         </div>
       )}

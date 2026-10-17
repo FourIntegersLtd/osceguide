@@ -143,7 +143,7 @@ function Form({
             Cancel
           </ButtonLink>
           <Button themeType="b2b" variant="commit" type="submit" disabled={busy || name.trim().length === 0 || !programmeId}>
-            {busy ? <Spinner label="Creating" /> : "Create sitting"}
+            {busy ? <Spinner label="Creating" className="text-current" /> : "Create sitting"}
           </Button>
         </div>
       </form>

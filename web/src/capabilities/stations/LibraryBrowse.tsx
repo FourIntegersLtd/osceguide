@@ -99,7 +99,7 @@ export function LibraryBrowse() {
                   onClick={library.loadMore}
                   disabled={library.loadingMore}
                 >
-                  {library.loadingMore ? <Spinner /> : library.moreError ? "Try again" : "Load more stations"}
+                  {library.loadingMore ? <Spinner className="text-current" /> : library.moreError ? "Try again" : "Load more stations"}
                 </Button>
               </div>
             )}

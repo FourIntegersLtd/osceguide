@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineAcademicCap, HiOutlineArrowPath } from "react-icons/hi2";
+import { HiOutlineAcademicCap } from "react-icons/hi2";
 import {
   AsyncBoundary,
   B2CPanelCard,
@@ -11,6 +11,7 @@ import {
   ModalHelper,
   cn,
   productTokens,
+  Spinner,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
@@ -144,7 +145,7 @@ function ExamChoice({ exams }: { exams: Exam[] }) {
         >
           {saving ? (
             <>
-              <HiOutlineArrowPath className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+              <Spinner size="sm" className="text-current" label="Saving" />
               Saving...
             </>
           ) : (

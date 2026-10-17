@@ -2,7 +2,7 @@
 
 import { createElement, useEffect, useState } from "react";
 import { notFound } from "next/navigation";
-import { Spinner } from "@/foundation/ui";
+import { PageSpinner } from "@/foundation/ui";
 import { useSession } from "@/foundation/session";
 import { loadScreenComponent, ownsScreen, resolveWorkspace, surfaceForWorkspace } from "@/surfaces";
 import type { ScreenName } from "@/surfaces";
@@ -77,9 +77,7 @@ function ResolvedScreen({
 
   if (screen === undefined) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Spinner label="Loading" size="lg" className="text-ink-subtle" />
-      </div>
+      <PageSpinner fill="section" />
     );
   }
 

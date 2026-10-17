@@ -25,6 +25,7 @@ export type { RailStep } from "@/foundation/ui/StepRail";
 export { Alert } from "@/foundation/ui/Alert";
 export type { AlertTone } from "@/foundation/ui/Alert";
 export { EmptyState } from "@/foundation/ui/EmptyState";
+export { PageSpinner } from "@/foundation/ui/PageSpinner";
 export { Spinner } from "@/foundation/ui/Spinner";
 export { AsyncBoundary } from "@/foundation/ui/AsyncBoundary";
 export type { AsyncBoundaryProps } from "@/foundation/ui/AsyncBoundary";

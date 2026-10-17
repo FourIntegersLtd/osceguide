@@ -4,12 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  HiOutlineArrowPath,
   HiOutlineCheckCircle,
   HiOutlineClock,
   HiOutlineXCircle,
 } from "react-icons/hi2";
-import { productTokens } from "@/foundation/ui";
+import { productTokens, Spinner } from "@/foundation/ui";
 import { PERSONAL_SLUG, workspaceBasePath } from "@/foundation/routing";
 import { useOptionalSurface } from "@/capabilities";
 import { listEntitlements, listReceiptsForSession } from "@/capabilities/account/api";
@@ -101,7 +100,7 @@ function ReturnBody({
     return (
       <>
         <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
-          <HiOutlineArrowPath className="h-6 w-6 animate-spin text-osce-accent" aria-hidden />
+          <Spinner size="md" label="Confirming" />
         </span>
         <h1 className="mb-2 text-osce-title font-semibold text-ink">Confirming your payment</h1>
         <p className="text-osce-body text-ink-subtle">This takes a few seconds. Please keep this page open.</p>

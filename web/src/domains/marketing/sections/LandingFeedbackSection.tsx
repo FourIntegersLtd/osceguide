@@ -1,13 +1,12 @@
 "use client";
 
 import {
-  HiOutlineArrowPath,
   HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
   HiOutlineLightBulb,
 } from "react-icons/hi2";
 import { useState } from "react";
-import { Modal, ModalContent, ModalLead, cn } from "@/foundation/ui";
+import { Modal, ModalContent, ModalLead, cn, Spinner } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useToast } from "@/foundation/hooks/useToast";
 import { sendSiteMessage } from "@/capabilities/help/api";
@@ -210,7 +209,7 @@ export function LandingFeedbackSection() {
               >
                 {isSubmitting ? (
                   <>
-                    <HiOutlineArrowPath className="mr-2 h-4 w-4 animate-spin" />
+                    <Spinner size="sm" className="mr-2 text-current" label="Submitting" />
                     Submitting...
                   </>
                 ) : (

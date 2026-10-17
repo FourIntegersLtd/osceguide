@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineArrowPath } from "react-icons/hi2";
 import { PiSparkle } from "react-icons/pi";
-import { Button, Checkbox, Input, ModalContent, ModalHelper, cn, productTokens } from "@/foundation/ui";
+import { Button, Checkbox, Input, ModalContent, ModalHelper, cn, productTokens, Spinner } from "@/foundation/ui";
 import { formatMoney } from "@/foundation/format";
 import { SUPPORT_EMAIL } from "@/foundation/support";
 import { startCheckout, type Plan } from "@/capabilities/account/api";
@@ -209,7 +208,7 @@ export default function PlanPicker({
           >
             {isLoading ? (
               <>
-                <HiOutlineArrowPath className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                <Spinner size="sm" className="text-current" label="Processing" />
                 <span>Processing...</span>
               </>
             ) : (

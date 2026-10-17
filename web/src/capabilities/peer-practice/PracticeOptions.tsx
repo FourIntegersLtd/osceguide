@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  HiOutlineArrowPath,
   HiOutlineArrowRight,
   HiOutlineCalendarDays,
   HiOutlineUsers,
 } from "react-icons/hi2";
+import { Spinner } from "@/foundation/ui";
 
 /**
  * The two ways to practise with a colleague, as a pair of cards.
@@ -57,7 +57,7 @@ export function PracticeOptionCards({
           </div>
           {isJoiningQueue ? (
             <div className="flex items-center gap-2 text-osce-accent">
-              <HiOutlineArrowPath className="h-3.5 w-3.5 animate-spin" />
+              <Spinner size="xs" className="text-current" label="Joining" />
               <span className="text-osce-body font-medium">Joining…</span>
             </div>
           ) : (

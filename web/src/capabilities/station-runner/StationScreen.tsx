@@ -301,7 +301,7 @@ export function StationScreen(props: StationScreenProps) {
   if (attempt.loading) {
     return (
       <div className="flex justify-center py-16">
-        <Spinner size="md" className="text-ink-subtle" />
+        <Spinner size="md" />
       </div>
     );
   }

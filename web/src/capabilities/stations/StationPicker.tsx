@@ -85,7 +85,7 @@ export function StationPicker({
                   onClick={library.loadMore}
                   disabled={library.loadingMore}
                 >
-                  {library.loadingMore ? <Spinner /> : "Load more stations"}
+                  {library.loadingMore ? <Spinner className="text-current" /> : "Load more stations"}
                 </Button>
               </div>
             )}

@@ -1,13 +1,12 @@
 "use client";
 
-import { HiOutlineArrowPath } from "react-icons/hi2";
-import { ModalContent, ModalHelper, ModalTitle } from "@/foundation/ui";
+import { ModalContent, ModalHelper, ModalTitle, Spinner } from "@/foundation/ui";
 
 /** Non-SCA marking wait animation — matches legacy `GeneratingFeedback`. */
 export function GeneratingFeedback() {
   return (
     <ModalContent className="flex flex-col items-center space-y-3 text-center">
-      <HiOutlineArrowPath className="h-7 w-7 animate-spin text-osce-accent" aria-hidden />
+      <Spinner size="md" label="Generating" />
       <ModalTitle className="text-osce-body">Generating your feedback</ModalTitle>
       <div className="space-y-1">
         <ModalHelper>

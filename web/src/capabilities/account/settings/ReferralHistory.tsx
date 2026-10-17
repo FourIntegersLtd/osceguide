@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { HiInformationCircle, HiOutlineArrowPath, HiOutlineMagnifyingGlass } from "react-icons/hi2";
+import { HiInformationCircle, HiOutlineMagnifyingGlass } from "react-icons/hi2";
 import Table, { type Column, type TableMore } from "@/foundation/table/Table";
 import {
   Panel,
+  Spinner,
 } from "@/foundation/ui";
 import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
@@ -40,7 +41,7 @@ export default function ReferralHistory() {
     return (
       <Panel title="Referral history" className="mb-24">
           <div className="flex items-center justify-center py-8">
-            <HiOutlineArrowPath className="h-8 w-8 animate-spin text-osce-accent" />
+            <Spinner size="md" />
           </div>
       </Panel>
     );

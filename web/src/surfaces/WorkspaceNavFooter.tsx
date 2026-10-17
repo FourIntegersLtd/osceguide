@@ -74,7 +74,7 @@ export function WorkspaceNavFooter({
       className={cn(b2cIconButton, "sm:h-[30px] sm:w-[30px]")}
     >
       {signingOut ? (
-        <Spinner label="Signing out" />
+        <Spinner label="Signing out" className="text-current" />
       ) : (
         <LuLogOut className="h-4 w-4" aria-hidden />
       )}
