@@ -155,6 +155,15 @@ async function main() {
   const practiceExam = grants?.items?.find((grant) => grant.live)?.exam_code;
   const practiceLibrary = (limit) => `/api/v1/stations?exam_code=${practiceExam}&limit=${limit}`;
 
+  // The Setup tab's first call. It is declared before `/me/station-sets/{set_id}`,
+  // so an api missing it (or ordering it later) parses "allowance" as a set id,
+  // answers 422, and the whole panel reads "That did not load".
+  if (practiceExam) {
+    await step("session allowance", `/api/v1/me/station-sets/allowance?exam_code=${practiceExam}`, {
+      expect: (p) => must("free_stations_left" in p, "no free_stations_left"),
+    });
+  }
+
   // Build a session the way the Setup tab does, then run its whole loop:
   // start an attempt at the first entry, and ask to debrief it.
   const forSet = practiceExam ? await step("library for a session", practiceLibrary(2)) : null;

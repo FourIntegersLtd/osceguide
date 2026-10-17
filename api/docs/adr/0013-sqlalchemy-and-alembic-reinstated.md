@@ -34,7 +34,7 @@ What plain SQL bought remains available: this codebase is reporting-heavy, and S
 join or an aggregate reads better as SQL.
 
 ## Decision
-Postgres (Supabase-hosted) through SQLAlchemy 2.0 async on the psycopg 3 driver. Slices declare
+Postgres (Supabase-hosted when this was written; now Railway, see note below) through SQLAlchemy 2.0 async on the psycopg 3 driver. Slices declare
 mapped models in `models.py`; schema changes are Alembic migrations, reviewed by hand after
 autogenerate, applied by CI and on deploy. The request dependency yields one session inside one
 transaction. procrastinate keeps its own direct psycopg connection via `libpq_url()`.
@@ -58,3 +58,7 @@ inside migrations, which is what they already are.
 - `app/core/migrations.py` and `supabase/migrations/` are removed; `alembic/` returns. Most of
   the reinstated layer is recoverable verbatim from commit `f563198`.
 - Switching hosts away from Supabase still requires nothing but a new `DATABASE_URL`.
+
+> **Note (2026-10-16).** That switch has happened: the database now runs on Railway
+> (`platform-postgres` for staging, `platform-postgres-production`), built from
+> `api/infra/postgres/Dockerfile` (Postgres 17 + pgvector). The decision above is unchanged.

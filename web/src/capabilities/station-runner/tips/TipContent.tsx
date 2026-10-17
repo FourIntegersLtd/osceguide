@@ -14,6 +14,7 @@ interface Activity {
 }
 
 const tipTone = b2cReadingTones.tip;
+const practiceTone = b2cReadingTones.practice;
 
 /** RCGP-style display labels. do not rename toolkit keys. */
 const SKILL_LABELS: Record<string, string> = {
@@ -125,7 +126,7 @@ const TipContent = () => {
       transition={{ duration: 0.3 }}
       className="grid grid-cols-1 gap-3"
     >
-      <section className="flex flex-col rounded-osce-lg border border-b2c-border bg-osce-surface p-4 sm:p-5">
+      <section className={cn("flex flex-col rounded-osce-lg border p-4 sm:p-5", tipTone.card)}>
         <div className="flex items-start gap-3">
           <HiOutlineLightBulb className="mt-0.5 h-5 w-5 shrink-0 text-osce-accent" aria-hidden />
           <div className="min-w-0">
@@ -135,9 +136,9 @@ const TipContent = () => {
         </div>
         <p className={cn("mt-3", b2cBodyText, tipTone.body)}>{currentTip.activity.about}</p>
 
-        <div className={cn("mt-4 flex flex-col rounded-osce-lg border p-4", tipTone.card)}>
+        <div className={cn("mt-4 flex flex-col rounded-osce-lg border p-4", practiceTone.card)}>
           <div className="flex items-center justify-between gap-2">
-            <p className={cn("text-osce-meta font-medium", tipTone.title)}>Try this</p>
+            <p className={cn("text-osce-meta font-medium", practiceTone.title)}>Try this</p>
             <span className="text-osce-meta tabular-nums text-b2c-text-muted">
               {currentActivityIndex + 1} of {currentTip.activity.educationalActivity.length}
             </span>
@@ -146,7 +147,7 @@ const TipContent = () => {
             key={currentActivityIndex}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className={cn("mt-2", b2cBodyText, tipTone.body)}
+            className={cn("mt-2", b2cBodyText, practiceTone.body)}
           >
             {currentTip.activity.educationalActivity[currentActivityIndex]}
           </motion.p>
