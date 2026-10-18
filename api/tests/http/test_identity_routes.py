@@ -11,14 +11,19 @@ import io
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import pyotp
 import pytest
 from httpx import AsyncClient
 from pypdf import PdfReader
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.secrets_at_rest import encrypt_text
+from app.core.settings import get_settings
 from app.features.attempts import repository_transcript
 from app.features.identity import repository as identity_repo
+from app.features.identity.domain import MFA_VERIFY_TTL_SECONDS
 from app.features.identity.service_erasure import erase_due_accounts
+from app.features.identity.tokens import MFA_CHALLENGE_TYPE, issue_mfa_challenge
 from app.features.peer_practice import repository_sessions as peer_repository_sessions
 from app.features.peer_practice import service_privacy as peer_practice_privacy
 from tests.http.test_attempt_material_routes import _entitled_attempt
@@ -961,3 +966,89 @@ async def test_a_self_registered_account_keeps_its_trial_clock_through_its_first
     await db_session.refresh(user)
 
     assert user.activated_at == registered_at
+
+
+async def _closed_with_authenticator(
+    client: AsyncClient, db_session: AsyncSession, *, by_owner: bool = True
+) -> tuple[uuid.UUID, str, str]:
+    """An account closed inside its month (by its owner, or by anyone else) with a confirmed
+    authenticator, and the challenge its password would earn with the gate on. Returns the id, the
+    TOTP secret and the challenge."""
+    token = (await register(client)).json()["access_token"]
+    if by_owner:
+        await client.post("/api/v1/me/close", json={"password": REGISTER["password"]}, headers=bearer(token))
+    user = await identity_repo.user_by_email(db_session, "new@example.com")
+    assert user is not None
+    if not by_owner:
+        user.status, user.closed_at = "deleted", datetime.now(UTC)
+    user_id, secret, now = user.id, pyotp.random_base32(), datetime.now(UTC)
+    await identity_repo.save_pending_mfa_secret(
+        db_session,
+        user_id,
+        secret_ciphertext=encrypt_text(secret, key=get_settings().mfa_secret_key),
+        now=now,
+    )
+    await identity_repo.confirm_mfa(db_session, user_id, at=now, step=0)
+    await db_session.commit()
+    challenge = issue_mfa_challenge(
+        user_id,
+        token_type=MFA_CHALLENGE_TYPE,
+        ttl_seconds=MFA_VERIFY_TTL_SECONDS,
+        settings=get_settings(),
+        now=now,
+    )
+    return user_id, secret, challenge
+
+
+async def test_a_closed_account_reopens_only_once_its_second_factor_is_passed(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The reopen undoes the owner's closure and cancels the erasure, so it waits for sign-in to be
+    complete: the challenge a password earns does not reopen, the verified code does."""
+    user_id, secret, challenge = await _closed_with_authenticator(client, db_session)
+    user = await identity_repo.user_by_id(db_session, user_id)
+    assert user is not None
+    assert user.status == "deleted"
+
+    verified = await client.post(
+        "/api/v1/auth/mfa/verify", json={"challenge_token": challenge, "code": pyotp.TOTP(secret).now()}
+    )
+    assert verified.status_code == 200, verified.text
+    assert verified.json()["status"] == "signed_in"
+    await db_session.refresh(user)
+    assert (user.status, user.closed_at) == ("active", None)
+
+
+async def test_a_second_factor_does_not_finish_signing_in_a_suspended_account(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user_id, secret, challenge = await _closed_with_authenticator(client, db_session)
+    user = await identity_repo.user_by_id(db_session, user_id)
+    assert user is not None
+    user.status = "suspended"
+    await db_session.commit()
+
+    refused = await client.post(
+        "/api/v1/auth/mfa/verify", json={"challenge_token": challenge, "code": pyotp.TOTP(secret).now()}
+    )
+    assert (refused.status_code, refused.json()["code"]) == (401, "mfa_challenge_expired")
+    password = await client.post(
+        "/api/v1/auth/login", json={"email": "new@example.com", "password": REGISTER["password"]}
+    )
+    assert password.json()["code"] == "account_suspended"
+
+
+async def test_a_second_factor_does_not_reopen_an_account_staff_closed(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Only the owner's own closing is undone by signing in, with or without a second factor."""
+    user_id, secret, challenge = await _closed_with_authenticator(client, db_session, by_owner=False)
+
+    refused = await client.post(
+        "/api/v1/auth/mfa/verify", json={"challenge_token": challenge, "code": pyotp.TOTP(secret).now()}
+    )
+    assert (refused.status_code, refused.json()["code"]) == (401, "mfa_challenge_expired")
+    user = await identity_repo.user_by_id(db_session, user_id)
+    assert user is not None
+    await db_session.refresh(user)
+    assert user.status == "deleted"

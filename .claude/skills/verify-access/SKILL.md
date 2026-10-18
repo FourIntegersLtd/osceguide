@@ -64,6 +64,14 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
 
 ## Traps
 
+- **Read the skip count, not just the exit code.** `tests/http/test_mfa_routes.py` is skipped whole while
+  two-factor sign-in is switched off (`service_mfa.finish_password_sign_in`): 15 skips in Level 1 is
+  that. A run with dozens more skipped exited 0 because Postgres was unreachable at session start on
+  a loaded machine (2026-10-18); rerun with `-rs` and check every skip reason is the MFA one.
+- **Closed-account reopen happens at session mint** (`service_mfa._issue_session`), not on the
+  password. Prove a reopen change on both `/auth/login` and `/auth/mfa/verify`; the MFA path needs a
+  challenge minted with `tokens.issue_mfa_challenge` while the gate is off
+  (`tests/http/test_identity_routes.py::_closed_with_authenticator`).
 - **`$TMPDIR` is shared with other sessions on this machine.** A `make ci > "$TMPDIR/ci.txt"` was
   overwritten mid-run by another session's web lint (2026-10-11). Write proof output to the
   session scratchpad instead.

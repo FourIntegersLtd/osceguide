@@ -114,6 +114,8 @@ them — the call goes downward, from `tenancy` into `identity`, never back.
 ## Closing, reopening and erasing an account
 
 Closing keeps the password hash for 30 days and audits `account.closed`. Signing in with the password inside
-that month reopens the account (SSO sign-in does not yet). After 30 days `erase_due_accounts` erases each
+that month reopens the account (SSO sign-in does not yet), but only once sign-in is complete: the password
+path reopens in `service_mfa._issue_session`, so a second-factor challenge leaves it closed; the password
+check uses `can_reopen`, which changes nothing. After 30 days `erase_due_accounts` erases each
 account in its own session, so one failure is logged and the rest still run; it also blanks the account's
 roster entries and queued release emails. Decision rationale stays in the append-only table (needs a migration).

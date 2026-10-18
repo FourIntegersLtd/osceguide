@@ -70,18 +70,26 @@ async def close_account(
     await _audit_account(session, user, "account.closed", now, "Account closed by its owner")
 
 
-async def reopen_if_within_retention(session: AsyncSession, user: User, *, now: datetime) -> bool:
-    """Bring a closed account back when its owner proves the password inside the month.
-
-    False when the account is not closed, was erased, or the month has passed; the caller then
-    refuses the sign-in as it does for any account that is not active.
-    """
+async def can_reopen(session: AsyncSession, user: User, *, now: datetime) -> bool:
+    """Whether a complete sign-in would bring this closed account back: closed by its owner,
+    not erased, and inside the month. Changes nothing, so a sign-in still waiting on a second
+    factor can be let through to its challenge without undoing the closure yet."""
     if user.status != "deleted" or user.closed_at is None or user.erased_at is not None:
         return False
     if now - user.closed_at >= timedelta(days=RETENTION_DAYS):
         return False
     # Only the owner's own closing is undone by signing in; any other closure stays closed.
-    if not await tenancy.acted_on_themselves(session, action="account.closed", user_id=user.id):
+    return await tenancy.acted_on_themselves(session, action="account.closed", user_id=user.id)
+
+
+async def reopen_if_within_retention(session: AsyncSession, user: User, *, now: datetime) -> bool:
+    """Bring a closed account back once its owner has completed sign-in inside the month.
+
+    Called only where a session is minted (after any second factor), never on a password alone:
+    reopening reverses the closure and cancels the erasure. False when `can_reopen` is; the
+    caller then refuses the sign-in as it does for any account that is not active.
+    """
+    if not await can_reopen(session, user, now=now):
         return False
     user.status = "active"
     user.closed_at = None

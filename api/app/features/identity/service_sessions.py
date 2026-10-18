@@ -97,7 +97,8 @@ async def login_with_memberships(
     order so a suspended account is never told its password was merely wrong.
 
     When the password is right, `finish_password_sign_in` either mints the
-    session or returns an MFA challenge. A refresh already issued is not
+    session (reopening an account its owner closed this month) or returns an
+    MFA challenge, which leaves the account closed. A refresh already issued is not
     revisited here."""
     user = await repository.user_by_email(session, email)
     if user is None:
@@ -114,9 +115,9 @@ async def login_with_memberships(
         raise PasswordLoginDisabled()
     if not verify_password(user.password_hash, password):
         raise InvalidCredentials()
-    if user.status != "active" and not await service_close_account.reopen_if_within_retention(
-        session, user, now=now
-    ):
+    # A closed account is let through to finish signing in, but reopens only when the session is
+    # minted (`service_mfa._issue_session`), after any second factor.
+    if user.status != "active" and not await service_close_account.can_reopen(session, user, now=now):
         raise AccountSuspended()
     memberships = await memberships_for(session, user.id)
     from app.features.identity.service_mfa import finish_password_sign_in

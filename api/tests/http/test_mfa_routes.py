@@ -447,3 +447,33 @@ async def test_the_sixth_recovery_regeneration_is_rate_limited(
     assert statuses[:5] == [401, 401, 401, 401, 401]
     assert statuses[5] == 429
     assert response.json()["code"] == "too_many_requests"
+
+
+async def test_a_password_alone_does_not_reopen_a_closed_account_with_an_authenticator(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Closing is undone only by a complete sign-in: the password earns a challenge and the
+    account stays closed (erasure still due) until the code is verified."""
+    email = f"closed-{uuid.uuid4()}@example.com"
+    await _password_user(db_session, email=email, platform_admin=True)
+    token, secret, _codes = await _enrol(client, email)
+    closed = await client.post("/api/v1/me/close", json={"password": PASSWORD}, headers=bearer(token))
+    assert closed.status_code == 204, closed.text
+
+    started = await client.post("/api/v1/auth/login", json={"email": email, "password": PASSWORD})
+    assert started.json()["status"] == "mfa_required"
+    user = await repository.user_by_email(db_session, email)
+    assert user is not None
+    await db_session.refresh(user)
+    assert user.status == "deleted"
+
+    verified = await client.post(
+        "/api/v1/auth/mfa/verify",
+        json={
+            "challenge_token": started.json()["challenge_token"],
+            "code": _code_at(secret, datetime.now(UTC) + timedelta(seconds=30)),
+        },
+    )
+    assert verified.json()["status"] == "signed_in"
+    await db_session.refresh(user)
+    assert (user.status, user.closed_at) == ("active", None)

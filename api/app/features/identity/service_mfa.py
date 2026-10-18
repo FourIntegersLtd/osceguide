@@ -26,7 +26,7 @@ from app.core.memberships import MembershipLookup
 from app.core.rate_limit import MFA_VERIFY, check
 from app.core.secrets_at_rest import decrypt_text, encrypt_text
 from app.core.settings import Settings
-from app.features.identity import repository
+from app.features.identity import repository, service_close_account
 from app.features.identity.domain import (
     MfaMembership,
     mfa_required_reason,
@@ -116,15 +116,20 @@ def _otpauth_uri(secret: str, email: str) -> str:
     )
 
 
-async def _active_user(session: AsyncSession, user_id: uuid.UUID) -> User:
+async def _active_user(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> User:
     """The account a challenge may still finish.
 
-    Gone or not active is `mfa_challenge_expired`. Password login switched off
-    since the challenge was issued — an `sso_only` sign-in writes that — is
-    the same `password_login_disabled` login returns.
+    Gone or not active is `mfa_challenge_expired`, except an account its owner
+    closed this month: the password let it through to the challenge, and the
+    session the code earns reopens it. Password login switched off since the
+    challenge was issued — an `sso_only` sign-in writes that — is the same
+    `password_login_disabled` login returns.
     """
     user = await repository.user_by_id(session, user_id)
-    if user is None or user.status != "active":
+    if user is None:
+        raise MfaChallengeExpired()
+    # The reopen itself is `_issue_session`'s, once the code is accepted; keep the two in step.
+    if user.status != "active" and not await service_close_account.can_reopen(session, user, now=now):
         raise MfaChallengeExpired()
     if user.password_login_disabled:
         raise PasswordLoginDisabled()
@@ -186,7 +191,15 @@ async def _issue_session(
     memberships: list[Membership],
     count_as_login: bool,
 ) -> AuthResult:
-    """The session a password sign-in ends in once no second factor is outstanding."""
+    """The session a password sign-in ends in once no second factor is outstanding.
+
+    The one place a closed account reopens on the password path: sign-in is complete here, so
+    the owner's closure and its pending erasure are undone only by someone who passed every factor.
+    """
+    if user.status != "active" and not await service_close_account.reopen_if_within_retention(
+        session, user, now=now
+    ):
+        raise AccountSuspended()
     if count_as_login:
         await repository.record_login(session, user.id, now)
         user.last_login_at = now
@@ -218,7 +231,9 @@ async def start_enrolment_from_challenge(
 ) -> MfaEnrolmentStart:
     """Begin enrolment for a sign-in that was told a second factor is required."""
     user = await _active_user(
-        session, _user_from_challenge(challenge_token, expected_type=MFA_ENROL_TYPE, settings=settings)
+        session,
+        _user_from_challenge(challenge_token, expected_type=MFA_ENROL_TYPE, settings=settings),
+        now=now,
     )
     return await _store_pending_secret(session, user, settings=settings, now=now)
 
@@ -254,7 +269,7 @@ async def confirm_enrolment_from_challenge(
     user_id = await _limited_challenge_user(
         challenge_token, expected_type=MFA_ENROL_TYPE, settings=settings, caller=caller
     )
-    user = await _active_user(session, user_id)
+    user = await _active_user(session, user_id, now=now)
     row = await repository.mfa_by_user(session, user.id)
     if row is None:
         raise MfaNotEnrolled()
@@ -299,7 +314,7 @@ async def verify_challenge(
     user_id = await _limited_challenge_user(
         challenge_token, expected_type=MFA_CHALLENGE_TYPE, settings=settings, caller=caller
     )
-    user = await _active_user(session, user_id)
+    user = await _active_user(session, user_id, now=now)
     row = await repository.mfa_by_user(session, user.id)
     if row is None or row.confirmed_at is None:
         raise MfaNotEnrolled()
