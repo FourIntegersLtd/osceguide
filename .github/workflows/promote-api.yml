@@ -145,29 +145,45 @@ jobs:
 
       # Gate 2: CI api's platform-api job passed on the api being promoted. CI api runs only
       # when its paths change (the list in ci-api.yml), so a commit that touched web/ alone
-      # has no run of its own: the job is looked up on the newest ancestor that changed those
-      # paths, whose api is the one the target runs. That is the target itself whenever it
-      # changed them.
+      # has no run of its own. ci_sha is the newest ancestor that changed those paths, so every
+      # commit from ci_sha to the target carries the same api. CI api runs once per push, on
+      # the push's head, so when one push carried several commits ci_sha itself may have no
+      # run: a passed job on any commit in ci_sha..target (inclusive) is accepted.
       - name: "Gate 2: CI passed"
         env:
           TARGET_SHA: ${{ steps.target.outputs.sha }}
         run: |
           set -euo pipefail
-          ci_sha=$(git log -1 --format=%H "${TARGET_SHA}" -- \
-            "api" "assessment/packages/osce_assessment" "assessment/tests/fixtures" \
-            "web/src/capabilities/authoring/rubrics/rubricVocabulary.ts" \
+          api_paths=("api" "assessment/packages/osce_assessment" "assessment/tests/fixtures"
+            "web/src/capabilities/authoring/rubrics/rubricVocabulary.ts"
             "web/src/capabilities/feedback/rubricView.ts" ".github/workflows/ci-api.yml")
+          ci_sha=$(git log -1 --first-parent --format=%H "${TARGET_SHA}" -- "${api_paths[@]}")
           if [ -z "${ci_sha}" ]; then
             echo "::error::No commit up to ${TARGET_SHA} changed the api; nothing to promote."
             exit 1
           fi
-          echo "The api last changed in ${ci_sha}; checking CI api there."
-          ci_conclusion=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${ci_sha}/check-runs?check_name=platform-api" \
-            --jq '[.check_runs[] | select(.status == "completed")][0].conclusion // "missing"')
-          if [ "${ci_conclusion}" != "success" ]; then
-            echo "::error::CI api's platform-api job on ${ci_sha} is '${ci_conclusion}', not 'success'."
-            exit 1
+          echo "The api last changed in ${ci_sha}; checking CI api on ${ci_sha}..${TARGET_SHA}."
+          same_api=$(git rev-list --first-parent "${ci_sha}^..${TARGET_SHA}")
+          newest_failed=""
+          for sha in ${same_api}; do
+            # Only a commit whose api is exactly the target's counts.
+            git diff --quiet "${sha}" "${TARGET_SHA}" -- "${api_paths[@]}" || continue
+            conclusion=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${sha}/check-runs?check_name=platform-api" \
+              --jq '[.check_runs[] | select(.status == "completed")][0].conclusion // "missing"')
+            if [ "${conclusion}" = "success" ]; then
+              echo "CI api's platform-api job passed on ${sha}, whose api is ${ci_sha}'s."
+              exit 0
+            fi
+            if [ "${conclusion}" != "missing" ] && [ -z "${newest_failed}" ]; then
+              newest_failed="${sha} is '${conclusion}'"
+            fi
+          done
+          if [ -n "${newest_failed}" ]; then
+            echo "::error::CI api's platform-api job has not passed on ${ci_sha}..${TARGET_SHA}; the newest completed run, on ${newest_failed}, not 'success'."
+          else
+            echo "::error::CI api's platform-api job on ${ci_sha}..${TARGET_SHA} is 'missing', not 'success'."
           fi
+          exit 1
 
       # Gate 3: staging has actually been running this commit, and is healthy.
       - name: "Gate 3: staging runs this commit"
