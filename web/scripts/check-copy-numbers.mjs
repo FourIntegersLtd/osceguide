@@ -28,9 +28,8 @@ const ALLOWED = allowList(
     "src/domains/train/mocks/MockSessions.tsx: 12 minutes": "TODO: station length belongs to the exam config / PlanRead, not copy",
     "src/foundation/ui/ProgressBar.tsx: 3 stations": "TODO: example session size; also disagrees with the 12 minutes above (3 x 12 is not 45)",
     "src/foundation/ui/ProgressBar.tsx: 45 minutes": "TODO: see 3 stations",
-    "src/foundation/ui/Timer.tsx: 6 minutes": "the doctor timer's own toast title, tied to its DOCTOR_TIME_WARNING beside it",
   },
-  11,
+  10,
 );
 
 const offenders = [];

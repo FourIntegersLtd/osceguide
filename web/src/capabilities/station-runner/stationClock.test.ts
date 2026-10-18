@@ -22,8 +22,8 @@ describe("phaseElapsedSeconds", () => {
     );
   });
 
-  it("says nothing when the server did not", () => {
-    assert.equal(phaseElapsedSeconds(null, "reading"), undefined);
-    assert.equal(phaseElapsedSeconds({ status: "created" }, "reading"), undefined);
+  it("leaves the whole phase when the server did not say", () => {
+    assert.equal(phaseElapsedSeconds(null, "reading"), 0);
+    assert.equal(phaseElapsedSeconds({ status: "created", created_at: "", started_at: null, server_time: "" }, "reading"), 0);
   });
 });

@@ -5,12 +5,15 @@ import { FiRotateCcw } from "react-icons/fi";
 
 import ConfirmModal from "@/foundation/ui/ConfirmModal";
 import { useToast } from "@/foundation/hooks/useToast";
+import { phaseDeadline, secondsLeft } from "@/foundation/ui/phaseCountdown";
 
 interface TimerProps {
-  duration: number; // Default timer duration in seconds (e.g., 600 for 10 minutes)
-  stationId: string; // Unique identifier for the station to track timer state per station
-  timerType: "doctor" | "simulation"; // Type of timer to differentiate between doctor and simulation phases
-  onTimeUp?: () => void; // Callback function called when timer reaches 0
+  /** Length of this phase in seconds, as the caller derived it (custom timers included). */
+  duration: number;
+  /** Identifies the attempt, so its warning toast is not confused with another's. */
+  stationId: string;
+  timerType: "doctor" | "simulation";
+  onTimeUp?: () => void;
   /** Called once when FINAL_COUNTDOWN_SECONDS remain — the "wrap up" bell. */
   onFinalCountdown?: (secondsLeft: number) => void;
   /** False holds the clock where it is, e.g. until the patient joins. Defaults to true. */
@@ -18,29 +21,38 @@ interface TimerProps {
   /** What a held clock says; defaults to waiting for the patient. */
   stoppedLabel?: string;
   /**
-   * Seconds of this phase the server says are already used. When given, the clock starts from
-   * `duration - elapsedSeconds` and never reads or writes the browser's storage, so a cleared
-   * storage, a second tab or a skewed device clock cannot move it.
+   * Seconds of this phase the server says are already used. The clock is always
+   * `duration - elapsedSeconds` measured against the wall clock, and the browser's storage is never
+   * read or written, so a reload, a second tab, another attempt or the next person in the tab
+   * cannot move it.
    */
-  elapsedSeconds?: number;
+  elapsedSeconds: number;
+  /** This device's `Date.now()` at which `elapsedSeconds` was true (when the server's answer arrived). */
+  measuredAtMs: number;
 }
 
 /** Last stretch of the countdown, shown in red so the user isn't cut off unawares. */
 export const FINAL_COUNTDOWN_SECONDS = 30;
 
-/**
- * Timer component that displays a countdown timer with localStorage persistence.
- * Supports custom durations for users with accessibility needs and restores timer state
- * when the page is refreshed or user navigates away and returns.
- */
-/** Saved every second so a reload or navigation restores the time left. */
-function saveTimerState(timerType: string, stationId: string, timeRemaining: number): void {
-  localStorage.setItem(`timer-${timerType}-${stationId}`, timeRemaining.toString());
-  localStorage.setItem(`timer-timestamp-${timerType}-${stationId}`, Date.now().toString());
+/** Warning toast thresholds (seconds left) for each phase. */
+const WARNING_SECONDS = { doctor: 30, simulation: 360 } as const;
+
+/** Which of the warning, final and time-up signals have fired this phase. */
+const NOT_FIRED = () => ({ warning: false, final: false, timeUp: false });
+
+function leftLabel(seconds: number): string {
+  return seconds >= 120 ? `${seconds / 60} minutes left` : `${seconds} seconds left`;
 }
 
+/**
+ * A phase countdown driven by the server's attempt timing.
+ *
+ * Custom durations are applied by whoever derives the practice attempt's phases (see
+ * `capabilities/attempt-runner`'s `usePracticeTimers`) and arrive here as `duration`; a circuit's
+ * clock is never extended, because one clock serves everybody on it (`docs/BACKLOG.md`, S-2).
+ */
 export default function Timer({
-  duration: defaultDuration, // Default duration passed as prop (e.g., 600 seconds)
+  duration,
   stationId,
   timerType,
   onTimeUp,
@@ -48,8 +60,8 @@ export default function Timer({
   running = true,
   stoppedLabel = "Starts with the patient",
   elapsedSeconds,
+  measuredAtMs,
 }: TimerProps) {
-  const fromServer = elapsedSeconds !== undefined;
   // Parents pass inline callbacks; reading them through refs keeps the countdown
   // effect from re-registering (and restarting its interval) on every render.
   const onTimeUpRef = useRef(onTimeUp);
@@ -59,224 +71,80 @@ export default function Timer({
     onFinalCountdownRef.current = onFinalCountdown;
   }, [onTimeUp, onFinalCountdown]);
 
-  /*
-   * The countdown the caller asked for.
-   *
-   * The retiring version fetched the person's accessibility settings from here
-   * and extended the clock itself, which made a UI primitive issue a request
-   * and meant the timer could disagree with whatever the attempt was actually
-   * scheduled for. This stays dumb on purpose: a person's own custom timers
-   * (`users.custom_reading_seconds`, `custom_simulation_seconds`) are applied
-   * by whoever derives the practice attempt's phases — see
-   * `capabilities/attempt-runner`'s `usePracticeTimers` — and the chosen
-   * figure arrives here as `duration`.
-   * A circuit's clock is never extended, because one clock serves everybody on
-   * it (`docs/BACKLOG.md`, S-2).
-   */
-  const effectiveDuration = defaultDuration;
-
-  // Current time remaining in seconds (what's displayed on screen)
-  const [timeRemaining, setTimeRemaining] = useState(defaultDuration);
-
-  /**
-   * Initialize or restore timer state when component mounts or effective duration changes.
-   *
-   * Logic flow:
-   * 1. If using custom duration: Always start fresh (ignore any saved state)
-   * 2. If using default duration: Try to restore saved timer state
-   *    - Calculate how much time has passed since last save
-   *    - Subtract elapsed time from saved remaining time
-   *    - Only restore if result is valid (> 0 and <= effective duration)
-   * 3. If no valid saved state: Start with effective duration
-   */
-  useEffect(() => {
-    // The server knows how long this phase has run; the browser's storage is not asked.
-    if (elapsedSeconds !== undefined) {
-      setTimeRemaining(Math.max(defaultDuration - elapsedSeconds, 0));
-      return;
-    }
-    // Case 1: User has custom duration - always reset to custom duration
-    // This ensures custom timers always start fresh and don't use old default timer state
-    if (effectiveDuration !== defaultDuration) {
-      setTimeRemaining(effectiveDuration);
-      // Save the fresh start time to localStorage
-      localStorage.setItem(
-        `timer-${timerType}-${stationId}`,
-        effectiveDuration.toString(),
-      );
-      localStorage.setItem(
-        `timer-timestamp-${timerType}-${stationId}`,
-        Date.now().toString(),
-      );
-      return;
-    }
-
-    // Case 2: Using default duration - try to restore saved timer state
-    const savedTimeRemainingStr = localStorage.getItem(
-      `timer-${timerType}-${stationId}`,
-    );
-    const savedTimestampMsStr = localStorage.getItem(
-      `timer-timestamp-${timerType}-${stationId}`,
-    );
-
-    if (savedTimeRemainingStr && savedTimestampMsStr) {
-      // Parse saved values
-      const savedTimeRemaining = parseInt(savedTimeRemainingStr); // Time remaining when saved (seconds)
-      const savedTimestampMs = parseInt(savedTimestampMsStr); // When timer was saved (milliseconds)
-
-      // Calculate how many seconds have passed since the timer was saved
-      const currentTimestampMs = Date.now(); // Current time (milliseconds)
-      const elapsedTimeMs = currentTimestampMs - savedTimestampMs; // Difference in milliseconds
-      const elapsedSeconds = Math.floor(elapsedTimeMs / 1000); // Convert to seconds
-
-      // Calculate what the remaining time should be now
-      // savedTimeRemaining = time left when saved (e.g., 450 seconds)
-      // elapsedSeconds = time that has passed since save (e.g., 20 seconds)
-      // restoredTimeRemaining = current time left (e.g., 450 - 20 = 430 seconds)
-      // Math.max ensures we never get negative values (timer expired)
-      const restoredTimeRemaining = Math.max(
-        savedTimeRemaining - elapsedSeconds,
-        0,
-      );
-
-      // Only restore if the calculated remaining time is valid
-      // Must be > 0 (timer hasn't expired) and <= effectiveDuration (sanity check)
-      if (
-        restoredTimeRemaining > 0 &&
-        restoredTimeRemaining <= effectiveDuration
-      ) {
-        setTimeRemaining(restoredTimeRemaining);
-        return;
-      }
-    }
-
-    // Case 3: No valid saved state - start fresh with effective duration
-    setTimeRemaining(effectiveDuration);
-  }, [effectiveDuration, timerType, stationId, defaultDuration, elapsedSeconds]);
-
-  // Flag to show warning modal when timer reaches warning threshold
-  const [showWarning, setShowWarning] = useState(false);
+  const serverLeft = () => secondsLeft(phaseDeadline(duration, elapsedSeconds, measuredAtMs), Date.now());
+  const [timeRemaining, setTimeRemaining] = useState(serverLeft);
+  // Mirrors `timeRemaining` for the ticker; the reset-on-new-answer effect must stay above the ticker effect.
+  // Seconds left while held; the deadline is taken from it whenever the clock (re)starts.
+  const heldRef = useRef(timeRemaining);
+  const firedRef = useRef(NOT_FIRED());
+  // Bumped by a reset so the ticker restarts from the full phase.
+  const [restarts, setRestarts] = useState(0);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const toast = useToast();
 
-  // The mid-station warning is a toast, so it never blocks the consultation.
+  // A new answer from the server replaces whatever the clock said (a reset included), aged from
+  // when it arrived, so a remount long after the brief was read does not hand time back.
   useEffect(() => {
-    if (!showWarning) return;
-    toast.show({
-      id: `timer-warning-${timerType}-${stationId}`,
-      tone: "warning",
-      title: timerType === "doctor" ? "30 seconds left" : "6 minutes left",
-      message:
-        timerType === "doctor"
-          ? "Get ready: the consultation starts next."
-          : "Start bringing the consultation towards management and safety-netting.",
-      durationMs: 8000,
-    });
-    setShowWarning(false);
+    const left = serverLeft();
+    heldRef.current = left;
+    firedRef.current = NOT_FIRED();
+    setTimeRemaining(left);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showWarning]);
+  }, [duration, elapsedSeconds, measuredAtMs]);
 
-  // Flag to prevent multiple calls to onTimeUp callback
-  const [hasCalledTimeUp, setHasCalledTimeUp] = useState(false);
-  const hasCalledFinalCountdownRef = useRef(false);
-
-  /**
-   * Reset timer to effective duration and clear saved state.
-   * This is called when user clicks the reset button.
-   */
   const handleReset = () => {
-    setTimeRemaining(effectiveDuration);
-    setHasCalledTimeUp(false);
-    hasCalledFinalCountdownRef.current = false;
-
-    if (fromServer) return;
-    // Save reset time to localStorage
-    localStorage.setItem(
-      `timer-${timerType}-${stationId}`,
-      effectiveDuration.toString(),
-    );
-    localStorage.setItem(
-      `timer-timestamp-${timerType}-${stationId}`,
-      Date.now().toString(),
-    );
+    heldRef.current = duration;
+    firedRef.current = NOT_FIRED();
+    setTimeRemaining(duration);
+    setRestarts((count) => count + 1);
   };
 
-  // Warning thresholds (in seconds) for each timer type
-  const DOCTOR_TIME_WARNING = 30; // 30 seconds remaining for doctor phase
-  const SIMULATION_TIME_WARNING = 360; // 6 minutes (360 seconds) remaining for simulation phase
-
-  /**
-   * Main timer countdown logic.
-   *
-   * This effect:
-   * 1. Shows warning modal when timer reaches warning threshold
-   * 2. Calls onTimeUp callback when timer reaches 0
-   * 3. Continuously updates localStorage with current time remaining
-   * 4. Decrements timeRemaining every second
-   *
-   * Runs whenever timeRemaining changes (every second during countdown).
-   */
+  // Measured from a wall-clock deadline, so a throttled background tab is right the moment it wakes.
   useEffect(() => {
-    // A held clock neither ticks nor saves, so a reload while held restores
-    // the time left rather than counting the wait against it.
     if (!running) return;
+    const deadline = Date.now() + heldRef.current * 1000;
+    const tick = () => {
+      const left = secondsLeft(deadline, Date.now());
+      heldRef.current = left;
+      setTimeRemaining(left);
+    };
+    const id = window.setInterval(tick, 1000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [running, duration, elapsedSeconds, measuredAtMs, restarts]);
 
-    // Show warning modal when timer reaches warning threshold
-    if (timerType === "doctor" && timeRemaining === DOCTOR_TIME_WARNING) {
-      setShowWarning(true);
-    } else if (
-      timerType === "simulation" &&
-      timeRemaining === SIMULATION_TIME_WARNING
-    ) {
-      setShowWarning(true);
+  // Each signal fires once when its threshold is crossed (a woken tab can jump past the exact second).
+  useEffect(() => {
+    if (!running) return;
+    const fired = firedRef.current;
+    if (!fired.warning && timeRemaining > 0 && timeRemaining <= WARNING_SECONDS[timerType]) {
+      fired.warning = true;
+      toast.show({
+        id: `timer-warning-${timerType}-${stationId}`,
+        tone: "warning",
+        title: leftLabel(WARNING_SECONDS[timerType]),
+        message:
+          timerType === "doctor"
+            ? "Get ready: the consultation starts next."
+            : "Start bringing the consultation towards management and safety-netting.",
+        durationMs: 8000,
+      });
     }
-
-    // Final-countdown bell, once per run
-    if (
-      timeRemaining > 0 &&
-      timeRemaining <= FINAL_COUNTDOWN_SECONDS &&
-      !hasCalledFinalCountdownRef.current
-    ) {
-      hasCalledFinalCountdownRef.current = true;
+    if (!fired.final && timeRemaining > 0 && timeRemaining <= FINAL_COUNTDOWN_SECONDS) {
+      fired.final = true;
       onFinalCountdownRef.current?.(timeRemaining);
     }
-
-    // Handle timer reaching 0
-    if (timeRemaining === 0 && !hasCalledTimeUp) {
-      // Clear saved state since timer is complete
-      localStorage.removeItem(`timer-${timerType}-${stationId}`);
-      localStorage.removeItem(`timer-timestamp-${timerType}-${stationId}`);
-
-      // Call onTimeUp callback only once. Doing it here (not inside the setState
-      // updater below) keeps it out of StrictMode's double-invoked updaters.
-      setHasCalledTimeUp(true);
+    if (!fired.timeUp && timeRemaining === 0) {
+      fired.timeUp = true;
       onTimeUpRef.current?.();
-      return; // Don't start countdown if timer is at 0
     }
-
-    // Save current timer state to localStorage every second
-    // This allows timer to be restored if user refreshes or navigates away
-    if (!fromServer) saveTimerState(timerType, stationId, timeRemaining);
-
-    // Start countdown interval that decrements timer every second
-    const countdownInterval = setInterval(() => {
-      setTimeRemaining((currentTimeRemaining) => {
-        const newTimeRemaining = currentTimeRemaining - 1;
-
-        // If timer reaches 0 or below, stop the interval; the effect above
-        // fires onTimeUp when it sees 0.
-        if (newTimeRemaining <= 0) {
-          clearInterval(countdownInterval);
-          return 0; // Ensure timer doesn't go negative
-        }
-
-        return newTimeRemaining;
-      });
-    }, 1000); // Run every 1000ms (1 second)
-
-    // Cleanup: clear interval when component unmounts or dependencies change
-    return () => clearInterval(countdownInterval);
-  }, [timeRemaining, stationId, timerType, hasCalledTimeUp, running, fromServer]);
+  }, [timeRemaining, running, timerType, stationId, toast]);
 
   // Calculate minutes and seconds for display
   const minutes = Math.floor(timeRemaining / 60);
@@ -339,7 +207,7 @@ export default function Timer({
           handleReset();
         }}
         title="Reset the timer?"
-        message="This restores the full time for this phase. Use it only if you started by mistake."
+        message="This restores the full time for this phase on this screen; reloading the page goes back to the attempt's own clock. Use it only if you started by mistake."
         confirmText="Reset timer"
         cancelText="Keep going"
       />

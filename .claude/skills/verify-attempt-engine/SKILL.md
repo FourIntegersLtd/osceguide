@@ -16,6 +16,7 @@ shows up in a live room: CI stayed green here while real bugs shipped.
 | Circuit timing, room lifecycle, anything on exam day | Level 2, with the circuit flow |
 | Hosting, `k8s/`, Dockerfile, env, anything only true when deployed | Level 3 (after the person pushes) |
 | A voice model or prompt swap | Level 1 + `scripts/model_bench.py` |
+| Web runner screens (station clock, gates) | Level 1 (`npm run ci` in web) + platform-web `verify` |
 
 ## Level 1 — the repo's own tests (seconds)
 
@@ -119,3 +120,8 @@ It streams for ever — run it in the background and stop it after ~40s.
 - Model differences under ~1 role breach per consultation at n=3 are judge
   noise. Do not switch a voice model on spec-sheet reasoning; re-run
   `scripts/model_bench.py`.
+- Station runner in a browser: `walkthrough@example.com` has used its free stations ("This
+  station could not be started"), and each account gets three sessions. Register a fresh
+  `@example.com` account (`POST /auth/register`, then `PATCH /me {"exam_code":"sca"}`), press
+  **Start** on the gate, and read the clock against the brief's `server_time - created_at`. A
+  reload shows the gate again; **Start** resumes the same attempt.

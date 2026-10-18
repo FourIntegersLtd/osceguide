@@ -334,13 +334,14 @@ export function StationScreen(props: StationScreenProps) {
   // the room skin (ConsultationScreen), the rest stays on the page's surface.
   const inRoom = effectiveAction === "attempt" && activeStep === "simulation";
   const timer =
-    effectiveAction === "attempt" && attempt.attemptId ? (
+    effectiveAction === "attempt" && attempt.attemptId && attempt.briefReceivedAt !== null ? (
       step === "patient" ? (
         <Timer
           duration={effectiveReadingSeconds}
           stationId={attempt.attemptId}
           timerType="doctor"
           elapsedSeconds={phaseElapsedSeconds(attempt.brief, "reading")}
+          measuredAtMs={attempt.briefReceivedAt}
           onTimeUp={enterConsultation}
         />
       ) : activeStep === "simulation" ? (
@@ -349,6 +350,7 @@ export function StationScreen(props: StationScreenProps) {
           stationId={attempt.attemptId}
           timerType="simulation"
           elapsedSeconds={phaseElapsedSeconds(attempt.brief, "consultation")}
+          measuredAtMs={attempt.briefReceivedAt}
           {...consultationClock(session.phase, session.patientJoined)}
           onTimeUp={() => void handleSimulationTimeUp()}
           onFinalCountdown={session.warnTimeRemaining}

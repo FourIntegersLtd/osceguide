@@ -26,6 +26,8 @@ export interface StationAttempt {
   startAgain: () => void;
   attemptId: string | null;
   brief: AttemptBrief | null;
+  /** This device's `Date.now()` when the brief arrived: the moment its `server_time` was true. */
+  briefReceivedAt: number | null;
   review: AttemptReview | null;
   loading: boolean;
   error: Error | null;
@@ -74,6 +76,7 @@ export function useStationAttempt({
 }): StationAttempt {
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [brief, setBrief] = useState<AttemptBrief | null>(null);
+  const [briefReceivedAt, setBriefReceivedAt] = useState<number | null>(null);
   const [review, setReview] = useState<AttemptReview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -173,6 +176,7 @@ export function useStationAttempt({
         ]);
         if (!live) return;
         setBrief(briefResult);
+        setBriefReceivedAt(Date.now());
         setReview(reviewResult);
       } catch (cause) {
         if (live) setError(cause instanceof Error ? cause : new Error(String(cause)));
@@ -189,7 +193,7 @@ export function useStationAttempt({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, action, attemptIdFromUrl, stationVersionId, setEntryId, reloadKey, go]);
 
-  return { attemptId, brief, review, loading, error, exhausted, reload, gate, start, startAgain };
+  return { attemptId, brief, briefReceivedAt, review, loading, error, exhausted, reload, gate, start, startAgain };
 }
 
 /**
