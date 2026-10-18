@@ -132,6 +132,14 @@ export default async function globalSetup(): Promise<void> {
   const admin = await switchWorkspace(await login(accounts.admin.email, PASSWORD), slug);
   const programme = await call(admin, `/api/v1/orgs/${slug}/programmes`, { method: "POST", body: { exam_code: "sca" } });
   await call(admin, `/api/v1/orgs/${slug}/programmes/${programme.id}`, { method: "PATCH", body: { status: "active" } });
+  // The setup guide counts a template only once the organisation holds its own copy of one.
+  const platformTemplates = (await call(platform, "/api/v1/platform/station-templates?exam_code=sca&published_only=true")).items as {
+    id: string;
+    exam_code: string | null;
+  }[];
+  const scaTemplate = platformTemplates.find((t) => t.exam_code === "sca");
+  if (!scaTemplate) throw new Error("no published SCA station template: run scripts/seed_station_templates.py --apply");
+  await call(admin, `/api/v1/orgs/${slug}/station-templates/${scaTemplate.id}/copy`, { method: "POST" });
   const trainee = await call(admin, `/api/v1/orgs/${slug}/trainees`, {
     method: "POST",
     body: { email: accounts.trainee.email, first_name: "Tess", last_name: "Trainee" },

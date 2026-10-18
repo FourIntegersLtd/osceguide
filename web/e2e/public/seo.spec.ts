@@ -12,8 +12,8 @@ import { PUBLIC_MARKETING_PATHS } from "../../src/foundation/routing/pathVisibil
  */
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://osceguide.com").replace(/\/+$/, "");
 const SAME_AS_HOME = "/exams/classic";
-// /pricing is a price table with little prose, so it gets a lower floor.
-const WORD_FLOOR: Record<string, number> = { "/pricing": 25 };
+// /pricing is a price table with little prose, and /blogs on a fresh database (CI) lists no posts yet: both get a lower floor.
+const WORD_FLOOR: Record<string, number> = { "/pricing": 25, "/blogs": 25 };
 const DEFAULT_WORD_FLOOR = 150;
 
 function tag(html: string, pattern: RegExp): string {
