@@ -19,3 +19,8 @@ Owners: `access-owner` (outbox, notifications), `web-foundation-owner` (inbox we
   `capabilities/inbox`.
 - `public_site/` is the marketing site's backend: unauthenticated. The public pages (`app/(public)`) compose `domains/marketing`.
 - Sitting emails (cancel, edit, reminder) are owned by the sitting's owner, `institution-owner`.
+
+## What a failure looks like here
+- An email is sent outside the outbox, or the outbox row is written outside the event's transaction.
+- A job sends the same email twice (no claim or idempotency), or never sends it.
+- An email names someone who was erased, or goes to the wrong person.

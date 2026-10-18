@@ -32,3 +32,9 @@ Owner: `content-owner`. Proof: `verify-content`.
 - Web: the authoring screens (`capabilities/authoring`) are many and deep; each load goes through
   `useAsync` + `AsyncBoundary`. Open authoring items: `web/docs/BACKLOG.md`.
   Browser handles: `web/.claude/skills/verify/features/content-authoring.md`, `rubric-builder.md`.
+
+## What a failure looks like here
+- A station's scenario or patient material reaching a trainee before the attempt.
+- A read widened to make a screen work.
+- A second open draft, or a screen that assumes a station survives deleting its last version.
+- A published station with no `patient_information` or template, so its attempts are never marked.

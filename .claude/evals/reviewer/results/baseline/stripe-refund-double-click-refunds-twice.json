@@ -1,0 +1,6 @@
+{
+  "id": "stripe-refund-double-click-refunds-twice",
+  "kind": "bug",
+  "caught": true,
+  "why": "Defect 1 directly identifies the same root cause and consequence: stripe_refund calls Stripe without checking if the payment was already withdrawn, allowing a second click or stale console tab to refund the card twice."
+}

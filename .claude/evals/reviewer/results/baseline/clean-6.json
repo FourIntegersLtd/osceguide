@@ -1,0 +1,10 @@
+{
+  "id": "clean-6",
+  "kind": "clean",
+  "findings": [
+    "Delete one blank line from screens.tsx:129-130 to pass Prettier formatting",
+    "Add deletion note (dated 2026-10-08) to U-17 in BACKLOG.md for shared review screen",
+    "Remove /shared-reviews/[id] from F-3 description in EXPERIENCE-GAPS.md or mark as struck"
+  ],
+  "false_alarms": 3
+}

@@ -1,0 +1,6 @@
+{
+  "id": "stripe-refund-double-click-refunds-twice",
+  "kind": "bug",
+  "caught": true,
+  "why": "Finding 1 explicitly identifies the root cause: `stripe_refund` has no lock and no 'already done' check, allowing multiple requests to reach Stripe simultaneously and refund twice on double-click or stale requests."
+}

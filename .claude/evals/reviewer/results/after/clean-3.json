@@ -1,0 +1,13 @@
+{
+  "id": "clean-3",
+  "kind": "clean",
+  "findings": [
+    "plansForAccount filter uses session.user.exam_code instead of exam_codes from /me/dashboard",
+    "Held exam hidden: account with sign-up exam + live entitlement (e.g., partner grant) never shown alternative exam plans",
+    "Plans offered that checkout refuses: null exam_code + live grants returns all plans",
+    "Missing test: account holding exam not signed up for",
+    "Missing test: null sign-up exam with live grants",
+    "Test 'never a browser setting' only checks upper-case, never touches browser storage"
+  ],
+  "false_alarms": 6
+}

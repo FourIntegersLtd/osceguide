@@ -1,0 +1,6 @@
+{
+  "id": "platform-station-publish-stray-kwarg",
+  "kind": "bug",
+  "caught": true,
+  "why": "Review point 1 identifies the exact defect: router_platform.py:219 passes actor=admin to service_versions.publish_version which only accepts actor_id and now, causing TypeError with 'unexpected keyword argument' and 500 response."
+}

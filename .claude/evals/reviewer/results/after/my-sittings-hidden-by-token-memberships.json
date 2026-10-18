@@ -1,0 +1,6 @@
+{
+  "id": "my-sittings-hidden-by-token-memberships",
+  "kind": "bug",
+  "caught": true,
+  "why": "The review explicitly identified Scenario 1: a rostered trainee whose token precedes the membership grant sees no sittings for up to 15 minutes because the filter trusts the stale JWT's membership map."
+}

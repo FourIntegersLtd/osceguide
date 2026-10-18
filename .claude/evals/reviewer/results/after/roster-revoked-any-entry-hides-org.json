@@ -1,0 +1,6 @@
+{
+  "id": "roster-revoked-any-entry-hides-org",
+  "kind": "bug",
+  "caught": true,
+  "why": "Review's first defect explicitly identifies revoked_org_ids_for_user using ANY-row logic while is_revoked uses single-row logic, describing the exact scenario where a person with one revoked and one live entry loses visibility of that org's sittings."
+}

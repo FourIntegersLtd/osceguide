@@ -1,0 +1,6 @@
+{
+  "id": "not-entitled-bootstrap-retry-loop",
+  "kind": "bug",
+  "caught": true,
+  "why": "Problem #1 describes the exact defect: bootstrap's entitlement check returns 403, the attempt stays created, each re-dispatch loops on the same 403, and nothing moves it to a final state."
+}

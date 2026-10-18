@@ -1,0 +1,10 @@
+{
+  "bugs": 16,
+  "caught": 15,
+  "clean": 6,
+  "false_alarms": 16,
+  "errors": [],
+  "missed": [
+    "org-setup-checklist-ticks-from-platform-rows"
+  ]
+}

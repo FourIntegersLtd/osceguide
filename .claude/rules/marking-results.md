@@ -45,3 +45,9 @@ are `institution-owner`'s; this is how a mark and an outcome are computed.
   `domains/assess/results/reviewForm.ts`). A rating is coloured by its position in the scale,
   not its letter.
 - Changing scoring for an existing consumer is ask-first. See `docs/ATTEMPT-LIFECYCLE.md`.
+
+## What a failure looks like here
+- A wrong score with no error: a rule never called, a v1 rubric read as v2, a field silently dropped.
+- A result changed in place instead of appended, or shown before it was released.
+- A drifting schema or prompt: a payload key the framework refuses, an oracle edited to pass.
+- A per-exam branch on an exam code instead of `exams.settings`.

@@ -1,0 +1,6 @@
+{
+  "id": "not-entitled-bootstrap-retry-loop",
+  "kind": "bug",
+  "caught": true,
+  "why": "First item identifies that the new S-11 refusal (ensure_entitled_to_begin) fires at worker bootstrap, returns 403, sends it down the credential-failure path, and leaves the attempt in 'created' state without proper handling—directly matching the root cause of failed state transition and retry-loop behavior."
+}

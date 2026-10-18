@@ -1,0 +1,6 @@
+{
+  "id": "roster-revoked-any-entry-hides-org",
+  "kind": "bug",
+  "caught": true,
+  "why": "Finding 1 identifies the exact defect: `revoked_org_ids_for_user` hiding an org if *any* roster row is revoked, contradicting `is_revoked`'s single-row logic, with a concrete scenario of one revoked + one active row in the same org causing sittings to be hidden."
+}

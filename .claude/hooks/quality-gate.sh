@@ -10,6 +10,9 @@
 #   - an Agent call with subagent_type quality-reviewer, and
 #   - for each owner of a changed api/, web/ or assessment/ file
 #     (.claude/OWNERS.md), that owner agent or its verify skill.
+#   - on a high-risk change (an access-owner file, a money path another owner
+#     holds, a migration or a CI workflow): the reviewer agent and the
+#     security-review skill too, and the user is told it needs their review.
 # Missing evidence blocks the stop, up to 3 times per change; then the stop is
 # let through and the user is told what was skipped. Once the evidence is there
 # the current diff is recorded, so fixes made from the review are not reviewed
@@ -45,6 +48,10 @@ case "$EVENT" in
       git rev-parse HEAD > "$BASE_F" 2>/dev/null
     fi
     [ -s "$BASE_F" ] || git rev-parse HEAD > "$BASE_F" 2>/dev/null
+    # Fixes committed with "caused by <sha>" but not yet a reviewer eval case.
+    N=$("$ROOT/.claude/evals/reviewer/sync_cases.sh" --pending 2>/dev/null || echo 0)
+    [ "${N:-0}" -gt 0 ] && jq -n --arg n "$N" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext:
+      ("\($n) committed fix(es) say \"caused by <sha>\" but have no reviewer eval case. Tell the user, and offer to run .claude/evals/reviewer/sync_cases.sh --score.")}}'
     exit 0 ;;
   UserPromptSubmit)
     now > "$TURN"
@@ -66,6 +73,7 @@ BASE=$(cat "$BASE_F" 2>/dev/null)
 git cat-file -e "${BASE:-x}^{commit}" 2>/dev/null || BASE=HEAD
 CODE=(':(glob)**/*.py' ':(glob)**/*.ts' ':(glob)**/*.tsx' ':(glob)**/*.js'
       ':(glob)**/*.mjs' ':(glob)**/*.css' ':(glob)**/*.sql' ':(glob)**/*.sh'
+      ':(glob).github/workflows/*.yml'
       ':(exclude,glob)**/schema.d.ts' ':(exclude,glob)**/_generated/**'
       ':(exclude,glob)**/node_modules/**')
 DIRTY=$({ git diff --name-only "$BASE" -- "${CODE[@]}"
@@ -111,6 +119,17 @@ for o in $OWNERS; do
   grep -qxE "agent:$o|skill:$v|skill:web:$v" <<< "$RAN" || MISSING+=("$o (or its $v skill)")
 done
 
+# High risk is set by the paths, not the author: money and auth, migrations, CI.
+# Beyond access-owner's rows: money paths other owners hold (money.md's paths:), alembic, CI.
+# A new money folder outside access-owner's rows must be added here.
+HIGH=0
+grep -qx 'access-owner' <<< "$OWNERS" && HIGH=1
+grep -qE '^(api/alembic/|\.github/workflows/|web/src/domains/partner/|web/src/app/staff/(billing|growth|referral-payouts)/)' <<< "$FILES" && HIGH=1
+if [ "$HIGH" = 1 ]; then
+  grep -qx 'agent:reviewer' <<< "$RAN" || MISSING+=("reviewer (model opus)")
+  grep -qx 'skill:security-review' <<< "$RAN" || MISSING+=("the security-review skill")
+fi
+
 [ ${#MISSING[@]} -eq 0 ] && { settle; exit 0; }
 
 LIST=$(printf '%s' "$FILES" | head -40 | tr '\n' ' ')
@@ -125,8 +144,9 @@ fi
 echo "$N" > "$BLOCKS"
 # Warn-only: app code changed but no test file did.
 NOTE=""
+[ "$HIGH" = 1 ] && NOTE=" High-risk paths (money, auth, migrations or CI): tell the user this change needs their review before commit or promote."
 printf '%s\n' "$FILES" | grep -qE '(^|/)(tests?/|e2e/)|(\.test\.tsx?|\.spec\.ts|_test\.py)$|(^|/)test_[^/]*\.py$' \
-  || NOTE=" No test file changed with this code: add a failing-first test, or say why none is needed."
+  || NOTE="$NOTE No test file changed with this code: add a failing-first test, or say why none is needed."
 jq -n --arg files "$LIST" --arg need "$NEED" --arg note "$NOTE" '{
   decision: "block",
   reason: ("This session changed code (committed or not): " + $files + ". Not yet run since the change began: " + $need + ". Run each now: the owner agent (Agent, subagent_type <owner>, model sonnet) or its verify skill to prove the change, then the quality-reviewer agent (model sonnet) on these files. Fix every Must fix finding (or say why it does not apply), mention any Worth doing ones you left, and say which owner and skills handled it." + $note)

@@ -1,0 +1,10 @@
+{
+  "id": "clean-4",
+  "kind": "clean",
+  "findings": [
+    "Gate only covers /app but /staff/* and /change-password are also wrapped in RequireSession; should derive from PRIVATE_PATH_PREFIXES instead of hard-coding",
+    "No tests exercise the middleware cookie check and pathname/search split; need a test calling middleware() with a NextRequest with and without the cookie",
+    "Server and client disagree on session cookie (refresh vs marker); add a note on which cookie is checked and why"
+  ],
+  "false_alarms": 3
+}

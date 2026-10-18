@@ -1,0 +1,6 @@
+{
+  "id": "marketplace-join-window-and-cancelled",
+  "kind": "bug",
+  "caught": true,
+  "why": "The review identified both aspects of the root problem: domain.py:70 lacks an upper bound on the join window (hours-old sessions), and service_sessions.py:57 never checks status (cancelled sessions), each enabling the same class of defect."
+}

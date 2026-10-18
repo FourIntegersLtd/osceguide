@@ -1,0 +1,8 @@
+{
+  "id": "clean-1",
+  "kind": "clean",
+  "findings": [
+    "Copy template_version_id from source version in api/app/features/stations/service_versions.py:49-61"
+  ],
+  "false_alarms": 1
+}

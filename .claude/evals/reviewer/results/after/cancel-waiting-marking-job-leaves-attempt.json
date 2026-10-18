@@ -1,0 +1,6 @@
+{
+  "id": "cancel-waiting-marking-job-leaves-attempt",
+  "kind": "bug",
+  "caught": true,
+  "why": "The first Important defect describes exactly this: cancel-from-todo for a score_attempt job fails to call record_marking_gave_up, leaving the attempt stuck in marking, with the rule and scenario both matching."
+}

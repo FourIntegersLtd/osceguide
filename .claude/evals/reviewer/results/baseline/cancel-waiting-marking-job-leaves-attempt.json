@@ -1,0 +1,6 @@
+{
+  "id": "cancel-waiting-marking-job-leaves-attempt",
+  "kind": "bug",
+  "caught": true,
+  "why": "Item 1 directly identifies that cancel_job in health/service.py only calls record_marking_gave_up for stalled running jobs (lines 220-221), not waiting ones (lines 212-213), leaving cancelled attempts stuck in marking state forever."
+}

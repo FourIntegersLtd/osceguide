@@ -1,0 +1,11 @@
+{
+  "id": "clean-3",
+  "kind": "clean",
+  "findings": [
+    "Filter keeps only own exam, blocks buying second exam's plan from live grant",
+    "No exam on account shows all plans, checkout refuses most of them",
+    "Exam from session user not dashboard causes stale plan offers after support moves account",
+    "Missing tests for multi-exam accounts and grants on accounts without own exam"
+  ],
+  "false_alarms": 4
+}

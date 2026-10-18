@@ -1,0 +1,6 @@
+{
+  "id": "saml-unsolicited-response-replay",
+  "kind": "bug",
+  "caught": true,
+  "why": "Review Issue 1 explicitly identifies the InResponseTo validation gap and confirms responses lacking it are accepted, directly matching the first component of the known defect."
+}

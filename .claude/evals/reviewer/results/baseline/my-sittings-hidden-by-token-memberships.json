@@ -1,0 +1,6 @@
+{
+  "id": "my-sittings-hidden-by-token-memberships",
+  "kind": "bug",
+  "caught": true,
+  "why": "The review's defect #1 identifies the exact root cause: the membership filter uses the JWT's stale snapshot instead of live data, causing trainees with late-granted membership to lose all sittings until token refresh."
+}

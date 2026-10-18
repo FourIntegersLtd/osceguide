@@ -1,0 +1,6 @@
+{
+  "id": "saml-unsolicited-response-replay",
+  "kind": "bug",
+  "caught": true,
+  "why": "Problem #1 reports the exact replay vulnerability (responses lack single-use tracking); Problem #2 reports the cross-org NameID keying defect."
+}

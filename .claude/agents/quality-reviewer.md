@@ -48,9 +48,22 @@ never modify files, stage or commit.
 Skip what linters, type checkers and import-linter already enforce, and pure
 taste. Every finding must make the code cheaper to change, not just different.
 
+## How you report
+
+- Read the `.claude/rules/*.md` files whose `paths:` match the diff, above all their "What a
+  failure looks like here" section: that is what a defect means in that area.
+- Every finding names a `path:line` you read, never a guess from a name. Tag it **Must fix**,
+  **Worth doing** or **Pre-existing**. Pre-existing means `git blame` shows the line is older than the
+  change; it never blocks.
+- Name the class, not only the line ("every caller of X skips the live filter"), so the author
+  fixes every instance.
+- On a re-review (the caller says so), read only the diff since the last review and never repeat
+  a finding already reported.
+
 ## Reply
 
-Findings ranked most important first, each one line plus a fix:
+Start with the count ("2 Must fix, 1 Pre-existing") or "Clean". Then the findings, ranked most
+important first, each one line plus a fix:
 `path:line` — the problem — the concrete fix (name the existing helper or
 component to reuse, with its path). Group under **Must fix** (duplication,
 wrong tier/layer, shim left behind, dead code) and **Worth doing**. End with

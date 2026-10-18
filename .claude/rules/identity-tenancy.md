@@ -51,3 +51,12 @@ Proof: `verify-access`. Anything that touches auth is ask-first.
   The sign-out destination holds only on the page signed out from (`signedOutDestination`). After a
   sign-in, `refresh()` never joins a `/me` load started with the old tokens (`sessionLoads.after`).
   A surface's capability gate goes outside its shell. Journeys: CONSOLE-4, SWITCH-1..3.
+- **An effect of signing in waits for the whole sign-in.** Reopening a closed account (undoes the
+  closure and its erasure) runs where the session is minted (`service_mfa._issue_session`), never on
+  the password alone; checks before the second factor use `can_reopen`, which writes nothing.
+
+## What a failure looks like here
+- A gate that fails open: missing, revoked or expired state lets someone in.
+- A cross-tenant read or write: a query without the org id, or a token's memberships trusted past their truth.
+- A reused or replayable token, link or SSO state; a password or session that survives the change meant to end it.
+- Sign-out on reload, or the next person in the tab given the last person's page.

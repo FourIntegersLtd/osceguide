@@ -45,3 +45,9 @@ Owner: `staff-console-owner`. Proof: `verify-staff-console`. Staff actions are p
 - **`/health` has a `content` check**: `error` (status `degraded`) while a published platform station's current version has no template binding. A release never seeds templates or binds stations; run `scripts/seed_station_templates.py` then `scripts/link_stations_to_templates.py` with `--env <env> --apply`. `promote-api` Gates 3 and 6 refuse on it. A new check goes through `_answers_in_time`: a fresh log-and-carry-on handler breaks the `LOG_ONLY_HANDLERS` ceiling.
 
 - **The console is built from the assess recipe.** Every screen opens with `B2CPageHeader` (there is no console header; `consoleDesign.test.ts` fails on a screen without it or with its own `<h1>`), at most one `B2CHero` directly under it, lists of records are `Table themeType="b2b"` with `empty` and `more={pages}`, tiles are `StatGrid`/`StatTile` (the assess stat card, also used by `OrgDashboard` and `Results`), and `Panel` is for forms and settings only. `web` tests are `node:test` files: run them with `npm test`, not vitest.
+
+## What a failure looks like here
+- A migration that drops or rewrites (a rollback must keep working), or that has no DATA-MODEL change.
+- A staff action that is not platform-admin only or not audited.
+- A guard weakened to pass instead of the code moved.
+- A job not registered, or one that loops for ever on bad input.

@@ -42,3 +42,8 @@ Owner: `attempt-engine-owner`. Proof: `verify-attempt-engine`. Athena is the voi
   apart: the web reads scenes through `readScene`, which tolerates an api without those fields.
 - Prompt injection: tutor input is untrusted (`tests/security/test_assistant_prompt_injection.py`).
 - Dashboard `progress` counts only started, non-debrief attempts.
+
+## What a failure looks like here
+- A worker that learns a product, exam id or navigation label, or compares a session type outside `modes.py`.
+- Paid material read to someone without a live entitlement.
+- Tutor input trusted (prompt injection), or "returning" decided by anything but a `session_summary` note.

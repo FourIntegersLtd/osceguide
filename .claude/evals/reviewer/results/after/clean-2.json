@@ -1,0 +1,8 @@
+{
+  "id": "clean-2",
+  "kind": "clean",
+  "findings": [
+    "Debriefs and Transcripts hidden: true applies to both assess and consumer surfaces; scope hide to consumer arm only or test/document assess arm loss"
+  ],
+  "false_alarms": 1
+}

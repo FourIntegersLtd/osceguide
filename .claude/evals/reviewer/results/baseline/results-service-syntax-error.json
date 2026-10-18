@@ -1,0 +1,6 @@
+{
+  "id": "results-service-syntax-error",
+  "kind": "bug",
+  "caught": true,
+  "why": "The review explicitly identified the blocking syntax error: `erase_recipient` was pasted into the middle of `_ensure_recruitment_allowed`'s signature (line 38), with the function's parameters and `-> None:` appearing only after the new function."
+}

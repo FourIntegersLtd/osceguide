@@ -1,0 +1,6 @@
+{
+  "id": "withdraw-skips-credit-clawback",
+  "kind": "bug",
+  "caught": true,
+  "why": "Defect #1 explicitly identifies that withdraw_payment returns early when the grant is revoked, skipping claw_back_referral_purchase, and describes the exact scenario (support revokes grant, then customer disputes) where the referral credit is not clawed back."
+}

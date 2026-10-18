@@ -64,7 +64,8 @@ Three pieces, one mechanism each:
 | `.claude/skills/fix-experience-gaps/` | Retiring once `docs/EXPERIENCE-GAPS.md` is closed |
 | `.claude/agents/slide-deck-author.md` | Makes teaching slide decks from OSCE cases: fact-check, voice, publish. Runs the `.claude/skills/make-slide-deck/` pipeline |
 | `.claude/agents/quality-reviewer.md` | Second check on every code change: repetition, reuse, structure, tiers, dead code. Not correctness (`reviewer`) |
-| `.claude/hooks/quality-gate.sh` | Stop hook: once per changed code diff, asks the main agent to run `quality-reviewer` and act on it |
+| `.claude/hooks/quality-gate.sh` | Stop hook: once per changed code diff, asks the main agent to run `quality-reviewer` and act on it; money, auth, migration and CI paths also need `reviewer` and `/security-review`, and the user's review |
+| `.claude/evals/reviewer/` | Past shipped bugs as a scored test of the `reviewer` agent; rerun after changing a reviewer prompt, failure notes or model |
 | `.cursor/rules/critical-thinking-partner.mdc` | Always on: push back on risk, plan first for large work |
 | `api/AGENTS.md` | Backend rules, commands, traps, ownership |
 | `web/AGENTS.md` (+ `docs/DESIGN.md`) | Frontend tiers, non-negotiables, design language |

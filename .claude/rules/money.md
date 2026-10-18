@@ -10,7 +10,7 @@ paths:
 # Money: what to know
 
 Owner: `access-owner` (partner screens: `institution-owner`; staff queues: `staff-console-owner`).
-Proof: `verify-access`. Anything that moves money also gets the `reviewer` agent (opus).
+Proof: `verify-access`. Anything that moves money also gets the `reviewer` agent (opus) and `/security-review`; the Stop hook asks for both.
 
 - **Entitlement grants are not live grants.** `entitlements.list_for_user` returns revoked and
   expired rows too. A gate must filter on `live` and fail closed. Entitlement is not payment
@@ -33,3 +33,9 @@ Proof: `verify-access`. Anything that moves money also gets the `reviewer` agent
   `capabilities/attribution-dashboard` and `domains/partner` are the partner's numbers.
 - A partner's wrong numbers: check attribution rows and the spend tests before the screen.
 - Hire and partner get journeys (`docs/CORE-JOURNEYS.md`), not their own notes.
+
+## What a failure looks like here
+- A double charge or double refund: no lock or "already done" check on a money action or a webhook event.
+- Access granted without a live entitlement (revoked or expired grants read as live), or kept after a refund.
+- A clawback, credit or count skipped or doubled on refund, dispute or restore.
+- A webhook failure that is not recorded, or a Stripe error reported as the wrong thing.

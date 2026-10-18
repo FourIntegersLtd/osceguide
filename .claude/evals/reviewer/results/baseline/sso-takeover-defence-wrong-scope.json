@@ -1,0 +1,6 @@
+{
+  "id": "sso-takeover-defence-wrong-scope",
+  "kind": "bug",
+  "caught": true,
+  "why": "Problem 1 identifies the exact scenario: a trainee replaces a temporary password with their own, then months later links SSO and their chosen password is deleted—the same root defect described."
+}

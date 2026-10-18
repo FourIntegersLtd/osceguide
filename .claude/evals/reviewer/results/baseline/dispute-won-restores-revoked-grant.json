@@ -1,0 +1,6 @@
+{
+  "id": "dispute-won-restores-revoked-grant",
+  "kind": "bug",
+  "caught": true,
+  "why": "Problem 1 identifies the core defect: `restore_payment` grants back revoked access without distinguishing whether revocation was by dispute or by console refund/manual action, and incorrectly credits the referrer 250p for a refunded sale."
+}

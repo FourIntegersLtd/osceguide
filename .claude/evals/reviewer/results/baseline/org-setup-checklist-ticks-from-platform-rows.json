@@ -1,0 +1,6 @@
+{
+  "id": "org-setup-checklist-ticks-from-platform-rows",
+  "kind": "bug",
+  "caught": false,
+  "why": "The review examined only frontend code (Timer, MarkdownRenderer, npm dependencies) and never inspected the backend API files (repository.py, repository_templates.py, catalog, service_org.py) where the checklist counts visible items."
+}

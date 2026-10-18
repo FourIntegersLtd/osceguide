@@ -1,0 +1,6 @@
+{
+  "id": "results-service-syntax-error",
+  "kind": "bug",
+  "caught": true,
+  "why": "The first bullet point directly identifies that erase_recipient was pasted into _ensure_recruitment_allowed's signature, causing an unclosed function definition and SyntaxError that prevents module parsing."
+}

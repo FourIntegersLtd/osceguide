@@ -1,0 +1,6 @@
+{
+  "id": "platform-station-publish-stray-kwarg",
+  "kind": "bug",
+  "caught": true,
+  "why": "The review's first finding explicitly identifies the TypeError from `actor=admin` passed to `service_versions.publish_version`, which lacks that parameter, with the exact failing scenario of a 500 on platform station publish."
+}

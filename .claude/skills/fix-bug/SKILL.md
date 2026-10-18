@@ -14,5 +14,7 @@ Start as, or hand to, the owner for the paths (`.claude/OWNERS.md`); read its ru
    check that should have caught it. If none exists, add or extend one in the same change.** Say
    both in the report.
 4. **Prove** with the owner's verify skill, plus the journeys that cover the area.
-5. If a fix introduced it, the commit message says "caused by <sha>".
+5. **Find the commit that caused it** (`git blame` the lines you fixed, at the parent commit). The commit
+   message says "caused by <sha>". Once it is committed, `.claude/evals/reviewer/sync_cases.sh --score`
+   turns it into an eval case, so the reviewer is scored on this bug from now on (SessionStart reminds you).
 6. Run `quality-reviewer`; add `reviewer` (opus) for auth, money or deletion.

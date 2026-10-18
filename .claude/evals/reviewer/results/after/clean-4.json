@@ -1,0 +1,8 @@
+{
+  "id": "clean-4",
+  "kind": "clean",
+  "findings": [
+    "Session gate incomplete—must cover `/staff` and all other `RequireSession` routes, not just `/app`; add prefix list test and `/staff` test cases"
+  ],
+  "false_alarms": 1
+}

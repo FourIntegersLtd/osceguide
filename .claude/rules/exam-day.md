@@ -36,3 +36,10 @@ catalogue (ADR 0017); do not build against an open decision in `web/docs/BACKLOG
 - Institution and hire are not consumers: no Payments/Referrals tabs, plan or trial copy, upgrade modal,
   "personal practice" link, Community, A to Z, Slides, Podcast or Athena (`athenaOffered` in
   `surfaces/jumpTo.ts`). Shared train screens take `surface !== "train"` and use the "ask your administrator" wording.
+
+## What a failure looks like here
+- A candidate is locked out of, or dropped from, a sitting partway through.
+- The browser's clock decides a phase instead of the server's.
+- One organisation sees or acts on another's sittings, roster or results.
+- `users.id` and `trainees.id` mixed up, so the decision lands on the wrong person.
+- A list or export reads one page and drops the rest.

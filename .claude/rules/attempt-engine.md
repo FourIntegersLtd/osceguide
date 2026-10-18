@@ -64,6 +64,10 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
 - The evaluator runs the engine in a thread; a cancelled caller cannot stop it.
 - After an engine change run `poetry install` in `api`: it holds a copy (`develop = false`).
 - Removing e2e leftovers: delete users before stations (`station_versions` is RESTRICT).
+- The station runner's clock (`foundation/ui/Timer`) is the brief's `created_at`/`started_at`/
+  `server_time` (`stationClock.ts`), aged from `briefReceivedAt` against a wall-clock deadline. No
+  browser storage, no tick-by-tick decrement: either one lets a reload, a sleeping tab or the next
+  person in the tab move the time. Practice has no server deadline; the duration is the client's.
 
 ## Deploys and laptops
 - Push to `main` touching `assessment/` deploys staging (K3s, namespace
@@ -75,3 +79,9 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
   `dev-<you>-assistant-self-hosted`.
 - New workers take traffic unconditionally; the parity harness and a manual smoke come before merge.
 - `livekit/` is frozen: never edit or push.
+
+## What a failure looks like here
+- The patient never arrives or the room goes silent, with no error a person sees.
+- A transcript is lost, cut short or not delivered back, so the attempt is never marked.
+- The engine or a worker learns a product, tenant, exam code or station field (boundary breach).
+- A voice, model or persona changes mid-consultation, or is hard-coded instead of from settings.

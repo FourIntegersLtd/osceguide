@@ -1,0 +1,11 @@
+{
+  "id": "clean-5",
+  "kind": "clean",
+  "findings": [
+    "New tests don't cover the actual change: Composer passing examCode to askQuestion",
+    "No test catches the scenario where examCode is deleted from Composer",
+    "Extract composer payload logic to pure helper function in discussionModel.ts",
+    "Test the helper in discussionModel.test.ts, including ortho tag coverage"
+  ],
+  "false_alarms": 4
+}

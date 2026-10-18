@@ -1,0 +1,6 @@
+{
+  "id": "sso-takeover-defence-wrong-scope",
+  "kind": "bug",
+  "caught": true,
+  "why": "The second defect (service_sso.py:76-77) identifies the exact problem: the condition fires even when the owner replaced the temporary password themselves, clearing their chosen password on first SSO sign-in."
+}

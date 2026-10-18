@@ -1,0 +1,10 @@
+{
+  "id": "clean-2",
+  "kind": "clean",
+  "findings": [
+    "Debriefs list page (/debriefs) unreachable from app navigation",
+    "Transcripts capability comment incorrectly describes where 'Load previous' navigates",
+    "hidden: true removes entries from institution (assess) nav without documentation or test coverage"
+  ],
+  "false_alarms": 3
+}

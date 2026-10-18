@@ -1,0 +1,6 @@
+{
+  "id": "lapsed-subscriber-material-gate",
+  "kind": "bug",
+  "caught": true,
+  "why": "The review's first finding explicitly identifies `entitled_exam_ids` in domain.py:342 as keeping every grant without checking `g.live`, `ends_at`, or `revoked_at`, and demonstrates that expired or revoked subscribers can still have locked material suggested — the exact defect described."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "clean-5",
+  "kind": "clean",
+  "findings": [
+    "Test coverage missing for QuestionList.tsx composer askQuestion call",
+    "Form submit allowed before exam loads; should wait or block when exam code null"
+  ],
+  "false_alarms": 2
+}

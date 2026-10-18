@@ -1,0 +1,6 @@
+{
+  "id": "marketplace-join-window-and-cancelled",
+  "kind": "bug",
+  "caught": true,
+  "why": "The review identified both missing checks: is_open lacks an upper bound (domain.py:71) and join_session doesn't verify peer_session.status (service_sessions.py:58)."
+}

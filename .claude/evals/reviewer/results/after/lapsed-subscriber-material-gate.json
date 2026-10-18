@@ -1,0 +1,6 @@
+{
+  "id": "lapsed-subscriber-material-gate",
+  "kind": "bug",
+  "caught": true,
+  "why": "The review's first issue directly identifies that `entitled_exam_ids` never checks `g.live`, describes revoked and expired grants being treated as entitled, and details the exact failure mode of paid material access to users without live entitlements."
+}

@@ -1,0 +1,6 @@
+{
+  "id": "withdraw-skips-credit-clawback",
+  "kind": "bug",
+  "caught": true,
+  "why": "The review identifies the exact root cause: withdraw_payment returns early when the grant is revoked, skipping the claw_back_referral_purchase call, and explicitly describes the failing scenario where support revokes the grant followed by a refund/dispute."
+}

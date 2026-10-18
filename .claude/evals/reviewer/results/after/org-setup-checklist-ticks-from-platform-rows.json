@@ -1,0 +1,6 @@
+{
+  "id": "org-setup-checklist-ticks-from-platform-rows",
+  "kind": "bug",
+  "caught": false,
+  "why": "The review covers only web-side defects (MarkdownRenderer XSS, Timer logic, localStorage crashes); the organisation checklist bug is an API-side data-visibility issue and is not mentioned in any of the four Important items."
+}

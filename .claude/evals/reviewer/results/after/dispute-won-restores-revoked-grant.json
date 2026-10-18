@@ -1,0 +1,6 @@
+{
+  "id": "dispute-won-restores-revoked-grant",
+  "kind": "bug",
+  "caught": true,
+  "why": "The review explicitly identifies that `restore_payment` un-revokes ANY revoked grant without checking the reason, leading to restoration of grants revoked for abuse, refunded payments, and incorrect referral credits—identifying the exact root cause and scenarios of the known bug."
+}
