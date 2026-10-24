@@ -23,9 +23,9 @@ from osce_assessment.prompts.debrief_prompt import TUTOR_NEVER  # noqa: E402
 BENCH = Path(__file__).resolve().parents[1] / "scripts" / "bench"
 
 
-def _turn(index: int = 0, *, out: int = 0, inp: int = 0, cached: int = 0, reply: str = "") -> Turn:
+def _turn(index: int = 0, *, out: int = 0, inp: int = 0, cached: int = 0, reply: str = "", said: str = "") -> Turn:
     return Turn(index=index, ttft_s=0.5, latency_s=1.0, output_tokens=out, input_tokens=inp,
-                cached_tokens=cached, bait=None, said="", reply=reply)
+                cached_tokens=cached, bait=None, said=said, reply=reply)
 
 
 def test_cost_bills_cached_input_at_the_cached_rate() -> None:
@@ -61,6 +61,23 @@ def test_the_prefilter_leaves_an_in_character_reply_alone() -> None:
     run = Run(arm="x", role="patient", repeat=0, turns=[
         _turn(0, reply="It comes on when I go up the stairs... eases off when I stop."),
         _turn(1, reply="I trust your judgment. I just hope to get some answers."),
+    ])
+    assert prefilter(run, "patient") == []
+
+
+def test_the_prefilter_flags_a_no_that_reads_the_question_back() -> None:
+    run = Run(arm="x", role="patient", repeat=0, turns=[
+        _turn(0, reply="No, I haven't noticed any swelling in my ankles.", said="Any swelling in your ankles?"),
+        _turn(1, reply="No, nothing like that.", said="Any swelling in your ankles?"),
+        _turn(2, reply="It started about two weeks ago, mostly on the stairs.", said="When did the pain start?"),
+    ])
+    assert [(h["turn"], h["kind"]) for h in prefilter(run, "patient")] == [(0, "echoes the question")]
+
+
+def test_a_no_at_the_length_limit_is_not_flagged_even_when_it_shares_a_word() -> None:
+    """Eight words, no word of the question reused: a plain answer, not an echo."""
+    run = Run(arm="x", role="patient", repeat=0, turns=[
+        _turn(0, reply="No, it only comes on when I climb.", said="Any swelling in your ankles?"),
     ])
     assert prefilter(run, "patient") == []
 

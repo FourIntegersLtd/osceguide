@@ -174,6 +174,27 @@ PATIENT_BREACH_PATTERNS = (
 )
 
 
+# A "no" that is more than a few words long and reuses the doctor's own words is the
+# question read back ("Any swelling?" -> "No, I haven't noticed any swelling."). The prompt
+# asks for "No, nothing like that"; nothing else measured it.
+# The prompt asks for five words or fewer; the floor is 7 so a slightly longer plain "no" is not flagged.
+ECHO_MIN_WORDS = 7
+# ECHO_FILLER mirrors the phrases the patient prompt names ("I haven't noticed", "I haven't had").
+ECHO_FILLER = frozenset("have haven't noticed there that with your been about anything much really ever".split())
+NEGATIVE_OPENING = re.compile(r"^\s*(no|not|nope|nothing)\b", re.I)
+
+
+def _content_words(text: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z']+", text.lower()) if len(w) > 3 and w not in ECHO_FILLER}
+
+
+def echoes_question(said: str, reply: str) -> bool:
+    """A long negative answer that repeats a content word from the question."""
+    if not NEGATIVE_OPENING.match(reply) or len(reply.split()) <= ECHO_MIN_WORDS:
+        return False
+    return bool(_content_words(said) & _content_words(reply))
+
+
 @dataclass
 class Turn:
     index: int
@@ -363,6 +384,9 @@ def prefilter(run: Run, role: str) -> list[dict[str, Any]]:
     hits = []
     for turn in run.turns:
         invited = bool(INVITED_TEACH_BACK.search(turn.said))
+        # Not gated by `invited`: teach-back is the only invited repeat, and it opens with a summary, not a "no".
+        if echoes_question(turn.said, turn.reply):
+            hits.append({"turn": turn.index, "kind": "echoes the question", "quote": turn.reply, "bait": turn.bait})
         for pattern, label in PATIENT_BREACH_PATTERNS:
             if invited and label == "safety-nets":
                 continue

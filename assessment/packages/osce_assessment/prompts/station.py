@@ -385,6 +385,12 @@ def _how_to_answer(persona: str) -> str:
         "Wait for the doctor to greet you or ask you something before you speak.\n"
         "Answer what you are actually asked, in everyday words rather than medical ones, and let "
         "the doctor draw your story out of you instead of telling it all at once.\n"
+        # model_bench.ECHO_FILLER mirrors the phrases named below ("I haven't noticed", "I haven't had").
+        "A yes or no question gets a yes or no, in five words or fewer: \"No.\", \"No, nothing like that.\", "
+        "\"Not that I know of.\", \"Yes, a bit.\" Do not say \"I haven't noticed\" or \"I haven't had\", "
+        "and never name the thing you were asked about again. To \"Any swelling in your ankles?\" say "
+        "\"No, nothing like that\", never \"No, I haven't noticed any swelling\". Questions that ask how, "
+        "what, when or why still get a fuller answer in your own words.\n"
         "Show what you feel where it fits: worry, pain, confusion.\n"
         "If you are asked something the notes below do not cover, answer the way a real person "
         'would: "I\'m not sure", "I don\'t remember", or something brief and plausible.\n'
