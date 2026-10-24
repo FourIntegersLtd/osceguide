@@ -224,7 +224,7 @@ def test_staging_takes_fewer_sessions_than_production() -> None:
 @pytest.mark.skipif(shutil.which("kubectl") is None, reason="kubectl is not installed")
 @pytest.mark.parametrize(
     ("environment", "expected_namespace", "expected_replicas"),
-    (("staging", "assessment-platform-staging", 1), ("production", PRODUCTION_NAMESPACE, 3)),
+    (("staging", "assessment-platform-staging", 1), ("production", PRODUCTION_NAMESPACE, 1)),
 )
 def test_each_overlay_renders_into_its_own_namespace(environment, expected_namespace, expected_replicas) -> None:
     """Render the overlay exactly as `kubectl apply -k` would and check what the cluster receives."""
@@ -245,7 +245,7 @@ def test_each_overlay_renders_into_its_own_namespace(environment, expected_names
 
 @pytest.mark.parametrize("manifest", ("deployment.yaml", "deployment-assistant.yaml"))
 def test_rollout_deadline_outlasts_the_drain_of_the_pod_being_replaced(manifest) -> None:
-    """maxUnavailable 0 keeps the old pod draining for terminationGracePeriodSeconds; a
+    """The old pod drains for up to terminationGracePeriodSeconds before it leaves; a
     progress deadline at or below that fails the rollout while a healthy pod is draining."""
     text = (K8S / manifest).read_text()
     deadline = re.search(r"^  progressDeadlineSeconds: (\d+)$", text, re.M)

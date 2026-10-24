@@ -28,8 +28,9 @@ images:
 commonAnnotations:
   osceguide.io/commit: unpinned
 
-# Production keeps the base's capacity (3 replicas, 6 + 3 sessions per node). The
-# only thing it adds is its Sentry label, so errors land under "production".
+# Production keeps the base's capacity (1 replica on the one remaining worker node,
+# 6 + 3 sessions; LiveKit Cloud carries the main load since 2026-10-24). The only
+# thing it adds is its Sentry label, so errors land under "production".
 patches:
   - patch: |-
       apiVersion: v1

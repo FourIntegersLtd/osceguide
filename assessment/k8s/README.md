@@ -163,10 +163,12 @@ Note the load function counts jobs, not CPU, so a saturated node does not shed
 dispatch on its own — the cap is the only backpressure. Re-measure after any
 change to the pipeline; see `livekit/k8s/INFRASTRUCTURE.md`.
 
-The one-pod-per-node rule only counts pods in the same namespace, so a staging pod
-shares a node with a production pod. That is why staging runs 1 replica with caps of
-2 + 1: a busy staging test takes at most 3 sessions' worth of a node from production.
-Check headroom before raising them.
+The one-pod-per-node rule only counts pods in the same namespace, and since
+2026-10-24 there is one worker node, so the staging pods always sit beside the
+production pods. That is why staging runs 1 replica with caps of 2 + 1: a busy
+staging test takes at most 3 sessions' worth of the node from production. Check
+headroom before raising them. During a production rollout the node briefly holds
+only the staging pods; production dispatches fall to LiveKit Cloud meanwhile.
 
 **platform-api's waiting line must match.** platform-api admits assessment sessions
 onto these workers itself and queues candidates once `LIVEKIT_SELF_HOSTED_SEATS` are
@@ -176,7 +178,7 @@ api and worker services:
 
 | Environment | Replicas × per-pod cap | `LIVEKIT_SELF_HOSTED_SEATS` |
 |---|---|---|
-| production | 3 × 6 | 18 (the default) |
+| production | 1 × 6 | 6 |
 | staging | 1 × 2 | 2 |
 
 Set it too high and the candidate past the real limit joins an empty room that no
@@ -185,10 +187,12 @@ same change as the replicas or the cap.
 
 ## Rollouts drain rather than cut
 
-`terminationGracePeriodSeconds: 900` with `maxUnavailable: 0` means a rollout adds
-a pod before removing one, and an evicted pod keeps serving its consultations until
-they end. The worker's own `drain_timeout` (840s, `LIVEKIT_*_DRAIN_TIMEOUT`) must
-stay under the grace period or the kubelet SIGKILLs mid-session. The longest station
+`terminationGracePeriodSeconds: 900` means an evicted pod keeps serving its
+consultations until they end. With one worker node (since 2026-10-24) and one pod
+per node, `maxUnavailable: 1` lets the old pod leave before its replacement lands,
+so a rollout has a gap for new sessions but never cuts a running one. The worker's
+own `drain_timeout` (840s, `LIVEKIT_*_DRAIN_TIMEOUT`) must stay under the grace
+period or the kubelet SIGKILLs mid-session. The longest station
 is 12 min (`osce_assessment/prompts/consultation_pacing.py`), so a pod with a session
 in progress can sit `Terminating` for up to that long. That is correct, not a stuck
 rollout. A draining pod takes no new sessions, and an idle pod exits within seconds.

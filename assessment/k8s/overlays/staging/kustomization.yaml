@@ -33,9 +33,9 @@ replicas:
     count: 1
 
 patches:
-  # Staging pods share worker nodes with production pods. The one-pod-per-node
-  # rule in the base only counts pods in the same namespace, so a staging pod
-  # lands on a node that already carries production's 6 + 3 sessions. Small caps
+  # Staging pods share the one worker node with production pods. The one-pod-per-
+  # node rule in the base only counts pods in the same namespace, so a staging pod
+  # sits on the node that already carries production's 6 + 3 sessions. Small caps
   # (2 + 1) keep a staging test from crowding the real candidates on that node.
   - patch: |-
       apiVersion: v1

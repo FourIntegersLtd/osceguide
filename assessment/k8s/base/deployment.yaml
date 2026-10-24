@@ -3,16 +3,17 @@ kind: Deployment
 metadata:
   name: assessment-worker
 spec:
-  replicas: 3
+  replicas: 1
   # Must stay above terminationGracePeriodSeconds plus pod start, or a drain fails the rollout.
   progressDeadlineSeconds: 1200
-  # Add capacity before removing any, so a rollout never evicts a pod that is
-  # still carrying consultations to make room for its own replacement.
+  # One worker node since 2026-10-24 (LiveKit Cloud carries the main load), and
+  # one pod per node below, so the old pod must leave before its replacement can
+  # land. The old pod still drains its consultations first (terminationGracePeriod).
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
+      maxUnavailable: 1
+      maxSurge: 0
   selector:
     matchLabels:
       app: assessment-worker
