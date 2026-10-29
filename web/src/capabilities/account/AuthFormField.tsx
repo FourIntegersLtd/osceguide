@@ -1,4 +1,5 @@
 import { ChangeEvent, ReactNode } from "react";
+import { LuLock, LuMail, LuUser } from "react-icons/lu";
 import { cn } from "@/foundation/ui/cn";
 import { Input } from "@/foundation/ui";
 import { authInput, authLabel } from "@/foundation/ui/authTheme";
@@ -25,9 +26,21 @@ type AuthFormFieldProps = {
   error?: string | null;
   /** Persistent helper text under the field (e.g. password rules). */
   hint?: string;
+  /** The icon inside the left edge of the box. */
+  icon?: FieldIcon;
 };
 
-const errorRing = "border-osce-danger focus:ring-osce-danger/30";
+const errorRing = "border-osce-danger focus:border-osce-danger";
+
+const FIELD_ICONS = { mail: LuMail, lock: LuLock, user: LuUser } as const;
+type FieldIcon = keyof typeof FIELD_ICONS;
+
+/** An email field shows a letter and a password field a lock, unless the caller names another. */
+function defaultIcon(type: string, name: string): FieldIcon | null {
+  if (type === "email") return "mail";
+  if (/password/i.test(name)) return "lock";
+  return null;
+}
 
 export default function AuthFormField({
   label,
@@ -44,7 +57,10 @@ export default function AuthFormField({
   className,
   error,
   hint,
+  icon,
 }: AuthFormFieldProps) {
+  const iconName = icon ?? (fieldType === "select" ? null : defaultIcon(type, name));
+  const LeadingIcon = iconName ? FIELD_ICONS[iconName] : null;
   const fieldId = id ?? name;
   const errorId = `${fieldId}-error`;
   const hintId = `${fieldId}-hint`;
@@ -66,7 +82,7 @@ export default function AuthFormField({
           required={required}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          className={cn(authInput, error ? errorRing : undefined)}
+          className={cn(authInput, "pl-3.5", error ? errorRing : undefined)}
         >
           {options?.map((option) => (
             <option key={option.value} value={option.value}>
@@ -76,6 +92,11 @@ export default function AuthFormField({
         </select>
       ) : (
         <div className="relative">
+          {LeadingIcon ? (
+            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-site-faint" aria-hidden="true">
+              <LeadingIcon className="h-[18px] w-[18px]" />
+            </span>
+          ) : null}
           <Input
             id={fieldId}
             type={type}
@@ -88,6 +109,7 @@ export default function AuthFormField({
             aria-describedby={describedBy}
             className={cn(
               authInput,
+              LeadingIcon ? "pl-[42px]" : "pl-3.5",
               suffix ? "pr-10" : undefined,
               error ? errorRing : undefined,
             )}
@@ -96,11 +118,11 @@ export default function AuthFormField({
         </div>
       )}
       {error ? (
-        <p id={errorId} role="alert" className="text-osce-meta text-osce-danger">
+        <p id={errorId} role="alert" className="text-sm text-osce-danger">
           {error}
         </p>
       ) : hint ? (
-        <p id={hintId} className="text-osce-meta text-ink-subtle">
+        <p id={hintId} className="text-[13px] text-site-faint">
           {hint}
         </p>
       ) : null}

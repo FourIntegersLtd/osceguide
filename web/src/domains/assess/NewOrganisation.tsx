@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, Button, Checkbox, Input, Select, FoldSection } from "@/foundation/ui";
-import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
-import { AuthShell } from "@/capabilities/account";
+import { Alert, Checkbox, Input, Select, Textarea, FoldSection } from "@/foundation/ui";
+import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
+import { AuthShell, AuthButton } from "@/capabilities/account";
 import { sendSiteMessage } from "@/capabilities/help";
 import { setupRequestBody } from "@/domains/assess/newOrganisationRequest";
 
@@ -24,13 +24,6 @@ const PURPOSES: readonly { id: ProgrammePurpose; label: string }[] = [
 
 const ORG_TYPES = ["Training programme", "Medical school", "Deanery", "Employer"] as const;
 
-/*
- * The exam list is behind sign-in (`GET /exams` needs a session), and this
- * page is for somebody who has no account, so the four on the canvas are
- * written out. A public sign-up route would bring a public exam list with it.
- */
-const EXAMS = ["RCGP SCA", "PLAB 2", "MRCPsych CASC", "Orthopaedic ST3"] as const;
-
 function toggled<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
 }
@@ -46,10 +39,10 @@ function toggled<T>(list: T[], value: T): T[] {
 export function NewOrganisation() {
   const [name, setName] = useState("");
   const [orgType, setOrgType] = useState<string>(ORG_TYPES[0]);
-  const [exams, setExams] = useState<string[]>([]);
   const [purposes, setPurposes] = useState<ProgrammePurpose[]>([]);
   const [ownerName, setOwnerName] = useState("");
   const [email, setEmail] = useState("");
+  const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,10 +60,10 @@ export function NewOrganisation() {
         setupRequestBody({
           name,
           orgType,
-          exams,
           purposes: purposes.map((id) => PURPOSES.find((entry) => entry.id === id)?.label ?? id),
           ownerName,
           email,
+          notes,
         }),
       );
       setSent(true);
@@ -85,6 +78,7 @@ export function NewOrganisation() {
     return (
       <AuthShell
         variant="card"
+        icon="done"
         eyebrow="For institutions"
         title="Request received"
         subtitle={`Thank you. We will set up ${name} and email ${email} with the next steps, usually within one working day.`}
@@ -101,6 +95,8 @@ export function NewOrganisation() {
   return (
     <AuthShell
       variant="card"
+      wide
+      icon="building"
       eyebrow="For institutions"
       title="Set up your organisation"
       subtitle="Tell us about your programme or team. We create your organisation and make you its first admin, then you invite your faculty and trainees."
@@ -125,21 +121,8 @@ export function NewOrganisation() {
         </div>
         </FoldSection>
 
-        <FoldSection number={2} title="Exams and purpose">
+        <FoldSection number={2} title="Purpose">
         <div className="space-y-5">
-        <fieldset className="space-y-2">
-          <legend className="text-osce-meta font-medium text-ink">Exams your trainees prepare for</legend>
-          {EXAMS.map((exam) => (
-            <Checkbox
-              key={exam}
-              label={exam}
-              checked={exams.includes(exam)}
-              onChange={() => setExams((current) => toggled(current, exam))}
-            />
-          ))}
-          <p className="text-osce-caption text-ink-muted">Trainees get these exams in their personal practice too.</p>
-        </fieldset>
-
         <fieldset className="space-y-2">
           <legend className="text-osce-meta font-medium text-ink">What will you use OSCE Guide for?</legend>
           <p className="text-osce-caption text-ink-muted">Tick at least one.</p>
@@ -181,22 +164,19 @@ export function NewOrganisation() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
+        <Textarea
+          label="Notes (optional)"
+          hint="Anything we should know, such as cohort size, timelines or the exams you run."
+          maxLength={1000}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+        />
         </div>
         </FoldSection>
 
         {error ? <Alert tone="danger">{error}</Alert> : null}
 
-        <Button
-          type="submit"
-          variant="commit"
-          themeType="b2c"
-          fullWidth
-          size="lg"
-          disabled={sending}
-          className={authButtonPrimary}
-        >
-          {sending ? "Sending…" : "Request set-up"}
-        </Button>
+        <AuthButton isLoading={sending}>{sending ? "Sending…" : "Request set-up"}</AuthButton>
         <p className={authFooterLink}>
           Already set up?{" "}
           <Link href="/login" className={authLink}>

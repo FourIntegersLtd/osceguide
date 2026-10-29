@@ -12,7 +12,7 @@ import { PracticeWithColleaguesSection } from "./PracticeWithColleagues";
 import { NeurodiversitySupportSection } from "./NeurodiversitySupportSection";
 import { LandingPricingSection } from "./Pricing";
 import Testimonials from "./Testimonials";
-import { LandingFooter } from "./LandingFooter";
+import { SiteFooter } from "@/domains/marketing/site/SiteFooter";
 import { ExamLandingShell } from "./ExamLandingShell";
 import { ExamLandingHero } from "./ExamLandingHero";
 import { ExamQuoteSection } from "./ExamQuoteSection";
@@ -304,7 +304,7 @@ function ScaLandingContent() {
 
       <LandingBlogSection />
 
-      <LandingFooter sectionLinkPrefix="/" />
+      <SiteFooter />
     </>
   );
 }

@@ -10,7 +10,7 @@ import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { useSession } from "@/foundation/session";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
-import AuthSubmitButton from "@/capabilities/account/AuthSubmitButton";
+import AuthButton from "@/capabilities/account/AuthButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
 import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
 import {
@@ -136,6 +136,7 @@ export default function Register() {
   return (
     <AuthShell
       variant="split"
+      icon="signup"
       title="Create your account"
       subtitle={
         examCode
@@ -148,6 +149,7 @@ export default function Register() {
         <AuthFormField
           label="Name"
           name="username"
+          icon="user"
           autoComplete="name"
           value={formData.username}
           onChange={handleChange}
@@ -199,9 +201,9 @@ export default function Register() {
             ) : null}
           </p>
         ) : null}
-        <AuthSubmitButton isLoading={isSubmitting} disabled={accountCreated}>
+        <AuthButton isLoading={isSubmitting} disabled={accountCreated}>
           {isSubmitting ? "Creating your account…" : "Create account"}
-        </AuthSubmitButton>
+        </AuthButton>
       </form>
 
       <p className={authFooterLink}>

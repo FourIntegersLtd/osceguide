@@ -1,0 +1,165 @@
+/*
+ * The public site's palette (landing, legal, and the pages that share its nav
+ * and footer). Scoped to `.site-root` so the product screens are untouched.
+ * Light is the default; dark follows the OS unless `data-theme="light"` is set,
+ * and `data-theme="dark"` forces it. Blue is the brand: no green, no gradients.
+ */
+.site-root {
+  --site-ground: #f5f7fb;
+  --site-card: #ffffff;
+  --site-ink: #141b2b;
+  --site-navy: #0e2a5c;
+  --site-brand: #1d4ed8;
+  --site-brand-hover: #1e40af;
+  --site-pale: #e8effc;
+  --site-pale-strong: #cddcf8;
+  --site-body: #3d4555;
+  --site-muted: #555e70;
+  --site-faint: #6e7688;
+  --site-line: #dce1ea;
+  --site-rule: #c9d0dc;
+  --site-on-navy: #cddcf8;
+  --site-on-navy-dim: #a3b8e0;
+  --site-amber: #b45309;
+  --site-amber-bg: #fbefdf;
+  --site-on-brand: #ffffff;
+  background: var(--site-ground);
+  color: var(--site-body);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .site-root {
+    --site-ground: #0c121f;
+    --site-card: #141c2c;
+    --site-ink: #e8ecf4;
+    --site-navy: #0a1a3a;
+    --site-brand: #7ea2ff;
+    --site-brand-hover: #9ab8ff;
+    --site-pale: #1a2744;
+    --site-pale-strong: #22335a;
+    --site-body: #c3cad8;
+    --site-muted: #a9b1c2;
+    --site-faint: #8a93a6;
+    --site-line: #263149;
+    --site-rule: #33405c;
+    --site-amber: #e89b4c;
+    --site-amber-bg: #33240f;
+    --site-on-brand: #0c121f;
+  }
+}
+
+:root[data-theme="dark"] .site-root {
+  --site-ground: #0c121f;
+  --site-card: #141c2c;
+  --site-ink: #e8ecf4;
+  --site-navy: #0a1a3a;
+  --site-brand: #7ea2ff;
+  --site-brand-hover: #9ab8ff;
+  --site-pale: #1a2744;
+  --site-pale-strong: #22335a;
+  --site-body: #c3cad8;
+  --site-muted: #a9b1c2;
+  --site-faint: #8a93a6;
+  --site-line: #263149;
+  --site-rule: #33405c;
+  --site-amber: #e89b4c;
+  --site-amber-bg: #33240f;
+  --site-on-brand: #0c121f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .site-root.site-auth {
+    /* The shared form controls paint with the product's own tokens, which have no dark skin; give them one here, for the auth pages only. */
+    --osce-ink-900: #e8ecf4;
+    --osce-ink-800: #dbe1ec;
+    --osce-ink-700: #c3cad8;
+    --osce-ink-600: #b3bccd;
+    --osce-ink-500: #a9b1c2;
+    --osce-ink-400: #8a93a6;
+    --osce-surface: #141c2c;
+    --osce-surface-inset: #101826;
+    --osce-canvas: #0c121f;
+    --osce-border: #263149;
+    --osce-border-light: #1d273b;
+    --b2c-border: #263149;
+    --b2c-border-light: #1d273b;
+    --b2c-text-primary: #e8ecf4;
+    --b2c-text-secondary: #c3cad8;
+    --b2c-text-muted: #a9b1c2;
+    --color-canvas: 12 18 31;
+    --color-surface: 20 28 44;
+    --color-surface-raised: 16 24 38;
+    --color-border: 38 49 73;
+    --color-border-strong: 51 64 92;
+    --color-ink: 232 236 244;
+    --color-ink-muted: 195 202 216;
+    --color-ink-subtle: 138 147 166;
+    --color-accent-subtle: 26 39 68;
+  }
+}
+
+:root[data-theme="dark"] .site-root.site-auth {
+  /* The shared form controls paint with the product's own tokens, which have no dark skin; give them one here, for the auth pages only. */
+  --osce-ink-900: #e8ecf4;
+  --osce-ink-800: #dbe1ec;
+  --osce-ink-700: #c3cad8;
+  --osce-ink-600: #b3bccd;
+  --osce-ink-500: #a9b1c2;
+  --osce-ink-400: #8a93a6;
+  --osce-surface: #141c2c;
+  --osce-surface-inset: #101826;
+  --osce-canvas: #0c121f;
+  --osce-border: #263149;
+  --osce-border-light: #1d273b;
+  --b2c-border: #263149;
+  --b2c-border-light: #1d273b;
+  --b2c-text-primary: #e8ecf4;
+  --b2c-text-secondary: #c3cad8;
+  --b2c-text-muted: #a9b1c2;
+  --color-canvas: 12 18 31;
+  --color-surface: 20 28 44;
+  --color-surface-raised: 16 24 38;
+  --color-border: 38 49 73;
+  --color-border-strong: 51 64 92;
+  --color-ink: 232 236 244;
+  --color-ink-muted: 195 202 216;
+  --color-ink-subtle: 138 147 166;
+  --color-accent-subtle: 26 39 68;
+}
+
+/* Motion. Everything is complete at rest; these only add movement. */
+@keyframes site-wave {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+@keyframes site-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes site-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes site-dots {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+
+.site-wave-bar {
+  transform-origin: center;
+  animation: site-wave 1.2s ease-in-out infinite;
+}
+.site-pulse { animation: site-pulse 1.6s ease-in-out infinite; }
+.site-dot { animation: site-dots 1.2s ease-in-out infinite; }
+.site-marquee-track { animation: site-marquee 70s linear infinite; width: max-content; }
+.site-marquee:hover .site-marquee-track { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .site-wave-bar,
+  .site-pulse,
+  .site-dot,
+  .site-marquee-track { animation: none; }
+  .site-marquee { overflow-x: auto; }
+  .site-marquee-track { width: auto; }
+  .site-marquee-track [aria-hidden="true"] { display: none; }
+}

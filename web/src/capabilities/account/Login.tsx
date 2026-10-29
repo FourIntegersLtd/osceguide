@@ -4,18 +4,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
-import { Alert, Button } from "@/foundation/ui";
+import { Alert } from "@/foundation/ui";
 import { hasCode, login, type components, type MfaChallenge } from "@/foundation/platform-client";
 import { examAuthHref, normalizeExamCode, rememberLandingExam } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { can, useSession } from "@/foundation/session";
-import {
-  authButtonPrimary,
-  authFooterLink,
-  authLink,
-} from "@/foundation/ui/authTheme";
+import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
-import AuthSubmitButton from "@/capabilities/account/AuthSubmitButton";
+import AuthButton from "@/capabilities/account/AuthButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
 import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
 import { readSsoSignIn, startSsoSignIn, type SsoSignIn } from "@/capabilities/account/api";
@@ -178,6 +174,7 @@ export default function Login() {
     return (
       <AuthShell
         variant="split"
+        icon="shield"
         title="Two-factor sign-in"
         subtitle={
           challenge.status === "mfa_required"
@@ -263,9 +260,9 @@ export default function Login() {
               {formError}
             </p>
           ) : null}
-          <AuthSubmitButton isLoading={isSubmitting}>
+          <AuthButton isLoading={isSubmitting}>
             {isSubmitting ? "Signing you in…" : "Sign in"}
-          </AuthSubmitButton>
+          </AuthButton>
         </form>
       )}
 
@@ -299,14 +296,10 @@ export default function Login() {
            * handed and adopts the session. So the button is now the door it
            * always looked like.
            */}
-          <Button
+          <AuthButton
             type="button"
-            variant={showPasswordForm ? "secondary" : "primary"}
-            themeType="b2c"
-            fullWidth
-            size="lg"
+            variant={showPasswordForm ? "line" : "brand"}
             disabled={ssoBusy}
-            className={showPasswordForm ? undefined : authButtonPrimary}
             onClick={() => {
               setSsoBusy(true);
               setSsoNotice(null);
@@ -329,7 +322,7 @@ export default function Login() {
             }}
           >
             {ssoBusy ? "Opening sign-in…" : sso.sign_in_label}
-          </Button>
+          </AuthButton>
           {ssoNotice ? (
             <p role="alert" className="text-center text-osce-meta text-osce-danger">
               {ssoNotice}

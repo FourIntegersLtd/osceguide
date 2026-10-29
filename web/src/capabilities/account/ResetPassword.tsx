@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
-import { Button } from "@/foundation/ui";
 import { useSession } from "@/foundation/session";
 import { confirmPasswordReset, login } from "@/foundation/platform-client";
-import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
+import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
-import AuthSubmitButton from "@/capabilities/account/AuthSubmitButton";
+import AuthButton from "@/capabilities/account/AuthButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
+import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
 import { mapResetPasswordError } from "@/capabilities/account/support/mapAuthApiError";
 import { afterPasswordReset } from "@/capabilities/account/support/afterPasswordReset";
 import {
@@ -107,6 +107,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
     return (
       <AuthShell
         variant="card"
+        icon="warning"
         title="That link is incomplete"
         subtitle={
           invitation
@@ -127,6 +128,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
     return (
       <AuthShell
         variant="card"
+        icon="done"
         title={
           after === "sign_in_failed" ? "Password saved" : invitation ? "Your account is ready" : "Password changed"
         }
@@ -140,17 +142,9 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
                 : "You can sign in with it now."
         }
       >
-        <Button
-          type="button"
-          variant="commit"
-          themeType="b2c"
-          fullWidth
-          size="lg"
-          className={authButtonPrimary}
-          onClick={() => router.replace("/login")}
-        >
+        <AuthButton type="button" onClick={() => router.replace("/login")}>
           Sign in
-        </Button>
+        </AuthButton>
       </AuthShell>
     );
   }
@@ -168,7 +162,9 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
 
   return (
     <AuthShell
-      variant="card"
+      variant="split"
+      icon={invitation ? "mail" : "key"}
+      sidePanel={<AuthQuotePanel />}
       eyebrow={invitation ? "Invitation" : undefined}
       title={invitation ? "Accept your invitation" : "Set a new password"}
       subtitle={
@@ -210,9 +206,9 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
             </Link>
           </p>
         ) : null}
-        <AuthSubmitButton isLoading={isSubmitting}>
+        <AuthButton isLoading={isSubmitting}>
           {isSubmitting ? "Saving…" : invitation ? "Accept invitation" : "Save new password"}
-        </AuthSubmitButton>
+        </AuthButton>
       </form>
     </AuthShell>
   );

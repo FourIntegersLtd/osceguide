@@ -5,8 +5,9 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { requestPasswordReset } from "@/foundation/platform-client";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
-import AuthSubmitButton from "@/capabilities/account/AuthSubmitButton";
+import AuthButton from "@/capabilities/account/AuthButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
+import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
 import { mapAuthApiError } from "@/capabilities/account/support/mapAuthApiError";
 import {
   emailSchema,
@@ -71,6 +72,7 @@ export default function ForgotPassword() {
     return (
       <AuthShell
         variant="card"
+        icon="mail-check"
         title="Check your email"
         subtitle={`If ${email} has a password account, a reset link is on its way.`}
       >
@@ -104,9 +106,11 @@ export default function ForgotPassword() {
 
   return (
     <AuthShell
-      variant="card"
+      variant="split"
+      icon="key"
       title="Reset your password"
       subtitle="We'll email you a link to set a new one"
+      sidePanel={<AuthQuotePanel />}
     >
       <form className="space-y-5" method="post" onSubmit={handleFormSubmission} noValidate>
         <AuthFormField
@@ -127,9 +131,9 @@ export default function ForgotPassword() {
             {formError}
           </p>
         ) : null}
-        <AuthSubmitButton isLoading={isSubmitting}>
+        <AuthButton isLoading={isSubmitting}>
           {isSubmitting ? "Sending…" : "Send reset link"}
-        </AuthSubmitButton>
+        </AuthButton>
       </form>
 
       <p className={authFooterLink}>

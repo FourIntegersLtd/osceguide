@@ -71,7 +71,7 @@ export function PricingCards({ examConfig, onSelectPlan, type }: PricingTablePro
   );
 }
 
-function getPlanCardFeatures(
+export function getPlanCardFeatures(
   examConfig: ExamConfig,
   features: readonly string[],
 ): string[] {

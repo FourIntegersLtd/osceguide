@@ -1,6 +1,7 @@
-import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import type { Metadata } from "next";
 import { publicPageMetadata } from "@/app/metadata";
+import { LegalPage } from "@/domains/marketing/legal/LegalPage";
 
 export const metadata: Metadata = publicPageMetadata({
   path: "/compliances/legal-disclaimer",
@@ -11,15 +12,9 @@ export const metadata: Metadata = publicPageMetadata({
 
 export default function LegalDisclaimer() {
   return (
-    <div className="py-12 px-6 sm:px-8 max-w-4xl mx-auto justify-center">
-      <h1 className="text-osce-heading font-bold mb-8">Legal Disclaimer</h1>
+    <LegalPage doc="disclaimer" title="Legal Disclaimer">
 
       <div className="space-y-6 mb-12">
-        <p className="text-osce-body text-osce-ink-600">
-          Effective Date: {COMPLIANCE_DATES.disclaimer.effective}
-          <br />
-          Last Updated: {COMPLIANCE_DATES.disclaimer.updated}
-        </p>
         <p className="text-osce-ink-700 leading-relaxed">
           <strong>OSCE Guide </strong>is a platform designed to assist doctors
           in simulating clinical consultations using a voice AI model. Users can
@@ -35,7 +30,7 @@ export default function LegalDisclaimer() {
       <div className="space-y-16">
         <section>
           <h2 className="text-osce-title font-semibold mb-6"> Definitions</h2>
-          <p className="text-osce-ink-700 leading-relaxed">
+          <div className="text-osce-ink-700 leading-relaxed">
             For the purposes of this disclaimer, the following terms shall have
             the meanings ascribed to them:
             <ul className="list-disc pl-6">
@@ -52,7 +47,7 @@ export default function LegalDisclaimer() {
                 resources available on the Platform.
               </li>
             </ul>
-          </p>
+          </div>
         </section>
 
         <section>
@@ -279,6 +274,6 @@ export default function LegalDisclaimer() {
           </p>
         </section>
       </div>
-    </div>
+    </LegalPage>
   );
 }

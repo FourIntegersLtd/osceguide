@@ -1,7 +1,8 @@
-import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import { ACCOUNT_REOPEN_DAYS } from "@/foundation/config/copyNumbers";
 import type { Metadata } from "next";
 import { publicPageMetadata } from "@/app/metadata";
+import { LegalPage } from "@/domains/marketing/legal/LegalPage";
 
 export const metadata: Metadata = publicPageMetadata({
   path: "/compliances/privacy-policy",
@@ -12,45 +13,15 @@ export const metadata: Metadata = publicPageMetadata({
 
 export default function PrivacyPolicy() {
   return (
-    <div className="py-12  max-w-4xl mx-auto justify-center">
-      <h1 className="text-osce-heading font-bold mb-8">Privacy Policy</h1>
+    <LegalPage doc="privacy" title="Privacy Policy">
 
       <div className="space-y-6 mb-12">
-        <p className="text-osce-body text-osce-ink-600">
-          Effective Date: {COMPLIANCE_DATES.privacy.effective}
-          <br />
-          Last Updated: {COMPLIANCE_DATES.privacy.updated}
-        </p>
         <p className="text-osce-ink-700 leading-relaxed">
           OSCE Guide (&quot;we,&quot; &quot;us,&quot; &quot;our&quot;) provides
           an AI-powered OSCE simulation platform for medical professionals. This
           privacy policy outlines our commitment to protecting your personal
           data and privacy rights while using our service.
         </p>
-      </div>
-
-      <div className="mb-12">
-        <h2 className="text-osce-title font-semibold mb-6">Table of Contents</h2>
-        <ol className="list-decimal list-inside space-y-2 text-osce-ink-700 ml-4">
-          {[
-            "Introduction",
-            "Definitions",
-            "Data Controller Information",
-            "Data We Collect",
-            "How We Use Your Data",
-            "AI Processing and Third-Party Services",
-            "International Data Transfers",
-            "Your Rights",
-            "Data Security",
-            "Data Retention",
-            "Changes to This Policy",
-            "Contact Information",
-          ].map((item, index) => (
-            <li key={index} className="hover:text-osce-accent cursor-pointer">
-              <a href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}>{item}</a>
-            </li>
-          ))}
-        </ol>
       </div>
 
       <div className="space-y-16">
@@ -557,7 +528,7 @@ export default function PrivacyPolicy() {
           <h2 className="text-osce-title font-semibold mb-6">
             15. Third-Party Data Sharing
           </h2>
-          <p className="text-osce-ink-700 leading-relaxed">
+          <div className="text-osce-ink-700 leading-relaxed">
             We may share your personal data with third parties in the following
             circumstances:
             <ul className="list-disc list-inside space-y-1 ml-6">
@@ -571,7 +542,7 @@ export default function PrivacyPolicy() {
                 and providing services to you
               </li>
             </ul>
-          </p>
+          </div>
         </section>
 
         <section id="policy-review">
@@ -584,6 +555,6 @@ export default function PrivacyPolicy() {
           </p>
         </section>
       </div>
-    </div>
+    </LegalPage>
   );
 }

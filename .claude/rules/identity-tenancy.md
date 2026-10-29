@@ -60,3 +60,4 @@ Proof: `verify-access`. Anything that touches auth is ask-first.
 - A cross-tenant read or write: a query without the org id, or a token's memberships trusted past their truth.
 - A reused or replayable token, link or SSO state; a password or session that survives the change meant to end it.
 - Sign-out on reload, or the next person in the tab given the last person's page.
+- Auth screens share `AuthShell`, `AuthFormField` and `AuthButton` in the new site look (`.site-root.site-auth`). The MFA code stays one input (paste, autofill and its label depend on it); don't split it into digit boxes.

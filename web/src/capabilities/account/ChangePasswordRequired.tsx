@@ -31,6 +31,7 @@ export function ChangePasswordRequired() {
       title="Choose a new password"
       subtitle="This account was set up for you. Choose a password only you know before continuing."
       variant="card"
+      icon="key"
     >
       <ChangePassword
         onChanged={async () => {

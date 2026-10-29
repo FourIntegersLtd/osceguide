@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { publicPageMetadata } from "@/app/metadata";
 import { SUPPORT_EMAIL } from "@/foundation/support";
+import { LegalPage } from "@/domains/marketing/legal/LegalPage";
 
 export const metadata: Metadata = publicPageMetadata({
   path: "/compliances/accessibility",
@@ -19,8 +20,7 @@ export const metadata: Metadata = publicPageMetadata({
  */
 export default function AccessibilityStatement() {
   return (
-    <div className="mx-auto max-w-4xl py-12">
-      <h1 className="mb-8 text-osce-heading font-bold">Accessibility statement</h1>
+    <LegalPage doc="accessibility" title="Accessibility statement">
 
       <div className="space-y-12 text-osce-body leading-relaxed text-osce-ink-700">
         <p className="text-osce-ink-600">Last reviewed: 29 September 2026</p>
@@ -111,6 +111,6 @@ export default function AccessibilityStatement() {
           </p>
         </section>
       </div>
-    </div>
+    </LegalPage>
   );
 }

@@ -10,6 +10,7 @@
  */
 @import "../foundation/ui/osceTokens.css";
 @import "../foundation/ui/tokens.css";
+@import "../foundation/ui/siteTokens.css";
 
 @tailwind base;
 @tailwind components;

@@ -1,54 +1,16 @@
-import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
-/** Terms of Service copy, shared by the compliance page and the checkout modal. */
+import { SUPPORT_EMAIL } from "@/foundation/support";
+import { LegalPage } from "@/domains/marketing/legal/LegalPage";
+/** Terms of Service copy for the compliance page. */
 export default function TermsOfServiceContent() {
   return (
-    <div className="py-12 max-w-4xl mx-auto justify-center">
-      <h1 className="text-osce-heading font-bold mb-8">Terms of Service</h1>
+    <LegalPage doc="terms" title="Terms of Service">
 
       <div className="space-y-6 mb-12">
-        <p className="text-osce-body text-osce-ink-600">
-          Effective Date: {COMPLIANCE_DATES.terms.effective}
-          <br />
-          Last Updated: {COMPLIANCE_DATES.terms.updated}
-        </p>
         <p className="text-osce-ink-700 leading-relaxed">
           Welcome to OSCE Guide! These Terms of Service (&quot;Terms&quot;)
           govern your use of OSCE Guide. By accessing or using the platform, you
           agree to be bound by these Terms.
         </p>
-      </div>
-
-      <div className="mb-12">
-        <h2 className="text-osce-title font-semibold mb-6">Table of Contents</h2>
-        <ol className="list-decimal list-inside space-y-2 text-osce-ink-700 ml-4">
-          {[
-            { name: "Introduction", id: "introduction" },
-            { name: "Eligibility", id: "eligibility" },
-            { name: "Services Provided", id: "services-provided" },
-            { name: "User Obligations", id: "user-obligations" },
-            { name: "Intellectual Property", id: "intellectual-property" },
-            { name: "AI-Generated Feedback", id: "ai-generated-feedback" },
-            {
-              name: "Payments and Subscription Policy",
-              id: "payments-and-refund-policy",
-            },
-            {
-              name: "Limitations of Liability",
-              id: "limitations-of-liability",
-            },
-            { name: "Force Majeure", id: "force-majeure" },
-            { name: "Termination", id: "termination" },
-            { name: "Dispute Resolution", id: "dispute-resolution" },
-            { name: "Governing Law", id: "governing-law" },
-            { name: "Changes to the Terms", id: "changes-to-the-terms" },
-            { name: "AI Model Training", id: "ai-model-training" },
-            { name: "Contact Information", id: "contact-information" },
-          ].map((item, index) => (
-            <li key={index} className="hover:text-osce-accent cursor-pointer">
-              <a href={`#${item.id}`}>{item.name}</a>
-            </li>
-          ))}
-        </ol>
       </div>
 
       <div className="space-y-16">
@@ -383,6 +345,6 @@ export default function TermsOfServiceContent() {
           </ul>
         </section>
       </div>
-    </div>
+    </LegalPage>
   );
 }

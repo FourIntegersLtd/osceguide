@@ -1,6 +1,7 @@
-import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import type { Metadata } from "next";
 import { publicPageMetadata } from "@/app/metadata";
+import { LegalPage } from "@/domains/marketing/legal/LegalPage";
 
 export const metadata: Metadata = publicPageMetadata({
   path: "/compliances/referrals",
@@ -11,17 +12,7 @@ export const metadata: Metadata = publicPageMetadata({
 
 export default function ReferralsPolicy() {
   return (
-    <div className="py-12 max-w-4xl mx-auto justify-center">
-      <h1 className="text-osce-heading font-bold mb-8">
-        Referral Program Terms & Conditions
-      </h1>
-      <div className="space-y-6 mb-12">
-        <p className="text-osce-body text-osce-ink-600">
-          Effective Date: {COMPLIANCE_DATES.referrals.effective}
-          <br />
-          Last Updated: {COMPLIANCE_DATES.referrals.updated}
-        </p>
-      </div>
+    <LegalPage doc="referrals" title="Referral Program Terms & Conditions">
 
       <div className="space-y-16">
         <section id="introduction">
@@ -187,6 +178,6 @@ export default function ReferralsPolicy() {
           </ul>
         </section>
       </div>
-    </div>
+    </LegalPage>
   );
 }

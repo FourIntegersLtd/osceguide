@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { MdOutlineQuestionAnswer } from "react-icons/md";
 import { FAQSection } from "./FAQ";
 import { ExamBlogRail } from "@/capabilities/media";
-import { LandingFooter } from "./LandingFooter";
+import { SiteFooter } from "@/domains/marketing/site/SiteFooter";
 import { LandingPricingSection } from "./Pricing";
 import { ExamLandingShell } from "./ExamLandingShell";
 import { ExamLandingHero } from "./ExamLandingHero";
@@ -193,7 +193,7 @@ function OrthoLandingContent() {
       <FAQSection />
       <LandingPricingSection appType="ortho" />
       <ExamBlogRail examCode="ortho" />
-      <LandingFooter sectionLinkPrefix="/" />
+      <SiteFooter />
     </>
   );
 }

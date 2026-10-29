@@ -137,3 +137,8 @@ export {
   platformStaffFilterBox,
   platformStaffFilterDivider,
 } from "@/foundation/ui/platformStaffChrome";
+
+/* The public site's pill buttons and logo (blue palette, `.site-root` tokens). */
+export { SiteButton, SiteButtonLink } from "@/foundation/ui/site/SiteButton";
+export { SiteLogo } from "@/foundation/ui/site/SiteLogo";
+export { Eyebrow, IconTile, SectionHead } from "@/foundation/ui/site/SitePrimitives";

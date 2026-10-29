@@ -2,41 +2,36 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { setupRequestBody } from "@/domains/assess/newOrganisationRequest";
 
-test("files a contact message staff can act on", () => {
-  assert.deepEqual(
-    setupRequestBody({
-      name: "Acme Clinics",
-      orgType: "Employer",
-      exams: ["PLAB 2"],
-      purposes: ["Recruitment", "Onboarding"],
-      ownerName: "Dana Lee",
-      email: "dana@acme.test",
-    }),
-    {
-      kind: "contact",
-      name: "Dana Lee",
-      email: "dana@acme.test",
-      subject: "Set up an organisation: Acme Clinics",
-      source: "register/organisation",
-      body: [
-        "Organisation: Acme Clinics",
-        "Type: Employer",
-        "Exams: PLAB 2",
-        "Use: Recruitment, Onboarding",
-        "Contact: Dana Lee <dana@acme.test>",
-      ].join("\n"),
-    },
-  );
+const base = {
+  name: "Acme Clinics",
+  orgType: "Employer",
+  purposes: ["Recruitment", "Onboarding"],
+  ownerName: "Dana Lee",
+  email: "dana@acme.test",
+};
+
+test("files a contact message staff can act on, with no exams line", () => {
+  assert.deepEqual(setupRequestBody(base), {
+    kind: "contact",
+    name: "Dana Lee",
+    email: "dana@acme.test",
+    subject: "Set up an organisation: Acme Clinics",
+    source: "register/organisation",
+    body: [
+      "Organisation: Acme Clinics",
+      "Type: Employer",
+      "Use: Recruitment, Onboarding",
+      "Contact: Dana Lee <dana@acme.test>",
+    ].join("\n"),
+  });
 });
 
-test("says when no exam was chosen", () => {
-  const { body } = setupRequestBody({
-    name: "X",
-    orgType: "Deanery",
-    exams: [],
-    purposes: ["CPD"],
-    ownerName: "A",
-    email: "a@x.test",
-  });
-  assert.match(body, /Exams: none chosen/);
+test("adds a Notes line when notes are given", () => {
+  const { body } = setupRequestBody({ ...base, notes: "  40 trainees, start in March  " });
+  assert.equal(body.split("\n").at(-1), "Notes: 40 trainees, start in March");
+});
+
+test("leaves out Notes when blank", () => {
+  assert.doesNotMatch(setupRequestBody({ ...base, notes: "   " }).body, /Notes/);
+  assert.doesNotMatch(setupRequestBody(base).body, /Notes/);
 });

@@ -8,7 +8,7 @@ import {
 } from "react-icons/hi2";
 import { FAQSection } from "./FAQ";
 import { ExamBlogRail } from "@/capabilities/media";
-import { LandingFooter } from "./LandingFooter";
+import { SiteFooter } from "@/domains/marketing/site/SiteFooter";
 import { PracticeWithColleaguesSection } from "./PracticeWithColleagues";
 import { NeurodiversitySupportSection } from "./NeurodiversitySupportSection";
 import { LandingPricingSection } from "./Pricing";
@@ -208,7 +208,7 @@ function CascLandingContent() {
       <LandingPricingSection appType="casc" />
       <FAQSection />
       <ExamBlogRail examCode="casc" />
-      <LandingFooter sectionLinkPrefix="/" />
+      <SiteFooter />
     </>
   );
 }

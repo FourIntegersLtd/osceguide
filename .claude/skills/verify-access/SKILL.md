@@ -64,6 +64,8 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
 
 ## Traps
 
+- The sign-in e2e needs Docker running and `walkthrough@example.com` bootstrapped with an `ADMIN_TOTP_SECRET` and its `must_change_password` flag cleared, plus seeded station templates. The cookie modal blocks clicks until "Continue without analytics".
+
 - **Read the skip count, not just the exit code.** `tests/http/test_mfa_routes.py` is skipped whole while
   two-factor sign-in is switched off (`service_mfa.finish_password_sign_in`): 15 skips in Level 1 is
   that. A run with dozens more skipped exited 0 because Postgres was unreachable at session start on

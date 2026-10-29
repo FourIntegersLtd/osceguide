@@ -9,9 +9,11 @@ import {
   type components,
   type MfaChallenge,
 } from "@/foundation/platform-client";
-import { Alert, Button, Input } from "@/foundation/ui";
+import { Alert, Input } from "@/foundation/ui";
+import AuthButton from "@/capabilities/account/AuthButton";
 import { errorMessage } from "@/foundation/hooks";
-import { authLink } from "@/foundation/ui/authTheme";
+import { authInput, authLink } from "@/foundation/ui/authTheme";
+import { cn } from "@/foundation/ui/cn";
 import { AuthenticatorSetup } from "@/capabilities/account/mfa/AuthenticatorSetup";
 import { RecoveryCodes } from "@/capabilities/account/mfa/RecoveryCodes";
 import {
@@ -112,7 +114,7 @@ function MfaCodeStep({
 
   return (
     <form className="space-y-5" onSubmit={(event) => void submit(event)} noValidate>
-      <p className="text-osce-body text-ink-muted">
+      <p className="text-base text-site-muted">
         {mode === "code"
           ? "Enter the six-digit code from your authenticator app."
           : "Enter one of the recovery codes you saved when you set up two-factor sign-in. Each code works once."}
@@ -130,10 +132,11 @@ function MfaCodeStep({
         value={value}
         onChange={(event) => setValue(event.target.value)}
         error={failure?.message}
+        className={cn(authInput, "pl-3.5", mode === "code" && "text-center font-landing-mono text-2xl font-semibold tracking-[0.4em]")}
       />
-      <Button type="submit" fullWidth size="lg" isLoading={busy} disabled={!ready}>
+      <AuthButton isLoading={busy} disabled={!ready}>
         {busy ? "Checking…" : "Verify"}
-      </Button>
+      </AuthButton>
       <div className="flex flex-col items-center gap-2 text-osce-meta">
         <button
           type="button"
@@ -226,9 +229,9 @@ function MfaEnrolStep({
         finish signing in. It takes about a minute.
       </p>
       {failure ? <Alert tone="danger">{failure.message}</Alert> : null}
-      <Button type="button" fullWidth size="lg" isLoading={busy} onClick={() => start()}>
+      <AuthButton type="button" isLoading={busy} onClick={() => void start()}>
         Set up an authenticator
-      </Button>
+      </AuthButton>
       <p className="text-center text-osce-meta">
         <button type="button" className={authLink} onClick={onRestart}>
           Back to sign in

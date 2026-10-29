@@ -24,11 +24,11 @@ type B2BLandingFooterProps = {
   className?: string;
   /** Prefix for on-page section anchors. Use `""` on `/b2b/institutions` (`#for`); use `"/b2b/institutions"` elsewhere. */
   sectionLinkPrefix?: "" | "/b2b/institutions";
-  /** Marketing pages use the classic B2C landing footer palette. */
+  /** Marketing pages use the landing palette. */
   variant?: "workspace" | "marketing";
 };
 
-/** B2B landing footer. Same structure as B2C `LandingFooter`. */
+/** B2B landing footer. Footer for the institutions pages. */
 export function B2BLandingFooter({
   className = "",
   sectionLinkPrefix = "",

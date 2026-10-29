@@ -4,6 +4,7 @@ export { default as ForgotPassword } from "@/capabilities/account/ForgotPassword
 export { default as ConfirmEmail } from "@/capabilities/account/ConfirmEmail";
 export { default as ResetPassword } from "@/capabilities/account/ResetPassword";
 export { default as AuthShell } from "@/capabilities/account/AuthShell";
+export { default as AuthButton } from "@/capabilities/account/AuthButton";
 export { ChangePasswordRequired } from "@/capabilities/account/ChangePasswordRequired";
 export { default as ChooseExam } from "@/capabilities/account/ChooseExam";
 export { default as AuthFormField } from "@/capabilities/account/AuthFormField";

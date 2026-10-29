@@ -1,6 +1,7 @@
 import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
 import type { Metadata } from "next";
 import { publicPageMetadata } from "@/app/metadata";
+import { LegalPage } from "@/domains/marketing/legal/LegalPage";
 
 export const metadata: Metadata = publicPageMetadata({
   path: "/compliances/cookies-policy",
@@ -11,8 +12,7 @@ export const metadata: Metadata = publicPageMetadata({
 
 export default function CookiesPolicy() {
   return (
-    <div className="py-12 px-6 sm:px-8 max-w-4xl mx-auto justify-center">
-      <h1 className="text-osce-heading font-bold mb-8">Cookie Policy</h1>
+    <LegalPage doc="cookies" title="Cookie Policy">
       <p className="text-osce-body text-osce-ink-600 mb-4">
         Last Updated: {COMPLIANCE_DATES.cookies.updated}
       </p>
@@ -150,6 +150,6 @@ export default function CookiesPolicy() {
           </ul>
         </section>
       </div>
-    </div>
+    </LegalPage>
   );
 }

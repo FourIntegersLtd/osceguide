@@ -6,6 +6,7 @@ import { Alert, Spinner } from "@/foundation/ui";
 import { useSession } from "@/foundation/session";
 import { completeSsoSignIn } from "@/capabilities/account/api";
 import AuthShell from "@/capabilities/account/AuthShell";
+import { authLink } from "@/foundation/ui/authTheme";
 import { readSsoCallback } from "@/capabilities/account/support/ssoCallback";
 
 /**
@@ -76,20 +77,22 @@ export function SsoCallback() {
   }, [params, ready, status, refresh, router]);
 
   return (
-    <AuthShell title="Signing you in" subtitle="Finishing with your organisation." variant="card">
+    <AuthShell title="Signing you in" subtitle="Finishing with your organisation." variant="card" icon="working">
       {error ? (
         <div className="space-y-4">
           <Alert tone={ignored ? "info" : "danger"}>{error}</Alert>
           <button
             type="button"
             onClick={() => router.replace(ignored ? "/app" : "/login")}
-            className="text-osce-data font-medium text-osce-accent underline"
+            className={authLink}
           >
             {ignored ? "Continue to your account" : "Back to sign in"}
           </button>
         </div>
       ) : (
-        <Spinner label="Signing you in" />
+        <div className="flex justify-center">
+          <Spinner label="Signing you in" size="md" />
+        </div>
       )}
     </AuthShell>
   );
