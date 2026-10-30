@@ -28,8 +28,8 @@ export function HomePractice({
 }: HomePracticeProps) {
   return (
     <Section id="practice" tone="pale">
-      <div className="grid items-center gap-12 lg:grid-cols-2">
-        <div>
+      <div className="grid items-center gap-12 lg:grid-cols-5 lg:gap-10">
+        <div className="lg:col-span-2">
           {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
           <h2 className="mt-3 font-landing-heading text-3xl font-bold leading-tight text-site-ink sm:text-4xl">{title}</h2>
           <p className="mt-4 text-lg text-site-body">{sub}</p>
@@ -45,7 +45,7 @@ export function HomePractice({
             ))}
           </div>
         </div>
-        <LandingDemoVideo src={MARKETPLACE_VIDEO_SRC} title="How the OSCE Guide marketplace works" />
+        <LandingDemoVideo src={MARKETPLACE_VIDEO_SRC} title="How the OSCE Guide marketplace works" className="lg:col-span-3" />
       </div>
     </Section>
   );
