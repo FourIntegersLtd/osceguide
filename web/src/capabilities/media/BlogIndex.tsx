@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AsyncBoundary, LoadMore, cn } from "@/foundation/ui";
+import { AsyncBoundary, Eyebrow, LoadMore, cn } from "@/foundation/ui";
 import { useCursorPages } from "@/foundation/hooks";
 import { listMedia, type MediaPage } from "@/capabilities/media/api";
 import { ArticlesLibrary } from "@/capabilities/media/ArticlesLibrary";
@@ -20,27 +20,34 @@ export function BlogIndex({ examQuery, initialPage }: { examQuery: string | unde
   );
 
   return (
-    <main className="mx-auto w-full max-w-[1000px] px-4 py-12 text-left sm:px-6">
-      <h1 className="font-title text-osce-display-sm font-semibold text-osce-ink-900">Blogs</h1>
-      <p className="mt-2 text-osce-body text-osce-ink-600">Guidance and updates from the study team.</p>
-      <nav aria-label="Filter by exam" className="mt-6 flex flex-wrap gap-2">
-          {BLOG_EXAM_TABS.map((tab) => (
-            <Link
-              key={tab.label}
-              href={blogsHref(tab.code)}
-              aria-current={tab.code === examCode ? "page" : undefined}
-              className={cn(
-                "rounded-full border px-3.5 py-1.5 text-osce-meta font-medium",
-                tab.code === examCode
-                  ? "border-osce-ink-900 bg-osce-ink-900 text-white"
-                  : "border-osce-border text-osce-ink-700 hover:border-osce-ink-400",
-              )}
-            >
-              {tab.label}
-            </Link>
-          ))}
+    <div className="mx-auto w-full max-w-[1200px] px-4 py-12 sm:px-6 sm:py-16">
+      <p>
+        <Eyebrow>Blogs</Eyebrow>
+      </p>
+      <h1 className="mt-3 max-w-3xl font-landing-heading text-3xl font-bold leading-tight tracking-tight text-site-ink sm:text-5xl">
+        Guidance and updates from the study team
+      </h1>
+      <p className="mt-4 max-w-2xl text-lg leading-relaxed text-site-body">
+        Practical advice for your exam, written by the OSCE Guide study team.
+      </p>
+      <nav aria-label="Filter by exam" className="mt-8 flex flex-wrap gap-2">
+        {BLOG_EXAM_TABS.map((tab) => (
+          <Link
+            key={tab.label}
+            href={blogsHref(tab.code)}
+            aria-current={tab.code === examCode ? "page" : undefined}
+            className={cn(
+              "inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold transition-colors",
+              tab.code === examCode
+                ? "border-site-brand bg-site-brand text-site-on-brand"
+                : "border-site-rule bg-site-card text-site-body hover:border-site-brand hover:text-site-brand",
+            )}
+          >
+            {tab.label}
+          </Link>
+        ))}
       </nav>
-      <div className="mt-8">
+      <div className="mt-10">
         <AsyncBoundary state={pages.state}>
           {(items) => (
             <>
@@ -50,6 +57,6 @@ export function BlogIndex({ examQuery, initialPage }: { examQuery: string | unde
           )}
         </AsyncBoundary>
       </div>
-    </main>
+    </div>
   );
 }

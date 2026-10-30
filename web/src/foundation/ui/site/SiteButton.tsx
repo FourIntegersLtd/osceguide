@@ -11,7 +11,7 @@ const VARIANT: Record<SiteButtonVariant, string> = {
   white: "bg-white text-site-navy border border-transparent hover:bg-site-pale",
 };
 const SIZE: Record<SiteButtonSize, string> = {
-  sm: "h-9 px-4 text-sm",
+  sm: "h-11 px-4 text-sm min-[960px]:h-9",
   md: "h-11 px-5 text-sm",
   lg: "h-12 px-7 text-base",
 };

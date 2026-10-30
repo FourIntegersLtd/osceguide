@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { FaFacebook, FaLinkedin } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
-import { SiteLogo } from "@/foundation/ui";
+import { LogoLink } from "@/foundation/ui";
 import { FOOTER_COMPANY, FOOTER_EXAMS, FOOTER_LEGAL, FOOTER_PRODUCT, type SiteLink } from "@/domains/marketing/site/siteLinks";
 
 const SOCIAL = [
@@ -35,7 +35,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
           <div>
-            <SiteLogo onDark />
+            <LogoLink onDark />
             <address className="mt-4 text-sm not-italic leading-relaxed text-site-on-navy-dim">
               82a James Carter Road<br />Mildenhall, IP28 7DE<br />England, UK
             </address>

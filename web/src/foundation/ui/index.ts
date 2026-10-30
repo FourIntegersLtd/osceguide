@@ -32,7 +32,7 @@ export type { AsyncBoundaryProps } from "@/foundation/ui/AsyncBoundary";
 
 /* Brand marks and product-specific pills. */
 export { default as Logo } from "@/foundation/ui/Logo";
-export { AthenaIdentity, ATHENA_IMAGE_SRC } from "@/foundation/ui/AthenaIdentity";
+export { AthenaAvatar, AthenaIdentity, ATHENA_IMAGE_SRC } from "@/foundation/ui/AthenaIdentity";
 export { B2CBandPill as BandPill, type B2CBandVariant as BandVariant } from "@/foundation/ui/BandPill";
 
 /* Toasts: a provider at the root and a hook anywhere below it. */
@@ -140,5 +140,5 @@ export {
 
 /* The public site's pill buttons and logo (blue palette, `.site-root` tokens). */
 export { SiteButton, SiteButtonLink } from "@/foundation/ui/site/SiteButton";
-export { SiteLogo } from "@/foundation/ui/site/SiteLogo";
+export { LogoLink } from "@/foundation/ui/LogoLink";
 export { Eyebrow, IconTile, SectionHead } from "@/foundation/ui/site/SitePrimitives";

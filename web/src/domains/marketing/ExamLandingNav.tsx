@@ -32,7 +32,7 @@ export function ExamLandingNav({
           className="flex min-w-0 shrink items-center"
           aria-label="Back to OSCE Guide home"
         >
-          <Logo variant="light" className="max-sm:scale-[0.92] max-sm:origin-left" />
+          <Logo variant="light" interactive={false} className="max-sm:scale-[0.92] max-sm:origin-left" />
         </Link>
 
         <nav className="hidden shrink-0 items-center gap-3 md:flex">
@@ -48,7 +48,7 @@ export function ExamLandingNav({
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 md:hidden">
           <Link
             href={loginHref}
-            className={`${type.navLink} text-xs font-medium sm:text-[13px]`}
+            className={`${type.navLink} inline-flex min-h-11 items-center px-1 text-xs font-medium sm:text-[13px]`}
           >
             Log in
           </Link>

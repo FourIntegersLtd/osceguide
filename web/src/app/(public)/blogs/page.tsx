@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { publicPageMetadata } from "@/app/metadata";
 import { BlogIndex } from "@/capabilities/media/BlogIndex";
 import { normaliseExamQuery } from "@/capabilities/media/blogs";
+import { SiteShell } from "@/domains/marketing/site/SiteShell";
 import { readFirstBlogPage } from "@/capabilities/media/blogsServer";
 
 // Every `?exam=` tab canonicalises to `/blogs`: they are views of one list.
@@ -15,5 +16,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const { exam } = await searchParams;
   const examCode = normaliseExamQuery(exam);
   // Keyed by the tab so a tab change starts from that tab's server-read page.
-  return <BlogIndex key={examCode ?? ""} examQuery={exam} initialPage={await readFirstBlogPage(examCode)} />;
+  return (
+    <SiteShell>
+      <BlogIndex key={examCode ?? ""} examQuery={exam} initialPage={await readFirstBlogPage(examCode)} />
+    </SiteShell>
+  );
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { LuArrowLeft } from "react-icons/lu";
-import { SiteLogo } from "@/foundation/ui";
+import { LogoLink } from "@/foundation/ui";
 import { SUPPORT_EMAIL } from "@/foundation/support";
 import { authHeader } from "@/foundation/ui/authTheme";
 
@@ -27,7 +27,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     <div className="site-root site-auth flex min-h-screen flex-col font-landing-body antialiased">
       <header className={authHeader}>
         <div className="mx-auto flex min-h-16 max-w-[1120px] items-center justify-between px-4">
-          <SiteLogo />
+          <LogoLink />
           <Link href="/" className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-site-brand hover:text-site-brand-hover">
             <LuArrowLeft aria-hidden="true" />
             Back to the site

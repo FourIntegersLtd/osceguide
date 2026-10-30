@@ -1,10 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { FiBarChart2, FiClock, FiGlobe, FiHeart, FiMic, FiVideo } from "react-icons/fi";
 import { GiBoneKnife } from "react-icons/gi";
 import { FaUserDoctor } from "react-icons/fa6";
-import { ATHENA_IMAGE_SRC } from "@/foundation/ui/AthenaIdentity";
+import { AthenaAvatar } from "@/foundation/ui";
 import { WaveBars } from "@/domains/marketing/home/HomeHero";
 import { HomeClock } from "@/domains/marketing/home/HomeClock";
 import { Pill } from "@/domains/marketing/home/ReportShowcase";
@@ -60,7 +59,7 @@ export function HomeFeatures() {
         </Cell>
         <Cell className="border-site-line bg-site-card md:col-span-2">
           <div className="flex items-center gap-3">
-            <Image src={ATHENA_IMAGE_SRC} alt="Athena, your AI tutor" width={44} height={44} className="h-11 w-11 shrink-0 rounded-full object-cover" />
+            <AthenaAvatar alt="Athena, your AI tutor" className="h-11 w-11" />
             <div>
               <h3 className="font-landing-heading text-xl font-bold text-site-ink">Debrief with Athena</h3>
               <span className="text-xs text-site-muted">Ready after every case</span>

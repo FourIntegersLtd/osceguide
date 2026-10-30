@@ -88,7 +88,7 @@ Skip `schema.d.ts`, `openapi.json` and `_generated/`: they are generated.
 
 ## Public site chrome (landing, legal)
 
-- Site tokens live in `web/src/foundation/ui/siteTokens.css` under `.site-root` (`--site-*`, light default, dark via `prefers-color-scheme` guarded by `:not([data-theme="light"])` plus `[data-theme="dark"]`); Tailwind names are `site.*`. Wrap public pages in `domains/marketing/site/SiteShell`; `SiteButton`, `SiteButtonLink`, `SiteLogo`, `Eyebrow`, `SectionHead` and `IconTile` come from `@/foundation/ui` (files in `foundation/ui/site`). Footer and nav links live once in `domains/marketing/site/siteLinks.ts`.
+- Site tokens live in `web/src/foundation/ui/siteTokens.css` under `.site-root` (`--site-*`, light default, dark via `prefers-color-scheme` guarded by `:not([data-theme="light"])` plus `[data-theme="dark"]`); Tailwind names are `site.*`. Wrap public pages in `domains/marketing/site/SiteShell`; `SiteButton`, `SiteButtonLink`, `LogoLink` (the real `foundation/ui/Logo`, never an invented mark), `Eyebrow`, `SectionHead` and `IconTile` come from `@/foundation/ui` (files in `foundation/ui/site`). Footer and nav links live once in `domains/marketing/site/siteLinks.ts`.
 - Product controls (Input, Select, Checkbox, FoldSection) have no dark skin; the auth pages scope dark overrides under `.site-root.site-auth` in `siteTokens.css`.
 - Legal pages go through `domains/marketing/legal/LegalPage`. Legal text stays word for word: never renumber or fix headings in a restyle, report oddities instead. The "On this page" list is built client-side from `#legal-body h2`.
 - Browser proof: the cookie modal covers the first viewport (click "Continue without analytics" before screenshots) and motion needs `reducedMotion: "reduce"`. No login needed.

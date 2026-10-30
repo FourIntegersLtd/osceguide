@@ -92,8 +92,8 @@ export function HomePricing() {
         <h2 className="mx-auto max-w-3xl font-landing-heading text-3xl font-bold leading-tight text-site-ink sm:text-4xl">
           Flexible pricing options to suit your <span className="text-site-brand">{config.name}</span> preparation
         </h2>
-        <div role="tablist" aria-label="Exam" className="-mx-4 mt-8 flex justify-center overflow-x-auto px-4">
-          <div className="inline-flex rounded-full bg-site-pale p-1">
+        <div role="tablist" aria-label="Exam" className="mt-8 flex justify-center">
+          <div className="inline-flex max-w-full flex-wrap justify-center gap-1 rounded-3xl bg-site-pale p-1">
             {EXAMS.map((name) => (
               <button
                 key={name}
@@ -101,7 +101,7 @@ export function HomePricing() {
                 role="tab"
                 aria-selected={exam === name}
                 onClick={() => setExam(name)}
-                className={`h-10 whitespace-nowrap rounded-full px-5 text-sm font-semibold transition-colors ${
+                className={`h-11 whitespace-nowrap rounded-full px-4 sm:px-5 text-sm font-semibold transition-colors ${
                   exam === name ? "bg-site-card text-site-brand shadow-sm" : "text-site-muted hover:text-site-ink"
                 }`}
               >

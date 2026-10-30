@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
-import { ATHENA_IMAGE_SRC, Eyebrow } from "@/foundation/ui";
+import { FaQuoteLeft } from "react-icons/fa";
+import { AthenaAvatar, Eyebrow, IconTile } from "@/foundation/ui";
 import { MARQUEE_TESTIMONIALS } from "@/foundation/ui/marqueeTestimonials";
 import { cn } from "@/foundation/ui/cn";
 
@@ -37,6 +37,7 @@ export default function AuthQuotePanel() {
   }, []);
 
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const interval = setInterval(() => {
       setIsVisible(false);
       window.setTimeout(() => {
@@ -54,13 +55,7 @@ export default function AuthQuotePanel() {
   return (
     <aside className="hidden min-w-0 flex-col gap-6 overflow-hidden rounded-[22px] bg-site-navy p-9 text-white min-[961px]:flex">
       <div className="flex items-center gap-3" aria-hidden="true">
-        <Image
-          src={ATHENA_IMAGE_SRC}
-          alt=""
-          width={48}
-          height={48}
-          className="h-12 w-12 rounded-full border border-white/20 object-cover"
-        />
+        <AthenaAvatar className="h-12 w-12 border border-white/20" />
         <div className="flex flex-col">
           <b className="font-landing-heading text-base">Athena</b>
           <span className="text-sm text-site-on-navy">Ready for your next station</span>
@@ -92,23 +87,56 @@ export default function AuthQuotePanel() {
         ))}
       </div>
 
-      <div className="mt-auto flex flex-col gap-3">
-        <Eyebrow onNavy>What our users say</Eyebrow>
-        <figure className={cn("transition-opacity duration-300 motion-reduce:transition-none", isVisible ? "opacity-100" : "opacity-0")}>
-          <blockquote className="text-[15px] leading-relaxed text-white">{testimonial.excerpt}</blockquote>
-          <figcaption className="mt-3 text-sm text-site-on-navy">
-            <b className="font-semibold text-white">{testimonial.name}</b>, {testimonial.role}
-          </figcaption>
-        </figure>
-        <div className="flex items-center gap-1.5" aria-hidden="true">
+      <div className="flex flex-1 flex-col justify-center gap-6 py-4">
+        <div className="flex items-center gap-3">
+          <IconTile onNavy><FaQuoteLeft /></IconTile>
+          <Eyebrow onNavy>What our users say</Eyebrow>
+        </div>
+        {/* Every quote sits in the same grid cell, so the cell is as tall as the longest and a swap never moves the page. */}
+        <div className="grid">
+          {MARQUEE_TESTIMONIALS.map((item, index) => {
+            const active = index === testimonialIndex;
+            return (
+              <figure
+                key={item.name}
+                aria-hidden={!active}
+                className={cn(
+                  "col-start-1 row-start-1 flex flex-col justify-center transition-opacity duration-300 motion-reduce:transition-none",
+                  active && isVisible ? "opacity-100" : "opacity-0",
+                  !active && "invisible",
+                )}
+              >
+                <blockquote className="font-landing-heading text-[clamp(1.5rem,3vw,2.25rem)] font-semibold leading-[1.2] tracking-tight text-white">
+                  {item.excerpt}
+                </blockquote>
+                <figcaption className="mt-5 text-lg text-site-on-navy">
+                  <b className="font-semibold text-white">{item.name}</b>
+                  <span className="block text-base text-site-on-navy-dim">{item.role}</span>
+                </figcaption>
+              </figure>
+            );
+          })}
+        </div>
+        <div className="-ml-3 flex flex-wrap items-center" role="group" aria-label="Choose a testimonial">
           {MARQUEE_TESTIMONIALS.map((item, index) => (
-            <span
+            <button
               key={item.name}
-              className={cn(
-                "h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none",
-                index === testimonialIndex ? "w-4 bg-white" : "w-1.5 bg-white/30",
-              )}
-            />
+              type="button"
+              aria-label={`Show testimonial from ${item.name}`}
+              aria-current={index === testimonialIndex}
+              onClick={() => {
+                setTestimonialIndex(index);
+                setIsVisible(true);
+              }}
+              className="group flex h-11 w-11 items-center justify-center"
+            >
+              <span
+                className={cn(
+                  "h-2 rounded-full transition-all duration-300 motion-reduce:transition-none",
+                  index === testimonialIndex ? "w-6 bg-white" : "w-2 bg-white/30 group-hover:bg-white/60",
+                )}
+              />
+            </button>
           ))}
         </div>
       </div>

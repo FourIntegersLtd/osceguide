@@ -30,7 +30,7 @@ export function LegalPage({ doc, title, children }: { doc: ComplianceDocKey; tit
                   <Link
                     href={d.href}
                     aria-current={d.key === doc ? "page" : undefined}
-                    className={`block border-b-[3px] pb-3 text-sm font-medium transition-colors ${
+                    className={`block border-b-[3px] py-3 text-sm font-medium transition-colors ${
                       d.key === doc ? "border-site-brand text-site-brand" : "border-transparent text-site-muted hover:text-site-ink"
                     }`}
                   >

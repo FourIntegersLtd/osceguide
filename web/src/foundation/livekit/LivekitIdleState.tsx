@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import type { IconType } from "react-icons";
 import {
   HiOutlineCheckCircle,
@@ -10,6 +9,7 @@ import {
   HiOutlineMicrophone,
   HiOutlineSpeakerWave,
 } from "react-icons/hi2";
+import { AthenaAvatar } from "@/foundation/ui/AthenaIdentity";
 import { cn } from "@/foundation/ui/cn";
 import { b2cBodyTextMuted, b2cGroupedRowTitle } from "@/foundation/ui/productTokens";
 
@@ -21,7 +21,7 @@ import { b2cBodyTextMuted, b2cGroupedRowTitle } from "@/foundation/ui/productTok
  */
 
 export type LivekitIdleAvatar =
-  | { kind: "image"; src: string; alt: string }
+  | { kind: "athena"; alt: string }
   | { kind: "monogram"; initials: string }
   /** For surfaces with no named subject to show — an admin station test, say. */
   | { kind: "icon"; icon: IconType };
@@ -184,14 +184,11 @@ export function LivekitAvatarMotif({
           />
         ))}
       </svg>
-      {avatar.kind === "image" ? (
-        <Image
-          src={avatar.src}
+      {avatar.kind === "athena" ? (
+        <AthenaAvatar
           alt={avatar.alt}
-          width={72}
-          height={72}
           className={cn(
-            "shrink-0 rounded-full border-2 border-osce-accent-subtle object-cover object-top shadow-md",
+            "border-2 border-osce-accent-subtle shadow-md",
             small ? "h-9 w-9" : "h-16 w-16 sm:h-[72px] sm:w-[72px]",
           )}
         />

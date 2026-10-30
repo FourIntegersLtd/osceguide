@@ -3,7 +3,7 @@ import { FiArrowRight } from "react-icons/fi";
 import { SUPPORT_EMAIL } from "@/foundation/support";
 import { LOGIN_PATH } from "@/foundation/attribution/partnerConstants";
 import { SiteButtonLink } from "@/foundation/ui";
-import { HeroPhrase } from "@/domains/marketing/home/HeroPhrase";
+import { HERO_PHRASES, HeroPhrase } from "@/domains/marketing/home/HeroPhrase";
 import { HeroProof } from "@/domains/marketing/home/HeroProof";
 import { PartnerLink } from "@/domains/marketing/home/PartnerLink";
 import { ReportShowcase } from "@/domains/marketing/home/ReportShowcase";
@@ -30,8 +30,12 @@ export function HomeHero() {
     <section id="top" className="px-4 pb-16 pt-14 text-center sm:px-6 sm:pt-20">
       <div className="mx-auto max-w-[1200px]">
         <HeroProof />
-        <h1 className="mx-auto mt-6 max-w-4xl font-landing-heading text-[40px] font-bold leading-[1.08] tracking-tight text-site-ink sm:text-6xl">
-          Your AI patient that <HeroPhrase />
+        <h1 className="mx-auto mt-6 max-w-4xl font-landing-heading text-[clamp(1.4rem,7.2vw,3.75rem)] font-bold leading-[1.1] tracking-tight text-site-ink">
+          <span className="sr-only">Your AI patient that {HERO_PHRASES[0]}</span>
+          <span aria-hidden="true" className="block whitespace-nowrap">
+            Your AI patient that
+          </span>
+          <HeroPhrase />
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-site-body">
           OSCE Guide transforms the way healthcare professionals prepare for their clinical simulation exams. Our Voice AI-powered

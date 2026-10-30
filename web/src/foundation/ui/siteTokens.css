@@ -163,3 +163,12 @@
   .site-marquee-track { width: auto; }
   .site-marquee-track [aria-hidden="true"] { display: none; }
 }
+
+/* The logo has a light and a dark skin; show the one that suits the theme. */
+.site-root .site-logo-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .site-root .site-logo-light { display: none; }
+  :root:not([data-theme="light"]) .site-root .site-logo-dark { display: flex; }
+}
+:root[data-theme="dark"] .site-root .site-logo-light { display: none; }
+:root[data-theme="dark"] .site-root .site-logo-dark { display: flex; }

@@ -92,7 +92,7 @@ export function createLandingType(_variant: LandingTypographyVariant) {
       className: `group sm:w-auto ${landingAccent.btn}`,
     }),
     ctaSecondary: `inline-flex items-center justify-center rounded-md border border-landing-warm-strong bg-[color:var(--landing-cta-secondary-bg,#ffffff)] px-5 py-2.5 font-landing-body text-sm font-medium text-[color:var(--landing-cta-secondary-ink,var(--b2c-text-primary))] shadow-landing-cta-secondary transition-colors hover:border-osce-accent hover:text-osce-accent sm:w-auto ${landingFocusRing}`,
-    ctaInk: `inline-flex items-center justify-center gap-2 rounded-md bg-osce-accent px-5 py-2.5 font-landing-body text-sm font-medium text-white shadow-landing-cta transition-colors hover:bg-osce-accent-hover ${landingFocusRing}`,
+    ctaInk: `inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-osce-accent px-5 py-2.5 font-landing-body text-sm font-medium text-white shadow-landing-cta transition-colors hover:bg-osce-accent-hover ${landingFocusRing}`,
   };
 }
 

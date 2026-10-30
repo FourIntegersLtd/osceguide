@@ -291,7 +291,6 @@ function ScaLandingContent() {
         titleBefore="Doctors who "
         titleHighlight="passed"
         titleAfter=" recommend OSCE Guide"
-        description={null}
         primaryCta={{
           label: "Register",
           href: partner.href(REGISTER_PATH, "sca"),

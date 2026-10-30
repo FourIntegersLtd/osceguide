@@ -9,7 +9,6 @@ import {
   Alert,
   AsyncBoundary,
   AthenaIdentity,
-  ATHENA_IMAGE_SRC,
   Button,
   cn,
   productTokens,
@@ -187,7 +186,7 @@ function AthenaDoctorVoicePanel({
       ) : (
         <div className="flex min-h-0 flex-col items-center justify-center text-center">
           <LivekitIdleState
-            avatar={{ kind: "image", src: ATHENA_IMAGE_SRC, alt: "Athena" }}
+            avatar={{ kind: "athena", alt: "Athena" }}
             title="Athena Doctor"
             subtitle={patientLabel}
             className="mb-6"

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { HiMicrophone } from "react-icons/hi";
-import { Alert, ATHENA_IMAGE_SRC, Button, Modal, ModalContent, ModalHelper, ModalTitle } from "@/foundation/ui";
+import { Alert, Button, Modal, ModalContent, ModalHelper, ModalTitle } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { VoiceRoom, useMicPreflight } from "@/foundation/livekit";
 import { hasCode } from "@/foundation/platform-client";
@@ -77,7 +77,7 @@ export function DebriefSession({
           ) : (
             <>
               <div className="mb-6 w-full">
-                <LivekitIdleState avatar={{ kind: "image", src: ATHENA_IMAGE_SRC, alt: "Athena" }}
+                <LivekitIdleState avatar={{ kind: "athena", alt: "Athena" }}
                   title="Athena" subtitle="Speak naturally to discuss your performance" />
               </div>
               {session.phase === "ended" ? (

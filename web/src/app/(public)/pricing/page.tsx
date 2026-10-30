@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { publicPageMetadata } from "@/app/metadata";
+import { SiteShell } from "@/domains/marketing/site/SiteShell";
 import { CheckoutCancelled } from "@/capabilities/account";
 import { PricingSectionContent } from "@/domains/marketing/Pricing";
 
@@ -26,10 +27,7 @@ export default async function Page({
   searchParams: Promise<{ cancelled?: string }>;
 }) {
   const { cancelled } = await searchParams;
-  if (cancelled !== undefined) return <CheckoutCancelled />;
   return (
-    <main>
-      <PricingSectionContent asPageTitle />
-    </main>
+    <SiteShell>{cancelled !== undefined ? <CheckoutCancelled /> : <PricingSectionContent asPageTitle />}</SiteShell>
   );
 }

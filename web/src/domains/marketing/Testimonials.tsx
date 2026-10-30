@@ -55,8 +55,7 @@ function Testimonials({
   titleBefore = "What Our ",
   titleHighlight = "Users",
   titleAfter = " Say",
-  description =
-    "Doctors use OSCE Guide to practise voice-first consultations, get structured feedback, and walk into exam day ready.",
+  description = null,
   primaryCta = { label: "Start practising", href: LOGIN_PATH },
   secondaryCta = {
     label: "Book a demo",

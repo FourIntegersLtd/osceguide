@@ -11,6 +11,27 @@ import {
 /** Help-section Athena asset. single source of truth. */
 export const ATHENA_IMAGE_SRC = "/images/athena.png";
 
+/**
+ * Athena's round avatar, the one place her picture is cropped. The portrait
+ * is taller than a circle, so a plain `object-cover` cut her hair off; here
+ * the picture is set a little smaller with headroom, on its own white
+ * background. Size and border come from `className` (for example `h-11 w-11`).
+ */
+export function AthenaAvatar({ className = "", alt = "" }: { className?: string; alt?: string }) {
+  return (
+    <span aria-hidden={alt ? undefined : true} className={cn("relative block shrink-0 overflow-hidden rounded-full bg-white", className)}>
+      <Image
+        src={ATHENA_IMAGE_SRC}
+        alt={alt}
+        width={72}
+        height={103}
+        sizes="72px"
+        className="absolute left-[3%] top-[7%] h-auto w-[94%] max-w-none"
+      />
+    </span>
+  );
+}
+
 /** Default helper copy from the Help home screen. */
 export const ATHENA_DEFAULT_DESCRIPTION =
   "Browse guides, get voice help navigating the app, or ask clinical questions.";
@@ -43,13 +64,10 @@ export function AthenaIdentity({
   alt = "Athena",
 }: AthenaIdentityProps) {
   const avatar = (
-    <Image
-      src={ATHENA_IMAGE_SRC}
+    <AthenaAvatar
       alt={alt}
-      width={48}
-      height={48}
       className={cn(
-        "h-12 w-12 shrink-0 rounded-full border-2 border-osce-accent-subtle object-cover object-top shadow-md",
+        "h-12 w-12 border-2 border-osce-accent-subtle shadow-md",
         layout === "stack" && "mb-2",
         imageClassName,
       )}

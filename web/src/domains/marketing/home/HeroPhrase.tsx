@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const PHRASES = [
+export const HERO_PHRASES = [
   "is never tired",
   "is never busy",
   "is never unavailable",
@@ -13,7 +13,7 @@ const PHRASES = [
 ] as const;
 
 /**
- * The hero's rotating phrase. The first phrase is the server-rendered one and
+ * The hero's rotating phrase, the headline's second line (a screen reader gets the full sentence from the h1's hidden text). The first phrase is the server-rendered one and
  * the only one under reduced motion, so the headline is complete at rest.
  */
 export function HeroPhrase() {
@@ -26,7 +26,7 @@ export function HeroPhrase() {
     const timer = setInterval(() => {
       setShown(false);
       swap = setTimeout(() => {
-        setIndex((i) => (i + 1) % PHRASES.length);
+        setIndex((i) => (i + 1) % HERO_PHRASES.length);
         setShown(true);
       }, 280);
     }, 2600);
@@ -38,11 +38,12 @@ export function HeroPhrase() {
 
   return (
     <span
-      className={`inline-block text-site-brand transition-all duration-300 motion-reduce:transition-none ${
+      aria-hidden="true"
+      className={`block h-[1.1em] whitespace-nowrap text-site-brand transition-all duration-300 motion-reduce:transition-none ${
         shown ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
       }`}
     >
-      {PHRASES[index]}
+      {HERO_PHRASES[index]}
     </span>
   );
 }

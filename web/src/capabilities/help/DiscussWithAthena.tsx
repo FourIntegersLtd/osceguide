@@ -1,7 +1,6 @@
 "use client";
 
-import Image from "next/image";
-import { ATHENA_IMAGE_SRC, Button } from "@/foundation/ui";
+import { AthenaAvatar, Button } from "@/foundation/ui";
 import { openAthena, type AthenaTopic } from "@/capabilities/help/api";
 
 /**
@@ -21,13 +20,7 @@ export function DiscussWithAthena({ topic, className }: { topic: AthenaTopic; cl
       className={["shrink-0 gap-2", className].filter(Boolean).join(" ")}
       onClick={() => openAthena("athena", topic)}
     >
-      <Image
-        src={ATHENA_IMAGE_SRC}
-        alt=""
-        width={20}
-        height={20}
-        className="h-5 w-5 shrink-0 rounded-full object-cover object-top"
-      />
+      <AthenaAvatar className="h-5 w-5" />
       <span>Discuss with Athena</span>
     </Button>
   );

@@ -5,6 +5,7 @@ import { SITE_URL, publicPageMetadata } from "@/app/metadata";
 import type { MediaItem } from "@/capabilities/media/api";
 import { BlogArticle } from "@/capabilities/media/BlogArticle";
 import { articleBlurb, blogPath } from "@/capabilities/media/blogs";
+import { SiteShell } from "@/domains/marketing/site/SiteShell";
 import { readBlogPost } from "@/capabilities/media/blogsServer";
 
 // Not `revalidate`: the root layout reads the CSP nonce from the request, so every
@@ -39,7 +40,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   if (!post) notFound();
   const { item, bodyHtml } = post;
   return (
-    <>
+    <SiteShell>
       <JsonLd
         data={{
           "@context": "https://schema.org",
@@ -55,6 +56,6 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
         }}
       />
       <BlogArticle item={item} bodyHtml={bodyHtml} />
-    </>
+    </SiteShell>
   );
 }

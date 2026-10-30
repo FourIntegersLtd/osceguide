@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiMenu, FiX } from "react-icons/fi";
 import { LOGIN_PATH, REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
-import { SiteButtonLink, SiteLogo } from "@/foundation/ui";
+import { SiteButtonLink, LogoLink } from "@/foundation/ui";
 import { usePartnerContext } from "@/domains/marketing/support/usePartnerContext";
 import { LANDING_NAV_LINKS, SITE_NAV_LINKS } from "@/domains/marketing/site/siteLinks";
 
@@ -16,6 +16,7 @@ import { LANDING_NAV_LINKS, SITE_NAV_LINKS } from "@/domains/marketing/site/site
 export function SiteNav({ variant = "site" }: { variant?: "landing" | "site" }) {
   const partner = usePartnerContext();
   const [open, setOpen] = useState(false);
+  const toggle = useRef<HTMLButtonElement>(null);
   const links = variant === "landing" ? LANDING_NAV_LINKS : SITE_NAV_LINKS;
   const login = partner.href(LOGIN_PATH);
   const register = partner.href(REGISTER_PATH);
@@ -33,10 +34,22 @@ export function SiteNav({ variant = "site" }: { variant?: "landing" | "site" }) 
       </>
     );
 
+  // Escape closes the menu and hands focus back to the button that opened it.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      toggle.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
     <header className="sticky top-0 z-40 border-b border-site-line bg-site-ground/90 backdrop-blur">
       <nav aria-label="Main" className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6">
-        <SiteLogo />
+        <LogoLink />
         <ul className="hidden items-center gap-8 min-[960px]:flex">
           {links.map((l) => (
             <li key={l.href}>
@@ -48,12 +61,13 @@ export function SiteNav({ variant = "site" }: { variant?: "landing" | "site" }) 
         </ul>
         <div className="hidden items-center gap-2 min-[960px]:flex">{ctas}</div>
         <button
+          ref={toggle}
           type="button"
           aria-expanded={open}
           aria-controls="site-mobile-menu"
           aria-label={open ? "Close menu" : "Open menu"}
           onClick={() => setOpen((v) => !v)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-site-rule text-site-ink min-[960px]:hidden"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-site-rule text-site-ink min-[960px]:hidden"
         >
           {open ? <FiX aria-hidden /> : <FiMenu aria-hidden />}
         </button>
@@ -66,14 +80,14 @@ export function SiteNav({ variant = "site" }: { variant?: "landing" | "site" }) 
                 <Link
                   href={l.href}
                   onClick={() => setOpen(false)}
-                  className="block py-3 font-landing-body text-base font-medium text-site-ink"
+                  className="block min-h-11 py-3 font-landing-body text-base font-medium text-site-ink"
                 >
                   {l.label}
                 </Link>
               </li>
             ))}
           </ul>
-          <div className="mt-3 flex gap-2">{ctas}</div>
+          <div className="mt-3 flex flex-wrap gap-2">{ctas}</div>
         </div>
       )}
     </header>

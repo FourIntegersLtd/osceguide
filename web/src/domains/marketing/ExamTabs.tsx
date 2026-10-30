@@ -11,8 +11,8 @@ export function ExamTabs({
   onSelect: (examName: ExamName) => void;
 }) {
   return (
-      <div className="-mx-5 mb-8 flex justify-center overflow-x-auto px-5 sm:mx-0 sm:px-0">
-        <div className="inline-flex rounded-[var(--landing-radius-cta,0.5rem)] border border-landing-warm bg-[color:var(--landing-card-accent,var(--b2c-surface-muted))] p-1">
+      <div className="mb-8 flex justify-center">
+        <div className="inline-flex max-w-full flex-wrap justify-center gap-1 rounded-[var(--landing-radius-cta,0.5rem)] border border-landing-warm bg-[color:var(--landing-card-accent,var(--b2c-surface-muted))] p-1">
           {(Object.keys(EXAM_CONFIGS) as ExamName[]).map((examName) => {
             const examData = EXAM_CONFIGS[examName];
             const hasPlans = "plans" in examData && !!examData.plans;
@@ -23,7 +23,7 @@ export function ExamTabs({
                 key={examName}
                 type="button"
                 onClick={() => onSelect(examName)}
-                className={`whitespace-nowrap rounded-[var(--landing-radius-cta,0.375rem)] px-4 py-2 font-landing-body text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-osce-accent focus-visible:ring-offset-2 focus-visible:ring-offset-landing-canvas ${
+                className={`min-h-11 whitespace-nowrap rounded-[var(--landing-radius-cta,0.375rem)] px-4 py-2 font-landing-body text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-osce-accent focus-visible:ring-offset-2 focus-visible:ring-offset-landing-canvas ${
                   isActive
                     ? "border border-landing-warm bg-landing-card text-osce-ink-900 shadow-landing-card"
                     : "border border-transparent text-b2c-text-secondary hover:text-osce-ink-900"
@@ -31,11 +31,11 @@ export function ExamTabs({
               >
                 <span className="block">{examData.name}</span>
                 {!hasPlans ? (
-                  <span className="hidden text-[10px] font-medium uppercase tracking-wide text-[color:var(--landing-badge-soon,#f97316)] md:block">
+                  <span className="hidden text-[10px] font-medium uppercase tracking-wide text-[color:var(--landing-badge-soon,#f97316)] lg:block">
                     Coming soon
                   </span>
                 ) : (
-                  <span className="hidden text-xs text-b2c-text-muted md:block">
+                  <span className="hidden text-xs text-b2c-text-muted lg:block">
                     {examData.label}
                   </span>
                 )}

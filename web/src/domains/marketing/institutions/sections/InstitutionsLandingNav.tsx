@@ -45,7 +45,7 @@ export function InstitutionsLandingNav() {
         className={`${type.sectionShell} relative z-50 flex h-[60px] items-center justify-between gap-5`}
       >
         <Link href="/" className="inline-flex shrink-0" aria-label="OSCE Guide home">
-          <Logo variant="light" />
+          <Logo variant="light" interactive={false} />
         </Link>
 
         <div className="hidden flex-wrap items-center gap-6 md:flex">
