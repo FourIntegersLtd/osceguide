@@ -13,7 +13,8 @@ type LandingDemoVideoProps = {
  * Product demo clip in the same white showcase frame as the hero report.
  * Muted and looping, but playback only starts when the visitor has not asked
  * for reduced motion — set via `play()` rather than `autoPlay` so the server
- * and client markup stay identical.
+ * and client markup stay identical — and only once the player scrolls into
+ * view, so a visitor who never reaches it does not stream the whole file.
  */
 export function LandingDemoVideo({
   src,
@@ -30,9 +31,17 @@ export function LandingDemoVideo({
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return;
     }
-    void video.play().catch(() => {
-      /* Autoplay can be blocked; the controls remain available. */
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) {
+        return;
+      }
+      observer.disconnect();
+      void video.play().catch(() => {
+        /* Autoplay can be blocked; the controls remain available. */
+      });
     });
+    observer.observe(video);
+    return () => observer.disconnect();
   }, []);
 
   return (

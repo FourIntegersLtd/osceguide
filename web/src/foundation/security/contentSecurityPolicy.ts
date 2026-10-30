@@ -70,7 +70,8 @@ export function contentSecurityPolicyValue(nonce: string, options: { isDev: bool
     ["img-src", "'self' data: blob: https:"],
     ["font-src", "'self' data:"],
     ["connect-src", "'self' https: wss:"],
-    ["media-src", "'self' blob: data:"],
+    // The public site's demo videos (`LandingDemoVideo`) are served from S3.
+    ["media-src", "'self' blob: data: https://osceguide.s3.eu-west-2.amazonaws.com"],
     ["worker-src", "'self' blob:"],
     ["object-src", "'none'"],
     ["base-uri", "'self'"],

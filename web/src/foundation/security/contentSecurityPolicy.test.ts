@@ -47,6 +47,10 @@ describe("content-security-policy", () => {
     assert.ok(directive(value, "connect-src").includes("wss:"), "LiveKit needs websockets");
     assert.ok(directive(value, "connect-src").includes("https:"));
     assert.ok(directive(value, "img-src").includes("https:"), "S3-hosted images");
+    assert.ok(
+      directive(value, "media-src").includes("https://osceguide.s3.eu-west-2.amazonaws.com"),
+      "the public site's demo videos are on S3",
+    );
   });
 
   it("only allows eval, and only upgrades insecure requests, where each is right", () => {
