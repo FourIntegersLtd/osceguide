@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { IconType } from "react-icons";
 import { FiCalendar, FiClock, FiMic, FiSliders, FiVideo, FiZap } from "react-icons/fi";
 import { FaUserDoctor } from "react-icons/fa6";
 import { HomeClock } from "@/domains/marketing/home/HomeClock";
@@ -6,11 +7,13 @@ import { DoctorAvatar, PatientAvatar } from "@/domains/marketing/home/PracticeAv
 import { Eyebrow, IconTile, SectionHead } from "@/foundation/ui";
 import { Section } from "@/domains/marketing/home/Section";
 
-const TRIO = [
+type PracticeItem = { Icon: IconType; title: string; body: string };
+
+const TRIO: readonly PracticeItem[] = [
   { Icon: FiZap, title: "Live Practice", body: "Get matched instantly with available colleagues and start practising immediately." },
   { Icon: FiCalendar, title: "Marketplace", body: "Post your availability or browse sessions from colleagues. Schedule at times that work for both of you." },
   { Icon: FiClock, title: "Automatic Timing", body: "Built-in timer matches the exam format. Practise with realistic time constraints." },
-] as const;
+];
 
 function Cam({ tag, children }: { tag: ReactNode; children: ReactNode }) {
   return (
@@ -21,18 +24,24 @@ function Cam({ tag, children }: { tag: ReactNode; children: ReactNode }) {
   );
 }
 
-export function HomePractice() {
+type HomePracticeProps = {
+  eyebrow?: string;
+  title?: string;
+  sub?: string;
+};
+
+export function HomePractice({
+  eyebrow = "Practice with colleagues",
+  title = "Practise with a real person, on your schedule",
+  sub = "Choose between instant matching or scheduled sessions and practise in real-time video consultations.",
+}: HomePracticeProps) {
   return (
-    <Section tone="pale">
+    <Section id="practice" tone="pale">
       <div className="grid items-center gap-12 lg:grid-cols-2">
         <div>
-          <Eyebrow>Practice with colleagues</Eyebrow>
-          <h2 className="mt-3 font-landing-heading text-3xl font-bold leading-tight text-site-ink sm:text-4xl">
-            Practise with a real person, on your schedule
-          </h2>
-          <p className="mt-4 text-lg text-site-body">
-            Choose between instant matching or scheduled sessions and practise in real-time video consultations.
-          </p>
+          {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
+          <h2 className="mt-3 font-landing-heading text-3xl font-bold leading-tight text-site-ink sm:text-4xl">{title}</h2>
+          <p className="mt-4 text-lg text-site-body">{sub}</p>
           <div className="mt-8 space-y-6">
             {TRIO.map(({ Icon, title, body }) => (
               <div key={title} className="flex gap-4">

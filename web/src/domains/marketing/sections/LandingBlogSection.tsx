@@ -6,13 +6,12 @@ import { fetchLandingBlogs } from "@/domains/marketing/support/landingBlogs";
 import type { Blog } from "@/domains/marketing/support/blog";
 import { blogExcerpt, blogReadMinutes } from "@/domains/marketing/support/blogExcerpt";
 import { formatApiUtcLocaleDateString } from "@/domains/marketing/support/utcDate";
-import { landingSectionSurfaces } from "../landingSectionSurfaces";
-import { useLandingVariant } from "../LandingVariantContext";
+import { Eyebrow } from "@/foundation/ui";
+import { Section } from "@/domains/marketing/home/Section";
 
 const CARD_COUNT = 3;
 
 export function LandingBlogSection() {
-  const { type } = useLandingVariant();
   const [blogs, setBlogs] = useState<Blog[]>([]);
 
   useEffect(() => {
@@ -46,64 +45,51 @@ export function LandingBlogSection() {
   }
 
   return (
-    <section
-      id="blog"
-      className={`scroll-mt-20 ${landingSectionSurfaces.blog} ${type.sectionPadding}`}
-    >
-      <div className={type.sectionShell}>
-        <div className="flex flex-wrap items-end justify-between gap-5">
-          <div className="max-w-[56ch]">
-            <p className={type.eyebrow}>From the blog</p>
-            <h2 className={`mt-3 ${type.sectionTitle}`}>
-              SCA guidance, written by GPs
-            </h2>
-            <p className={type.sectionSubtitle}>
-              Station breakdowns, marking-domain explainers, and revision
-              strategy for the RCGP SCA.
-            </p>
-          </div>
-          <Link href="/blogs" className={`${type.linkAction} shrink-0`}>
-            All articles →
-          </Link>
+    <Section id="blog">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div className="max-w-[56ch]">
+          <Eyebrow>From the blog</Eyebrow>
+          <h2 className="mt-3 font-landing-heading text-3xl font-bold leading-tight tracking-tight text-site-ink sm:text-4xl">
+            SCA guidance, written by GPs
+          </h2>
+          <p className="mt-4 text-lg leading-relaxed text-site-body">
+            Station breakdowns, marking-domain explainers, and revision strategy for the RCGP SCA.
+          </p>
         </div>
-
-        <div className="mt-9 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-          {blogs.map((blog) => (
-            <article key={blog.blog_id} className="flex">
-              <Link
-                href={`/blogs/${blog.url ?? blog.blog_id}`}
-                className="group flex w-full flex-col rounded-landing-card border border-landing-warm bg-landing-card px-5 py-[18px] shadow-landing-card transition-[border-color,box-shadow] hover:border-osce-accent hover:shadow-landing-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-osce-accent focus-visible:ring-offset-2 focus-visible:ring-offset-landing-canvas"
-              >
-                <p className={type.eyebrow}>
-                  <time dateTime={blog.created_at}>
-                    {formatApiUtcLocaleDateString(blog.created_at, "en-GB", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </time>
-                  <span aria-hidden> · </span>
-                  {blogReadMinutes(blog.content)} min read
-                </p>
-                <h3
-                  className={`mt-3 line-clamp-2 ${type.itemTitle} transition-colors group-hover:text-osce-accent`}
-                >
-                  {blog.title}
-                </h3>
-                <p className={`mt-2 line-clamp-3 ${type.itemBody}`}>
-                  {blogExcerpt(blog.content)}
-                </p>
-                <span
-                  className={`mt-auto pt-3.5 text-[13.5px] ${type.linkAction}`}
-                  aria-hidden
-                >
-                  Read article →
-                </span>
-              </Link>
-            </article>
-          ))}
-        </div>
+        <Link href="/blogs" className="shrink-0 font-semibold text-site-brand underline underline-offset-4">
+          All articles →
+        </Link>
       </div>
-    </section>
+
+      <div className="mt-9 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+        {blogs.map((blog) => (
+          <article key={blog.blog_id} className="flex">
+            <Link
+              href={`/blogs/${blog.url ?? blog.blog_id}`}
+              className="group flex w-full flex-col rounded-2xl border border-site-line bg-site-ground p-5 transition-colors hover:border-site-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-site-brand"
+            >
+              <p className="font-landing-mono text-[11px] font-medium uppercase tracking-[0.13em] text-site-muted">
+                <time dateTime={blog.created_at}>
+                  {formatApiUtcLocaleDateString(blog.created_at, "en-GB", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </time>
+                <span aria-hidden> · </span>
+                {blogReadMinutes(blog.content)} min read
+              </p>
+              <h3 className="mt-3 line-clamp-2 font-landing-heading text-lg font-bold text-site-ink transition-colors group-hover:text-site-brand">
+                {blog.title}
+              </h3>
+              <p className="mt-2 line-clamp-3 text-site-body">{blogExcerpt(blog.content)}</p>
+              <span className="mt-auto pt-3.5 text-sm font-semibold text-site-brand" aria-hidden>
+                Read article →
+              </span>
+            </Link>
+          </article>
+        ))}
+      </div>
+    </Section>
   );
 }

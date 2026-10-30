@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 import { SiteFooter } from "@/domains/marketing/site/SiteFooter";
+import type { ExamKey } from "@/domains/marketing/landingExams";
+import type { SiteLink } from "@/domains/marketing/site/siteLinks";
 import { SiteNav } from "@/domains/marketing/site/SiteNav";
 
 /** Nav, content and footer on the site tokens. Pages that adopt the new chrome wrap themselves in this. */
-export function SiteShell({ children, nav = "site" }: { children: ReactNode; nav?: "landing" | "site" }) {
+export function SiteShell({ children, nav = "site", exam, links }: { children: ReactNode; nav?: "landing" | "site"; exam?: ExamKey; links?: readonly SiteLink[] }) {
   return (
     <div className="site-root min-h-screen font-landing-body antialiased">
       <a
@@ -12,7 +14,7 @@ export function SiteShell({ children, nav = "site" }: { children: ReactNode; nav
       >
         Skip to content
       </a>
-      <SiteNav variant={nav} />
+      <SiteNav variant={nav} exam={exam} links={links} />
       <main id="site-main">{children}</main>
       <SiteFooter />
     </div>

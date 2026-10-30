@@ -154,7 +154,22 @@
 .site-marquee-track { animation: site-marquee 70s linear infinite; width: max-content; }
 .site-marquee:hover .site-marquee-track { animation-play-state: paused; }
 
+@keyframes site-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.site-menu {
+  animation: site-menu-in 0.2s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .site-menu {
+    animation: none;
+  }
+
   .site-wave-bar,
   .site-pulse,
   .site-dot,

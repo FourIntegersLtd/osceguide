@@ -1,10 +1,10 @@
 "use client";
 
-import { Button } from "@/foundation/ui";
+import { SiteButton } from "@/foundation/ui";
 import type { ExamConfig } from "./pricingContent";
 import { POPULAR_BADGE_CLASS, type PricingTableProps } from "./PricingTable";
 
-export function PricingCards({ examConfig, onSelectPlan, type }: PricingTableProps) {
+export function PricingCards({ examConfig, onSelectPlan }: PricingTableProps) {
   return (
     <div className="space-y-4">
       {Object.entries(examConfig.plans).map(([planKey, plan]) => {
@@ -13,10 +13,10 @@ export function PricingCards({ examConfig, onSelectPlan, type }: PricingTablePro
         return (
           <div
             key={planKey}
-            className={`relative overflow-hidden rounded-[var(--landing-radius-panel,14px)] shadow-landing-card border ${
+            className={`relative overflow-hidden rounded-2xl shadow-none border ${
               plan.isPopular
-                ? "border-osce-accent-subtle bg-landing-card-accent"
-                : "border-landing-warm bg-landing-card"
+                ? "border-site-brand bg-site-pale"
+                : "border-site-line bg-site-card"
             }`}
           >
             {plan.isPopular ? (
@@ -25,44 +25,43 @@ export function PricingCards({ examConfig, onSelectPlan, type }: PricingTablePro
               </div>
             ) : null}
             <div className={`p-6 ${plan.isPopular ? "pt-14 sm:pt-6" : ""}`}>
-              <h3 className="font-landing-heading text-lg font-semibold tracking-[-0.02em] text-osce-ink-900">
+              <h3 className="font-landing-heading text-lg font-semibold tracking-[-0.02em] text-site-ink">
                 {plan.name}
               </h3>
               {plan.duration ? (
-                <p className={`mt-1 ${type.itemBody}`}>{plan.duration} access</p>
+                <p className="mt-1 text-site-body">{plan.duration} access</p>
               ) : null}
               <div className="mb-5 mt-3">
                 <span
                   className={`font-landing-mono text-[28px] font-medium leading-none ${
-                    plan.isPopular ? "text-landing-price" : "text-osce-ink-900"
+                    plan.isPopular ? "text-site-brand" : "text-site-ink"
                   }`}
                 >
                   {plan.price > 0 ? `£${plan.price.toFixed(2)}` : "Free"}
                 </span>
                 {plan.originalPrice ? (
-                  <span className="ml-2 font-landing-body text-sm text-b2c-text-muted line-through">
+                  <span className="ml-2 text-sm text-site-muted line-through">
                     £{plan.originalPrice.toFixed(2)}
                   </span>
                 ) : null}
               </div>
               <ul className="mb-6 space-y-2.5">
                 {cardFeatures.map((feature, idx) => (
-                  <li key={idx} className={`flex items-start gap-2 ${type.itemBody}`}>
-                    <span className="mt-0.5 font-landing-mono text-sm text-[color:var(--landing-tick,#2CA01C)]">
+                  <li key={idx} className="flex items-start gap-2 text-site-body">
+                    <span className="mt-0.5 font-landing-mono text-sm text-site-brand">
                       ✓
                     </span>
                     <span>{feature}</span>
                   </li>
                 ))}
               </ul>
-              <Button
+              <SiteButton
                 onClick={onSelectPlan}
-                variant={plan.ctaColor === "blue" ? "primary" : "commit"}
-                size="md"
-                fullWidth
-              >
+                variant={plan.ctaColor === "blue" ? "brand" : "line"}
+                className="w-full"
+                >
                 {plan.cta}
-              </Button>
+              </SiteButton>
             </div>
           </div>
         );

@@ -93,3 +93,7 @@ Skip `schema.d.ts`, `openapi.json` and `_generated/`: they are generated.
 - Legal pages go through `domains/marketing/legal/LegalPage`. Legal text stays word for word: never renumber or fix headings in a restyle, report oddities instead. The "On this page" list is built client-side from `#legal-body h2`.
 - Browser proof: the cookie modal covers the first viewport (click "Continue without analytics" before screenshots) and motion needs `reducedMotion: "reduce"`. No login needed.
 - macOS `sed -i` needs `''`; edit with Python.
+
+## Marketing pages (exam landings, /institutions)
+- Every public page sits in `SiteShell` (`exam` keeps partner attribution on Login/Start free; `links` swaps the centre links, e.g. institutions anchors). No per-page nav or footer.
+- Build bands from `home/Section`, `SectionHead`, `Eyebrow`, `IconTile`, `exam/ExamBlocks`; parameterise home sections (`HomePractice`, `HomeTestimonials`, `HomeFaq`) rather than fork. Only `site-*` tokens; the `landing-*`/`b2c-*` landing helpers are deleted.

@@ -1,47 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { usePartnerContext } from "@/domains/marketing/support/usePartnerContext";
 import { AsyncBoundary } from "@/foundation/ui";
-import { useAsync, type AsyncState } from "@/foundation/hooks/useAsync";
+import { useAsync } from "@/foundation/hooks/useAsync";
 import { EXAM_CONFIGS, type ExamConfig, type ExamName } from "./pricingContent";
 import { ExamTabs } from "./ExamTabs";
 import { PricingCards } from "./PricingCards";
 import { PricingTable, type PricingTableProps } from "./PricingTable";
-import type { LandingType } from "./landingTypography";
-import { landingSectionSurfaces } from "./landingSectionSurfaces";
-import { useLandingVariant } from "./LandingVariantContext";
+import { Eyebrow, SectionHead } from "@/foundation/ui";
+import { Section } from "@/domains/marketing/home/Section";
 import type { ExamKey } from "./landingExams";
 import { readPlansOnSale } from "@/domains/marketing/api";
-import { livePricedPlans, type LivePlan } from "@/domains/marketing/support/livePlans";
+import { livePricedPlans } from "@/domains/marketing/support/livePlans";
 import { REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
 
-/** The plans on sale. Prices on every card come from here, so a failed read shows no price at all. */
-function useLivePlans() {
-  return useAsync(async (signal) => (await readPlansOnSale(signal)).items, []);
-}
+export type PricedConfig = ExamConfig & { plans: NonNullable<ExamConfig["plans"]> };
 
-/** The exam's cards priced from the plans on sale, or a short line saying why not. */
-function PricedExam({
-  examName,
-  config,
-  live,
-  onSelectPlan,
-  type,
-}: {
-  examName: string;
-  config: ExamConfig & { plans: NonNullable<ExamConfig["plans"]> };
-  live: AsyncState<LivePlan[]>;
-  onSelectPlan: () => void;
-  type: LandingType;
-}) {
+/**
+ * The exam's plans priced from the plans on sale (a failed read shows no price at all), or a short line saying why not.
+ * `children` lays the priced plans out.
+ */
+export function PricedExam({ examName, config, children }: { examName: string; config: PricedConfig; children: (priced: PricedConfig) => ReactNode }) {
+  const live = useAsync(async (signal) => (await readPlansOnSale(signal)).items, []);
   return (
     <AsyncBoundary
       state={live}
-      loading={<p className={`text-center ${type.itemBody}`}>Loading prices…</p>}
+      loading={<p className="text-center text-site-body">Loading prices…</p>}
       failure={() => (
-        <p role="alert" className={`text-center ${type.itemBody}`}>
+        <p role="alert" className="text-center text-site-body">
           We could not load prices just now. Please refresh, or try again shortly.
         </p>
       )}
@@ -49,32 +37,22 @@ function PricedExam({
       {(plansOnSale) => {
         const plans = livePricedPlans(config.plans, examName.toLowerCase(), plansOnSale);
         if (Object.keys(plans).length <= 1) {
-          return <PricingComingSoon examName={config.name} label={config.label} type={type} />;
+          return <PricingComingSoon examName={config.name} label={config.label} />;
         }
-        return <PricingComparisonLayout examConfig={{ ...config, plans }} onSelectPlan={onSelectPlan} type={type} />;
+        return children({ ...config, plans });
       }}
     </AsyncBoundary>
   );
 }
 
-export type PricingSectionProps = {
-  /** @deprecated Use LandingPricingClassicSection. */
-  variant?: "default" | "premium";
-};
-
-function PricingComparisonLayout({
-  examConfig,
-  onSelectPlan,
-  type,
-}: PricingTableProps) {
+function PricingComparisonLayout({ examConfig, onSelectPlan }: PricingTableProps) {
   return (
     <>
       <div className="hidden md:block">
-        <div className="overflow-x-auto rounded-[var(--landing-radius-panel,14px)] border border-landing-warm bg-landing-card shadow-landing-card">
+        <div className="overflow-x-auto rounded-2xl border border-site-line bg-site-card">
           <PricingTable
             examConfig={examConfig}
             onSelectPlan={onSelectPlan}
-            type={type}
           />
         </div>
       </div>
@@ -82,7 +60,6 @@ function PricingComparisonLayout({
         <PricingCards
           examConfig={examConfig}
           onSelectPlan={onSelectPlan}
-          type={type}
         />
       </div>
     </>
@@ -93,10 +70,7 @@ function PricingComparisonLayout({
 export function PricingSectionContent({ asPageTitle = false }: { asPageTitle?: boolean }) {
   const router = useRouter();
   const partner = usePartnerContext();
-  const { type } = useLandingVariant();
   const [selectedExam, setSelectedExam] = useState<ExamName>("SCA");
-  const live = useLivePlans();
-  const Title = asPageTitle ? "h1" : "h2";
 
   const handleNavigation = (examName: ExamName) => {
     router.push(partner.href(REGISTER_PATH, examName.toLowerCase()));
@@ -116,46 +90,30 @@ export function PricingSectionContent({ asPageTitle = false }: { asPageTitle?: b
       : null;
 
   const pricingContent = plansConfig ? (
-    <PricedExam
-      examName={selectedExam}
-      config={plansConfig}
-      live={live}
-      onSelectPlan={() => handleNavigation(selectedExam)}
-      type={type}
-    />
+    <PricedExam examName={selectedExam} config={plansConfig}>
+      {(priced) => <PricingComparisonLayout examConfig={priced} onSelectPlan={() => handleNavigation(selectedExam)} />}
+    </PricedExam>
   ) : (
     <PricingComingSoon
       examName={currentExamConfig.name}
       label={currentExamConfig.label}
-      type={type}
     />
   );
 
   return (
-    <section
-      id="pricing"
-      className={`scroll-mt-20 ${landingSectionSurfaces.pricing} ${type.sectionPadding}`}
-    >
-      <div className={type.sectionShell}>
-        <div className="pb-8 lg:pb-10">
-          <Title className={type.sectionTitle}>
-            Simple, Transparent{" "}
-            <span className="text-osce-accent">Pricing</span>
-          </Title>
-          <p className={type.sectionSubtitle}>Choose your exam</p>
-        </div>
-
+    <Section id="pricing">
+      <SectionHead
+        as={asPageTitle ? "h1" : "h2"}
+        title={<>Simple, Transparent <span className="text-site-brand">Pricing</span></>}
+        sub="Choose your exam"
+      />
+      <div className="mt-10">
         <ExamTabs selected={selectedExam} onSelect={setSelectedExam} />
         {pricingContent}
       </div>
-    </section>
+    </Section>
   );
 }
-
-/** @deprecated Use LandingPricingClassicSection. */
-export const PricingSection = () => {
-  return <PricingSectionContent />;
-};
 
 const APP_TYPE_TO_EXAM: Record<ExamKey, ExamName> = {
   sca: "SCA",
@@ -172,10 +130,8 @@ export type LandingPricingSectionProps = {
 export function LandingPricingSection({ appType }: LandingPricingSectionProps) {
   const router = useRouter();
   const partner = usePartnerContext();
-  const { type } = useLandingVariant();
   const examKey = APP_TYPE_TO_EXAM[appType];
   const examConfig = examKey ? (EXAM_CONFIGS[examKey] as ExamConfig | undefined) : undefined;
-  const live = useLivePlans();
 
   if (!examConfig?.plans) {
     return null;
@@ -186,50 +142,30 @@ export function LandingPricingSection({ appType }: LandingPricingSectionProps) {
   };
 
   return (
-    <section
-      id="pricing"
-      className={`scroll-mt-20 ${landingSectionSurfaces.pricing} ${type.sectionPadding}`}
-    >
-      <div className={type.sectionShell}>
-        <div className="pb-8 lg:pb-10">
-          <h2 className={type.sectionTitle}>
-            Choose Your <span className="text-osce-accent">Plan</span>
-          </h2>
-          <p className={type.sectionSubtitle}>
-            Flexible pricing options to suit your {examConfig.name} preparation
-          </p>
-        </div>
-
-        <PricedExam
-          examName={examKey}
-          config={plansConfig}
-          live={live}
-          onSelectPlan={() => router.push(partner.href(REGISTER_PATH, appType))}
-          type={type}
-        />
+    <Section id="pricing">
+      <SectionHead
+        title={<>Choose Your <span className="text-site-brand">Plan</span></>}
+        sub={`Flexible pricing options to suit your ${examConfig.name} preparation`}
+      />
+      <div className="mt-10">
+        <PricedExam examName={examKey} config={plansConfig}>
+          {(priced) => <PricingComparisonLayout examConfig={priced} onSelectPlan={() => router.push(partner.href(REGISTER_PATH, appType))} />}
+        </PricedExam>
       </div>
-    </section>
+    </Section>
   );
 }
 
 // --- Helper Components ---
 
-function PricingComingSoon({
-  examName,
-  label,
-  type,
-}: {
-  examName: string;
-  label: string;
-  type: LandingType;
-}) {
+export function PricingComingSoon({ examName, label }: { examName: string; label: string }) {
   return (
-    <div className="mx-auto max-w-[880px] overflow-hidden rounded-[var(--landing-radius-panel,14px)] border border-landing-warm bg-landing-card px-8 py-12 text-center shadow-landing-card">
-      <p className={type.eyebrow}>Coming soon</p>
-      <h3 className="mt-3 font-landing-heading text-2xl font-semibold tracking-[-0.02em] text-osce-ink-900">
+    <div className="mx-auto max-w-[880px] overflow-hidden rounded-2xl border border-site-line bg-site-card px-8 py-12 text-center">
+      <Eyebrow>Coming soon</Eyebrow>
+      <h3 className="mt-3 font-landing-heading text-2xl font-bold text-site-ink">
         {examName} pricing
       </h3>
-      <p className={`mt-3 ${type.itemBody}`}>
+      <p className="mt-3 text-site-body">
         {label}. Plans and pricing for this exam will be available here soon.
       </p>
     </div>

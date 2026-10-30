@@ -5,7 +5,7 @@ import { FiCheck } from "react-icons/fi";
 import { fetchLandingStats } from "@/domains/marketing/support/landingStats";
 
 /** The consultations figure beside the link to the success stories. Live count, with the copy's own floor when the route is down. */
-export function HeroProof() {
+export function HeroProof({ testimonialsHref = "#testimonials" }: { testimonialsHref?: string }) {
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export function HeroProof() {
           completed
         </span>
       </span>
-      <a href="#testimonials" className="font-medium text-site-brand underline underline-offset-4">
+      <a href={testimonialsHref} className="font-medium text-site-brand underline underline-offset-4">
         Read our success stories
       </a>
     </div>

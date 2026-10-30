@@ -18,7 +18,7 @@ function HeroWaveform() {
       {WAVEFORM_DELAYS.map((delay) => (
         <span
           key={delay}
-          className="voice-memo-bar h-full w-[2.5px] rounded-sm bg-osce-accent"
+          className="voice-memo-bar h-full w-[2.5px] rounded-sm bg-site-brand"
           style={{ animationDelay: delay }}
         />
       ))}
@@ -36,25 +36,24 @@ export function LandingSimulationShowcase({
   const content = SIMULATION_SHOWCASE_CONTENT[variant];
 
   return (
-    <div className="mx-auto w-full overflow-hidden rounded-[var(--landing-radius-panel,10px)] border border-landing-warm bg-landing-card shadow-landing-panel sm:rounded-[var(--landing-radius-panel,14px)] lg:w-4/5">
-      <div
-        className="h-[3px] bg-[linear-gradient(90deg,#3A5D8F_42%,#E4E7EC_42%)]"
-        aria-hidden
-      />
+    <div className="mx-auto w-full overflow-hidden rounded-2xl border border-site-line bg-site-card shadow-sm sm:rounded-2xl lg:w-4/5">
+      <div className="h-[3px] bg-site-line" aria-hidden>
+        <i className="block h-full w-[42%] bg-site-brand" />
+      </div>
       <div className="flex flex-col lg:min-h-[420px] lg:flex-row">
-        <div className="min-w-0 flex-1 border-b border-b2c-border-light p-5 sm:p-6 lg:flex lg:flex-col lg:border-b-0 lg:border-r lg:px-7 lg:py-8">
+        <div className="min-w-0 flex-1 border-b border-site-line p-5 sm:p-6 lg:flex lg:flex-col lg:border-b-0 lg:border-r lg:px-7 lg:py-8">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-4 lg:mb-6">
             <div>
-              <div className="font-landing-mono text-[10px] font-medium uppercase tracking-[0.13em] text-[#8A94A6]">
+              <div className="font-landing-mono text-[10px] font-medium uppercase tracking-[0.13em] text-site-faint">
                 {content.examLabel}
               </div>
-              <div className="mt-1 font-landing-heading text-lg font-semibold leading-[1.3] tracking-[-0.02em] text-osce-ink-900 sm:text-[19px]">
+              <div className="mt-1 font-landing-heading text-lg font-semibold leading-[1.3] tracking-[-0.02em] text-site-ink sm:text-[19px]">
                 {content.stationTitle}
               </div>
             </div>
             <div className="flex items-center gap-3">
               <HeroWaveform />
-              <span className="font-landing-mono text-xs text-b2c-text-secondary">
+              <span className="font-landing-mono text-xs text-site-body">
                 {content.timerLabel}
               </span>
             </div>
@@ -72,7 +71,7 @@ export function LandingSimulationShowcase({
                 >
                   {!isCandidate && (
                     <span
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-b2c-border bg-b2c-secondary text-b2c-text-secondary"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-site-line bg-site-pale text-site-body"
                       aria-hidden
                     >
                       <HiOutlineUser className="h-3.5 w-3.5" />
@@ -82,8 +81,8 @@ export function LandingSimulationShowcase({
                   <div
                     className={`max-w-[84%] rounded-[14px] border px-3.5 py-2.5 sm:max-w-[78%] ${
                       isCandidate
-                        ? "rounded-br-[4px] border-landing-warm-strong bg-landing-card-accent"
-                        : "rounded-bl-[4px] border-b2c-border bg-b2c-secondary"
+                        ? "rounded-br-[4px] border-site-rule bg-site-pale"
+                        : "rounded-bl-[4px] border-site-line bg-site-pale"
                     }`}
                   >
                     <div
@@ -94,24 +93,24 @@ export function LandingSimulationShowcase({
                       <span
                         className={`font-landing-mono text-[10.5px] font-medium uppercase tracking-[0.06em] ${
                           isCandidate
-                            ? "text-osce-accent"
-                            : "text-b2c-text-secondary"
+                            ? "text-site-brand"
+                            : "text-site-body"
                         }`}
                       >
                         {row.speaker}
                       </span>
-                      <span className="font-landing-mono text-[10.5px] text-b2c-text-muted">
+                      <span className="font-landing-mono text-[10.5px] text-site-muted">
                         {row.time}
                       </span>
                     </div>
-                    <p className="mt-1 font-landing-body text-sm leading-[1.55] text-osce-ink-900 sm:text-[15px]">
+                    <p className="mt-1 font-landing-body text-sm leading-[1.55] text-site-ink sm:text-[15px]">
                       {row.text}
                     </p>
                   </div>
 
                   {isCandidate && (
                     <span
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-landing-warm-strong bg-osce-accent text-white"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-site-rule bg-site-brand text-site-on-brand"
                       aria-hidden
                     >
                       <LuStethoscope className="h-3.5 w-3.5" />
@@ -123,8 +122,8 @@ export function LandingSimulationShowcase({
           </div>
         </div>
 
-        <div className="min-w-0 bg-landing-card-muted p-5 sm:p-6 lg:flex lg:w-[34%] lg:shrink-0 lg:flex-col lg:justify-center lg:px-6 lg:py-8">
-          <div className="mb-4 font-landing-mono text-[10px] font-medium uppercase tracking-[0.13em] text-[#8A94A6] lg:mb-5">
+        <div className="min-w-0 bg-site-pale p-5 sm:p-6 lg:flex lg:w-[34%] lg:shrink-0 lg:flex-col lg:justify-center lg:px-6 lg:py-8">
+          <div className="mb-4 font-landing-mono text-[10px] font-medium uppercase tracking-[0.13em] text-site-faint lg:mb-5">
             {content.checklistEyebrow}
           </div>
           <div className="flex flex-col gap-2.5 lg:gap-3">
@@ -145,7 +144,7 @@ export function LandingSimulationShowcase({
                     className={`landing-checklist-item landing-checklist-box mt-0.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded border ${
                       item.done
                         ? "border-osce-band-competentBorder bg-osce-band-competentBg"
-                        : "border-landing-warm-strong bg-landing-card"
+                        : "border-site-rule bg-site-card"
                     }`}
                     aria-hidden
                   >
@@ -164,7 +163,7 @@ export function LandingSimulationShowcase({
                   </span>
                   <span
                     className={`landing-checklist-item landing-checklist-label font-landing-body text-[13px] leading-[1.45] ${
-                      item.done ? "text-landing-ink-body" : "text-b2c-text-muted"
+                      item.done ? "text-site-body" : "text-site-muted"
                     }`}
                   >
                     {item.label}
@@ -183,39 +182,39 @@ export function LandingPrioritisationShowcase() {
   const content = PRIORITISATION_SHOWCASE_CONTENT;
 
   return (
-    <div className="overflow-hidden rounded-[var(--landing-radius-panel,10px)] border border-landing-warm bg-landing-card shadow-landing-panel">
-      <div className="border-b border-b2c-border-light px-5 py-4 sm:px-6 sm:py-5">
-        <div className="font-landing-mono text-[10px] font-medium uppercase tracking-[0.13em] text-b2c-text-muted">
+    <div className="overflow-hidden rounded-2xl border border-site-line bg-site-card shadow-sm">
+      <div className="border-b border-site-line px-5 py-4 sm:px-6 sm:py-5">
+        <div className="font-landing-mono text-[10px] font-medium uppercase tracking-[0.13em] text-site-muted">
           Prioritisation station
         </div>
-        <h3 className="mt-1.5 font-landing-heading text-lg font-semibold tracking-[-0.02em] text-osce-ink-900 sm:text-xl">
+        <h3 className="mt-1.5 font-landing-heading text-lg font-semibold tracking-[-0.02em] text-site-ink sm:text-xl">
           {content.title}
         </h3>
-        <p className="mt-1 font-landing-body text-sm text-b2c-text-secondary">
+        <p className="mt-1 font-landing-body text-sm text-site-body">
           {content.subtitle}
         </p>
       </div>
 
-      <ol className="divide-y divide-b2c-border-light">
+      <ol className="divide-y divide-site-line">
         {content.cases.map((item) => (
           <li
             key={item.rank}
             className="flex items-start gap-4 px-5 py-4 sm:px-6 sm:py-5"
           >
             <span
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-osce-lg font-landing-mono text-sm font-medium ${
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-landing-mono text-sm font-medium ${
                 item.urgent
-                  ? "bg-osce-accent-muted text-osce-accent"
-                  : "bg-landing-card-muted text-b2c-text-secondary"
+                  ? "bg-site-pale text-site-brand"
+                  : "bg-site-pale text-site-body"
               }`}
             >
               {item.rank}
             </span>
             <div className="min-w-0">
-              <p className="font-landing-body text-sm font-medium text-osce-ink-900 sm:text-[15px]">
+              <p className="font-landing-body text-sm font-medium text-site-ink sm:text-[15px]">
                 {item.label}
               </p>
-              <p className="mt-1 font-landing-body text-sm leading-relaxed text-b2c-text-secondary">
+              <p className="mt-1 font-landing-body text-sm leading-relaxed text-site-body">
                 {item.detail}
               </p>
             </div>

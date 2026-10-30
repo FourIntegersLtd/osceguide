@@ -25,11 +25,11 @@ const BAND_LEGEND = [
 ] as const;
 
 const CARD =
-  "rounded-[var(--landing-radius-card,0.5rem)] border border-landing-warm bg-landing-card p-4 shadow-landing-showcase-side sm:p-5";
+  "rounded-xl border border-site-line bg-site-card p-4 shadow-sm sm:p-5";
 
 function Eyebrow({ children }: { children: string }) {
   return (
-    <div className="font-landing-mono text-[9px] font-medium uppercase tracking-[0.14em] text-b2c-text-muted sm:text-[10px]">
+    <div className="font-landing-mono text-[9px] font-medium uppercase tracking-[0.14em] text-site-muted sm:text-[10px]">
       {children}
     </div>
   );
@@ -48,11 +48,11 @@ function CompetencyDonut({ split }: { split: ProgressRagSplit }) {
       }}
     >
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex h-[76px] w-[76px] flex-col items-center justify-center rounded-full bg-landing-card sm:h-24 sm:w-24">
-          <span className="font-landing-heading text-xl font-semibold tracking-[-0.03em] text-osce-ink-900 sm:text-2xl">
+        <div className="flex h-[76px] w-[76px] flex-col items-center justify-center rounded-full bg-site-card sm:h-24 sm:w-24">
+          <span className="font-landing-heading text-xl font-semibold tracking-[-0.03em] text-site-ink sm:text-2xl">
             {split.development}%
           </span>
-          <span className="mt-0.5 font-landing-mono text-[8px] font-medium uppercase tracking-[0.12em] text-b2c-text-muted sm:text-[9px]">
+          <span className="mt-0.5 font-landing-mono text-[8px] font-medium uppercase tracking-[0.12em] text-site-muted sm:text-[9px]">
             Development
           </span>
         </div>
@@ -243,32 +243,32 @@ export function LandingProgressShowcase({
 
   return (
     <figure className={`m-0 ${className}`}>
-      <div className="overflow-hidden rounded-[var(--landing-radius-panel,10px)] border border-landing-warm bg-landing-card-muted p-4 text-left shadow-landing-panel sm:p-6">
+      <div className="overflow-hidden rounded-2xl border border-site-line bg-site-pale p-4 text-left shadow-sm sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
           <div className="min-w-0">
             <Eyebrow>{content.eyebrow}</Eyebrow>
-            <h3 className="mt-1.5 font-landing-heading text-lg font-semibold leading-tight tracking-[-0.025em] text-osce-ink-900 sm:text-2xl">
+            <h3 className="mt-1.5 font-landing-heading text-lg font-semibold leading-tight tracking-[-0.025em] text-site-ink sm:text-2xl">
               {content.title}
             </h3>
-            <p className="mt-1 font-landing-body text-xs text-b2c-text-secondary sm:text-sm">
+            <p className="mt-1 font-landing-body text-xs text-site-body sm:text-sm">
               {content.subtitle}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2.5">
-            <span className="font-landing-body text-[11px] text-b2c-text-secondary sm:text-xs">
+            <span className="font-landing-body text-[11px] text-site-body sm:text-xs">
               {content.examDateLabel}
             </span>
-            <span className="rounded-lg bg-osce-accent px-2.5 py-1.5 font-landing-body text-[11px] font-medium text-white sm:px-3 sm:text-xs">
+            <span className="rounded-lg bg-site-brand px-2.5 py-1.5 font-landing-body text-[11px] font-medium text-site-on-brand sm:px-3 sm:text-xs">
               {content.ctaLabel}
             </span>
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-1 border-b border-b2c-border-light pb-3 sm:mt-5">
-          <span className="rounded-md bg-landing-card px-2.5 py-1 font-landing-body text-[11px] font-medium text-osce-ink-900 shadow-landing-showcase-side sm:text-xs">
+        <div className="mt-4 flex items-center gap-1 border-b border-site-line pb-3 sm:mt-5">
+          <span className="rounded-md bg-site-card px-2.5 py-1 font-landing-body text-[11px] font-medium text-site-ink shadow-sm sm:text-xs">
             Overview
           </span>
-          <span className="px-2.5 py-1 font-landing-body text-[11px] text-b2c-text-muted sm:text-xs">
+          <span className="px-2.5 py-1 font-landing-body text-[11px] text-site-muted sm:text-xs">
             Trends
           </span>
         </div>
@@ -279,8 +279,8 @@ export function LandingProgressShowcase({
             <div className="mt-4 flex flex-col items-center gap-5 sm:flex-row sm:gap-6">
               <CompetencyDonut split={content.competency} />
               <div className="min-w-0 flex-1">
-                <p className="font-landing-body text-xs leading-relaxed text-b2c-text-secondary sm:text-sm">
-                  <span className="font-medium text-osce-ink-900">
+                <p className="font-landing-body text-xs leading-relaxed text-site-body sm:text-sm">
+                  <span className="font-medium text-site-ink">
                     {content.competency.competent}%
                   </span>{" "}
                   of your assessed marks now meet the competent standard.
@@ -293,11 +293,11 @@ export function LandingProgressShowcase({
                           className="h-2 w-2 shrink-0 rounded-[2px]"
                           style={{ backgroundColor: BAND_FILL[band.key] }}
                         />
-                        <span className="font-landing-heading text-base font-semibold tracking-[-0.02em] text-osce-ink-900 sm:text-xl">
+                        <span className="font-landing-heading text-base font-semibold tracking-[-0.02em] text-site-ink sm:text-xl">
                           {content.competency[band.key]}%
                         </span>
                       </div>
-                      <p className="mt-0.5 font-landing-mono text-[8px] font-medium uppercase tracking-[0.12em] text-b2c-text-muted sm:text-[9px]">
+                      <p className="mt-0.5 font-landing-mono text-[8px] font-medium uppercase tracking-[0.12em] text-site-muted sm:text-[9px]">
                         {band.key === "development"
                           ? "Development"
                           : band.key === "developing"
@@ -316,7 +316,7 @@ export function LandingProgressShowcase({
             <div className="mt-4">
               <TrendBars weeks={content.weeklyTrend} />
             </div>
-            <p className="mt-2.5 font-landing-body text-[11px] leading-relaxed text-b2c-text-secondary sm:text-xs">
+            <p className="mt-2.5 font-landing-body text-[11px] leading-relaxed text-site-body sm:text-xs">
               How much of your work met the competent standard each week. Left
               is eight weeks ago, right is this week.
             </p>
@@ -326,7 +326,7 @@ export function LandingProgressShowcase({
         <div className="mt-3 grid grid-cols-1 gap-3 sm:mt-4 sm:gap-4 lg:grid-cols-[1fr_360px]">
           <div className={CARD}>
             <Eyebrow>Domains</Eyebrow>
-            <p className="mt-1 font-landing-body text-[11px] text-b2c-text-secondary sm:text-xs">
+            <p className="mt-1 font-landing-body text-[11px] text-site-body sm:text-xs">
               RAG mix by clinical domain
             </p>
 
@@ -336,7 +336,7 @@ export function LandingProgressShowcase({
                   key={row.label}
                   className="flex items-center gap-3 sm:gap-4"
                 >
-                  <div className="w-[68px] shrink-0 text-right font-landing-body text-[10px] leading-tight text-b2c-text-secondary sm:w-24 sm:text-[11px]">
+                  <div className="w-[68px] shrink-0 text-right font-landing-body text-[10px] leading-tight text-site-body sm:w-24 sm:text-[11px]">
                     {row.label}
                   </div>
                   <div className="flex h-5 min-w-0 flex-1 overflow-hidden rounded-[3px] sm:h-6">
@@ -354,13 +354,13 @@ export function LandingProgressShowcase({
               ))}
             </div>
 
-            <div className="mt-2 flex justify-between pl-[80px] font-landing-mono text-[8px] text-b2c-text-muted sm:pl-[112px] sm:text-[9px]">
+            <div className="mt-2 flex justify-between pl-[80px] font-landing-mono text-[8px] text-site-muted sm:pl-[112px] sm:text-[9px]">
               {["0%", "25%", "50%", "75%", "100%"].map((tick) => (
                 <span key={tick}>{tick}</span>
               ))}
             </div>
 
-            <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1.5 border-t border-b2c-border-light pt-3">
+            <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1.5 border-t border-site-line pt-3">
               {BAND_LEGEND.map((band) => (
                 <span
                   key={band.key}
@@ -379,7 +379,7 @@ export function LandingProgressShowcase({
 
           <div className={CARD}>
             <Eyebrow>Categories</Eyebrow>
-            <p className="mt-1 font-landing-body text-[11px] text-b2c-text-secondary sm:text-xs">
+            <p className="mt-1 font-landing-body text-[11px] text-site-body sm:text-xs">
               Assessment volume by category
             </p>
             <div className="mt-4">
@@ -392,7 +392,7 @@ export function LandingProgressShowcase({
         </div>
       </div>
 
-      <figcaption className="mt-3 text-center font-landing-body text-[11px] text-b2c-text-muted">
+      <figcaption className="mt-3 text-center font-landing-body text-[11px] text-site-muted">
         {content.caption}
       </figcaption>
     </figure>

@@ -106,12 +106,12 @@ export default function AuthQuotePanel() {
                   !active && "invisible",
                 )}
               >
-                <blockquote className="font-landing-heading text-[clamp(1.5rem,3vw,2.25rem)] font-semibold leading-[1.2] tracking-tight text-white">
+                <blockquote className="font-landing-heading text-[clamp(1.25rem,2vw,1.75rem)] font-semibold leading-[1.3] tracking-tight text-white">
                   {item.excerpt}
                 </blockquote>
-                <figcaption className="mt-5 text-lg text-site-on-navy">
+                <figcaption className="mt-5 text-base text-site-on-navy">
                   <b className="font-semibold text-white">{item.name}</b>
-                  <span className="block text-base text-site-on-navy-dim">{item.role}</span>
+                  <span className="block text-sm text-site-on-navy-dim">{item.role}</span>
                 </figcaption>
               </figure>
             );

@@ -37,11 +37,11 @@ export function LandingDemoVideo({
 
   return (
     <div
-      className={`overflow-hidden rounded-landing-panel border border-landing-warm bg-landing-card p-1.5 shadow-landing-showcase sm:p-2 ${className}`}
+      className={`overflow-hidden rounded-2xl border border-site-line bg-site-card p-1.5 shadow-sm sm:p-2 ${className}`}
     >
       <video
         ref={videoRef}
-        className="aspect-video h-full w-full rounded-[calc(var(--landing-radius-panel,16px)-0.25rem)] bg-landing-card-muted object-contain"
+        className="aspect-video h-full w-full rounded-xl bg-site-pale object-contain"
         src={src}
         title={title}
         aria-label={title}

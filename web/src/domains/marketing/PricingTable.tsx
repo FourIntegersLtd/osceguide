@@ -1,11 +1,10 @@
 "use client";
 
-import { Button } from "@/foundation/ui";
+import { SiteButton } from "@/foundation/ui";
 import type { ExamConfig } from "./pricingContent";
-import type { LandingType } from "./landingTypography";
 
 export const POPULAR_BADGE_CLASS =
-  "font-landing-mono text-[10px] font-medium uppercase tracking-[0.08em] text-osce-accent-hover bg-osce-accent-muted border border-osce-accent-subtle rounded px-[7px] py-[5px]";
+  "font-landing-mono text-[10px] font-medium uppercase tracking-[0.08em] text-site-brand bg-site-pale border border-site-line rounded px-[7px] py-[5px]";
 
 
 const ALL_FEATURES = [
@@ -26,7 +25,6 @@ const ALL_FEATURES = [
 export type PricingTableProps = {
   examConfig: ExamConfig & { plans: NonNullable<ExamConfig["plans"]> };
   onSelectPlan: () => void;
-  type: LandingType;
 };
 
 export function PricingTable({ examConfig, onSelectPlan }: PricingTableProps) {
@@ -112,9 +110,9 @@ export function PricingTable({ examConfig, onSelectPlan }: PricingTableProps) {
   return (
     <table className="w-full min-w-[720px] border-collapse">
       <thead>
-        <tr className="border-b border-landing-warm">
+        <tr className="border-b border-site-line">
           <th
-            className="bg-landing-card-muted px-6 py-5 text-left font-landing-mono text-[10px] font-medium uppercase tracking-[0.13em] text-b2c-text-muted"
+            className="bg-site-pale px-6 py-5 text-left font-landing-mono text-[10px] font-medium uppercase tracking-[0.13em] text-site-muted"
           >
             Features
           </th>
@@ -122,7 +120,7 @@ export function PricingTable({ examConfig, onSelectPlan }: PricingTableProps) {
             <th
               key={planKey}
               className={`relative px-6 py-5 text-center ${
-                plan.isPopular ? "bg-landing-card-accent" : "bg-landing-card-muted"
+                "bg-site-pale"
               } ${index === arr.length - 1 ? "" : ""}`}
             >
               {plan.isPopular ? (
@@ -132,23 +130,23 @@ export function PricingTable({ examConfig, onSelectPlan }: PricingTableProps) {
               ) : (
                 <div className="mb-3 h-[26px]" aria-hidden />
               )}
-              <div className="font-landing-heading text-base font-semibold tracking-[-0.02em] text-osce-ink-900">
+              <div className="font-landing-heading text-base font-semibold tracking-[-0.02em] text-site-ink">
                 {plan.name}
               </div>
               <div
                 className={`mt-2 font-landing-mono text-[28px] font-medium leading-none ${
-                  plan.isPopular ? "text-landing-price" : "text-osce-ink-900"
+                  plan.isPopular ? "text-site-brand" : "text-site-ink"
                 }`}
               >
                 {plan.price > 0 ? `£${plan.price.toFixed(2)}` : "Free"}
               </div>
               {plan.originalPrice ? (
-                <div className="mt-1 font-landing-body text-xs text-b2c-text-muted line-through">
+                <div className="mt-1 font-landing-body text-xs text-site-muted line-through">
                   £{plan.originalPrice.toFixed(2)}
                 </div>
               ) : null}
               {plan.duration ? (
-                <div className="mt-1 font-landing-body text-xs text-b2c-text-secondary">
+                <div className="mt-1 font-landing-body text-xs text-site-body">
                   {plan.duration} access
                 </div>
               ) : null}
@@ -156,17 +154,17 @@ export function PricingTable({ examConfig, onSelectPlan }: PricingTableProps) {
           ))}
         </tr>
       </thead>
-      <tbody className="divide-y divide-landing-hairline">
+      <tbody className="divide-y divide-site-line">
         {relevantFeatures.map((featureName) => (
           <tr key={featureName}>
-            <td className="px-6 py-3.5 font-landing-body text-sm font-medium text-osce-ink-900">
+            <td className="px-6 py-3.5 font-landing-body text-sm font-medium text-site-ink">
               {featureName}
             </td>
             {Object.values(examConfig.plans).map((plan, index) => (
               <td
                 key={`${featureName}-${index}`}
-                className={`px-6 py-3.5 text-center font-landing-body text-sm text-b2c-text-secondary ${
-                  plan.isPopular ? "bg-landing-card-accent" : "bg-landing-card"
+                className={`px-6 py-3.5 text-center font-landing-body text-sm text-site-body ${
+                  plan.isPopular ? "bg-site-pale" : "bg-site-card"
                 }`}
               >
                 {(() => {
@@ -183,12 +181,12 @@ export function PricingTable({ examConfig, onSelectPlan }: PricingTableProps) {
                     if (plan.features.includes("Performance Analytics (Basic)")) {
                       return "Basic";
                     }
-                    return <span className="text-b2c-text-muted">-</span>;
+                    return <span className="text-site-muted">-</span>;
                   }
                   if (featureName === "Feedback") {
                     return hasFeature(plan.features, alignedFeedbackLabel)
                       ? alignedFeedbackLabel
-                      : <span className="text-b2c-text-muted">-</span>;
+                      : <span className="text-site-muted">-</span>;
                   }
 
                   let featureKeyToCheck = featureName;
@@ -203,30 +201,29 @@ export function PricingTable({ examConfig, onSelectPlan }: PricingTableProps) {
                   }
 
                   return hasFeature(plan.features, featureKeyToCheck)
-                    ? <span className="font-landing-mono text-base text-[color:var(--landing-tick,#2CA01C)]">✓</span>
-                    : <span className="text-b2c-text-muted">-</span>;
+                    ? <span className="font-landing-mono text-base text-site-brand">✓</span>
+                    : <span className="text-site-muted">-</span>;
                 })()}
               </td>
             ))}
           </tr>
         ))}
         <tr>
-          <td className="bg-landing-card-muted px-6 py-5" />
+          <td className="bg-site-pale px-6 py-5" />
           {Object.values(examConfig.plans).map((plan, index) => (
             <td
               key={`button-${index}`}
               className={`px-6 py-5 text-center ${
-                plan.isPopular ? "bg-landing-card-accent" : "bg-landing-card-muted"
+                "bg-site-pale"
               }`}
             >
-              <Button
+              <SiteButton
                 onClick={onSelectPlan}
-                variant={plan.ctaColor === "blue" ? "primary" : "commit"}
-                size="md"
-                fullWidth
-              >
+                variant={plan.ctaColor === "blue" ? "brand" : "line"}
+                className="w-full"
+                >
                 {plan.cta}
-              </Button>
+              </SiteButton>
             </td>
           ))}
         </tr>

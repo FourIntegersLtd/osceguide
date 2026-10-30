@@ -1,28 +1,24 @@
+import type { ReactNode } from "react";
 import { FiMessageSquare } from "react-icons/fi";
 import { LOGIN_PATH } from "@/foundation/attribution/partnerConstants";
 import { SUPPORT_EMAIL } from "@/foundation/support";
 import { SiteButtonLink } from "@/foundation/ui";
 import { PartnerLink } from "@/domains/marketing/home/PartnerLink";
-import { IconTile, SectionHead } from "@/foundation/ui";
+import { SectionHead } from "@/foundation/ui";
 import { FOUNDERS_LETTER } from "@/domains/marketing/foundersLetter";
+import { LetterCard } from "@/domains/marketing/home/Blocks";
 import { Section } from "@/domains/marketing/home/Section";
 import { MARQUEE_TESTIMONIALS, type MarqueeTestimonial } from "@/domains/marketing/support/testimonials";
 
 export function HomeFounders() {
   return (
     <Section>
-      <article className="mx-auto max-w-3xl rounded-3xl border border-site-line bg-site-card p-6 sm:p-10">
-        <div className="flex items-center gap-3">
-          <IconTile><FiMessageSquare /></IconTile>
-          <span className="font-landing-mono text-[11px] font-medium uppercase tracking-[0.13em] text-site-brand">A message from our founders</span>
-        </div>
-        <div className="mt-6 space-y-4 text-[17px] leading-[1.7] text-site-body">
-          {FOUNDERS_LETTER.map((t) => <p key={t}>{t}</p>)}
-        </div>
-        <p className="mt-7 border-t border-site-line pt-6">
-          <b className="text-site-ink">Kenny and Aisha</b>, <span className="text-site-muted">Co-founders</span>
-        </p>
-      </article>
+      <LetterCard
+        eyebrow="A message from our founders"
+        icon={<FiMessageSquare />}
+        paragraphs={FOUNDERS_LETTER}
+        signoff={<><b className="text-site-ink">Kenny and Aisha</b>, <span className="text-site-muted">Co-founders</span></>}
+      />
     </Section>
   );
 }
@@ -46,10 +42,10 @@ function Quote({ t }: { t: MarqueeTestimonial }) {
 }
 
 /** Real quotes only, from `support/testimonials.ts`. The second copy of the row is hidden from assistive tech. */
-export function HomeTestimonials() {
+export function HomeTestimonials({ title = "What our doctors say", ctas }: { title?: ReactNode; ctas?: ReactNode }) {
   return (
     <Section id="testimonials" tone="card">
-      <SectionHead title="What our doctors say" />
+      <SectionHead title={title} />
       <div className="site-marquee -mx-4 mt-12 overflow-hidden sm:-mx-6">
         <div className="site-marquee-track flex gap-4 px-4">
           {MARQUEE_TESTIMONIALS.map((t) => (
@@ -63,14 +59,18 @@ export function HomeTestimonials() {
         </div>
       </div>
       <div className="mt-10 flex flex-wrap justify-center gap-3">
-        <PartnerLink path={LOGIN_PATH} size="lg">Start practising</PartnerLink>
-        <SiteButtonLink
-          href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("OSCE Guide Demo")}`}
-          variant="line"
-          size="lg"
-        >
-          Book a demo
-        </SiteButtonLink>
+        {ctas ?? (
+          <>
+            <PartnerLink path={LOGIN_PATH} size="lg">Start practising</PartnerLink>
+            <SiteButtonLink
+              href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("OSCE Guide Demo")}`}
+              variant="line"
+              size="lg"
+            >
+              Book a demo
+            </SiteButtonLink>
+          </>
+        )}
       </div>
     </Section>
   );

@@ -12,7 +12,7 @@ export function ExamTabs({
 }) {
   return (
       <div className="mb-8 flex justify-center">
-        <div className="inline-flex max-w-full flex-wrap justify-center gap-1 rounded-[var(--landing-radius-cta,0.5rem)] border border-landing-warm bg-[color:var(--landing-card-accent,var(--b2c-surface-muted))] p-1">
+        <div className="inline-flex max-w-full flex-wrap justify-center gap-1 rounded-full border border-site-line bg-site-pale p-1">
           {(Object.keys(EXAM_CONFIGS) as ExamName[]).map((examName) => {
             const examData = EXAM_CONFIGS[examName];
             const hasPlans = "plans" in examData && !!examData.plans;
@@ -23,19 +23,19 @@ export function ExamTabs({
                 key={examName}
                 type="button"
                 onClick={() => onSelect(examName)}
-                className={`min-h-11 whitespace-nowrap rounded-[var(--landing-radius-cta,0.375rem)] px-4 py-2 font-landing-body text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-osce-accent focus-visible:ring-offset-2 focus-visible:ring-offset-landing-canvas ${
+                className={`min-h-11 whitespace-nowrap rounded-full px-4 py-2 font-landing-body text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-site-brand ${
                   isActive
-                    ? "border border-landing-warm bg-landing-card text-osce-ink-900 shadow-landing-card"
-                    : "border border-transparent text-b2c-text-secondary hover:text-osce-ink-900"
+                    ? "border border-site-line bg-site-card text-site-ink"
+                    : "border border-transparent text-site-body hover:text-site-ink"
                 }`}
               >
                 <span className="block">{examData.name}</span>
                 {!hasPlans ? (
-                  <span className="hidden text-[10px] font-medium uppercase tracking-wide text-[color:var(--landing-badge-soon,#f97316)] lg:block">
+                  <span className="hidden text-[10px] font-medium uppercase tracking-wide text-site-amber lg:block">
                     Coming soon
                   </span>
                 ) : (
-                  <span className="hidden text-xs text-b2c-text-muted lg:block">
+                  <span className="hidden text-xs text-site-muted lg:block">
                     {examData.label}
                   </span>
                 )}

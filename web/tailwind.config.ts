@@ -299,35 +299,6 @@ const config: Config = {
           amber: "var(--site-amber)",
           "amber-bg": "var(--site-amber-bg)",
         },
-        landing: {
-          ink: {
-            DEFAULT: "var(--landing-ink)",
-            hover: "var(--landing-ink-hover)",
-            body: "var(--landing-ink-body)",
-            muted: "var(--landing-ink-muted)",
-          },
-          /**
-           * Marketing surface tokens. Fallbacks equal the pre-cream values, so
-           * exam landings and B2B marketing render unchanged; the cream canvas
-           * is opted into by `[data-b2c-landing-surface="cream"]` in globals.css.
-           */
-          canvas: "var(--landing-canvas, #ffffff)",
-          band: "var(--landing-band, #ffffff)",
-          wash: "var(--landing-wash, #ffffff)",
-          nav: "var(--landing-nav, rgba(255, 255, 255, 0.86))",
-          card: {
-            DEFAULT: "var(--landing-card, #ffffff)",
-            muted: "var(--landing-card-muted, #fcfcfd)",
-            accent: "var(--landing-card-accent, #f3f6fa)",
-          },
-          warm: {
-            DEFAULT: "var(--landing-warm, var(--b2c-border))",
-            strong: "var(--landing-warm-strong, #d0d5dd)",
-          },
-          divider: "var(--landing-divider, #edf0f3)",
-          hairline: "var(--landing-hairline, var(--b2c-border-light))",
-          price: "var(--landing-price, var(--b2c-text-primary))",
-        },
         b2b: {
           canvas: "var(--b2b-canvas)",
           surface: "var(--b2b-surface)",
@@ -482,24 +453,6 @@ const config: Config = {
         "osce-2xl": "var(--osce-radius-2xl)",
         b2b: "8px",
         "b2b-sm": "6px",
-        "landing-card": "var(--landing-radius-card, 0.75rem)",
-        "landing-cta": "var(--landing-radius-cta, 6px)",
-        "landing-panel": "var(--landing-radius-panel, 20px)",
-        "landing-panel-sm": "var(--landing-radius-panel-sm, 28px)",
-        "landing-panel-lg": "var(--landing-radius-panel-lg, 32px)",
-      },
-      boxShadow: {
-        "landing-card": "var(--landing-shadow-card, 0 0 #0000)",
-        "landing-card-hover": "var(--landing-shadow-card-hover, 0 0 #0000)",
-        "landing-soft": "var(--landing-shadow-soft, 0 1px 3px rgba(16, 24, 40, 0.06))",
-        "landing-panel": "var(--landing-shadow-panel, 0 8px 32px rgba(16, 24, 40, 0.04))",
-        "landing-showcase":
-          "var(--landing-shadow-showcase, 0 16px 40px rgba(16, 24, 40, 0.1))",
-        "landing-showcase-side":
-          "var(--landing-shadow-showcase-side, 0 8px 24px rgba(16, 24, 40, 0.06))",
-        "landing-cta": "var(--landing-shadow-cta, 0 0 #0000)",
-        "landing-cta-secondary":
-          "var(--landing-shadow-cta-secondary, 0 1px 2px rgba(16, 24, 40, 0.05))",
       },
       fontFamily: {
         "landing-heading": [

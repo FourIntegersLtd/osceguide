@@ -25,10 +25,10 @@ export function ExamBlogRail({ examCode }: { examCode: string }) {
   return (
     <section aria-label={`${examCode.toUpperCase()} articles`} className="mx-auto w-full max-w-[1000px] px-4 py-12 sm:px-6">
       <div className="flex items-end justify-between gap-4">
-        <h2 className="font-title text-osce-heading font-semibold text-osce-ink-900">
+        <h2 className="font-landing-heading text-2xl font-bold text-site-ink">
           {examCode.toUpperCase()} articles
         </h2>
-        <Link href={blogsHref(examCode)} className="text-osce-body font-medium text-osce-ink-900 underline">
+        <Link href={blogsHref(examCode)} className="font-semibold text-site-brand underline underline-offset-4">
           All {examCode.toUpperCase()} articles
         </Link>
       </div>
@@ -37,10 +37,10 @@ export function ExamBlogRail({ examCode }: { examCode: string }) {
           <li key={article.id}>
             <Link
               href={studyTabPathForSlug("blog", article.slug)}
-              className="block h-full rounded-osce-md border border-osce-border p-5 hover:border-osce-ink-400"
+              className="block h-full rounded-xl border border-site-line p-5 hover:border-site-brand"
             >
-              <h3 className="line-clamp-2 text-osce-subheading font-semibold text-osce-ink-900">{article.title}</h3>
-              <p className="mt-1.5 line-clamp-3 text-osce-body text-osce-ink-600">{articleBlurb(article, 140)}</p>
+              <h3 className="line-clamp-2 font-landing-heading text-lg font-bold text-site-ink">{article.title}</h3>
+              <p className="mt-1.5 line-clamp-3 text-site-body">{articleBlurb(article, 140)}</p>
             </Link>
           </li>
         ))}
