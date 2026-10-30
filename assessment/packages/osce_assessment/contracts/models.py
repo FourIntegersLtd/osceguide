@@ -124,8 +124,10 @@ class EvaluationPolicy(Frozen):
     primary_model: str
     primary_reasoning_effort: str | None = None
     fallback_model: str | None = None
-    fallback_max_tokens: int = Field(default=7500, gt=0)
-    fallback_temperature: float = Field(default=0.0, ge=0.0)
+    # Claude 5.5 thinks by default and its thinking counts here: 7500 cut 7 of 16 SCA marks short.
+    fallback_max_tokens: int = Field(default=16000, gt=0)
+    # None sends no temperature: Claude 5.5 models refuse any value but their default.
+    fallback_temperature: float | None = Field(default=None, ge=0.0)
     timeout_s: int = Field(default=480, gt=0)
     system_prompt_override: str | None = None
     version: str = "1"

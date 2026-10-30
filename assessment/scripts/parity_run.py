@@ -9,7 +9,7 @@
 
 Examples:
     poetry run python scripts/parity_run.py play --room unified_abc --identity user-1 --wav turn.wav --linger 30
-    poetry run python scripts/parity_run.py compare legacy.json new.json --framework rubric.json --evaluate --model gpt-5-mini
+    poetry run python scripts/parity_run.py compare legacy.json new.json --framework rubric.json --evaluate --model gpt-6-luna
 """
 
 from __future__ import annotations
@@ -91,12 +91,13 @@ def evaluate(turns: list[tuple[str, str]], *, framework: "CompetencyFramework", 
         import anthropic
 
         anthropic_client = anthropic.Anthropic()
-    policy = EvaluationPolicy(framework_id=framework_id, primary_model=model, primary_reasoning_effort=reasoning_effort, fallback_model="claude-sonnet-4-5" if anthropic_client else None)
+    policy = EvaluationPolicy(framework_id=framework_id, primary_model=model, primary_reasoning_effort=reasoning_effort, fallback_model="claude-sonnet-5-5" if anthropic_client else None)
     scenario = Scenario(id="parity", source=ScenarioSource.INLINE, title=station)
     attempt = AssessmentAttempt(
         attempt_id="parity",
         definition=AssessmentDefinition(id="parity", version="1", framework_id=framework_id, scenario_ref=ScenarioRef(source=ScenarioSource.INLINE, scenario_id="parity"),
                                         interaction_profile=AIInteractionProfile(mode=InteractionMode.PATIENT), evaluation_policy=policy, snapshot_at=datetime.now(timezone.utc)),
+        candidate_ref="",
     )
     evaluator = LLMEvaluator(framework_provider=StaticFrameworkProvider(framework), primary_client=lambda: OpenAI(), fallback_client=lambda: anthropic_client)
     result = evaluator.evaluate(attempt, to_engine_transcript("parity", turns), policy, scenario)
@@ -154,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
     # rather than naming one the engine used to ship.
     compare.add_argument("--framework", help="path to a JSON CompetencyFramework (required with --evaluate)")
     compare.add_argument("--evaluate", action="store_true")
-    compare.add_argument("--model", default="gpt-5-mini")
+    compare.add_argument("--model", default="gpt-6-luna")
     compare.add_argument("--reasoning-effort", default="low")
     compare.add_argument("--station", default="Parity station")
     args = parser.parse_args(argv)

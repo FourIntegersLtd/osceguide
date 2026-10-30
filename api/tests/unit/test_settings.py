@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -90,3 +93,16 @@ def test_the_example_env_file_loads(monkeypatch: pytest.MonkeyPatch) -> None:
         "http://localhost:3100",
         "http://127.0.0.1:3100",
     ]
+
+
+def test_mail_defaults_use_the_one_domain_resend_has_verified() -> None:
+    """Resend refuses any sender off its verified domain (403), so every email
+    the outbox sends failed while the default was noreply@osceguide.com. The
+    support address is the one platform-web shows people, read from its source.
+    """
+    settings = Settings(_env_file=None, app_env=AppEnv.local)
+    web_support = Path(__file__).parents[3] / "web/src/foundation/support.ts"
+    assert settings.email_from == "OSCE Guide <hello@fourintegers.com>"
+    assert settings.support_email == "hello@fourintegers.com"
+    shown = re.search(r'SUPPORT_EMAIL = "([^"]+)"', web_support.read_text())
+    assert shown and shown.group(1) == settings.support_email

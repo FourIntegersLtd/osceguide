@@ -157,8 +157,8 @@ a root script in both CIs) fails if any tracked source file matches zero or two 
   5. failing tests at the lowest level per matrix row;
   6. smallest build (reuse first, no new layer without a second caller, delete
      what is now dead, no shims);
-  7. prove with the owner's verify skill + journeys; `quality-reviewer` always,
-     `reviewer` (opus) for auth, money, deletion;
+  7. prove with the owner's verify skill + journeys; `quality-reviewer` and
+     `reviewer` (opus) always; `/security-review` for auth, money, deletion;
   8. ledger: `docs/CORE-JOURNEYS.md` if a journey changed.
 - `fix-bug`: reproduce with a failing test; fix the root cause; **name the kind
   (1-13 above) and the Part 1 check that should have caught it; if none, add or

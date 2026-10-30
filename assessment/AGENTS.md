@@ -37,8 +37,8 @@ premium model for read-only audit work. Skills and MCP were not the cause.
 - At most 3-4 subagents at once; 16 in parallel finished no sooner.
 - Test/lint/type runs and edits you have already fully specified: the `worker`
   agent (haiku, `.claude/agents/worker.md`), which returns only failures.
-- The `reviewer` agent (opus) only when the task asks for review or the change
-  moves money or touches auth.
+- The `reviewer` agent (opus) on every finished code change, in parallel with
+  `quality-reviewer`; `/security-review` too when it moves money or touches auth.
 
 **Model and effort**
 - Sonnet for a well-specified build task; Opus for design, review, debugging an

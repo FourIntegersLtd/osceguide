@@ -6,7 +6,7 @@ factories and used through the smallest surface they share with the real
 SDKs, so this module imports no vendor code and the tests use plain fakes.
 
 Primary path: a chat completion constrained by the framework's schema in the
-provider's strict structured-output mode. Fallback path: a forced tool call
+provider's strict structured-output mode. Fallback path: a tool call (asked for, not forced)
 whose input schema is the same framework schema, which needs no extra
 library. The result payload is checked against the schema before it is
 returned, and storage metadata is never part of what the model is asked for.
@@ -31,9 +31,10 @@ from ..contracts import (
     UnknownCompetencyError,
 )
 from ..prompts import render_user_prompt
-from ..schemas.strict import inline_refs, to_strict_json_schema
+from ..schemas.strict import to_strict_json_schema
 from ..schemas.tidy import tidy_against_schema
 from ..schemas.validate import validate_against_schema
+from .fallback_call import ask_by_tool
 from .rendering import render_transcript_for_marking
 
 logger = logging.getLogger(__name__)
@@ -125,7 +126,7 @@ class LLMEvaluator:
             fallback = self._fallback()
             if fallback is not None:
                 try:
-                    payload = self._score_fallback(fallback, policy, framework.result_schema, schema_name, system, user)
+                    payload = self._score_fallback_checked(fallback, policy, framework.result_schema, schema_name, system, user, attempts)
                     provider, model = "fallback", policy.fallback_model
                 except Exception as exc:  # noqa: BLE001 — recorded
                     attempts.append(f"fallback {policy.fallback_model}: {exc}")
@@ -196,22 +197,34 @@ class LLMEvaluator:
             raise ProviderError("empty response")
         return _as_object(json.loads(content))
 
+    @classmethod
+    def _score_fallback_checked(
+        cls, client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str, attempts: list[str]
+    ) -> dict[str, Any]:
+        """Score by the fallback, asking once more when the reply misses the schema.
+
+        Without a forced tool call claude-sonnet-5-5 sometimes nests a field as a string or lifts it
+        to the top level (4 of 16 staging SCA marks). The caller validates the second reply.
+        """
+        payload = cls._score_fallback(client, policy, schema, name, system, user)
+        slips = validate_against_schema(tidy_against_schema(payload, schema), schema)
+        if not slips:
+            return payload
+        listed = "; ".join(slips[:10])
+        attempts.append(f"fallback {policy.fallback_model}: corrected after {listed}")
+        correction = (
+            f"\n\nYour last {name} call did not match its schema: {listed}. "
+            "Every object field is a JSON object nested where the schema puts it, never a string."
+        )
+        return cls._score_fallback(client, policy, schema, name, system + correction, user)
+
     @staticmethod
     def _score_fallback(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
-        """Ask the fallback provider for the same object by forcing it to call a recording tool."""
-        response = client.messages.create(
-            model=policy.fallback_model,
-            max_tokens=policy.fallback_max_tokens,
-            temperature=policy.fallback_temperature,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-            tools=[{"name": name, "description": "Record the structured assessment.", "input_schema": inline_refs(schema)}],
-            tool_choice={"type": "tool", "name": name},
+        """Ask the fallback provider for the same object through a recording tool it is told to call."""
+        return ask_by_tool(
+            client, policy, schema=schema, name=name, description="Record the structured assessment.",
+            system=system, user=user, error=ProviderError,
         )
-        for block in getattr(response, "content", []) or []:
-            if getattr(block, "type", None) == "tool_use":
-                return _as_object(getattr(block, "input", None))
-        raise ProviderError("no tool_use block in response")
 
 
 def _as_object(value: Any) -> dict[str, Any]:

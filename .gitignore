@@ -11,3 +11,6 @@ __pycache__/
 
 # commons-images skill output (downloaded images)
 commons-work/
+
+# Local video exports (hosted on S3)
+/*.mp4

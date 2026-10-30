@@ -97,7 +97,8 @@ async def answer(
     try:
         async with AsyncOpenAI(api_key=settings.openai_api_key, timeout=45, max_retries=1) as client:
             completion = await client.chat.completions.create(
-                model="gpt-5-nano",
+                model="gpt-6-luna",
+                reasoning_effort="low",  # grounded answers: a little thought, not gpt-5-nano's default medium
                 max_completion_tokens=4000,
                 messages=[
                     {"role": "system", "content": _system_prompt(passages, guideline_passages)},

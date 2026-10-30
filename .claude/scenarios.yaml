@@ -1,0 +1,39 @@
+name: Scenarios
+scenarios:
+  - label: Patient answers closed questions briefly, without echoing them
+    instructions: >-
+      - You are a medical student taking a history over the telephone from a
+      patient with facial pain. You are the doctor; the agent is the patient.
+
+      - Open with one open question about what brought them in, and let them
+      answer fully.
+
+      - Then ask a quick run of closed yes/no screening questions, one per
+      turn, in this order: "Do you have a history of breast cancer?", "Have you
+      had any night sweats?", "Have you noticed any lumps or bumps?", "Any
+      weight loss?", "Any fever?", "Any changes to your vision?", "Any weakness
+      in your face or arms?".
+
+      - Then ask two grouped closed questions: "Any rash, scalp tenderness or
+      jaw pain when chewing?" and "Any trouble swallowing or choking?".
+
+      - Then ask one open question: "How has this been affecting your day to
+      day?".
+
+      - Close by thanking them and saying you will arrange an in-person review.
+    agent_expectations: >-
+      - Every closed yes/no question is answered in a few words, such as "No.",
+      "No, none." or "No, nothing like that." The patient never repeats the
+      question's wording back, as in "No, I don't have a history of breast
+      cancer" or "No, I haven't had any night sweats or lumps or bumps".
+
+      - A grouped question gets one short answer covering all of it, such as
+      "No, none of those.", not a list of each item denied.
+
+      - Open questions still get a natural, fuller answer in the patient's own
+      words.
+
+      - The patient stays in character throughout and never offers a diagnosis
+      or medical advice.
+    tags:
+      feature: simulated_patient

@@ -37,7 +37,8 @@ from pydantic import Field
 
 from ..contracts import EvaluationPolicy, FrameworkProvider, MessageRole, TranscriptMessage
 from ..contracts._base import Frozen
-from ..schemas.strict import inline_refs, to_strict_json_schema
+from ..schemas.strict import to_strict_json_schema
+from .fallback_call import ask_by_tool
 
 logger = logging.getLogger(__name__)
 
@@ -315,23 +316,11 @@ class LiveCoverageDetector:
 
     @staticmethod
     def _call_fallback(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
-        """Call an Anthropic-style model through a forced tool call and return the tool input object."""
-        response = client.messages.create(
-            model=policy.fallback_model,
-            max_tokens=policy.fallback_max_tokens,
-            temperature=policy.fallback_temperature,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-            tools=[{"name": name, "description": "Record newly demonstrated behaviours.", "input_schema": inline_refs(schema)}],
-            tool_choice={"type": "tool", "name": name},
+        """Call an Anthropic-style model through a recording tool it is told to call and return the tool input object."""
+        return ask_by_tool(
+            client, policy, schema=schema, name=name, description="Record newly demonstrated behaviours.",
+            system=system, user=user, error=LiveCoverageError,
         )
-        for block in getattr(response, "content", []) or []:
-            if getattr(block, "type", None) == "tool_use":
-                value = getattr(block, "input", None)
-                if not isinstance(value, dict):
-                    raise LiveCoverageError("tool input was not an object")
-                return value
-        raise LiveCoverageError("no tool_use block in response")
 
     def _merge(
         self,

@@ -35,6 +35,9 @@ make guards                                    # tests/guards only, fast
 
 ## Traps
 
+- **A provider deprecation** (a model id shut down by OpenAI, Anthropic, Cartesia or Google) goes in
+  the `RETIREMENTS` table in `tests/guards/test_model_retirements.py` the day it is announced; the
+  guard fails any source using that id within 240 days of its shutdown.
 - **Two response models with the same class name** make FastAPI qualify both
   in `openapi.json`, which renames a type platform-web already imports. Grep
   other slices before naming one.

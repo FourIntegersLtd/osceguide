@@ -532,7 +532,7 @@ async def check_as_deployed(
     earlier: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """`check_facts` against this deployment's guideline library, web search and checking model,
-    for whichever of them a test has not handed in. Claude checks before o3, the reverse of the
+    for whichever of them a test has not handed in. Claude checks before gpt-6.1-sol, the reverse of the
     order material is written in."""
     settings = get_settings()
     return await check_facts(

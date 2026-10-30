@@ -62,7 +62,8 @@ def help_drafter(settings: Settings) -> Callable[[str, str], Awaitable[str | Non
 
         async with AsyncOpenAI(api_key=settings.openai_api_key, timeout=45, max_retries=1) as client:
             completion = await client.chat.completions.create(
-                model="gpt-5-nano",
+                model="gpt-6-luna",
+                reasoning_effort="low",  # a little thought, not the model default
                 max_completion_tokens=2000,
                 messages=[
                     {"role": "system", "content": system_prompt()},

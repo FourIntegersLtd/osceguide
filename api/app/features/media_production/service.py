@@ -259,7 +259,10 @@ def _voice_dir(media_id: str) -> Path:
 
 
 def second_reader(settings: Settings, system: str) -> script_check.Complete:
-    """The model that checks the script: GPT-5, not the writer's o3, with Claude if it is unavailable."""
+    """The model that checks the script: GPT-6 Luna, not the writer's gpt-6.1-sol.
+
+    Claude answers if it is unavailable.
+    """
     return lambda prompt: model_reply(settings, prompt, system=system, openai_model=READER_MODEL)
 
 

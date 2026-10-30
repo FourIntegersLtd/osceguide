@@ -38,3 +38,6 @@ Owner: `content-owner`. Proof: `verify-content`.
 - A read widened to make a screen work.
 - A second open draft, or a screen that assumes a station survives deleting its last version.
 - A published station with no `patient_information` or template, so its attempts are never marked.
+- Content models (gpt-6.1-sol writer, claude-sonnet-5-5 fallback, gpt-6-luna reader, gpt-transcribe) are
+  literals checked by `api/tests/guards/test_model_retirements.py`. `claude-sonnet-5-5` answers 400 to a forced
+  `tool_choice` and to any `temperature` but 1; `gpt-6.1-sol` takes no `reasoning_effort` of `none`.

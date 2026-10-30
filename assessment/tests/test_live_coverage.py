@@ -302,6 +302,21 @@ def test_the_fallback_answers_when_the_primary_fails() -> None:
     assert fallback.calls
 
 
+def test_the_fallback_sends_no_temperature_unless_the_policy_sets_one() -> None:
+    """Claude Sonnet 5.5 refuses any temperature but its default (400 "temperature is deprecated")."""
+    fallback = FakeFallback(payload=reported())
+    detector(FakePrimary(error=RuntimeError("down")), fallback).detect(snapshot=snapshot(), messages=window(), policy=policy())
+    detector(FakePrimary(error=RuntimeError("down")), fallback).detect(
+        snapshot=snapshot(), messages=window(), policy=policy(fallback_temperature=0.3)
+    )
+
+    assert "temperature" not in fallback.calls[0]
+    assert fallback.calls[1]["temperature"] == 0.3
+    # claude-sonnet-5-5 answers 400 to a forced tool_choice: the prompt asks for the tool instead.
+    assert "tool_choice" not in fallback.calls[0]
+    assert fallback.calls[0]["system"].endswith("\n\nAnswer by calling " + fallback.calls[0]["tools"][0]["name"] + ".")
+
+
 def test_nothing_new_is_the_ordinary_answer() -> None:
     primary = FakePrimary(payload=reported())
 

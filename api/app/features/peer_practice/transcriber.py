@@ -22,7 +22,7 @@ _FETCH_TIMEOUT = httpx.Timeout(120.0)
 
 # Which model listens is one decision in one place, as `tutor_memory`'s
 # summariser is for summaries.
-TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
+TRANSCRIPTION_MODEL = "gpt-transcribe"
 
 
 class OpenAITranscriber:

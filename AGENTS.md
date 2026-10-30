@@ -64,7 +64,7 @@ Three pieces, one mechanism each:
 | `.claude/skills/fix-experience-gaps/` | Retiring once `docs/EXPERIENCE-GAPS.md` is closed |
 | `.claude/agents/slide-deck-author.md` | Makes teaching slide decks from OSCE cases: fact-check, voice, publish. Runs the `.claude/skills/make-slide-deck/` pipeline |
 | `.claude/agents/quality-reviewer.md` | Second check on every code change: repetition, reuse, structure, tiers, dead code. Not correctness (`reviewer`) |
-| `.claude/hooks/quality-gate.sh` | Stop hook: once per changed code diff, asks the main agent to run `quality-reviewer` and act on it; money, auth, migration and CI paths also need `reviewer` and `/security-review`, and the user's review |
+| `.claude/hooks/quality-gate.sh` | Stop hook: once per changed code diff, asks the main agent to run `quality-reviewer` and `reviewer` (opus) and act on them; money, auth, migration and CI paths also need `/security-review` and the user's review |
 | `.claude/evals/reviewer/` | Past shipped bugs as a scored test of the `reviewer` agent; rerun after changing a reviewer prompt, failure notes or model |
 | `.cursor/rules/critical-thinking-partner.mdc` | Always on: push back on risk, plan first for large work |
 | `api/AGENTS.md` | Backend rules, commands, traps, ownership |
@@ -209,6 +209,9 @@ these at the moment you break them. It never blocks -- heed it anyway.
   schema plus every skill description (~24k tokens before it does any work).
 - **Always set `model`** on an Agent call: `haiku` or `sonnet` for sweeps and
   greps. Unset means it inherits the parent's premium model.
+- **Never pass `model` to an owner agent.** Owners run on their frontmatter model
+  (sonnet). Opus judgement lives in `reviewer`, run on the finished diff; one owner
+  overridden to opus was 12% of a week's spend (2026-10-30).
 - **Cap fan-out at 3-4 concurrent.** 16 at once finished no sooner than a
   smaller batch and cost 39% of the day's usage.
 - Subagent transcripts live in `<session-id>/subagents/*.jsonl`. Any per-session

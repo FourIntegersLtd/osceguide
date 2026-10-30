@@ -30,9 +30,9 @@ def _turn(index: int = 0, *, out: int = 0, inp: int = 0, cached: int = 0, reply:
 
 def test_cost_bills_cached_input_at_the_cached_rate() -> None:
     """Cached input is most of a voice consultation: the same system prompt, every turn."""
-    run = Run(arm="gpt-4o-mini", role="patient", repeat=0,
+    run = Run(arm="gpt-6-luna", role="patient", repeat=0,
               turns=[_turn(inp=1_000_000, cached=800_000, out=1_000_000)])
-    rate_in, rate_cached, rate_out = PRICES["gpt-4o-mini"]
+    rate_in, rate_cached, rate_out = PRICES["gpt-6-luna"]
     assert run.cost_usd() == pytest.approx(0.2 * rate_in + 0.8 * rate_cached + rate_out)
 
 
@@ -43,7 +43,7 @@ def test_an_unpriced_model_costs_zero_rather_than_guessing() -> None:
 
 def test_every_default_arm_has_a_price() -> None:
     """A missing price silently reports a model as free, which would decide a comparison wrongly."""
-    for arm in ("gpt-4o-mini", "gpt-4o", "gpt-5.4-nano", "gpt-5.4-mini"):
+    for arm in ("gpt-6-luna", "gpt-5.4-nano", "gpt-5.4-mini"):
         assert arm in PRICES
 
 
@@ -91,15 +91,15 @@ def test_the_prefilter_is_patient_only() -> None:
 def test_arms_are_ranked_by_breaches_then_cost() -> None:
     cheap_but_drifts = Run(arm="gpt-5.4-nano", role="patient", repeat=0, turns=[_turn(out=10)])
     cheap_but_drifts.judge = {"breaches": [{"turn": 1}, {"turn": 2}], "persona_consistency": 5, "conversational_quality": 5}
-    holds_role = Run(arm="gpt-4o-mini", role="patient", repeat=0, turns=[_turn(out=100)])
+    holds_role = Run(arm="gpt-6-luna", role="patient", repeat=0, turns=[_turn(out=100)])
     holds_role.judge = {"breaches": [], "persona_consistency": 4, "conversational_quality": 4}
-    assert [row["arm"] for row in summarise([cheap_but_drifts, holds_role])] == ["gpt-4o-mini", "gpt-5.4-nano"]
+    assert [row["arm"] for row in summarise([cheap_but_drifts, holds_role])] == ["gpt-6-luna", "gpt-5.4-nano"]
 
 
 def test_summary_averages_across_repeats() -> None:
     runs = []
     for repeat, breaches in enumerate(([], [{"turn": 1}])):
-        run = Run(arm="gpt-4o-mini", role="patient", repeat=repeat, turns=[_turn(out=100)])
+        run = Run(arm="gpt-6-luna", role="patient", repeat=repeat, turns=[_turn(out=100)])
         run.judge = {"breaches": breaches, "persona_consistency": 4, "conversational_quality": 4}
         runs.append(run)
     row = summarise(runs)[0]

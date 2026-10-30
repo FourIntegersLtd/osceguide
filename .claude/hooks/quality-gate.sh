@@ -7,12 +7,13 @@
 # Stop compares those files against the commit the session started from, so a
 # change committed inside the turn is still checked. It then looks in the
 # transcript, from the prompt that started the change, for:
-#   - an Agent call with subagent_type quality-reviewer, and
+#   - an Agent call with subagent_type quality-reviewer, and one with
+#     subagent_type reviewer (opus: Sonnet owners write, Opus checks), and
 #   - for each owner of a changed api/, web/ or assessment/ file
 #     (.claude/OWNERS.md), that owner agent or its verify skill.
 #   - on a high-risk change (an access-owner file, a money path another owner
-#     holds, a migration or a CI workflow): the reviewer agent and the
-#     security-review skill too, and the user is told it needs their review.
+#     holds, a migration or a CI workflow): the security-review skill too, and
+#     the user is told it needs their review.
 # Missing evidence blocks the stop, up to 3 times per change; then the stop is
 # let through and the user is told what was skipped. Once the evidence is there
 # the current diff is recorded, so fixes made from the review are not reviewed
@@ -113,6 +114,7 @@ RAN=$(jq -r --arg since "${FROM:-0}" '
 
 MISSING=()
 grep -qx 'agent:quality-reviewer' <<< "$RAN" || MISSING+=("quality-reviewer")
+grep -qx 'agent:reviewer' <<< "$RAN" || MISSING+=("reviewer (model opus)")
 [ "$LOOKUP_OK" = 1 ] || MISSING+=("the owner check (owner lookup from .claude/OWNERS.md failed: run api/tests/guards/test_ownership.py)")
 for o in $OWNERS; do
   v=$(verify_of "$o")
@@ -126,7 +128,6 @@ HIGH=0
 grep -qx 'access-owner' <<< "$OWNERS" && HIGH=1
 grep -qE '^(api/alembic/|\.github/workflows/|web/src/domains/partner/|web/src/app/staff/(billing|growth|referral-payouts)/)' <<< "$FILES" && HIGH=1
 if [ "$HIGH" = 1 ]; then
-  grep -qx 'agent:reviewer' <<< "$RAN" || MISSING+=("reviewer (model opus)")
   grep -qx 'skill:security-review' <<< "$RAN" || MISSING+=("the security-review skill")
 fi
 
@@ -149,5 +150,5 @@ printf '%s\n' "$FILES" | grep -qE '(^|/)(tests?/|e2e/)|(\.test\.tsx?|\.spec\.ts|
   || NOTE="$NOTE No test file changed with this code: add a failing-first test, or say why none is needed."
 jq -n --arg files "$LIST" --arg need "$NEED" --arg note "$NOTE" '{
   decision: "block",
-  reason: ("This session changed code (committed or not): " + $files + ". Not yet run since the change began: " + $need + ". Run each now: the owner agent (Agent, subagent_type <owner>, model sonnet) or its verify skill to prove the change, then the quality-reviewer agent (model sonnet) on these files. Fix every Must fix finding (or say why it does not apply), mention any Worth doing ones you left, and say which owner and skills handled it." + $note)
+  reason: ("This session changed code (committed or not): " + $files + ". Not yet run since the change began: " + $need + ". Run each now: the owner agent (Agent, subagent_type <owner>, model sonnet) or its verify skill to prove the change, then the quality-reviewer agent (model sonnet) and the reviewer agent (its own model, opus) on these files, in parallel. Fix every Must fix finding (or say why it does not apply), mention any Worth doing ones you left, and say which owner and skills handled it." + $note)
 }'

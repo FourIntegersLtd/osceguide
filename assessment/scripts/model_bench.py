@@ -19,8 +19,8 @@ real session. Shortlist here, then confirm those live with `make dev-assessment`
 and read the `[LATENCY:...]` lines the worker already logs.
 
 Examples:
-    poetry run python scripts/model_bench.py run --arms gpt-4o-mini,gpt-5.4-nano --repeats 3
-    poetry run python scripts/model_bench.py run --role tutor --arms gpt-4o,gpt-5.4-mini --repeats 2
+    poetry run python scripts/model_bench.py run --arms gpt-6-luna,gpt-5.4-nano --repeats 3
+    poetry run python scripts/model_bench.py run --role tutor --arms gpt-6-luna,gpt-5.4-mini --repeats 2
     poetry run python scripts/model_bench.py report runs/bench-patient.json
 """
 
@@ -63,16 +63,13 @@ FRAMEWORKS = ROOT / "tests" / "fixtures" / "frameworks"
 # resent on every turn and is the same bytes every time. Refresh from
 # https://developers.openai.com/api/docs/pricing when a model is added.
 PRICES: dict[str, tuple[float, float, float]] = {
-    "gpt-4o-mini": (0.15, 0.075, 0.60),
-    "gpt-4o": (2.50, 1.25, 10.00),
-    "gpt-4.1-mini": (0.40, 0.10, 1.60),
-    "gpt-5-mini": (0.25, 0.025, 2.00),
     "gpt-5.4-nano": (0.20, 0.02, 1.25),
     "gpt-5.4-mini": (0.75, 0.075, 4.50),
     "gpt-5.4": (2.50, 0.25, 15.00),
     "gpt-5.6-luna": (0.20, 0.02, 1.20),
     "gpt-6-luna": (0.10, 0.01, 0.50),  # developers.openai.com/api/docs/pricing, short context
     "gpt-5.6-terra": (2.00, 0.20, 12.00),
+    "claude-sonnet-5-5": (2.00, 0.10, 10.00),  # platform.claude.com pricing; the marking fallback
 }
 
 # Mirrors voice_infra.speech._openai_llm. Kept as a local rule rather than an
@@ -720,12 +717,12 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     run = sub.add_parser("run", help="replay the script against each model and score it")
-    run.add_argument("--arms", default="gpt-4o-mini,gpt-5.4-nano", help="comma-separated model ids")
+    run.add_argument("--arms", default="gpt-6-luna,gpt-5.4-nano", help="comma-separated model ids")
     run.add_argument("--role", choices=sorted(ROLES), default=None, help="defaults to the script's own role")
     run.add_argument("--script", default=str(DEFAULT_SCRIPT))
     run.add_argument("--repeats", type=int, default=3)
     run.add_argument("--effort", default="none", help="reasoning effort for gpt-5 models")
-    run.add_argument("--baseline", default="gpt-4o-mini", help="the model a candidate has to beat")
+    run.add_argument("--baseline", default="gpt-6-luna", help="the model a candidate has to beat")
     run.add_argument("--no-judge", action="store_true", help="replay and measure only; skip the LLM judge")
     run.add_argument("--instructions-file", default=None,
                      help="use these instructions instead of the rendered prompt, to measure an older prompt")
@@ -735,11 +732,11 @@ def main(argv: list[str] | None = None) -> int:
 
     report = sub.add_parser("report", help="re-print the table from a saved run")
     report.add_argument("results")
-    report.add_argument("--baseline", default="gpt-4o-mini")
+    report.add_argument("--baseline", default="gpt-6-luna")
 
     rejudge = sub.add_parser("rejudge", help="re-score a saved run against the current breach spec")
     rejudge.add_argument("results")
-    rejudge.add_argument("--baseline", default="gpt-4o-mini")
+    rejudge.add_argument("--baseline", default="gpt-6-luna")
 
     args = parser.parse_args(argv)
     if args.command == "report":

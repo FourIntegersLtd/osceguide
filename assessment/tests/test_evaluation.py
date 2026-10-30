@@ -199,7 +199,7 @@ def test_refusal_falls_back_and_records_the_reason() -> None:
     assert result.raw_metadata["attempts"] == ["primary primary-model: refused: content policy"]
 
 
-def test_primary_exception_falls_back_with_a_forced_tool_call() -> None:
+def test_primary_exception_falls_back_with_a_tool_call() -> None:
     primary = FakePrimary(error=RuntimeError("down"))
     fallback = FakeFallback(payload=GOOD)
     evaluator(primary, fallback).evaluate(
@@ -209,12 +209,25 @@ def test_primary_exception_falls_back_with_a_forced_tool_call() -> None:
     kwargs = fallback.calls[0]
     assert kwargs["model"] == "fallback-model"
     assert kwargs["max_tokens"] == 123 and kwargs["temperature"] == 0.5
-    assert kwargs["system"] == "SYS"
+    # claude-sonnet-5-5 answers 400 to a forced tool_choice ("tool" and "any"), so the
+    # fallback asks for the tool in the system prompt and leaves the choice to the model.
+    assert kwargs["system"] == "SYS\n\nAnswer by calling simple-v1."
     assert kwargs["messages"] == [{"role": "user", "content": primary.calls[0]["messages"][1]["content"]}]
-    assert kwargs["tool_choice"] == {"type": "tool", "name": "simple-v1"}
+    assert "tool_choice" not in kwargs
     (tool,) = kwargs["tools"]
     assert tool["name"] == "simple-v1"
     assert "$ref" not in json.dumps(tool["input_schema"])
+
+
+def test_the_fallback_sends_no_temperature_unless_the_policy_sets_one() -> None:
+    """Claude Sonnet 5.5 refuses any temperature but its default (400 "temperature is deprecated"),
+    so a fallback that always sent 0.0 failed every time the primary did."""
+    fallback = FakeFallback(payload=GOOD)
+    evaluator(FakePrimary(error=RuntimeError("down")), fallback).evaluate(
+        ATTEMPT, transcript(), policy(system_prompt_override="SYS"), scenario()
+    )
+
+    assert "temperature" not in fallback.calls[0]
 
 
 def test_non_object_primary_output_falls_back() -> None:
@@ -223,6 +236,32 @@ def test_non_object_primary_output_falls_back() -> None:
     result = evaluator(primary, fallback).evaluate(ATTEMPT, transcript(), policy(system_prompt_override="S"), scenario())
     assert result.provider == "fallback"
     assert "not an object" in result.raw_metadata["attempts"][0]
+
+
+def test_a_fallback_reply_off_the_schema_is_asked_for_once_more() -> None:
+    """Seen live on claude-sonnet-5-5 without a forced tool: nested objects sent as strings."""
+    fallback = FakeFallback(payload=GOOD)
+    replies = iter([{"overall": "G"}, GOOD])
+    fallback.messages = SimpleNamespace(
+        create=lambda **kw: (fallback.calls.append(kw), SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=next(replies))]))[1]
+    )
+
+    result = evaluator(FakePrimary(error=RuntimeError("down")), fallback).evaluate(
+        ATTEMPT, transcript(), policy(system_prompt_override="SYS"), scenario()
+    )
+
+    assert result.result == GOOD and result.provider == "fallback"
+    assert len(fallback.calls) == 2
+    assert fallback.calls[1]["system"].startswith("SYS\n\nYour last simple-v1 call did not match its schema: $.comment: required.")
+    assert result.raw_metadata["attempts"][-1] == "fallback fallback-model: corrected after $.comment: required"
+
+
+def test_a_second_fallback_reply_off_the_schema_is_an_error() -> None:
+    fallback = FakeFallback(payload={"overall": "G"})
+
+    with pytest.raises(EvaluationError, match="fallback result does not match the simple-v1 schema: \\$.comment: required"):
+        evaluator(FakePrimary(error=RuntimeError("down")), fallback).evaluate(ATTEMPT, transcript(), policy(system_prompt_override="SYS"), scenario())
+    assert len(fallback.calls) == 2
 
 
 def test_unconfigured_primary_goes_straight_to_fallback() -> None:
@@ -337,3 +376,12 @@ def test_a_rating_within_its_native_range_is_accepted() -> None:
         ATTEMPT, transcript(), policy(framework_id="native-v1", system_prompt_override="S"), scenario()
     )
     assert result.result == {"clinical": {"awareness": {"score": 7}}}
+
+
+def test_a_fallback_reply_cut_off_at_max_tokens_is_an_error() -> None:
+    """Claude 5.5 thinking counts against max_tokens; a truncated reply is refused by name, not mis-validated."""
+    fallback = FakeFallback(payload=GOOD)
+    fallback.messages = SimpleNamespace(create=lambda **kw: SimpleNamespace(stop_reason="max_tokens", content=[]))
+
+    with pytest.raises(EvaluationError, match="fallback reply cut off at max_tokens=16000"):
+        evaluator(FakePrimary(error=RuntimeError("down")), fallback).evaluate(ATTEMPT, transcript(), policy(system_prompt_override="SYS"), scenario())

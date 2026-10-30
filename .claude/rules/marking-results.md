@@ -45,6 +45,14 @@ are `institution-owner`'s; this is how a mark and an outcome are computed.
   `domains/assess/results/reviewForm.ts`). A rating is coloured by its position in the scale,
   not its letter.
 - Changing scoring for an existing consumer is ask-first. See `docs/ATTEMPT-LIFECYCLE.md`.
+- Swapping the marking model: measure first with `assessment/scripts/marking_bench.py` (staging
+  attempts only); a candidate must stay within the incumbent's own run-to-run noise. 2026-10-24:
+  every newer OpenAI model (gpt-6-luna, gpt-5.6-luna/terra) agreed with the others but marked
+  harsher than gpt-5-mini, so that bar needs a human decision, not a bench rerun.
+- The Anthropic fallback (claude-sonnet-5-5) sends no `temperature` and no forced `tool_choice`
+  (400 on either); the prompt asks for the tool. `strict: true` tools are refused for our schemas
+  (grammar too large, `minItems` > 1). Its thinking counts against `fallback_max_tokens` (16000;
+  7500 truncated 7 of 16), and a reply off the schema gets one corrective retry (still 2 of 16 miss).
 
 ## What a failure looks like here
 - A wrong score with no error: a rule never called, a v1 rubric read as v2, a field silently dropped.

@@ -22,7 +22,7 @@ from app.features.media_production.errors import AvUnavailable
 log = get_logger(__name__)
 
 # The model that calls the tools: it must take both tool calls and pictures.
-PRODUCE_MODEL = "gpt-5"
+PRODUCE_MODEL = "gpt-6.1-sol"
 # Its turns choose the next tool, which needs little thought; the judgements that need care (each
 # claim's verdict, the script's reading) are made by other calls. At its default effort a run spent
 # most of its time thinking between tools.

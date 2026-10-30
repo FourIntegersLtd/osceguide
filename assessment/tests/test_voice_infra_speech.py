@@ -31,9 +31,6 @@ VOICE_GENDERS = {
     "aura-2-athena-en": "Female",
     **dict.fromkeys(DG_FEMALE_POOL, "Female"),
     **dict.fromkeys(DG_MALE_POOL, "Male"),
-    "coral": "Female",
-    **dict.fromkeys(speech.OPENAI_FEMALE_VOICES, "Female"),
-    **dict.fromkeys(speech.OPENAI_MALE_VOICES, "Male"),
     LUCY: "Female",
     **dict.fromkeys(FEMALE_POOL, "Female"),
     **dict.fromkeys(MALE_POOL, "Male"),
@@ -41,15 +38,15 @@ VOICE_GENDERS = {
 
 
 def _patch_tts(monkeypatch):
-    openai_tts = MagicMock(return_value="openai")
     deepgram_tts = MagicMock(return_value="deepgram")
     cartesia_tts = MagicMock(return_value="cartesia")
     fallback = MagicMock(return_value="fallback")
-    monkeypatch.setattr(speech.openai, "TTS", openai_tts)
+    # OpenAI's TTS endpoint has no successor to gpt-4o-mini-tts (shuts down 2027-01-06): no chain may reach it.
+    monkeypatch.setattr(speech.openai, "TTS", MagicMock(side_effect=AssertionError("no OpenAI TTS tier")), raising=False)
     monkeypatch.setattr(speech.deepgram_tts, "TTS", deepgram_tts)
     monkeypatch.setattr(speech.cartesia, "TTS", cartesia_tts)
     monkeypatch.setattr(speech.tts, "FallbackAdapter", fallback)
-    return openai_tts, deepgram_tts, cartesia_tts, fallback
+    return deepgram_tts, cartesia_tts, fallback
 
 
 def test_stt_is_deepgram_nova3_medical(monkeypatch) -> None:
@@ -60,19 +57,17 @@ def test_stt_is_deepgram_nova3_medical(monkeypatch) -> None:
 
 
 def test_tutor_tts_is_deepgram_then_openai_then_cartesia(monkeypatch) -> None:
-    openai_tts, deepgram_tts, _, fallback = _patch_tts(monkeypatch)
+    deepgram_tts, _, fallback = _patch_tts(monkeypatch)
     assert speech.build_tts("tutor") == "fallback"
-    assert fallback.call_args.args[0] == ["deepgram", "openai", "cartesia"]
+    assert fallback.call_args.args[0] == ["deepgram", "cartesia"]
     assert deepgram_tts.call_args.kwargs["model"] == "aura-2-athena-en"
-    assert openai_tts.call_args.kwargs["voice"] == "coral"
-    assert openai_tts.call_args.kwargs["model"] == "gpt-4o-mini-tts"
 
 
 @pytest.mark.parametrize(("gender", "model", "voice"), [("Female", DG_FEMALE_POOL, FEMALE_POOL), ("Male", DG_MALE_POOL, MALE_POOL)])
 def test_patient_tts_is_gendered(monkeypatch, gender, model, voice) -> None:
-    _, deepgram_tts, cartesia_tts, fallback = _patch_tts(monkeypatch)
+    deepgram_tts, cartesia_tts, fallback = _patch_tts(monkeypatch)
     speech.build_tts("patient", gender, voice_key="room-1")
-    assert fallback.call_args.args[0] == ["deepgram", "openai", "cartesia"]
+    assert fallback.call_args.args[0] == ["deepgram", "cartesia"]
     assert deepgram_tts.call_args.kwargs["model"] in model
     assert cartesia_tts.call_args.kwargs["voice"] in voice
 
@@ -84,31 +79,31 @@ def test_llm_primary_by_role_with_shared_fallback(monkeypatch) -> None:
     monkeypatch.setattr(speech.openai, "LLM", openai_llm)
     monkeypatch.setattr(speech.anthropic, "LLM", anthropic_llm)
     monkeypatch.setattr(speech.llm, "FallbackAdapter", fallback)
-    assert speech.build_llm("patient") == ["openai:gpt-6-luna", "anthropic:claude-haiku-4-5"]
-    assert speech.build_llm("tutor") == ["openai:gpt-5.4-mini", "anthropic:claude-haiku-4-5"]
-    assert anthropic_llm.call_args.kwargs["temperature"] == 0.8
+    assert speech.build_llm("patient") == ["openai:gpt-6-luna", "anthropic:claude-haiku-5-5"]
+    assert speech.build_llm("tutor") == ["openai:gpt-5.4-mini", "anthropic:claude-haiku-5-5"]
+    assert "temperature" not in anthropic_llm.call_args.kwargs  # haiku-5-5 400s on any non-default temperature
 
 
 def test_every_tutor_voice_is_the_one_female_persona(monkeypatch) -> None:
     """A provider fallback mid-session must not change who is speaking (C-36)."""
-    openai_tts, deepgram_tts, cartesia_tts, _ = _patch_tts(monkeypatch)
+    deepgram_tts, cartesia_tts, _ = _patch_tts(monkeypatch)
     speech.build_tts("tutor")
-    voices = [deepgram_tts.call_args.kwargs["model"], openai_tts.call_args.kwargs["voice"], cartesia_tts.call_args.kwargs["voice"]]
-    assert [VOICE_GENDERS.get(v) for v in voices] == ["Female", "Female", "Female"]
-    assert voices == ["aura-2-athena-en", speech.TUTOR_VOICE, LUCY]
+    voices = [deepgram_tts.call_args.kwargs["model"], cartesia_tts.call_args.kwargs["voice"]]
+    assert [VOICE_GENDERS.get(v) for v in voices] == ["Female", "Female"]
+    assert voices == ["aura-2-athena-en", LUCY]
 
 
 def test_every_cloud_tutor_voice_is_the_one_female_persona(cloud, monkeypatch) -> None:
-    openai_tts, _, _, fallback = _patch_tts(monkeypatch)
+    _, _, fallback = _patch_tts(monkeypatch)
     fallback.side_effect = lambda chain: chain
     chain = speech.build_tts("tutor")
-    voices = [t._opts.voice for t in chain[:2]] + [openai_tts.call_args.kwargs["voice"]]
-    assert [VOICE_GENDERS.get(v) for v in voices] == ["Female", "Female", "Female"]
+    voices = [t._opts.voice for t in chain]
+    assert [VOICE_GENDERS.get(v) for v in voices] == ["Female", "Female"]
 
 
 @pytest.mark.parametrize("gender", ["Female", "Male"])
 def test_patient_voices_match_the_gender_in_the_voice_table(monkeypatch, gender) -> None:
-    _, deepgram_tts, cartesia_tts, _ = _patch_tts(monkeypatch)
+    deepgram_tts, cartesia_tts, _ = _patch_tts(monkeypatch)
     speech.build_tts("patient", gender, voice_key="room-1")
     voices = [deepgram_tts.call_args.kwargs["model"], cartesia_tts.call_args.kwargs["voice"]]
     assert [VOICE_GENDERS.get(v) for v in voices] == [gender, gender]
@@ -123,43 +118,33 @@ def test_vision_llm_has_a_fallback_like_every_other_role(monkeypatch) -> None:
     built = speech.build_vision_llm()
 
     # A model blip is most visible mid-navigation; the shared fallback reads images too.
-    assert built == {"fallback": ["anthropic:claude-haiku-4-5", "anthropic:claude-haiku-4-5"]}
+    assert built == {"fallback": ["anthropic:claude-haiku-5-5", "anthropic:claude-haiku-5-5"]}
 
 
-def test_models_voices_and_style_are_deployment_settings(monkeypatch) -> None:
+def test_models_and_voices_are_deployment_settings(monkeypatch) -> None:
     assert speech.SpeechSettings.from_env() == speech.SpeechSettings()
     monkeypatch.setenv("VOICE_TUTOR_LLM", "gpt-5")
-    monkeypatch.setenv("VOICE_TTS_STYLE", "Speak as Athena.")
+    monkeypatch.setenv("VOICE_DEEPGRAM_TUTOR_VOICE", "aura-2-x-en")
     monkeypatch.setenv("VOICE_FALLBACK_TEMPERATURE", "0.2")
     settings = speech.SpeechSettings.from_env()
-    assert settings.tutor_llm == "gpt-5" and settings.tts_style == "Speak as Athena." and settings.fallback_temperature == 0.2
-    openai_tts, _, _, _ = _patch_tts(monkeypatch)
+    assert settings.tutor_llm == "gpt-5" and settings.deepgram_tutor_voice == "aura-2-x-en" and settings.fallback_temperature == 0.2
+    deepgram_tts, _, _ = _patch_tts(monkeypatch)
     openai_llm = MagicMock(side_effect=lambda **kw: f"openai:{kw['model']}")
     monkeypatch.setattr(speech.openai, "LLM", openai_llm)
     monkeypatch.setattr(speech.anthropic, "LLM", MagicMock())
     monkeypatch.setattr(speech.llm, "FallbackAdapter", lambda models: models)
     assert speech.build_llm("tutor")[0] == "openai:gpt-5"
     speech.build_tts("tutor")
-    assert openai_tts.call_args.kwargs["instructions"] == "Speak as Athena."
+    assert deepgram_tts.call_args.kwargs["model"] == "aura-2-x-en"
 
 
 def test_the_patient_does_not_share_the_tutor_voice(monkeypatch) -> None:
     """Two roles in one voice is the part of role confusion a listener notices first."""
-    _, deepgram_tts, _, _ = _patch_tts(monkeypatch)
+    deepgram_tts, _, _ = _patch_tts(monkeypatch)
     speech.build_tts("tutor")
     tutor_voice = deepgram_tts.call_args.kwargs["model"]
     speech.build_tts("patient", "Female", voice_key="room-1")
     assert deepgram_tts.call_args.kwargs["model"] != tutor_voice
-
-
-def test_the_patient_is_not_spoken_in_the_tutor_style(monkeypatch) -> None:
-    openai_tts, _, _, _ = _patch_tts(monkeypatch)
-    speech.build_tts("tutor")
-    tutor_style = openai_tts.call_args.kwargs["instructions"]
-    speech.build_tts("patient", "Female", voice_key="room-1")
-    patient_style = openai_tts.call_args.kwargs["instructions"]
-    assert patient_style != tutor_style
-    assert "clinical education assistant" not in patient_style
 
 
 def _capture_openai_llm(monkeypatch):
@@ -253,8 +238,8 @@ def test_cloud_llm_is_inference_openai_with_gemini_fallback(cloud, monkeypatch) 
     patient = speech.build_llm("patient")
     tutor = speech.build_llm("tutor")
     assert all(isinstance(m, speech.inference.LLM) for m in patient + tutor)
-    assert [m.model for m in patient] == ["openai/gpt-6-luna", "google/gemini-3.1-flash-lite"]
-    assert [m.model for m in tutor] == ["openai/gpt-5.4-mini", "google/gemini-3.1-flash-lite"]
+    assert [m.model for m in patient] == ["openai/gpt-6-luna", "google/gemini-3.5-flash-lite"]
+    assert [m.model for m in tutor] == ["openai/gpt-5.4-mini", "google/gemini-3.5-flash-lite"]
     assert tutor[0]._opts.extra_kwargs == {"reasoning_effort": "none"}
     assert patient[0]._opts.extra_kwargs == {"reasoning_effort": "none"}
     assert patient[1]._opts.extra_kwargs == {"temperature": 0.8}
@@ -263,31 +248,30 @@ def test_cloud_llm_is_inference_openai_with_gemini_fallback(cloud, monkeypatch) 
 def test_cloud_vision_llm_is_inference_gemini(cloud, monkeypatch) -> None:
     monkeypatch.setattr(speech.llm, "FallbackAdapter", lambda models: models)
     built = speech.build_vision_llm()
-    assert [m.model for m in built] == ["google/gemini-3.1-flash-lite", "openai/gpt-6-luna"]
+    assert [m.model for m in built] == ["google/gemini-3.5-flash-lite", "openai/gpt-6-luna"]
 
 
 def test_non_cloud_llm_and_vision_stay_on_the_plugins(monkeypatch, not_cloud) -> None:
     monkeypatch.setattr(speech.openai, "LLM", lambda **kw: f"openai:{kw['model']}")
     monkeypatch.setattr(speech.anthropic, "LLM", lambda **kw: f"anthropic:{kw['model']}")
     monkeypatch.setattr(speech.llm, "FallbackAdapter", lambda models: models)
-    assert speech.build_llm("patient") == ["openai:gpt-6-luna", "anthropic:claude-haiku-4-5"]
-    assert speech.build_vision_llm() == ["anthropic:claude-haiku-4-5", "anthropic:claude-haiku-4-5"]
+    assert speech.build_llm("patient") == ["openai:gpt-6-luna", "anthropic:claude-haiku-5-5"]
+    assert speech.build_vision_llm() == ["anthropic:claude-haiku-5-5", "anthropic:claude-haiku-5-5"]
 
 
-def test_cloud_tts_chain_is_cartesia_then_aura_then_openai(cloud, monkeypatch) -> None:
-    openai_tts, _, _, fallback = _patch_tts(monkeypatch)
+def test_cloud_tts_chain_is_cartesia_then_aura(cloud, monkeypatch) -> None:
+    _, _, fallback = _patch_tts(monkeypatch)
     fallback.side_effect = lambda chain: chain
     chain = speech.build_tts("patient", "Male", voice_key="room-1")
     assert [type(t) for t in chain[:2]] == [speech.inference.TTS, speech.inference.TTS]
     assert [t.model for t in chain[:2]] == ["cartesia/sonic-3.5", "deepgram/aura-2"]
     assert [t._opts.voice for t in chain[:2]] == ["bbee10a8-4f08-4c5c-8282-e69299115055", "aura-2-draco-en"]
     assert chain[0]._opts.voice in MALE_POOL
-    assert chain[2] == "openai"
-    assert openai_tts.call_args.kwargs["model"] == "gpt-4o-mini-tts"
+    assert len(chain) == 2
 
 
 def test_cloud_tutor_chain_starts_with_athena_then_fixed_lucy(cloud, monkeypatch) -> None:
-    _, _, _, fallback = _patch_tts(monkeypatch)
+    _, _, fallback = _patch_tts(monkeypatch)
     fallback.side_effect = lambda chain: chain
     chain = speech.build_tts("tutor", voice_key="room-1")
     assert [t._opts.voice for t in chain[:2]] == ["aura-2-athena-en", LUCY]
@@ -295,7 +279,7 @@ def test_cloud_tutor_chain_starts_with_athena_then_fixed_lucy(cloud, monkeypatch
 
 
 def test_self_hosted_tutor_chain_starts_with_athena(monkeypatch, not_cloud) -> None:
-    _, deepgram_tts, cartesia_tts, fallback = _patch_tts(monkeypatch)
+    deepgram_tts, cartesia_tts, fallback = _patch_tts(monkeypatch)
     speech.build_tts("tutor", voice_key="room-1")
     assert fallback.call_args.args[0][0] == "deepgram"
     assert deepgram_tts.call_args.kwargs["model"] == "aura-2-athena-en"
@@ -303,7 +287,7 @@ def test_self_hosted_tutor_chain_starts_with_athena(monkeypatch, not_cloud) -> N
 
 
 def _cartesia_voice(monkeypatch, gender, key):
-    _, _, cartesia_tts, _ = _patch_tts(monkeypatch)
+    _, cartesia_tts, _ = _patch_tts(monkeypatch)
     speech.build_tts("patient", gender, voice_key=key)
     return cartesia_tts.call_args.kwargs["voice"]
 
@@ -327,14 +311,14 @@ def test_a_single_voice_env_overrides_the_pool(monkeypatch) -> None:
 
 
 def test_non_cloud_tts_stays_on_the_plugins(monkeypatch, not_cloud) -> None:
-    _, _, _, fallback = _patch_tts(monkeypatch)
+    _, _, fallback = _patch_tts(monkeypatch)
     speech.build_tts("tutor")
-    assert fallback.call_args.args[0] == ["deepgram", "openai", "cartesia"]
+    assert fallback.call_args.args[0] == ["deepgram", "cartesia"]
 
 
 def test_deepgram_patient_voice_is_picked_per_consultation_from_its_pool(monkeypatch, not_cloud) -> None:
     monkeypatch.setenv("VOICE_DEEPGRAM_FEMALE_VOICES", "aura-2-a-en,aura-2-b-en,aura-2-c-en")
-    _, deepgram_tts, _, _ = _patch_tts(monkeypatch)
+    deepgram_tts, _, _ = _patch_tts(monkeypatch)
     seen = set()
     for i in range(30):
         speech.build_tts("patient", "Female", voice_key=f"attempt-{i}")
@@ -360,7 +344,7 @@ def test_a_known_room_always_gets_the_same_literal_voice() -> None:
 
 def test_each_provider_indexes_its_own_pool_by_the_same_key(monkeypatch, not_cloud) -> None:
     """room-1 hashes to 3 mod 4, 1 mod 2 and 0 mod 3, so pool sizes decide each provider's pick."""
-    _, deepgram_tts, cartesia_tts, _ = _patch_tts(monkeypatch)
+    deepgram_tts, cartesia_tts, _ = _patch_tts(monkeypatch)
     speech.build_tts("patient", "Female", voice_key="room-1")
     assert (deepgram_tts.call_args.kwargs["model"], cartesia_tts.call_args.kwargs["voice"]) == (
         "aura-2-cordelia-en",
@@ -371,28 +355,3 @@ def test_each_provider_indexes_its_own_pool_by_the_same_key(monkeypatch, not_clo
         "aura-2-draco-en",
         "bbee10a8-4f08-4c5c-8282-e69299115055",
     )
-
-
-def _openai_patient_voice(monkeypatch, gender, key) -> str:
-    openai_tts, _, _, _ = _patch_tts(monkeypatch)
-    speech.build_tts("patient", gender, voice_key=key)
-    return openai_tts.call_args.kwargs["voice"]
-
-
-@pytest.mark.parametrize("gender", ["Female", "Male"])
-def test_patient_openai_fallback_voice_matches_gender_on_self_hosted(monkeypatch, gender) -> None:
-    voice = _openai_patient_voice(monkeypatch, gender, "room-1")
-    assert VOICE_GENDERS[voice] == gender and voice != "coral"
-    assert voice == _openai_patient_voice(monkeypatch, gender, "room-1")  # one consultation, one voice
-
-
-@pytest.mark.parametrize("gender", ["Female", "Male"])
-def test_patient_openai_fallback_voice_matches_gender_on_cloud(cloud, monkeypatch, gender) -> None:
-    voice = _openai_patient_voice(monkeypatch, gender, "room-1")
-    assert VOICE_GENDERS[voice] == gender and voice != "coral"
-    assert voice == _openai_patient_voice(monkeypatch, gender, "room-1")
-
-
-def test_patient_openai_voice_pools_are_deployment_settings(monkeypatch) -> None:
-    monkeypatch.setenv("VOICE_OPENAI_MALE_VOICES", "onyx")
-    assert _openai_patient_voice(monkeypatch, "Male", "room-1") == "onyx"

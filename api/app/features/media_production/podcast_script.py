@@ -8,8 +8,8 @@ import re
 from app.core.settings import Settings
 from app.features.generation import service as generation
 
-PODCAST_SCRIPT_MODEL = "o3"
-PODCAST_SCRIPT_FALLBACK_MODEL = "claude-sonnet-4-5"
+PODCAST_SCRIPT_MODEL = "gpt-6.1-sol"
+PODCAST_SCRIPT_FALLBACK_MODEL = "claude-sonnet-5-5"
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ _SYSTEM_PROMPT = (
 def generate_script(settings: Settings, source_text: str) -> str:
     """Asks the model to turn `source_text` into a Ben-and-Michelle dialogue script.
 
-    Tries `o3` first, falling back to `claude-sonnet-4-5` when the primary fails.
+    Tries `gpt-6.1-sol` first, falling back to `claude-sonnet-5-5` when the primary fails.
     """
     prompt = generation.podcast_script_prompt(source_text)
     if settings.openai_api_key.strip():

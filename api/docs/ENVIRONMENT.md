@@ -52,7 +52,7 @@ least 32 characters.
 | `STRIPE_SECRET_KEY` | — | Checkout. **Not** in the required ten, so a deploy can boot without being able to sell. |
 | `CLERK_SECRET_KEY` / `CLERK_PUBLISHABLE_KEY` | — | Partner SSO, brokered through Clerk. **Not** in the required ten: a deploy without them simply cannot offer SSO, and `POST /auth/sso/login` and `/callback` refuse with `sso_login_unavailable` rather than trusting an unverified token. The organisation's `issuer` carries its Clerk frontend domain. |
 | `MARKING_PRIMARY_MODEL` / `_EFFORT` | gpt-5-mini / low | Effort is set *explicitly* because unset means "medium" under any gpt-5 model — a cost decision nobody made. |
-| `MARKING_FALLBACK_MODEL` / `ANTHROPIC_API_KEY` | claude-sonnet-4-5 | Fallback marking. |
+| `MARKING_FALLBACK_MODEL` / `ANTHROPIC_API_KEY` | claude-sonnet-5-5 | Fallback marking. Sends no temperature and no forced tool_choice (both 400 on Claude 5.5); one corrective retry when its reply misses the schema. |
 | `WORKER_CONCURRENCY` | 4 | Background job parallelism. |
 | `FRONTEND_URL` / `LOG_LEVEL` | localhost:3000 / INFO | Link building and logging. Logs become JSON automatically when deployed. |
 | `RAILWAY_GIT_COMMIT_SHA` | — | Set by Railway on every deploy, never by hand. `/health` reports it as `commit`, so anyone can see what staging or production runs; the promote workflow refuses a commit staging is not running. |

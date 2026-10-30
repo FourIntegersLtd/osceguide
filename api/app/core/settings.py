@@ -177,10 +177,10 @@ class Settings(BaseSettings):
     livekit_self_hosted_seats: int = 18
     livekit_queue_waiter_ttl_seconds: int = 90
 
-    # Email. Resend is the only provider b2c uses, and the key is the only
-    # configuration it needs.
+    # Email. Resend is the only provider, and fourintegers.com is the only
+    # domain verified there: a sender on any other domain is refused (403).
     resend_api_key: str = ""
-    email_from: str = "OSCE Guide <noreply@osceguide.com>"
+    email_from: str = "OSCE Guide <hello@fourintegers.com>"
 
     # Stripe. The webhook secret is per endpoint, and without it webhooks are
     # refused rather than trusted.
@@ -217,7 +217,7 @@ class Settings(BaseSettings):
     clinical_buddy_service_key: str = ""
     marking_primary_model: str = "gpt-5-mini"
     marking_primary_effort: str = "low"
-    marking_fallback_model: str = "claude-sonnet-4-5"
+    marking_fallback_model: str = "claude-sonnet-5-5"
 
     # Slide/podcast audio-video production. Optional: missing values refuse the
     # AV jobs rather than the process. Not in REQUIRED_WHEN_DEPLOYED.
@@ -259,7 +259,7 @@ class Settings(BaseSettings):
     # Where a safety report (abuse, no-show) lands. The retiring backend sent
     # these straight to an inbox; this queues the same email through the
     # notification outbox rather than an ad-hoc send inside the request.
-    support_email: str = "support@osceguide.com"
+    support_email: str = "hello@fourintegers.com"
 
     # --- Observability ---
     log_level: str = "INFO"

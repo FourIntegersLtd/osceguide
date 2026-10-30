@@ -41,9 +41,15 @@ make guards                     # includes test_domain_rules_are_reachable
 `tests/fixtures/legacy_*` is a change in what candidates are marked against:
 say so in the report, never update the fixture.
 
-The api installs the engine straight from `assessment/packages/osce_assessment`,
-so an engine change needs no install step. After one, also run
-`cd assessment && poetry run pytest -q`.
+The api holds a copy of the engine (`develop = false`), and `poetry install` does not
+refresh it while the engine's version is unchanged. After an engine change run
+`cd api && poetry run pip install -q --no-deps --force-reinstall ../assessment/packages/osce_assessment`
+and check the installed source, then `cd assessment && poetry run pytest -q`.
+
+A marking model swap: `assessment/scripts/marking_bench.py run` on staging attempts (export the
+frozen rubric and turns of marked attempts through the `platform-postgres` proxy; never production),
+with the incumbent listed twice for its noise floor, under
+`railway run -e staging -s platform-api-staging -- ... </dev/null` for the keys; then `report`.
 
 A change to the seed, the generator or `seeds/rubric_hints/*.json`: rerun
 `PYTHONPATH=. poetry run python scripts/generate_platform_seed.py`, then

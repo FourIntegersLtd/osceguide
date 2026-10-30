@@ -95,10 +95,9 @@ local session whose bootstrap exists only on the developer's machine.
 
 ## Speech settings
 
-Model ids, voices and the spoken style used by both workers are deployment
+Model ids and voices used by both workers are deployment
 settings in `voice_infra.speech.SpeechSettings`: any field can be overridden
-with `VOICE_<FIELD>` (for example `VOICE_TUTOR_LLM`, `VOICE_VISION_LLM`,
-`VOICE_TTS_STYLE` to name a persona). The defaults name no product.
+with `VOICE_<FIELD>` (for example `VOICE_TUTOR_LLM`, `VOICE_VISION_LLM`). The defaults name no product.
 
 That is also what makes a model comparison runnable without a deploy, and a
 switch a variable rather than a release: `VOICE_PATIENT_LLM` names the
@@ -112,10 +111,8 @@ does not cover every current model; one it does not recognise is left on the
 provider's default, and on a reasoning model that costs seconds before the
 first word.
 
-The patient and the tutor are deliberately given different voices and
-different spoken styles (`VOICE_DEEPGRAM_FEMALE_VOICES` against
-`VOICE_DEEPGRAM_TUTOR_VOICE`, `VOICE_PATIENT_TTS_STYLE` against
-`VOICE_TTS_STYLE`). Two roles sharing one voice is the part of role confusion
+The patient and the tutor are deliberately given different voices
+(`VOICE_DEEPGRAM_FEMALE_VOICES` against `VOICE_DEEPGRAM_TUTOR_VOICE`). Two roles sharing one voice is the part of role confusion
 a listener notices first.
 
 ## Choosing a voice model
@@ -126,9 +123,9 @@ question is not which model is newest but which is the cheapest one that stays
 in character, and that is not answerable from a spec sheet.
 
 ```bash
-poetry run python scripts/model_bench.py run --arms gpt-4o-mini,gpt-5.4-nano --repeats 3
+poetry run python scripts/model_bench.py run --arms gpt-6-luna,gpt-5.4-nano --repeats 3
 poetry run python scripts/model_bench.py run --role tutor \
-    --script scripts/bench/doctor_debrief_sca.json --arms gpt-4o,gpt-5.4-mini --baseline gpt-4o
+    --script scripts/bench/doctor_debrief_sca.json --arms gpt-6-luna,gpt-5.4-mini --baseline gpt-6-luna
 ```
 
 Every arm gets the same prompt and the same doctor script; only the model

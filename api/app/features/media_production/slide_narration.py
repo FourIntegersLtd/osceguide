@@ -18,10 +18,10 @@ from typing import Any
 from app.core.settings import Settings
 from app.features.media_production.errors import AvUnavailable
 
-NARRATION_MODEL = "o3"
+NARRATION_MODEL = "gpt-6.1-sol"
 # The script's second reader: an OpenAI model other than the writer's, so it does not mark its own words.
-READER_MODEL = "gpt-5"
-NARRATION_FALLBACK_MODEL = "claude-sonnet-4-5"
+READER_MODEL = "gpt-6-luna"
+NARRATION_FALLBACK_MODEL = "claude-sonnet-5-5"
 _ATTEMPTS = 3
 _MAX_SECTIONS = 4
 # Slides narrated (and read) at once: a deck's whole script in about the time of its slowest slide.
@@ -141,7 +141,7 @@ _REPLY_SECONDS = 240
 
 
 def _from_openai(api_key: str, system: str, prompt: str, model: str = NARRATION_MODEL) -> str:
-    """One reply from an OpenAI model, o3 unless told otherwise."""
+    """One reply from an OpenAI model, gpt-6.1-sol unless told otherwise."""
     from openai import OpenAI  # optional dependency
 
     response = OpenAI(api_key=api_key, timeout=_REPLY_SECONDS, max_retries=1).chat.completions.create(
@@ -172,7 +172,9 @@ def complete(
     openai_model: str = NARRATION_MODEL,
     claude_first: bool = False,
 ) -> str:
-    """One model reply, from `openai_model` (o3 unless told otherwise) and then Claude if it is unavailable.
+    """One model reply, from `openai_model` (gpt-6.1-sol unless told otherwise).
+
+    Claude answers if it is unavailable.
 
     `claude_first` turns the order round, for a second reader that should not be the model
     that wrote the words it is reading.

@@ -17,7 +17,8 @@ from app.core.settings import get_settings
 
 log = get_logger(__name__)
 
-SUMMARY_MODEL = "gpt-5-mini"
+SUMMARY_MODEL = "gpt-6-luna"
+SUMMARY_REASONING_EFFORT = "low"
 SUMMARY_TIMEOUT_SECONDS = 120
 
 
@@ -47,6 +48,7 @@ class OpenAISummariser:
             """One blocking request for the raw JSON text the model returns."""
             response = self._client.chat.completions.create(
                 model=self._model,
+                reasoning_effort=SUMMARY_REASONING_EFFORT,
                 messages=[
                     {"role": "system", "content": instructions},
                     {"role": "user", "content": body},

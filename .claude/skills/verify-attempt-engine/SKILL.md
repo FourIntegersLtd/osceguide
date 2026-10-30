@@ -99,9 +99,9 @@ It streams for ever — run it in the background and stop it after ~40s.
 ## Traps that look like bugs
 
 - No `assessment/.env` on this laptop (2026-10-11): only `api/.env` has `OPENAI_API_KEY`; no Deepgram,
-  Cartesia or LiveKit creds, so Level 2 and a forced-fallback room check cannot run here. A voice-chain
-  change can still synthesize its OpenAI link for real (`voice_infra.speech._openai_tts`, `load_dotenv(api/.env)`,
-  `http_context._new_session_ctx()`) and measure median pitch (female ~200 Hz, male ~115 Hz).
+  Cartesia or LiveKit creds, so Level 2 and a forced-fallback room check cannot run here. A swapped chat model can still be
+  called for real through `railway run -e staging -s platform-api-staging` (keys live there), e.g.
+  `help_drafter(settings)` and `build_summariser().summarise(...)`.
 - `unknown_exam` → the database is not seeded or the exam is not published.
 - `attempt_not_ready` "The osce_assessment engine is not installed" in api tests,
   though `import osce_assessment` works → the api venv holds a stale copy of the

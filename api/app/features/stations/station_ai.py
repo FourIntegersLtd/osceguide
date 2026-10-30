@@ -14,11 +14,11 @@ logger = get_logger(__name__)
 
 TModel = TypeVar("TModel", bound=BaseModel)
 
-# o3 primary, claude-sonnet-4-5 fallback: the legacy pairing (b2c's
+# gpt-6.1-sol primary (o3 shut down 2026-12-11), claude-sonnet-5-5 fallback: the legacy pairing (b2c's
 # `ai_service._get_model_details`), restored after a regression left this
 # hardcoded to gpt-4o.
-STATION_AUTOGENERATE_MODEL = "o3"
-STATION_AUTOGENERATE_FALLBACK_MODEL = "claude-sonnet-4-5"
+STATION_AUTOGENERATE_MODEL = "gpt-6.1-sol"
+STATION_AUTOGENERATE_FALLBACK_MODEL = "claude-sonnet-5-5"
 PARSE_TIMEOUT_SEC = 480
 # Room for the whole answer. Transcribing a long station document writes most
 # of the document back out, which 4096 tokens cut off part-way.
@@ -114,7 +114,7 @@ async def _parse_with_anthropic(
     log_prefix: str,
 ) -> tuple[TModel | None, str]:
     """The same structured-output contract via Anthropic's tool-use, for the fallback model."""
-    from anthropic import AsyncAnthropic, omit
+    from anthropic import AsyncAnthropic
 
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
     system = "\n".join(message["content"] for message in messages if message["role"] == "system")
@@ -125,11 +125,12 @@ async def _parse_with_anthropic(
     ]
     tool_name = "emit_result"
     try:
-        response = await client.messages.create(  # type: ignore[call-overload]
+        response = await client.messages.create(
             model=model,
             max_tokens=FALLBACK_MAX_TOKENS,
-            system=system or omit,
-            messages=user_messages,
+            # claude-sonnet-5-5 answers 400 to a forced tool_choice, so the system prompt asks for the tool.
+            system="\n\n".join(filter(None, [system, f"Answer by calling {tool_name}."])),
+            messages=user_messages,  # type: ignore[arg-type]  # plain dicts, not MessageParam
             tools=[
                 {
                     "name": tool_name,
@@ -137,7 +138,6 @@ async def _parse_with_anthropic(
                     "input_schema": response_model.model_json_schema(),
                 }
             ],
-            tool_choice={"type": "tool", "name": tool_name},
             timeout=PARSE_TIMEOUT_SEC,
         )
         if response.stop_reason == "max_tokens":

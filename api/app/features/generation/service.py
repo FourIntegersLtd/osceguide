@@ -170,8 +170,8 @@ async def generate_podcast(*, prompt: str, exam_code: str | None, settings: Sett
     return await _titled(normalize_podcast_response(raw), "title", prompt, settings)
 
 
-GENERATION_MODEL = "o3"
-GENERATION_FALLBACK_MODEL = "claude-sonnet-4-5"
+GENERATION_MODEL = "gpt-6.1-sol"
+GENERATION_FALLBACK_MODEL = "claude-sonnet-5-5"
 
 
 async def _json_completion(*, settings: Settings, system: str, user: str) -> dict[str, Any]:
@@ -179,7 +179,7 @@ async def _json_completion(*, settings: Settings, system: str, user: str) -> dic
 
     Refuses before calling out if no API key is configured, and refuses again if the model's
     reply is not itself a JSON object, so callers never have to guard against a malformed shape.
-    Tries `o3` first, falling back to `claude-sonnet-4-5` when the primary fails.
+    Tries `gpt-6.1-sol` first, falling back to `claude-sonnet-5-5` when the primary fails.
     """
     if not settings.openai_api_key.strip() and not settings.anthropic_api_key.strip():
         raise GenerationUnavailable()

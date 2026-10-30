@@ -52,7 +52,7 @@ voicing route -> the three jobs below, refused unless the script is the one that
   `not_found`, `conflict` (library and web disagree), `not_checked` (neither could be asked).
 - **Script check** (`script_check.py`): writes whatever is not yet written (a deck's narration
   and framing, or a dialogue), then a second model reads every line against the material it
-  was written from (Claude first, o3 second: the reverse of the writer). Lines written in the
+  was written from (Claude first, gpt-6.1-sol second: the reverse of the writer). Lines written in the
   same run are corrected and re-read, twice at most; a line a person wrote or edited is only
   flagged. Flags: `name`, `number`, `logic`, `unsourced`, `story`, `rule`, `length`.
   `rewrite: true` discards the stored narration or script and writes it again.
