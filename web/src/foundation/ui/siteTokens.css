@@ -9,9 +9,9 @@
   --site-card: #ffffff;
   --site-ink: #141b2b;
   --site-navy: #0e2a5c;
-  --site-brand: #1d4ed8;
-  --site-brand-hover: #1e40af;
-  --site-pale: #e8effc;
+  --site-brand: rgb(var(--brand));
+  --site-brand-hover: rgb(var(--brand-hover));
+  --site-pale: rgb(var(--brand-pale));
   --site-pale-strong: #cddcf8;
   --site-body: #3d4555;
   --site-muted: #555e70;

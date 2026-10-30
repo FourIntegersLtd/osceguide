@@ -1,6 +1,6 @@
 /**
  * Canonical B2C design-system hex values (ink + brand blue-600 + feedback bands).
- * Keep in sync with `html:has([data-b2c-shell])` in globals.css and brandTokens.
+ * Keep in sync with `html:has([data-b2c-shell])` in globals.css.
  */
 export const b2cDesignTokens = {
   ink: {
@@ -12,8 +12,8 @@ export const b2cDesignTokens = {
     300: "#8a94a6",
   },
   accent: {
-    DEFAULT: "#2563eb",
-    hover: "#1d4ed8",
+    DEFAULT: "#1d4ed8",
+    hover: "#1e40af",
     muted: "#eff6ff",
     subtle: "#dbeafe",
   },
@@ -41,6 +41,6 @@ export const b2cDesignTokens = {
   trendBar: {
     empty: "#e4e7ec",
     mid: "#dbeafe",
-    active: "#2563eb",
+    active: "#1d4ed8",
   },
 } as const;

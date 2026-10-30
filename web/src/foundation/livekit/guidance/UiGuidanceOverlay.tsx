@@ -98,7 +98,7 @@ export function UiGuidanceOverlay({
               width: 36,
               height: 36,
               borderRadius: "50%",
-              border: "2.5px solid #2563eb",
+              border: "2.5px solid rgb(var(--brand))",
               background: "rgba(59, 130, 246, 0.08)",
             }}
           />{" "}

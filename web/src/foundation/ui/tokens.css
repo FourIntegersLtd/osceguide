@@ -10,6 +10,17 @@
  * no idea which arm it is in, and still looks native in all of them.
  */
 
+/* THE brand accent: the single source for every surface (train, assess, hire, partner,
+   staff) and the public site (`--site-brand` in siteTokens.css). Change blue here only. */
+:root {
+  --brand: 29 78 216; /* #1d4ed8 */
+  --brand-hover: 30 64 175; /* #1e40af */
+  --brand-pale: 232 239 252; /* #e8effc */
+  --brand-hex: #1d4ed8;
+  --brand-hover-hex: #1e40af;
+  --brand-light-hex: #5b82e8;
+}
+
 :root,
 [data-surface="train"] {
   --color-canvas: 247 248 250;
@@ -21,9 +32,9 @@
   --color-ink-muted: 52 64 84;
   --color-ink-subtle: 152 162 179;
   --color-ink-inverse: 255 255 255;
-  --color-accent: 37 99 235;
-  --color-accent-hover: 29 78 216;
-  --color-accent-subtle: 239 246 255;
+  --color-accent: var(--brand);
+  --color-accent-hover: var(--brand-hover);
+  --color-accent-subtle: var(--brand-pale);
   --color-danger: 220 38 38;
   --color-danger-subtle: 254 242 242;
   --color-success: 22 163 74;
@@ -46,9 +57,9 @@
   --color-ink-muted: 52 64 84;
   --color-ink-subtle: 152 162 179;
   --color-ink-inverse: 255 255 255;
-  --color-accent: 37 99 235;
-  --color-accent-hover: 29 78 216;
-  --color-accent-subtle: 239 246 255;
+  --color-accent: var(--brand);
+  --color-accent-hover: var(--brand-hover);
+  --color-accent-subtle: var(--brand-pale);
   --color-danger: 220 38 38;
   --color-danger-subtle: 254 242 242;
   --color-success: 22 163 74;
@@ -63,7 +74,7 @@
 /**
  * Every workspace arm, in the quiet skin of the "OSCE Guide Screens v2"
  * canvas. Train, Assess, Hire and Partner share it: one shell, one set of
- * neutrals, and only the accent differs (the two blocks below).
+ * neutrals, and one accent, `--brand` above.
  *
  * Greys do the work and colour only carries meaning: the one accent for the
  * primary action, the score bands and the reading tones. It retunes both the
@@ -86,9 +97,9 @@
   --color-ink: 29 29 31;
   --color-ink-muted: 110 110 115;
   --color-ink-subtle: 161 161 166;
-  --color-accent: 23 25 235;
-  --color-accent-hover: 17 19 196;
-  --color-accent-subtle: 245 245 247;
+  --color-accent: var(--brand);
+  --color-accent-hover: var(--brand-hover);
+  --color-accent-subtle: var(--brand-pale);
   --color-danger: 220 38 38;
   --color-danger-subtle: 252 239 238;
   --color-success: 5 150 105;
@@ -116,15 +127,15 @@
   --osce-border-light: #efeff2;
 
   /* One accent. Its soft fills are grey, so a selected thing reads as ink. */
-  --osce-accent: #1719eb;
-  --osce-accent-hover: #1113c4;
+  --osce-accent: var(--brand-hex);
+  --osce-accent-hover: var(--brand-hover-hex);
   --osce-accent-muted: #f5f5f7;
   --osce-accent-subtle: #ebebef;
-  --osce-accent-light: #4547f0;
+  --osce-accent-light: var(--brand-light-hex);
   /* A focused field's border: the skin's accent, lightened. */
   --osce-focus-border: color-mix(in srgb, var(--osce-accent) 40%, white);
-  --osce-commit: #1719eb;
-  --osce-commit-hover: #1113c4;
+  --osce-commit: var(--brand-hex);
+  --osce-commit-hover: var(--brand-hover-hex);
 
   --osce-success-solid: #059669;
   --osce-success-solid-hover: #047857;
@@ -195,30 +206,6 @@
   --osce-lh-heading: 30px;
   --osce-fs-display-sm: 30px;
   --osce-lh-display-sm: 36px;
-}
-
-/* Assess: the same greys, a deeper navy for the one primary action. */
-:root:has([data-surface="assess"]),
-[data-surface="assess"] {
-  --color-accent: 9 12 133;
-  --color-accent-hover: 6 8 102;
-  --osce-accent: #090c85;
-  --osce-accent-hover: #060866;
-  --osce-accent-light: #3a3db0;
-  --osce-commit: #090c85;
-  --osce-commit-hover: #060866;
-}
-
-/* Hire: Assess with the employer's purple. */
-:root:has([data-surface="hire"]),
-[data-surface="hire"] {
-  --color-accent: 68 0 117;
-  --color-accent-hover: 50 0 90;
-  --osce-accent: #440075;
-  --osce-accent-hover: #32005a;
-  --osce-accent-light: #6a2a99;
-  --osce-commit: #440075;
-  --osce-commit-hover: #32005a;
 }
 
 /* The room: the graphite stage of a live station (the call, the voice orb). Only the

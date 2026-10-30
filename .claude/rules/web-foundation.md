@@ -28,6 +28,8 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
 - Every load goes through `useAsync` + `AsyncBoundary`; a failure must never render as "no data".
 - Colours come from tokens (`bg-canvas`, `text-ink`, `bg-accent`), never `bg-blue-600`; read
   `docs/DESIGN.md` for UI work (no black borders or black text).
+- There is ONE accent: `--brand` / `--brand-hover` / `--brand-pale` (+ hex twins) at the top of `web/src/foundation/ui/tokens.css`. Every surface (train, assess, hire, partner, staff) and the public site's `--site-brand` read it; no surface overrides it. Change the blue there only, and never write a literal blue in a component or chart (`rgb(var(--brand))`).
+
 - The exam clock is the server's. Strict types, no `any`.
 - Do not hand-declare API types: regenerate (`make openapi`, `npm run platform:types`, `npm run types`).
   `schema.d.ts` is one generated file; one writer at a time.

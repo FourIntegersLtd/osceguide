@@ -1,4 +1,4 @@
-import { b2cDesignTokens } from "@/domains/marketing/support/designTokens";
+import { b2cDesignTokens } from "@/foundation/ui/designTokens";
 import type { ExamShowcaseVariant } from "./examShowcaseContent";
 import {
   getProgressShowcaseContent,

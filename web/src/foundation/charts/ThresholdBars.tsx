@@ -143,7 +143,7 @@ export default function ThresholdBars({
               String(payload?.[0]?.payload?.name || label)
             }
             contentStyle={chartTooltipStyle}
-            cursor={{ fill: "rgba(37, 99, 235, 0.06)" }}
+            cursor={{ fill: "rgb(var(--brand) / 0.06)" }}
           />
           <Bar
             dataKey="score"

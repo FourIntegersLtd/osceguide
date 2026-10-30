@@ -33,8 +33,8 @@
   --osce-border-light: #f2f4f7;
 
   /* Accent — the one token that never drifted */
-  --osce-accent: #2563eb;
-  --osce-accent-hover: #1d4ed8;
+  --osce-accent: var(--brand-hex);
+  --osce-accent-hover: var(--brand-hover-hex);
   --osce-accent-muted: #eff6ff;
   --osce-accent-subtle: #dbeafe;
   --osce-accent-light: #3b82f6;
