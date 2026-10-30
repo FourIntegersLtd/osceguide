@@ -9,10 +9,6 @@ import { HomeClock } from "@/domains/marketing/home/HomeClock";
 import { Pill } from "@/domains/marketing/home/ReportShowcase";
 import { Eyebrow, IconTile, SectionHead } from "@/foundation/ui";
 import { Section } from "@/domains/marketing/home/Section";
-import { LandingDemoVideo } from "@/domains/marketing/LandingDemoVideo";
-
-const MARKETPLACE_VIDEO_SRC =
-  "https://osceguide.s3.eu-west-2.amazonaws.com/Four+Integers+Ltd/osceguide-marketplace-how-it-works.mp4";
 
 const BUBBLE = "rounded-2xl rounded-bl-sm bg-site-pale px-4 py-2.5 text-sm text-site-body";
 const BUBBLE_ME = "self-end rounded-2xl rounded-br-sm bg-site-brand px-4 py-2.5 text-sm text-site-on-brand";
@@ -51,7 +47,17 @@ export function HomeFeatures() {
             <Pill tone="ok">Relating</Pill>
           </div>
         </Cell>
-        <Cell className="border-site-line bg-site-card md:col-span-3">
+        <Cell className="border-transparent bg-site-pale md:col-span-2">
+          <IconTile><FiVideo /></IconTile>
+          <span className="mt-4"><Eyebrow>Marketplace</Eyebrow></span>
+          <h3 className="mt-2 font-landing-heading text-xl font-bold text-site-ink">Practice with Colleagues</h3>
+          <p className="mt-2 text-site-body">Match instantly with colleagues or schedule a session that fits. Real-time video practice.</p>
+          <div aria-hidden="true" className="mt-5 space-y-2 text-sm text-site-ink">
+            <span className="block rounded-lg bg-site-card px-3 py-2">Tue 19:00 <small className="text-site-muted">You play the doctor</small></span>
+            <span className="block rounded-lg bg-site-card px-3 py-2">Wed 07:30 <small className="text-site-muted">You play the patient</small></span>
+          </div>
+        </Cell>
+        <Cell className="border-site-line bg-site-card md:col-span-2">
           <div className="flex items-center gap-3">
             <AthenaAvatar alt="Athena, your AI tutor" className="h-11 w-11" />
             <div>
@@ -70,7 +76,7 @@ export function HomeFeatures() {
             </span>
           </div>
         </Cell>
-        <Cell className="border-transparent bg-site-brand text-site-on-brand md:col-span-3">
+        <Cell className="border-transparent bg-site-brand text-site-on-brand md:col-span-2">
           <span aria-hidden="true" className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-xl"><FiClock /></span>
           <span className="mt-4 font-landing-mono text-[11px] font-medium uppercase tracking-[0.13em]">On the clock</span>
           <h3 className="mt-2 font-landing-heading text-xl font-bold">Timed like the real exam</h3>
@@ -78,15 +84,6 @@ export function HomeFeatures() {
           <div aria-hidden="true" className="mt-5">
             <HomeClock from={708} className="font-landing-mono text-5xl font-medium" />
           </div>
-        </Cell>
-        <Cell className="border-transparent bg-site-pale md:col-span-6 md:grid md:grid-cols-5 md:items-center md:gap-8">
-          <div className="md:col-span-2">
-            <IconTile><FiVideo /></IconTile>
-            <span className="mt-4 block"><Eyebrow>Marketplace</Eyebrow></span>
-            <h3 className="mt-2 font-landing-heading text-xl font-bold text-site-ink">Practice with Colleagues</h3>
-            <p className="mt-2 text-site-body">Match instantly with colleagues or schedule a session that fits. Real-time video practice.</p>
-          </div>
-          <LandingDemoVideo src={MARKETPLACE_VIDEO_SRC} title="How the OSCE Guide marketplace works" className="mt-5 md:col-span-3 md:mt-0" />
         </Cell>
       </div>
     </Section>
