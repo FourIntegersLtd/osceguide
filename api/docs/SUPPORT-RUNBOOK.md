@@ -41,6 +41,16 @@ section and the matching lines in `.claude/rules/staff-console.md` in one commit
 Run in this order from `api`, with `DATABASE_URL` exported: plain (report only), `--yes` (backfill),
 `--yes --vacuum`, then `--yes --vacuum --full` last.
 
+`SUPABASE_PROD_DB_URL` lives in `api/.env` and is not exported by a shell, so naming it alone leaves
+`DATABASE_URL` empty and alembic migrates **localhost** instead. Export it first, swapping the
+transaction pooler for the session one, and never echo it:
+
+```bash
+export DATABASE_URL=$(grep -E '^SUPABASE_PROD_DB_URL=' .env | head -1 | cut -d= -f2- | tr -d '"'"'" )
+export DATABASE_URL=${DATABASE_URL/:6543/:5432}
+[ -n "$DATABASE_URL" ] && echo "target: ${DATABASE_URL##*@}"
+```
+
 **Expected sizes** (`pg_database_size`, which is what the quota counts; the Supabase dashboard lags).
 Assumption: about 10 MB of `transcript_messages` is still rows after the backfill (attempts not yet
 finished, or inside the one-hour grace). The script prints the real figure at every step.
