@@ -16,7 +16,7 @@ export interface DashboardExam {
  * granted or built a practice set for — and it offered a picker in the header
  * when there was more than one. Three other screens each made a different
  * decision the same way. There is one answer now (`useCurrentExam`, from the
- * backend) and one switcher, in the navigation.
+ * backend) and no switcher.
  */
 export function useDashboardExam(data: Dashboard): {
   examCode: string;

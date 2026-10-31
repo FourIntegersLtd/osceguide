@@ -7,9 +7,10 @@ from __future__ import annotations
 import re
 from collections.abc import Awaitable, Callable
 
-from app.core.settings import Settings
+from app.core.settings import Settings, get_settings
 from app.features.assistant import service_llm
 from app.features.assistant.content.packs import BASE
+from app.features.assistant.content.resolver import render_placeholders
 
 
 class AssistantUnavailable(RuntimeError):
@@ -19,17 +20,15 @@ class AssistantUnavailable(RuntimeError):
 # What the model outputs when the help entries do not answer the question.
 NO_REPLY = "NO_REPLY"
 _NO_REPLY = re.compile(r"^\W*NO_REPLY\W*$", re.IGNORECASE)
-_NAV = re.compile(r"\{nav\.(\w+)\}")
-
-
-def _render(text: str) -> str:
-    """`{nav.mocks}` becomes the label the pack falls back to when no client catalog is sent."""
-    return _NAV.sub(lambda match: BASE.default_labels.get(match.group(1), match.group(1)), text)
 
 
 def system_prompt() -> str:
     """What the model answers from: the help pack's FAQ, nothing else."""
-    faq = "\n\n".join(f"Q: {entry.question}\nA: {_render(entry.answer)}" for entry in BASE.faq)
+    address = get_settings().support_email
+    faq = "\n\n".join(
+        f"Q: {entry.question}\nA: {render_placeholders(entry.answer, BASE.default_labels, address)}"
+        for entry in BASE.faq
+    )
     return (
         "You are Athena, the OSCE Guide assistant, replying under a question on the OSCE Guide "
         "community board. Write as a real person on the team would: first person, warm and "

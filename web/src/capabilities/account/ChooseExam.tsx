@@ -16,7 +16,6 @@ import {
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { useCurrentExam, useSession } from "@/foundation/session";
-import { rememberExamSelection } from "@/foundation/session/examSelection";
 import { updateMe } from "@/capabilities/account/api";
 import { listExams, type Exam } from "@/capabilities/stations/api";
 
@@ -61,7 +60,7 @@ export default function ChooseExam() {
 }
 
 function ExamChoice({ exams }: { exams: Exam[] }) {
-  const { session, refresh } = useSession();
+  const { refresh } = useSession();
   // Somebody who bought an exam before this step existed holds it already;
   // start them on it rather than on whichever exam sorts first.
   const { codes: heldCodes } = useCurrentExam();
@@ -77,7 +76,6 @@ function ExamChoice({ exams }: { exams: Exam[] }) {
     setError(null);
     try {
       await updateMe({ exam_code: selected });
-      if (session) rememberExamSelection(session.user.id, selected);
       // The shell re-reads the account and, with an exam on it, opens the app.
       await refresh();
     } catch (cause) {

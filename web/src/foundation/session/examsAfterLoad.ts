@@ -14,7 +14,7 @@ export const NO_EXAMS: HeldExams = { codes: [], serverCurrent: null, dashboardEx
 
 /**
  * The exams `/me/dashboard` describes. A failed request never reaches this: the hook keeps the
- * last answer it held, so the switcher and exam-filtered navigation do not empty on a flaky call.
+ * last answer it held, so the exam-filtered navigation does not empty on a flaky call.
  */
 export function heldFromDashboard(dashboard: Dashboard): HeldExams {
   return {

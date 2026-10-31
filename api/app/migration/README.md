@@ -18,8 +18,14 @@ decisions can be argued about on paper:
 - **Entitlements are the union.** Somebody who bought SCA and PLAB keeps both.
   Expired grants come across too: "your access ended in March" is a better
   answer than an empty list.
-- **Nobody's password is imported.** b2c stores bcrypt and b2b unsalted
-  SHA-256; neither is argon2 and one is unsafe, so everybody resets.
+- **A b2c password comes across as a legacy credential; b2b's never does.** b2c stores plain
+  bcrypt (`hashed_password`, made by a bare `flask_bcrypt.Bcrypt()`: `2b`, 12 rounds, no pre-hashing).
+  It is loaded into `users.legacy_password_hash`, never `password_hash`. Sign-in accepts it once
+  (`identity.tokens.verify_legacy_password`), replaces it with argon2id in one UPDATE and nulls it, with no
+  forced change. b2b's unsalted SHA-256 is unsafe and is never imported; an SSO-provisioned b2c
+  account's random unusable hash (`authProvider == "clerk_sso"`) and anything not shaped like bcrypt
+  are skipped. Someone with no usable hash resets as before. One hash per person: across products the
+  first usable one wins.
 - **An unknown `app_type` stops the import.** b2c defaults to SCA, which is how
   CASC came to be marked with a GP rubric. An import is the worst place to
   repeat that.
@@ -49,7 +55,16 @@ and only the people load can resolve that.
   columns that mean nothing. The legacy `mock_id` and `station_id` are kept, so
   the linkage can be restored when the sets come across.
 - **Somebody who signed up before their import keeps their password.** Only the
-  platform-admin flag is re-asserted from the export.
+  platform-admin flag is re-asserted from the export. The legacy hash is written on insert only, so a
+  second run never gives one back to someone who has since signed in or reset.
+- **Backfilling accounts imported before the hash was carried:**
+  `scripts/import_b2c_users.py --backfill-legacy-passwords` (dry run by default). It sets the hash only
+  where the account has no `password_hash`, no legacy hash, is not SSO-only and has the import's
+  identity link; a second run reports 0.
+- **Decommission:** when the legacy backends are switched off, `identity/service_legacy.py` goes and a
+  second migration drops `users.legacy_password_hash`, along with `verify_legacy_password`, the `bcrypt`
+  dependency and the legacy branch of `login_with_memberships`. Anyone who never signed in during the
+  window resets.
 
 ## Verifying
 
@@ -114,8 +129,8 @@ poetry run python scripts/import_b2c_users.py --from-firestore --collection sca 
 ```
 
 Requires consumer exams from `alembic upgrade head`. Idempotent on `users.email`
-and legacy entitlements (`source_ref = legacy-import`). Passwords are not
-imported (same rules as `migrate_legacy.py`).
+and legacy entitlements (`source_ref = legacy-import`). A b2c bcrypt hash is
+carried to `users.legacy_password_hash` (see "A b2c password comes across" above).
 
 ## B2C study material (copy only)
 

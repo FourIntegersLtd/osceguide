@@ -96,22 +96,62 @@ def test_the_example_env_file_loads(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_mail_defaults_use_the_one_domain_resend_has_verified(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Resend refuses any sender off its verified domain (403), so every email
-    the outbox sends failed while the default was noreply@osceguide.com. The
-    support address is the one platform-web shows people, read from its source.
+    """Resend refuses any sender off a domain verified there (403), and it fails
+    in the queue where nobody sees it: every email the outbox sent failed once
+    while the sender was on a domain that was not the verified one. So the
+    sender is only ever a domain verified in Resend, which is osceguide.com.
+    The support address is the one platform-web shows people and `.env.example`
+    hands a new developer, read from both sources: a domain move that leaves
+    either behind sends people to a dead mailbox while CI stays green.
 
     The addresses are cleared from the environment first: these are the declared
     defaults, so a stale `SUPPORT_EMAIL` on a developer's machine or left behind
     by an earlier test must not decide whether this passes.
     """
+    from app.core.settings import PROJECT_ROOT
+
     monkeypatch.delenv("SUPPORT_EMAIL", raising=False)
     monkeypatch.delenv("EMAIL_FROM", raising=False)
     settings = Settings(_env_file=None, app_env=AppEnv.local)
     web_support = Path(__file__).parents[3] / "web/src/foundation/support.ts"
-    assert settings.email_from == "OSCE Guide <hello@fourintegers.com>"
-    assert settings.support_email == "hello@fourintegers.com"
+    assert settings.email_from == "OSCE Guide <hello@osceguide.com>"
+    assert settings.support_email == "hello@osceguide.com"
     shown = re.search(r'SUPPORT_EMAIL = "([^"]+)"', web_support.read_text())
     assert shown and shown.group(1) == settings.support_email
+    assert Settings(_env_file=PROJECT_ROOT / ".env.example").support_email == settings.support_email
+
+
+def test_the_sender_follows_the_support_mailbox_unless_email_from_names_another(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A domain move is one value: the sender is derived from the support
+    mailbox, so a new `SUPPORT_EMAIL` cannot leave the sender on a domain
+    Resend no longer verifies. An explicit `EMAIL_FROM` still wins, for a
+    deployment whose sender and reply-to inbox are different mailboxes.
+
+    Blank is not a value. A space-padded `EMAIL_FROM` is the operator clearing
+    it, not a sender, and a blank `SUPPORT_EMAIL` refuses to start rather than
+    sending as `OSCE Guide <>`. Both were harmless while the sender carried its
+    own literal.
+    """
+    monkeypatch.setenv("SUPPORT_EMAIL", "help@osceguide.com")
+    monkeypatch.delenv("EMAIL_FROM", raising=False)
+    assert Settings(_env_file=None, app_env=AppEnv.local).email_from == "OSCE Guide <help@osceguide.com>"
+    monkeypatch.setenv("EMAIL_FROM", "OSCE Guide <noreply@osceguide.com>")
+    settings = Settings(_env_file=None, app_env=AppEnv.local)
+    assert settings.email_from == "OSCE Guide <noreply@osceguide.com>"
+    assert settings.support_email == "help@osceguide.com"
+    monkeypatch.setenv("EMAIL_FROM", "   ")
+    assert Settings(_env_file=None, app_env=AppEnv.local).email_from == "OSCE Guide <help@osceguide.com>"
+    # The field is named for what it is, so a caller must be able to set it by
+    # that name: with only the `EMAIL_FROM` alias, `extra="ignore"` drops this
+    # silently and a test would read the derived sender and still pass.
+    override = Settings(_env_file=None, app_env=AppEnv.local, email_from_override="Ops <ops@osceguide.com>")
+    assert override.email_from == "Ops <ops@osceguide.com>"
+    for blank in ("", "   "):
+        monkeypatch.setenv("SUPPORT_EMAIL", blank)
+        with pytest.raises(ValidationError, match="SUPPORT_EMAIL must not be blank"):
+            Settings(_env_file=None, app_env=AppEnv.local)
 
 
 def test_openai_marks_first_unless_the_provider_is_switched(monkeypatch: pytest.MonkeyPatch) -> None:

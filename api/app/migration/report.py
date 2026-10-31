@@ -11,6 +11,7 @@ class LoadReport:
 
     users_created: int = 0
     users_matched: int = 0
+    legacy_passwords_backfilled: int = 0
     entitlements_created: int = 0
     entitlements_existing: int = 0
     attempts_created: int = 0
@@ -53,6 +54,7 @@ class LoadReport:
         return LoadReport(
             users_created=self.users_created + other.users_created,
             users_matched=self.users_matched + other.users_matched,
+            legacy_passwords_backfilled=self.legacy_passwords_backfilled + other.legacy_passwords_backfilled,
             entitlements_created=self.entitlements_created + other.entitlements_created,
             entitlements_existing=self.entitlements_existing + other.entitlements_existing,
             attempts_created=self.attempts_created + other.attempts_created,
@@ -85,6 +87,7 @@ class LoadReport:
         """One human-readable line covering every counter and the problem count."""
         return (
             f"users {self.users_created} created / {self.users_matched} matched; "
+            f"legacy passwords backfilled {self.legacy_passwords_backfilled}; "
             f"entitlements {self.entitlements_created} created / "
             f"{self.entitlements_existing} already there; "
             f"attempts {self.attempts_created} created / {self.attempts_existing} already there; "

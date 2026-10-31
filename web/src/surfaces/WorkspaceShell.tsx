@@ -19,7 +19,7 @@ import { PeerPracticeProvider } from "@/capabilities/peer-practice/PeerPracticeP
 import { PendingFeedbackProvider } from "@/capabilities/pending-feedback";
 import type { HelpNavItem } from "@/capabilities/help/api";
 import type { NavItem, SurfaceManifest } from "@/surfaces/contract";
-import { examDetail } from "@/surfaces/examSwitcher";
+import { examDetail } from "@/surfaces/examNav";
 import { WorkspaceSidebar } from "@/surfaces/WorkspaceSidebar";
 import { WorkspaceToolbar } from "@/surfaces/WorkspaceToolbar";
 import { PERSONAL_WORKSPACE, type Workspace } from "@/foundation/routing";

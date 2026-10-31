@@ -53,6 +53,7 @@ screenshot in `web/test-results/`.
 | TRAIN-6 | Speak a practice station and be marked | no, needs LiveKit | skipped |
 | TRAIN-7 | Help is on every learner screen (phone: floating button; desktop: toolbar, no Inbox icon) | yes | `train/help-everywhere.spec.ts` |
 | TRAIN-8 | On a phone (390px, touch) every screen scrolls to its end and nothing scrolls sideways: the station room, the peer room, every learner, institution and staff page | yes | `train/phone-layout.spec.ts` |
+| TRAIN-12 | Signed up for one exam, holds another, the browser remembers the sign-up exam: the marketplace lists and claims the held exam's slot, no `not_entitled` | yes | `train/marketplace-exam.spec.ts` |
 
 **TRAIN-1.** Actor: a registered consumer.
 1. Open `/login`, enter email and password, submit.

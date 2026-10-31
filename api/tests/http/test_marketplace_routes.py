@@ -7,8 +7,12 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.entitlements import repository as ent_repo
+from app.features.identity import repository as identity_repo
+from app.features.identity.models import User
 from tests.support.catalog import ensure_exam
 from tests.support.tokens import bearer
 
@@ -262,3 +266,37 @@ async def test_my_posts_reports_a_withdrawn_slot_as_cancelled(client: AsyncClien
 
     mine = (await client.get("/api/v1/me/marketplace/posts", headers=bearer(owner))).json()["items"]
     assert [(row["id"], row["status"]) for row in mine] == [(post_id, "cancelled")]
+
+
+async def test_a_buyer_of_another_exam_is_opened_on_it_and_can_offer_a_slot(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Signed up for plab, holds only sca: the exam the app opens on is one the marketplace accepts."""
+    token = await make_actor("switcher@example.com")
+    user = await identity_repo.user_by_email(db_session, "switcher@example.com")
+    assert user is not None
+    sca = await ensure_exam(db_session, "sca")
+    assert sca is not None
+    await ensure_exam(db_session, "plab")
+    await db_session.execute(update(User).where(User.id == user.id).values(exam_code="plab"))
+    await ent_repo.grant(
+        session=db_session,
+        user_id=user.id,
+        exam_id=sca.id,
+        source="purchase",
+        ends_at=datetime.now(UTC) + timedelta(days=30),
+    )
+    await db_session.commit()
+
+    dashboard = (await client.get("/api/v1/me/dashboard", headers=bearer(token))).json()
+    assert dashboard["current_exam_code"] == "sca"
+
+    offered = await client.post(
+        "/api/v1/marketplace/slots",
+        json={
+            "exam_code": dashboard["current_exam_code"],
+            "starts_at": (datetime.now(UTC) + timedelta(hours=2)).isoformat(),
+        },
+        headers=bearer(token),
+    )
+    assert offered.status_code == 201, offered.text

@@ -42,6 +42,12 @@ Owner: `attempt-engine-owner`. Proof: `verify-attempt-engine`. Athena is the voi
   apart: the web reads scenes through `readScene`, which tolerates an api without those fields.
 - Prompt injection: tutor input is untrusted (`tests/security/test_assistant_prompt_injection.py`).
 - Written answers (`service_knowledge`, `service_community`) go through `assistant/service_llm.complete`: `core.llm.claude_reply` (Haiku 5.5, `effort: low`, cached system block; a max_tokens cut-off or refusal raises) then `core.llm.openai_reply` (`OPENAI_FAST`, `reasoning_effort=low`, `max_tokens` sent as `max_completion_tokens`, the whole conversation), chained by `first_that_answers`. No temperature or tool_choice; plain text only (structured replies use the engine's `ask_by_tool`). Test with `tests/support/llm_fakes.install_fake_sdks`; settings need both `anthropic_api_key` and `openai_api_key`.
+- Pack prose carries placeholders, not literals: `{nav.*}`, `{support_email}` and
+  `{support_email_spoken}` (the address as a voice reads it), all expanded by
+  `content/resolver.render_placeholders`. Every reader of pack text must call it — a second private
+  renderer in `service_community` once shipped `{support_email_spoken}` into a public community
+  reply, because that path had no test. `help_content.json` is static and is *not* rendered, so it
+  spells the address out (`tests/unit/test_assistant_content.py` pins both).
 - Dashboard `progress` counts only started, non-debrief attempts.
 
 ## What a failure looks like here

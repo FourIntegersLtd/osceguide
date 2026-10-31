@@ -85,17 +85,137 @@ async def test_one_person_across_products_becomes_one_row_with_both_entitlements
     assert await count(db_session, User) == 1
 
 
-async def test_nobody_brings_a_password_across(db_session: AsyncSession) -> None:
-    """b2c stores bcrypt and b2b unsalted SHA-256. Neither is argon2."""
+B2C_HASH = "$2b$12$7CnGAcydRjyhsnb2a3zOiOaeu/UrblrKtwwPDytxqMiVUgCJhGkC2"
+
+
+async def test_a_b2c_hash_comes_across_as_legacy_never_as_a_current_password(
+    db_session: AsyncSession,
+) -> None:
     await loader.load_users(
         db_session,
-        merge_users([b2c_user("bob@example.com", "sca", "fs-9", password="$2b$12$whatever")]),
+        merge_users([b2c_user("bob@example.com", "sca", "fs-9", hashed_password=B2C_HASH)]),
     )
 
     user = await db_session.scalar(select(User).where(User.email == "bob@example.com"))
     assert user is not None
     assert user.password_hash is None
-    assert user.must_change_password is True
+    assert user.legacy_password_hash == B2C_HASH
+    assert user.must_change_password is False
+
+
+async def test_a_person_with_no_usable_hash_still_resets(db_session: AsyncSession) -> None:
+    await loader.load_users(
+        db_session, merge_users([b2c_user("bob@example.com", "sca", "fs-9", hashed_password="")])
+    )
+
+    user = await db_session.scalar(select(User).where(User.email == "bob@example.com"))
+    assert user is not None
+    assert (user.password_hash, user.legacy_password_hash, user.must_change_password) == (None, None, True)
+
+
+async def test_a_second_run_does_not_hand_a_legacy_hash_back(db_session: AsyncSession) -> None:
+    """Someone who has since signed in (argon2, legacy dropped) keeps that."""
+    records = [b2c_user("bob@example.com", "sca", "fs-9", hashed_password=B2C_HASH)]
+    await loader.load_users(db_session, merge_users(records))
+    user = await db_session.scalar(select(User).where(User.email == "bob@example.com"))
+    assert user is not None
+    user.password_hash = "$argon2id$their-own"
+    user.legacy_password_hash = None
+    await db_session.flush()
+
+    await loader.load_users(db_session, merge_users(records))
+    await db_session.refresh(user)
+
+    assert (user.password_hash, user.legacy_password_hash) == ("$argon2id$their-own", None)
+
+
+async def test_the_backfill_fills_only_imported_accounts_with_no_credential(
+    db_session: AsyncSession,
+) -> None:
+    from app.features.identity import repository as identity_repo
+
+    first = [b2c_user("old@example.com", "sca", "fs-1", hashed_password=B2C_HASH)]
+    await loader.load_users(db_session, merge_users([b2c_user("old@example.com", "sca", "fs-1")]))
+    # Not imported (no identity link), and one that already signs in with argon2.
+    await identity_repo.create_user(db_session, email="invited@example.com", name="I", password_hash=None)
+    signed_up = await identity_repo.create_user(
+        db_session, email="signed@example.com", name="S", password_hash="$argon2id$x"
+    )
+    await loader.load_users(db_session, merge_users([b2c_user("signed@example.com", "sca", "fs-2")]))
+    everyone = merge_users(
+        [
+            *first,
+            b2c_user("invited@example.com", "sca", "fs-3", hashed_password=B2C_HASH),
+            b2c_user("signed@example.com", "sca", "fs-2", hashed_password=B2C_HASH),
+        ]
+    )
+
+    once = await loader.backfill_legacy_passwords(db_session, everyone)
+    again = await loader.backfill_legacy_passwords(db_session, everyone)
+
+    assert (once.legacy_passwords_backfilled, again.legacy_passwords_backfilled) == (1, 0)
+    rows = {
+        u.email: (u.password_hash, u.legacy_password_hash, u.must_change_password)
+        for u in (await db_session.scalars(select(User))).all()
+    }
+    assert rows["old@example.com"] == (None, B2C_HASH, True)  # cleared by the legacy sign-in itself
+    assert rows["invited@example.com"] == (None, None, False)
+    assert rows["signed@example.com"] == ("$argon2id$x", None, False)
+    assert signed_up.email == "signed@example.com"
+
+
+async def test_the_backfill_leaves_alone_accounts_the_platform_left_without_a_password(
+    db_session: AsyncSession,
+) -> None:
+    """The import links every account whose email is in the export, old ones included, so the link
+    is not proof the import made the row. Each of these has no credential on purpose."""
+    from app.features.identity import repository as identity_repo
+
+    emails = ["filled@example.com", "sso@example.com", "taken@example.com", "invited@example.com"]
+    emails += ["closed@example.com", "suspended@example.com"]
+    users = {}
+    for email in emails:
+        users[email] = await identity_repo.create_user(
+            db_session,
+            email=email,
+            name="P",
+            password_hash="$argon2id$x" if email == "taken@example.com" else None,
+        )
+    await loader.load_users(
+        db_session, merge_users([b2c_user(e, "sca", f"fs-{i}") for i, e in enumerate(emails)])
+    )
+    # An account the import itself would have made, linked and never touched since.
+    # SSO created it, and SSO later proved the address on an account that had a password.
+    for email in ("sso@example.com", "taken@example.com"):
+        await identity_repo.link_identity(
+            db_session, user_id=users[email].id, provider="oidc", subject=f"s-{email}", tenant_slug=None
+        )
+    await identity_repo.clear_password(db_session, users["taken@example.com"].id)
+    await identity_repo.create_reset_token(
+        db_session,
+        user_id=users["invited@example.com"].id,
+        token_hash="h" * 64,
+        expires_at=datetime(2099, 1, 1, tzinfo=UTC),
+    )
+    users["closed@example.com"].closed_at = datetime(2026, 1, 1, tzinfo=UTC)
+    users["suspended@example.com"].status = "suspended"
+    await db_session.flush()
+    everyone = merge_users(
+        [b2c_user(e, "sca", f"fs-{i}", hashed_password=B2C_HASH) for i, e in enumerate(emails)]
+    )
+
+    once = await loader.backfill_legacy_passwords(db_session, everyone)
+    again = await loader.backfill_legacy_passwords(db_session, everyone)
+
+    assert (once.legacy_passwords_backfilled, again.legacy_passwords_backfilled) == (1, 0)
+    rows = {
+        u.email: (u.password_hash, u.legacy_password_hash, u.must_change_password)
+        for u in (await db_session.scalars(select(User))).all()
+    }
+    assert rows["filled@example.com"] == (None, B2C_HASH, False)
+    for email in emails[1:]:
+        assert rows[email][1] is None, email
+    assert rows["invited@example.com"][2] is False
 
 
 async def test_an_expired_grant_still_comes_across(db_session: AsyncSession) -> None:

@@ -1,15 +1,15 @@
 """The legacy login bridge: a session here, in trade for one already held.
 
-No password came across in the migration — the consumer backend hashed with
-bcrypt and the institution one with unsalted SHA-256, and neither is worth
-rehoming — so an imported person has no credential on this platform at all.
-Without this module the only way onto the new backend is a password reset for
-every live user, on the weekend of the cutover.
+No argon2 password came across in the migration. The consumer backend's bcrypt hash is carried
+as `users.legacy_password_hash` and accepted once at sign-in (`service_sessions.login_with_memberships`);
+the institution backend's unsalted SHA-256 is never imported. This module covers someone already signed
+in on the old site, who types no password at all.
 
 The whole file is deleted at decommission, which is why it is one file: the
 verification, the rule and the use case sit together rather than threaded
 through `service_sessions.py`, and removing the bridge is removing a module
-and one route.
+and one route. The same decommission drops `users.legacy_password_hash` in a second migration,
+with `tokens.verify_legacy_password`, the `bcrypt` dependency and the legacy branch of sign-in.
 
 Both retiring backends sign HS256 and set neither `iss` nor `aud`:
 

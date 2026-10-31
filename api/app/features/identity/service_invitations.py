@@ -171,7 +171,7 @@ async def _send_reminder(
 async def _user_awaiting_password(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> User | None:
     """The account still waiting to choose a password, with its unused links spent; else None."""
     user = await repository.user_by_id(session, user_id)
-    if user is None or user.password_hash is not None:
+    if user is None or user.password_hash is not None or user.legacy_password_hash is not None:
         return None
     # SEC-011: an SSO-only account has no password on purpose, not because it is
     # still waiting to choose one. Re-issuing an invitation to it would mint a

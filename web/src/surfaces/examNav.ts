@@ -1,10 +1,8 @@
 import { examCountdown } from "@/foundation/ui/examCountdown";
 
-/** What the foot of the sidebar shows for the exam: a switcher, a retry, or nothing. */
-export function examSwitcherView(input: { consumer: boolean; codes: readonly string[]; error: Error | null }): "switcher" | "failed" | "none" {
-  if (!input.consumer) return "none";
-  if (input.codes.length > 1) return "switcher";
-  return input.error ? "failed" : "none";
+/** True when the foot of the sidebar should offer a retry: the exams could not be read and none are known. */
+export function examsFailedToLoad(input: { consumer: boolean; codes: readonly string[]; error: Error | null }): boolean {
+  return input.consumer && input.codes.length === 0 && input.error !== null;
 }
 
 /**

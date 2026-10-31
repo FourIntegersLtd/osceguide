@@ -327,7 +327,10 @@ def _ref(user: User) -> UserRef:
         created_at=user.created_at,
         exam_code=user.exam_code,
         invitation_pending=(
-            user.password_hash is None and not user.password_login_disabled and user.last_login_at is None
+            user.password_hash is None
+            and user.legacy_password_hash is None
+            and not user.password_login_disabled
+            and user.last_login_at is None
         ),
         must_change_password=user.must_change_password,
         activated_at=user.activated_at,
@@ -344,7 +347,9 @@ async def user_refs_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID])
 async def emails_with_passwords(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> list[str]:
     """The addresses, sorted, of those among these people who sign in with a password."""
     return sorted(
-        user.email for user in await repository.users_by_ids(session, list(user_ids)) if user.password_hash
+        user.email
+        for user in await repository.users_by_ids(session, list(user_ids))
+        if user.password_hash or user.legacy_password_hash
     )
 
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { platformRequest } from "@/foundation/platform-client";
 import type { components } from "@/foundation/platform-client";
-import { EXAM_SELECTION_EVENT, readExamSelection, rememberExamSelection, normalizeExamCode } from "./examSelection";
+import { normalizeExamCode, resolveCurrentExam } from "./examSelection";
 import { heldFromDashboard, NO_EXAMS, type HeldExams } from "@/foundation/session/examsAfterLoad";
 import { useSession } from "@/foundation/session/SessionProvider";
 
@@ -74,8 +74,6 @@ export interface CurrentExam {
   error: Error | null;
   /** Ask the dashboard again. */
   reload: () => void;
-  /** Switch exams. Remembered per person, in this browser. */
-  setCode: (code: string) => void;
 }
 
 /**
@@ -93,8 +91,8 @@ export interface CurrentExam {
  * There is one answer now and the backend gives it: `exam_codes` and
  * `current_exam_code` on `GET /me/dashboard`, which are live entitlements plus
  * the exam the account was opened for, filtered through the published
- * catalogue. Somebody with one exam never sees a control at all; the switcher
- * for the rare person holding two lives in the navigation, once.
+ * catalogue. Nobody picks an exam: there is no switcher, the app
+ * shows the one the backend names.
  */
 export function useCurrentExam(): CurrentExam {
   const { session, status } = useSession();
@@ -105,13 +103,11 @@ export function useCurrentExam(): CurrentExam {
   const [error, setError] = useState<Error | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const reload = useCallback(() => setReloadKey((n) => n + 1), []);
-  const [chosen, setChosen] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (status !== "authenticated" || !userId) {
       setHeld(NO_EXAMS);
-      setChosen(null);
       setError(null);
       setLoading(status === "loading");
       return;
@@ -123,11 +119,10 @@ export function useCurrentExam(): CurrentExam {
         if (!live) return;
         setHeld(heldFromDashboard(dashboard));
         setError(null);
-        setChosen(readExamSelection(userId));
       })
       .catch((cause) => {
-        // Keep what was known and say so, rather than emptying the switcher
-        // and the exam-filtered navigation.
+        // Keep what was known and say so, rather than emptying the
+        // exam-filtered navigation.
         if (!live) return;
         setError(cause instanceof Error ? cause : new Error(String(cause)));
       })
@@ -139,37 +134,18 @@ export function useCurrentExam(): CurrentExam {
     };
   }, [status, userId, reloadKey]);
 
-  useEffect(() => {
-    if (!userId) return;
-    const sync = () => setChosen(readExamSelection(userId));
-    sync();
-    window.addEventListener("storage", sync);
-    window.addEventListener(EXAM_SELECTION_EVENT, sync);
-    return () => {
-      window.removeEventListener("storage", sync);
-      window.removeEventListener(EXAM_SELECTION_EVENT, sync);
-    };
-  }, [userId]);
+  const code = resolveCurrentExam({
+    serverCurrent,
+    accountExam: normalizeExamCode(session?.user.exam_code),
+    codes,
+  });
 
-  const setCode = useCallback(
-    (code: string) => {
-      setChosen(code);
-      if (userId) rememberExamSelection(userId, code);
-    },
-    [userId],
-  );
-
-  // Landing-page selection is navigation context, not an entitlement grant.
-  // The API checks access whenever a practice session is started.
-  const code = chosen ?? serverCurrent ?? normalizeExamCode(session?.user.exam_code) ?? codes[0] ?? null;
-
-  // The dashboard only ever describes its own `current_exam_code`. Someone
-  // who has switched away from it locally (the rare multi-exam holder) sees
-  // safe defaults rather than another exam's settings misapplied to this
-  // one — the same "nothing invented" rule as the code above.
+  // The dashboard only ever describes its own `current_exam_code`. When
+  // the code is anything else (the account's own exam, before the dashboard answers) it
+  // sees safe defaults rather than another exam's settings misapplied to this one — the same "nothing invented" rule as the code above.
   const onDashboardExam = dashboardExam !== null && dashboardExam.code === code;
   const name = onDashboardExam ? dashboardExam.name : null;
   const settings = onDashboardExam ? dashboardExam.settings : DEFAULT_EXAM_SETTINGS;
 
-  return { codes, code, name, settings, loading, error, reload, setCode };
+  return { codes, code, name, settings, loading, error, reload };
 }

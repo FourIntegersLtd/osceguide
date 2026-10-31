@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { AccountCreatedNotSignedIn, register } from "@/foundation/platform-client";
-import { examAuthHref, normalizeExamCode, rememberExamSelection } from "@/foundation/session/examSelection";
+import { examAuthHref, normalizeExamCode } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { useSession } from "@/foundation/session";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
@@ -85,10 +85,6 @@ export default function Register() {
         name: result.data.username,
         examCode,
       });
-      // The backend's answer, not the link's: an exam it does not know is
-      // dropped there, and the person then picks one on `/app`.
-      const chosenExam = authenticated.user.exam_code ?? null;
-      rememberExamSelection(authenticated.user.id, chosenExam);
       await refresh();
       /*
        * Credit the partner who sent them, if anybody did. This is the spend for
@@ -98,6 +94,9 @@ export default function Register() {
        * request survives the navigation that follows.
        */
       await creditThisSignup();
+      // The backend's answer, not the link's: an exam it does not know is dropped there, and the
+      // person then picks one on `/app`.
+      const chosenExam = authenticated.user.exam_code ?? null;
       router.replace(chosenExam ? `/app/${PERSONAL_SLUG}` : "/app");
     } catch (error) {
       if (error instanceof AccountCreatedNotSignedIn) {

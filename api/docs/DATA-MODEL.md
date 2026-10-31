@@ -99,6 +99,7 @@ names both.
 | `email` | `citext not null unique` | citext so `Alice@…` and `alice@…` collide in the database, not only in code that remembers to lowercase |
 | `name` | `varchar(200) not null default ''` | |
 | `password_hash` | `text null` | null for provider-only accounts |
+| `legacy_password_hash` | `text null` | a b2c bcrypt hash carried by the import; accepted once at sign-in, then replaced by argon2id in `password_hash` and nulled. Dropped at decommission |
 | `status` | `varchar(32) not null default 'active'` | |
 | `is_platform_admin` | `bool not null default false` | |
 | `must_change_password` | `bool not null default false` | gates all but `ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED` |

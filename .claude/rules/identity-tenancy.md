@@ -32,6 +32,11 @@ Proof: `verify-access`. Anything that touches auth is ask-first.
 - `/api/session*` route handlers and `middleware.ts` are the browser session. CI was green
   while the app signed everyone out on reload: prove any change here in a signed-in browser
   (`web/.claude/skills/verify/features/session.md`).
+- **Legacy b2c passwords.** `users.legacy_password_hash` (bcrypt, from the import) is accepted once in
+  `login_with_memberships` and replaced by argon2id; `set_password_hash` and `set_temporary_password_hash`
+  null it, so a reset kills the old password. `verify_password` never reads it. b2b SHA-256 is never
+  imported. A test that signs in and then asserts on the fixture must `commit()` first: a refused
+  request rolls `db_session` back and detaches what was only flushed.
 - Open security findings: `api/docs/security/`.
 - Every route's minimum role is derived from its dependencies (`core/openapi.py` `minimum_role`) and
   exported as `x-capability` (plus `x-platform-admin` on org rungs). No resolvable role: add it to
@@ -54,6 +59,8 @@ Proof: `verify-access`. Anything that touches auth is ask-first.
 - **An effect of signing in waits for the whole sign-in.** Reopening a closed account (undoes the
   closure and its erasure) runs where the session is minted (`service_mfa._issue_session`), never on
   the password alone; checks before the second factor use `can_reopen`, which writes nothing.
+
+- **"May open" is not "holds".** `exam_access.codes` also carries the sign-up exam (a trial browses it); only `current` and the dashboard's `entitlements[live]` say what is held. The web keeps no exam of its own: the active exam is the server's `current_exam_code` (`resolveCurrentExam`), because a browser-remembered exam outlived the grant it was picked under and the marketplace then refused the person `not_entitled`. Screens that post an exam (marketplace, peer queue) are refused otherwise. Consumer surfaces resolve exams without an org on purpose (ADR 0017).
 
 ## What a failure looks like here
 - A gate that fails open: missing, revoked or expired state lets someone in.

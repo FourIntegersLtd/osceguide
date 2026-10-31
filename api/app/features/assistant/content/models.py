@@ -57,7 +57,9 @@ class Persona:
 
 @dataclass(frozen=True)
 class FaqEntry:
-    """One question the help tool can answer. ``{nav.<key>}`` in text renders to the client's label.
+    """One question the help tool can answer. ``{nav.<key>}`` in text renders to the client's label;
+    ``{support_email}`` and ``{support_email_spoken}`` render the configured support address.
+    ``help_content.json`` is static and is not rendered, so it spells the address out.
 
     ``requires_nav`` lists navigation keys the entry only makes sense with;
     the resolver drops the entry when the client's catalog lacks any of them.

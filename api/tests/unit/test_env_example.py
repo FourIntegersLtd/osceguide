@@ -17,9 +17,23 @@ EXAMPLE = Path(__file__).resolve().parents[2] / ".env.example"
 NAMED = {m.group(1) for m in re.finditer(r"^([A-Z][A-Z0-9_]*)=", EXAMPLE.read_text(), re.M)}
 
 
+def _readable_names() -> set[str]:
+    """Every variable name the settings object actually reads.
+
+    A field with a `validation_alias` reads that name (`EMAIL_FROM`), and
+    `populate_by_name` keeps the field's own name working too, so both count.
+    """
+    names: set[str] = set()
+    for name, field in Settings.model_fields.items():
+        names.add(name.upper())
+        if isinstance(field.validation_alias, str):
+            names.add(field.validation_alias.upper())
+    return names
+
+
 def test_every_name_in_the_example_is_a_real_setting() -> None:
     """A variable the app never reads is worse than none: it looks configured."""
-    assert not NAMED - {name.upper() for name in Settings.model_fields}
+    assert not NAMED - _readable_names()
 
 
 def test_every_value_required_in_a_deployment_is_in_the_example() -> None:

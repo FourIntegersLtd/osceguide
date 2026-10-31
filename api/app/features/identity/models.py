@@ -55,6 +55,10 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     email: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False, server_default=text("''"))
     password_hash: Mapped[str | None] = mapped_column(Text)
+    # A b2c bcrypt hash carried over by the migration, accepted once at sign-in and then replaced by
+    # argon2id in `password_hash` (`repository.set_password_hash`). Never a current credential:
+    # `verify_password` does not read it. Dropped, with its verifier, when the legacy backends retire.
+    legacy_password_hash: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'active'"))
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))

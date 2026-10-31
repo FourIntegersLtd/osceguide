@@ -60,7 +60,7 @@ ENTRIES: tuple[FaqEntry, ...] = (
         "cancel-subscription",
         BILLING,
         "How do I cancel my subscription?",
-        "You cannot cancel mid plan after payment. Access continues until the end of the subscription period you bought, then it ends. There is a strict no refund policy after you access any station. Read the refund policy before purchasing, or email hello at fourintegers dot com if you are unsure.",
+        "You cannot cancel mid plan after payment. Access continues until the end of the subscription period you bought, then it ends. There is a strict no refund policy after you access any station. Read the refund policy before purchasing, or email {support_email_spoken} if you are unsure.",
     ),
     FaqEntry(
         "subscription-end",
@@ -73,7 +73,7 @@ ENTRIES: tuple[FaqEntry, ...] = (
         "invoice",
         BILLING,
         "Can I get an invoice for tax?",
-        "Open {nav.settings}, Payments and tap Download receipt for your payment confirmation (emailed at purchase). For a full VAT tax invoice, contact hello@fourintegers.com with the email on your account.",
+        "Open {nav.settings}, Payments and tap Download receipt for your payment confirmation (emailed at purchase). For a full VAT tax invoice, contact {support_email} with the email on your account.",
         _SETTINGS_NAV,
     ),
     FaqEntry(
@@ -86,7 +86,7 @@ ENTRIES: tuple[FaqEntry, ...] = (
         "billing-email",
         BILLING,
         "Who do I email for billing questions?",
-        "Email hello at fourintegers dot com before purchasing if you need clarification. For questions not covered here, use {nav.messages} in the app.",
+        "Email {support_email_spoken} before purchasing if you need clarification. For questions not covered here, use {nav.messages} in the app.",
     ),
     FaqEntry(
         "need-to-pay",
@@ -104,7 +104,7 @@ ENTRIES: tuple[FaqEntry, ...] = (
         "refund-policy",
         PRICING,
         "What is your refund policy?",
-        "There is a strict no refund policy after you access any station. By paying you agree that each subscription is its own purchase and that access to any station makes the payment non refundable. Email hello at fourintegers dot com before buying if unsure.",
+        "There is a strict no refund policy after you access any station. By paying you agree that each subscription is its own purchase and that access to any station makes the payment non refundable. Email {support_email_spoken} before buying if unsure.",
     ),
     FaqEntry(
         "extra-time",
@@ -208,7 +208,7 @@ ENTRIES: tuple[FaqEntry, ...] = (
         "not-listed",
         OTHER,
         "What if my question is not listed here?",
-        "Open {nav.messages} in the left navigation and send a message to the team. Include session and station names for practice problems, and the payment email for billing. For pre purchase questions you can also email hello at fourintegers dot com.",
+        "Open {nav.messages} in the left navigation and send a message to the team. Include session and station names for practice problems, and the payment email for billing. For pre purchase questions you can also email {support_email_spoken}.",
     ),
     FaqEntry(
         "reset-exam",

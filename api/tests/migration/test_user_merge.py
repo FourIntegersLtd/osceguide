@@ -60,12 +60,84 @@ def test_a_name_is_taken_from_whichever_record_has_one() -> None:
     assert merged[0].name == "Alice"
 
 
-def test_the_password_hash_is_not_carried_over() -> None:
-    """b2c stores bcrypt and b2b unsalted SHA-256. Neither is argon2, and a
-    SHA-256 hash must not be imported as though it were safe — these people
-    reset their password."""
-    merged = transform.merge_users([b2c("a@example.com", "sca", hashed_password="$2b$12$abc")])
+B2C_HASH = "$2b$12$7CnGAcydRjyhsnb2a3zOiOaeu/UrblrKtwwPDytxqMiVUgCJhGkC2"
+OTHER_HASH = "$2b$12$" + "a" * 53
+
+
+def test_a_b2c_bcrypt_hash_comes_across_as_a_legacy_credential() -> None:
+    """The hash goes to `legacy_password_hash` only (never `password_hash`), and the person is
+    not told to reset: they sign in with the password they have always used."""
+    merged = transform.merge_users([b2c("a@example.com", "sca", hashed_password=B2C_HASH)])
+    assert merged[0].legacy_password_hash == B2C_HASH
     assert merged[0].password_hash is None
+    assert not merged[0].must_reset_password
+
+
+def test_a_record_with_no_hash_carries_none_and_still_resets() -> None:
+    for record in (b2c("a@example.com", "sca"), b2c("a@example.com", "sca", hashed_password="")):
+        merged = transform.merge_users([record])
+        assert merged[0].legacy_password_hash is None
+        assert merged[0].must_reset_password
+
+
+def test_an_sso_provisioned_record_carries_no_legacy_hash() -> None:
+    """b2c stores a random unusable bcrypt hash for these; importing it would be a credential
+    nobody can satisfy."""
+    merged = transform.merge_users(
+        [b2c("a@example.com", "sca", hashed_password=B2C_HASH, authProvider="clerk_sso")]
+    )
+    assert merged[0].legacy_password_hash is None
+    assert merged[0].must_reset_password
+
+
+def test_a_b2b_record_never_contributes_a_hash() -> None:
+    """b2b's unsalted SHA-256 is deliberately never imported."""
+    merged = transform.merge_users([], b2b_users=[{"email": "a@example.com", "hashed_password": "ab" * 32}])
+    assert merged[0].legacy_password_hash is None
+    assert merged[0].must_reset_password
+
+
+def test_a_non_bcrypt_value_is_not_imported() -> None:
+    merged = transform.merge_users([b2c("a@example.com", "sca", hashed_password="ab" * 32)])
+    assert merged[0].legacy_password_hash is None
+
+
+def test_an_sso_record_is_skipped_when_another_product_has_a_hash() -> None:
+    merged = transform.merge_users(
+        [
+            b2c("a@example.com", "sca", hashed_password=OTHER_HASH, authProvider="clerk_sso"),
+            b2c("a@example.com", "plab", hashed_password=B2C_HASH),
+        ]
+    )
+    assert merged[0].legacy_password_hash == B2C_HASH
+
+
+def test_products_that_agree_on_the_hash_need_no_choice() -> None:
+    merged = transform.merge_users(
+        [b2c("a@example.com", p, hashed_password=B2C_HASH) for p in ("sca", "plab")]
+    )
+    assert merged[0].legacy_password_hash == B2C_HASH
+
+
+def test_differing_hashes_go_to_the_most_recently_used_product() -> None:
+    merged = transform.merge_users(
+        [
+            b2c("a@example.com", "sca", hashed_password=OTHER_HASH, last_login="2026-01-01T00:00:00Z"),
+            b2c("a@example.com", "plab", hashed_password=B2C_HASH, last_login="2026-06-01T00:00:00Z"),
+        ]
+    )
+    assert merged[0].legacy_password_hash == B2C_HASH
+
+
+def test_differing_hashes_that_cannot_be_ranked_carry_none_and_reset() -> None:
+    """Guessing would let whoever registered an address on one product into the merged account."""
+    merged = transform.merge_users(
+        [
+            b2c("a@example.com", "sca", hashed_password=OTHER_HASH),
+            b2c("a@example.com", "plab", hashed_password=B2C_HASH),
+        ]
+    )
+    assert merged[0].legacy_password_hash is None
     assert merged[0].must_reset_password
 
 

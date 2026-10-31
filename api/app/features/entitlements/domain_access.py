@@ -47,13 +47,14 @@ def exam_access(
     for code in live_entitlement_codes:
         if code and code in published and code not in ordered:
             ordered.append(code)
+    live_codes = tuple(ordered)
 
     trial = account_exam_code if account_exam_code in published else None
     if trial and trial not in ordered:
         ordered.append(trial)
 
-    # The account's own exam wins the opening screen when they hold it, because
-    # it is the one they said they were sitting. Otherwise the first thing they
-    # actually have access to.
-    current = trial if trial in ordered else (ordered[0] if ordered else None)
+    # The account's own exam wins the opening screen when they hold it (it is among their live
+    # entitlements), because it is the one they said they were sitting. Otherwise the first thing
+    # they actually have access to; the account exam only when they hold nothing (a trial).
+    current = trial if trial in live_codes else (live_codes[0] if live_codes else trial)
     return ExamAccess(codes=tuple(ordered), current=current)

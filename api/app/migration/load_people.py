@@ -130,9 +130,11 @@ async def load_users(
             user = User(
                 email=email,
                 name=merged.name,
-                # Neither legacy hash is argon2 and b2b's is unsalted SHA-256,
-                # so nobody's password comes across and everybody resets.
+                # A b2c bcrypt hash goes to the legacy column, never to `password_hash`; sign-in
+                # accepts it once and replaces it with argon2id. Insert only: a second run must not
+                # give a legacy hash back to someone who has since signed in or reset.
                 password_hash=None,
+                legacy_password_hash=merged.legacy_password_hash,
                 must_change_password=merged.must_reset_password,
                 is_platform_admin=merged.is_platform_admin,
                 exam_code=merged.exam_code,
@@ -150,7 +152,7 @@ async def load_users(
             report.users_created += 1
         else:
             # A second run, or somebody who signed up before their import.
-            # Their password and status are theirs now; only the platform
+            # Their password (and any legacy hash) and status are theirs now; only the platform
             # admin flag is re-asserted, because that is an access decision
             # the export is authoritative about.
             user = existing
@@ -209,3 +211,22 @@ async def load_users(
 
     await session.flush()
     return report, by_legacy_id, by_email
+
+
+async def backfill_legacy_passwords(session: AsyncSession, users: Sequence[MergedUser]) -> LoadReport:
+    """Give accounts imported before legacy hashes were carried their b2c hash.
+
+    Only where `identity_repository.backfill_legacy_password` finds no credential at all and the
+    import's identity link, so it is safe to re-run and touches nobody who can already sign in."""
+    report = LoadReport()
+    for merged in users:
+        if merged.legacy_password_hash is None:
+            continue
+        if await identity_repository.backfill_legacy_password(
+            session,
+            email=merged.email,
+            legacy_password_hash=merged.legacy_password_hash,
+            identity_provider=LEGACY_CONSUMER_PROVIDER,
+        ):
+            report.legacy_passwords_backfilled += 1
+    return report

@@ -10,9 +10,10 @@ import secrets
 from datetime import datetime, timedelta
 from uuid import UUID
 
+import bcrypt
 import jwt
 from argon2 import PasswordHasher
-from argon2.exceptions import VerificationError, VerifyMismatchError
+from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 
 from app.core.auth import Principal, issue_access_token
 from app.core.settings import Settings
@@ -54,7 +55,29 @@ def verify_password(password_hash: str | None, raw: str) -> bool:
         return False
     try:
         return _hasher.verify(password_hash, password_for_hashing(raw))
-    except (VerifyMismatchError, VerificationError):
+    except (VerifyMismatchError, VerificationError, InvalidHashError):  # a bcrypt hash is no match
+        return False
+
+
+def verify_legacy_password(legacy_password_hash: str | None, raw: str) -> bool:
+    """Whether this password matches a legacy b2c bcrypt hash. Never raises; anything that is not a
+    match (no hash, wrong password, a hash bcrypt cannot read, an argon2 hash) is False.
+
+    b2c made these with a bare `flask_bcrypt.Bcrypt()` whose class defaults are prefix `2b`, 12
+    rounds and no SHA-256 pre-hashing, so plain `bcrypt.checkpw` verifies them. bcrypt reads only
+    the first 72 bytes of a password; b2c did too when it made the hash, so reproducing that is
+    correct, not something to guard against.
+
+    Accepted once, at sign-in, and then replaced with argon2id (`service_sessions.login_with_memberships`).
+    A wrong password on an account that holds only a legacy hash costs bcrypt alone
+    (`verify_password` returns at once for a missing hash, as it already did for a hash-less account),
+    so timing can tell such an account from an unknown address; sign-in already answers an
+    SSO-only or never-signed-in account differently, so this is not worth padding."""
+    if not legacy_password_hash:
+        return False
+    try:
+        return bcrypt.checkpw(password_for_hashing(raw).encode(), legacy_password_hash.encode())
+    except ValueError:
         return False
 
 

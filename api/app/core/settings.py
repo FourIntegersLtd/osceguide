@@ -50,6 +50,9 @@ _LOCAL_PAYOUT_DETAILS_KEY = "6cPODgYlKDgonNz1cBKWl39dFazTwpMyf4VLADcjQH8="  # no
 _LOCAL_MFA_SECRET_KEY = "bYrouRlioj3ZSZOXp3gtQxtfrPzxG_Es6HT95Kajh9Q="  # noqa: S105
 
 
+SENDER_NAME: Final = "OSCE Guide"
+
+
 # The values a deployed process refuses to start without, named once so the
 # validator, `docs/ENVIRONMENT.md` and `.env.example` cannot disagree about
 # what they are. The example drifted from this list for weeks.
@@ -76,6 +79,10 @@ class Settings(BaseSettings):
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        # A field with a `validation_alias` would otherwise be settable only by
+        # that alias, and `extra="ignore"` would swallow `Settings(field=...)`
+        # in a test without a word.
+        populate_by_name=True,
     )
 
     app_env: AppEnv = AppEnv.local
@@ -177,10 +184,12 @@ class Settings(BaseSettings):
     livekit_self_hosted_seats: int = 18
     livekit_queue_waiter_ttl_seconds: int = 90
 
-    # Email. Resend is the only provider, and fourintegers.com is the only
-    # domain verified there: a sender on any other domain is refused (403).
+    # Email. Resend refuses a sender off the one domain verified there,
+    # osceguide.com, with a 403 — in the queue, where nobody sees it. The
+    # sender is the `email_from` property: the support mailbox unless this
+    # names another, so a domain move is one value to change.
     resend_api_key: str = ""
-    email_from: str = "OSCE Guide <hello@fourintegers.com>"
+    email_from_override: str = Field(default="", validation_alias="EMAIL_FROM")
 
     # Stripe. The webhook secret is per endpoint, and without it webhooks are
     # refused rather than trusted.
@@ -269,7 +278,7 @@ class Settings(BaseSettings):
     # Where a safety report (abuse, no-show) lands. The retiring backend sent
     # these straight to an inbox; this queues the same email through the
     # notification outbox rather than an ad-hoc send inside the request.
-    support_email: str = "hello@fourintegers.com"
+    support_email: str = "hello@osceguide.com"
 
     # --- Observability ---
     log_level: str = "INFO"
@@ -288,6 +297,12 @@ class Settings(BaseSettings):
     def log_json(self) -> bool:
         return self.is_deployed
 
+    @property
+    def email_from(self) -> str:
+        """Who the outbox sends as: the support mailbox, unless `EMAIL_FROM` names
+        another for a deployment whose sender and reply-to inbox differ."""
+        return self.email_from_override.strip() or f"{SENDER_NAME} <{self.support_email}>"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, raw_origins: object) -> object:
@@ -296,6 +311,16 @@ class Settings(BaseSettings):
         if isinstance(raw_origins, str):
             return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
         return raw_origins
+
+    @field_validator("support_email")
+    @classmethod
+    def _refuse_a_blank_support_mailbox(cls, address: str) -> str:
+        """Blank was once only a dead reply-to. The sender is derived from it now,
+        so it would send every email as `OSCE Guide <>`. Refuse to start instead.
+        """
+        if not address.strip():
+            raise ValueError("SUPPORT_EMAIL must not be blank: the email sender is derived from it")
+        return address.strip()
 
     @model_validator(mode="after")
     def _require_secrets_when_deployed(self) -> Settings:

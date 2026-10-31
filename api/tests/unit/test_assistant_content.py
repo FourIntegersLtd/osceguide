@@ -7,8 +7,13 @@ screen somebody is actually looking at, and they are where a port goes wrong.
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import pytest
 
+from app.core.settings import AppEnv, Settings, get_settings
+from app.features.assistant import service_community
 from app.features.assistant.content import (
     ClientProfile,
     NavItem,
@@ -163,3 +168,46 @@ def test_a_no_reply_answer_is_none_however_it_is_wrapped() -> None:
 
     assert [parse_reply(t) for t in ("NO_REPLY", "  no_reply.\n", "`NO_REPLY`")] == [None, None, None]
     assert parse_reply("Open Settings. NO_REPLY is not needed.") == "Open Settings. NO_REPLY is not needed."
+
+
+ASSISTANT = Path(__file__).parents[2] / "app/features/assistant"
+ADDRESS = r"[\w.+-]+@[\w.-]+\w|\w+ at [\w ]+ dot \w+"
+
+
+@pytest.fixture
+def moved_mailbox(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("SUPPORT_EMAIL", "help@moved.example")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+def test_no_pack_spells_the_support_address_out() -> None:
+    """Pack prose carries placeholders: a spoken "hello at ... dot com" would escape a grep for the domain."""
+    for path in sorted((ASSISTANT / "content/packs").glob("*.py")):
+        assert not re.findall(ADDRESS, path.read_text(), re.IGNORECASE), path.name
+
+
+def test_help_pack_answers_quote_the_configured_support_address(moved_mailbox: None) -> None:
+    answers = " ".join(e.answer for e in resolve_content_pack(ClientProfile(surface="exam", exam="all")).faq)
+    assert "help@moved.example" in answers
+    assert "help at moved dot example" in answers
+    assert "{support_email" not in answers
+
+
+def test_the_community_prompt_quotes_the_configured_support_address(moved_mailbox: None) -> None:
+    """The model that drafts public replies must never be handed a raw placeholder."""
+    prompt = service_community.system_prompt()
+    assert "help@moved.example" in prompt
+    assert "help at moved dot example" in prompt
+    assert "{support_email" not in prompt
+    assert "{nav." not in prompt
+
+
+def test_help_content_json_is_static_and_quotes_the_default_address(monkeypatch: pytest.MonkeyPatch) -> None:
+    """help_content.json is not rendered: two copies, guarded against the default address only."""
+    monkeypatch.delenv("SUPPORT_EMAIL", raising=False)
+    default = Settings(_env_file=None, app_env=AppEnv.local).support_email
+    assert default == "hello@osceguide.com"
+    quoted = re.findall(ADDRESS, (ASSISTANT / "help_content.json").read_text(), re.IGNORECASE)
+    assert sorted(q.lower() for q in quoted) == ["hello at osceguide dot com", "hello@osceguide.com"]

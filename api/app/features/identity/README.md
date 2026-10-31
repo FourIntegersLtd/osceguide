@@ -30,7 +30,12 @@ live inside it and are never addressed independently.
 
 - `email` is unique, case-insensitive. The migration merges b2c's four `*_users`
   collections and `b2b_users` on the lowercased address.
-- A password is stored only as an argon2id hash. No SHA-256, salted or otherwise.
+- A current password is stored only as an argon2id hash in `password_hash`. No SHA-256, salted or
+  otherwise. The one exception is `legacy_password_hash`, a b2c bcrypt hash carried by the import: sign-in
+  accepts it once, after `password_login_disabled` and only when `verify_password` fails, and replaces it
+  with argon2id in one UPDATE (`set_password_hash`, no forced change). Any password set or reset
+  nulls it. A legacy hash buys no exemption from suspension, the second factor, reopening or the trial
+  clock. Dropped at decommission (`migration/README.md`).
 - The three routes an attacker gains something by repeating — sign-in, password
   reset and the legacy exchange — are rate limited per caller address
   (`core.rate_limit`). It **fails open**: an unreachable Redis allows the call,

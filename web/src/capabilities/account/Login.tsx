@@ -6,7 +6,7 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Alert } from "@/foundation/ui";
 import { hasCode, login, type components, type MfaChallenge } from "@/foundation/platform-client";
-import { examAuthHref, normalizeExamCode, rememberLandingExam } from "@/foundation/session/examSelection";
+import { examAuthHref, normalizeExamCode } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { can, useSession } from "@/foundation/session";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
@@ -156,7 +156,6 @@ export default function Login() {
   // on their console; everyone else goes to `/app`, which decides which
   // workspace from where they were last.
   const land = async (authenticated: AuthResult) => {
-    rememberLandingExam(authenticated.user.id, examCode);
     // Read before `refresh`, which records the person now signing in.
     const previousUser = lastSessionUser();
     const session = await refresh();

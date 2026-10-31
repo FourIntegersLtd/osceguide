@@ -149,6 +149,7 @@ async def scrub_for_erasure(session: AsyncSession, user_id: uuid.UUID, *, now: d
     user.email = f"deleted-{user.id}@invalid"
     user.avatar_url = None
     user.password_hash = None
+    user.legacy_password_hash = None
     user.exam_date = None
     user.exam_time = None
     user.exam_code = None
@@ -178,16 +179,59 @@ async def set_email(session: AsyncSession, user_id: uuid.UUID, email: str) -> No
 
 async def set_password_hash(session: AsyncSession, user_id: uuid.UUID, password_hash: str) -> None:
     """Store a new password hash and clear the forced-reset flag: setting one
-    is what ends a temporary password's temporariness."""
+    is what ends a temporary password's temporariness. Drops any legacy b2c hash in the same
+    statement, so an account can never hold both — a reset, a change, and the upgrade a legacy
+    sign-in performs all end the old password here."""
     await session.execute(
-        update(User).where(User.id == user_id).values(password_hash=password_hash, must_change_password=False)
+        update(User)
+        .where(User.id == user_id)
+        .values(password_hash=password_hash, legacy_password_hash=None, must_change_password=False)
     )
+
+
+async def backfill_legacy_password(
+    session: AsyncSession, *, email: str, legacy_password_hash: str, identity_provider: str
+) -> bool:
+    """Give an already-imported account its legacy hash, whether or not a row changed is the answer.
+
+    The import links `identity_provider` onto every account whose email is in the export, including
+    one that existed before the import, so that link only says "this email was in the export". What
+    keeps the backfill off an account the platform deliberately left without a password is the rest of
+    the predicate: it must be active and open, carry no other identity (an SSO-created account, or one
+    whose password SSO destroyed), have no unspent link (a pending invitation), and hold no credential
+    and not be SSO-only. Does not touch `must_change_password`."""
+    imported = select(UserIdentity.user_id).where(UserIdentity.provider == identity_provider)
+    other_identity = select(UserIdentity.id).where(
+        UserIdentity.user_id == User.id, UserIdentity.provider != identity_provider
+    )
+    unspent_link = select(PasswordResetToken.id).where(
+        PasswordResetToken.user_id == User.id, PasswordResetToken.used_at.is_(None)
+    )
+    result = await session.execute(
+        update(User)
+        .where(
+            User.email == normalize_email(email),
+            User.password_hash.is_(None),
+            User.legacy_password_hash.is_(None),
+            User.password_login_disabled.is_(False),
+            User.status == "active",
+            User.closed_at.is_(None),
+            User.id.in_(imported),
+            ~other_identity.exists(),
+            ~unspent_link.exists(),
+        )
+        .values(legacy_password_hash=legacy_password_hash)
+        .returning(User.id)
+    )
+    return result.first() is not None
 
 
 async def set_temporary_password_hash(session: AsyncSession, user_id: uuid.UUID, password_hash: str) -> None:
     """Store a relayed password hash and keep (or set) the forced-change flag."""
     await session.execute(
-        update(User).where(User.id == user_id).values(password_hash=password_hash, must_change_password=True)
+        update(User)
+        .where(User.id == user_id)
+        .values(password_hash=password_hash, legacy_password_hash=None, must_change_password=True)
     )
 
 
@@ -210,7 +254,9 @@ async def disable_password_login(session: AsyncSession, user_id: uuid.UUID) -> N
 async def clear_password(session: AsyncSession, user_id: uuid.UUID) -> None:
     """Remove the password altogether, and the forced-change flag that goes with it."""
     await session.execute(
-        update(User).where(User.id == user_id).values(password_hash=None, must_change_password=False)
+        update(User)
+        .where(User.id == user_id)
+        .values(password_hash=None, legacy_password_hash=None, must_change_password=False)
     )
 
 

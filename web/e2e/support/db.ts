@@ -107,3 +107,17 @@ INSERT INTO practice_sessions (id, exam_id, doctor_user_id, patient_user_id, sta
 export function endPeerSession(id: string): void {
   psql(`DELETE FROM practice_sessions WHERE id = '${id}';`);
 }
+
+/**
+ * An account whose sign-up exam is `signup` while its only live grant is for `held`: someone who
+ * registered for one exam and then bought another. The api's `register` takes no exam, so the
+ * sign-up exam is written the way `ChooseExam` would leave it.
+ */
+export function holdOnly(email: string, held: string, signup: string): void {
+  const quoted = email.replaceAll("'", "''");
+  psql(`
+UPDATE users SET exam_code = '${signup}' WHERE email = '${quoted}';
+INSERT INTO entitlements (id, user_id, exam_id, source, starts_at, created_at, updated_at)
+  SELECT gen_random_uuid(), u.id, e.id, 'purchase', now(), now(), now()
+  FROM users u, exams e WHERE u.email = '${quoted}' AND e.code = '${held}' AND e.owner_kind = 'platform';`);
+}

@@ -11,6 +11,7 @@ points it at production data.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
@@ -58,10 +59,11 @@ class MergedUser:
     name: str = ""
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     is_platform_admin: bool = False
-    # Neither legacy hash is argon2, and b2b's is unsalted SHA-256. Importing
-    # either would mean carrying a weak credential forward, so nobody's
-    # password comes across and everybody resets.
+    # Never an argon2 hash: `password_hash` stays empty. A b2c bcrypt hash goes to
+    # `legacy_password_hash`, which sign-in accepts once and replaces with argon2id. b2b's unsalted
+    # SHA-256 is deliberately never imported, so a person with no usable b2c hash still resets.
     password_hash: str | None = None
+    legacy_password_hash: str | None = None
     must_reset_password: bool = True
     legacy_products: set[str] = field(default_factory=set)
     # Every legacy document id that turned out to be this person. A transcript
@@ -217,6 +219,23 @@ def exam_for_product(app_type: Any) -> str:
         ) from exc
 
 
+SSO_AUTH_PROVIDER = "clerk_sso"
+# `$2b$12$` + 22 salt + 31 hash characters; the only shape b2c's bcrypt produces.
+_BCRYPT_HASH = re.compile(r"^\$2[aby]\$\d\d\$[./A-Za-z0-9]{53}$")
+
+
+def legacy_password_hash_from(record: dict[str, Any]) -> str | None:
+    """The record's b2c bcrypt hash, or None when it has no usable one.
+
+    b2c stores a random unusable bcrypt hash for an account provisioned through SSO
+    (`authProvider == "clerk_sso"`); importing it would be a credential nobody can satisfy.
+    Anything not shaped like bcrypt is dropped rather than stored."""
+    if str(record.get("authProvider") or "").strip().lower() == SSO_AUTH_PROVIDER:
+        return None
+    value = str(record.get("hashed_password") or "").strip()
+    return value if _BCRYPT_HASH.match(value) else None
+
+
 def merge_users(
     b2c_users: Sequence[dict[str, Any]],
     *,
@@ -226,8 +245,9 @@ def merge_users(
     """One row per person, from every record that mentions them."""
     admins = {normalize_email(admin_email) for admin_email in admin_emails}
     merged: dict[str, MergedUser] = {}
+    hash_candidates: dict[str, list[tuple[datetime | None, str]]] = {}
 
-    for record in [*b2c_users, *b2b_users]:
+    for is_b2c, record in [*((True, rec) for rec in b2c_users), *((False, rec) for rec in b2b_users)]:
         email = normalize_email(record.get("email"))
         if not email:
             raise UnusableRecord(f"A record has no email address and cannot be merged: {record!r}")
@@ -254,6 +274,13 @@ def merge_users(
 
         if email in admins:
             user.is_platform_admin = True
+
+        # b2c records only: b2b's `hashed_password` is unsalted SHA-256 and is never imported.
+        legacy_hash = legacy_password_hash_from(record) if is_b2c else None
+        if legacy_hash:
+            hash_candidates.setdefault(email, []).append(
+                (parse_timestamp(record.get("last_login")), legacy_hash)
+            )
 
         product = str(record.get("app_type") or "").strip().lower()
         if product:
@@ -296,7 +323,26 @@ def merge_users(
         ):
             user.engagement_email_sent_at = engagement_sent
 
+    for email, candidates in hash_candidates.items():
+        chosen = _chosen_legacy_hash(candidates)
+        merged[email].legacy_password_hash = chosen
+        merged[email].must_reset_password = chosen is None
     return list(merged.values())
+
+
+def _chosen_legacy_hash(candidates: list[tuple[datetime | None, str]]) -> str | None:
+    """The one hash to carry for a person with a b2c record per product.
+
+    Records that agree need no choice. Where they differ, the hash of the record signed in to most
+    recently wins; if that cannot be told apart (no `last_login`, or a tie) none is carried and the
+    person resets by email. Guessing would let whoever registered an address on one product
+    sign in to the merged account, which also holds their other products."""
+    if len({value for _, value in candidates}) == 1:
+        return candidates[0][1]
+    dated = sorted(((when, value) for when, value in candidates if when), reverse=True)
+    if dated and (len(dated) == 1 or dated[0][0] > dated[1][0]):
+        return dated[0][1]
+    return None
 
 
 def entitlements_for(record: dict[str, Any]) -> list[MergedEntitlement]:

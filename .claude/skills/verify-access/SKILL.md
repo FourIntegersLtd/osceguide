@@ -66,6 +66,16 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
 
 - The sign-in e2e needs Docker running and `walkthrough@example.com` bootstrapped with an `ADMIN_TOTP_SECRET` and its `must_change_password` flag cleared, plus seeded station templates. The cookie modal blocks clicks until "Continue without analytics".
 
+- **A legacy sign-in is consumed by the first thing that verifies it.** A legacy b2c password is
+  accepted once and replaced with argon2id (`service_sessions.login_with_memberships`), so the web
+  harness's `signIn`, which probes the login API before driving the form, spends the upgrade and the
+  form then proves nothing. Prove a legacy sign-in with a form-driven script, and re-seed the legacy
+  hash between attempts.
+- **Port 8002 may already be held by another session's API stub.** `make start` then binds nothing
+  and the browser talks to the other session's process. Start the proof API on a free port and point
+  web at it, rather than reclaiming 8002.
+- **The onboarding dialog hides sign-out until the proof user has an `exam_code`.** Set one on the
+  row before proving anything that needs a sign-out and a second sign-in.
 - **Read the skip count, not just the exit code.** `tests/http/test_mfa_routes.py` is skipped whole while
   two-factor sign-in is switched off (`service_mfa.finish_password_sign_in`): 15 skips in Level 1 is
   that. A run with dozens more skipped exited 0 because Postgres was unreachable at session start on

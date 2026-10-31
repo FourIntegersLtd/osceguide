@@ -17,6 +17,16 @@ when present (does not override platform-api `.env`).
 
 `--dry-run` is the default: full load, then rollback.
 
+Backfilling legacy passwords for accounts imported before the b2c bcrypt hash was carried
+(`users.legacy_password_hash`): `--backfill-legacy-passwords` loads nothing else. It sets the
+hash only where the account is active and open, has no `password_hash`, no legacy hash, is not
+SSO-only, has no unspent invitation or reset link and carries no identity other than the import's.
+The import links its identity onto any account whose email is in the export, so that link alone
+proves nothing: an SSO-created or invitation-pending account stays untouched. A second run reports 0:
+
+    poetry run python scripts/import_b2c_users.py --from-firestore --backfill-legacy-passwords
+    poetry run python scripts/import_b2c_users.py --from-firestore --backfill-legacy-passwords --no-dry-run
+
 Backfilling `users.engagement_email_sent_at` against a prod database that was
 already imported before this column existed: re-run this script against
 Firestore (`--from-firestore --no-dry-run`). `load_users` matches by email and
@@ -149,6 +159,7 @@ async def run(
     export_dir: Path | None,
     write_export: Path | None,
     collection: str | None,
+    backfill_passwords: bool = False,
 ) -> int:
     if from_firestore and export_dir is not None:
         raise SystemExit("Use --from-firestore or --export, not both.")
@@ -180,10 +191,13 @@ async def run(
     import_all_models()
     engine = get_engine()
     async with AsyncSession(engine) as session:
-        report, _legacy_ids, email_ids = await loader.load_users(session, merged, grants)
-        pay_report = await load_legacy_payments(session, payments, user_ids=email_ids)
-        ref_report = await load_legacy_referrals(session, referrals, user_ids=email_ids)
-        report = report.merge(pay_report).merge(ref_report)
+        if backfill_passwords:
+            report = await loader.backfill_legacy_passwords(session, merged)
+        else:
+            report, _legacy_ids, email_ids = await loader.load_users(session, merged, grants)
+            pay_report = await load_legacy_payments(session, payments, user_ids=email_ids)
+            ref_report = await load_legacy_referrals(session, referrals, user_ids=email_ids)
+            report = report.merge(pay_report).merge(ref_report)
         for problem in report.problems:
             print(f"  problem: {problem}")  # noqa: T201
         print(report.summary())  # noqa: T201
@@ -232,6 +246,11 @@ def main() -> None:
         default=True,
         help="run everything and roll back (default). Pass --no-dry-run to commit.",
     )
+    parser.add_argument(
+        "--backfill-legacy-passwords",
+        action="store_true",
+        help="only set users.legacy_password_hash on imported accounts that have no credential",
+    )
     args = parser.parse_args()
     raise SystemExit(
         asyncio.run(
@@ -241,6 +260,7 @@ def main() -> None:
                 export_dir=args.export,
                 write_export=args.write_export,
                 collection=args.collection,
+                backfill_passwords=args.backfill_legacy_passwords,
             )
         )
     )

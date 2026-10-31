@@ -1052,3 +1052,127 @@ async def test_a_second_factor_does_not_reopen_an_account_staff_closed(
     assert user is not None
     await db_session.refresh(user)
     assert user.status == "deleted"
+
+
+# --------------------------------------------------------------------------
+# Legacy b2c passwords keep working after the cutover
+# --------------------------------------------------------------------------
+
+LEGACY_PASSWORD = "Legacy-Passw0rd!"
+LEGACY_HASH = "$2b$12$7CnGAcydRjyhsnb2a3zOiOaeu/UrblrKtwwPDytxqMiVUgCJhGkC2"
+
+
+async def _imported(db_session: AsyncSession, email: str = "legacy@example.com", **fields: object):  # type: ignore[no-untyped-def]
+    """An account as the importer leaves it: only a bcrypt hash, flagged to change nothing."""
+    user = await identity_repo.create_user(db_session, email=email, name="Legacy", password_hash=None)
+    user.legacy_password_hash = LEGACY_HASH
+    for name, value in fields.items():
+        setattr(user, name, value)
+    await db_session.commit()  # a refused request rolls the session back; the account must outlive it
+    return user
+
+
+async def _login(client: AsyncClient, password: str, email: str = "legacy@example.com"):  # type: ignore[no-untyped-def]
+    return await client.post("/api/v1/auth/login", json={"email": email, "password": password})
+
+
+async def test_an_imported_user_signs_in_with_their_legacy_password(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    await _imported(db_session, must_change_password=True)
+    response = await _login(client, LEGACY_PASSWORD)
+    assert response.status_code == 200, response.text
+    assert response.json()["access_token"] and response.json()["refresh_token"]
+
+
+async def test_the_legacy_hash_is_replaced_by_argon2_at_that_sign_in(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user = await _imported(db_session, must_change_password=True)
+    assert (await _login(client, LEGACY_PASSWORD)).status_code == 200
+    await db_session.refresh(user)
+    assert user.password_hash is not None and user.password_hash.startswith("$argon2id$")
+    assert user.legacy_password_hash is None
+    assert user.must_change_password is False
+    # Second sign-in: the same password, now through argon2 alone.
+    assert (await _login(client, LEGACY_PASSWORD)).status_code == 200
+    assert (await _login(client, "a wrong password here")).json()["code"] == "invalid_credentials"
+    token = (await _login(client, LEGACY_PASSWORD)).json()["access_token"]
+    me = await client.get("/api/v1/me", headers=bearer(token))
+    assert me.status_code == 200 and me.json()["email"] == "legacy@example.com"
+
+
+async def test_a_wrong_password_on_a_legacy_account_is_the_ordinary_refusal(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user = await _imported(db_session)
+    response = await _login(client, "not the legacy password")
+    assert response.status_code == 401
+    assert response.json()["code"] == "invalid_credentials"
+    await db_session.refresh(user)
+    assert (user.password_hash, user.legacy_password_hash) == (None, LEGACY_HASH)
+
+
+async def test_an_sso_only_account_is_refused_before_its_legacy_hash_is_tried(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user = await _imported(db_session, password_login_disabled=True)
+    response = await _login(client, LEGACY_PASSWORD)
+    assert response.json()["code"] == "password_login_disabled"
+    await db_session.refresh(user)
+    assert (user.password_hash, user.legacy_password_hash) == (None, LEGACY_HASH)
+
+
+async def test_a_suspended_legacy_user_is_still_suspended_and_keeps_no_upgrade(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user = await _imported(db_session, status="suspended")
+    response = await _login(client, LEGACY_PASSWORD)
+    assert response.json()["code"] == "account_suspended"
+    await db_session.refresh(user)
+    assert (user.password_hash, user.legacy_password_hash) == (None, LEGACY_HASH)
+
+
+async def test_a_legacy_sign_in_still_goes_through_the_second_factor_gate(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two-factor sign-in is switched off, so a real challenge cannot be minted over HTTP. What can
+    be pinned is that a legacy password hands over to `finish_password_sign_in` (the one place a
+    challenge or a session is decided), and that what it answers is what the caller gets."""
+    from app.features.identity import service_mfa
+    from app.features.identity.schemas import MfaRequiredResponse
+
+    user = await _imported(db_session)
+    seen: list[tuple[uuid.UUID, str | None]] = []
+
+    async def challenge(session, found, **_kwargs):  # type: ignore[no-untyped-def]
+        seen.append((found.id, found.legacy_password_hash))
+        return MfaRequiredResponse(challenge_token="the-challenge", expires_in=300)
+
+    monkeypatch.setattr(service_mfa, "finish_password_sign_in", challenge)
+    response = await _login(client, LEGACY_PASSWORD)
+    assert response.status_code == 200
+    assert response.json()["status"] == "mfa_required"
+    assert response.json().get("access_token") is None
+    assert seen == [(user.id, None)]
+
+
+async def test_after_a_reset_the_old_legacy_password_no_longer_signs_in(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    from app.features.identity.tokens import hash_password
+
+    user = await _imported(db_session)
+    await identity_repo.set_password_hash(db_session, user.id, hash_password("a brand new horse battery"))
+    await db_session.commit()
+    await db_session.refresh(user)
+    assert user.legacy_password_hash is None
+    assert (await _login(client, LEGACY_PASSWORD)).json()["code"] == "invalid_credentials"
+    assert (await _login(client, "a brand new horse battery")).status_code == 200
+
+
+async def test_erasing_an_account_drops_its_legacy_hash_too(db_session: AsyncSession) -> None:
+    user = await _imported(db_session)
+    assert await identity_repo.scrub_for_erasure(db_session, user.id, now=datetime.now(UTC)) is True
+    await db_session.refresh(user)
+    assert (user.password_hash, user.legacy_password_hash) == (None, None)

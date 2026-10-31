@@ -7,6 +7,8 @@ from collections.abc import Mapping
 from dataclasses import replace
 from typing import Any
 
+from app.core.settings import get_settings
+
 from . import packs
 from .models import (
     ADMIN_ROLE,
@@ -74,8 +76,17 @@ def _layered_pack(profile: ClientProfile) -> ContentPack:
     return pack
 
 
-def _render(text: str, labels: Mapping[str, str]) -> str:
-    return NAV_PLACEHOLDER.sub(lambda match: labels.get(match.group(1), match.group(1)), text)
+def spoken_address(address: str) -> str:
+    """The address as it is read aloud to a candidate: hello@osceguide.com is "hello at osceguide dot com"."""
+    return address.replace("@", " at ").replace(".", " dot ")
+
+
+def render_placeholders(text: str, labels: Mapping[str, str], support_email: str) -> str:
+    """Fill a pack line with menu labels and the support address, written or spoken."""
+    text = NAV_PLACEHOLDER.sub(lambda match: labels.get(match.group(1), match.group(1)), text)
+    return text.replace("{support_email_spoken}", spoken_address(support_email)).replace(
+        "{support_email}", support_email
+    )
 
 
 def resolve_content_pack(profile: ClientProfile) -> ContentPack:
@@ -87,6 +98,10 @@ def resolve_content_pack(profile: ClientProfile) -> ContentPack:
     pack = _layered_pack(profile)
     labels: dict[str, str] = {**pack.default_labels, **profile.nav_labels}
     visible_keys = set(profile.nav_labels)
+    support_email = get_settings().support_email
+
+    def _render(text: str, labels: Mapping[str, str]) -> str:
+        return render_placeholders(text, labels, support_email)
 
     def visible(entry: FaqEntry) -> bool:
         return not visible_keys or set(entry.requires_nav) <= visible_keys

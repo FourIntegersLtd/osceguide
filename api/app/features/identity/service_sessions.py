@@ -29,9 +29,11 @@ from app.features.identity.models import User
 from app.features.identity.schemas import SignInResult, StreamTicket, TokenPair
 from app.features.identity.tokens import (
     access_token_for,
+    hash_password,
     hash_token,
     new_token,
     verify_absent_password,
+    verify_legacy_password,
     verify_password,
 )
 from app.features.tenancy import service as tenancy
@@ -114,7 +116,13 @@ async def login_with_memberships(
         # does carry a hash (an old row from before SSO was configured).
         raise PasswordLoginDisabled()
     if not verify_password(user.password_hash, password):
-        raise InvalidCredentials()
+        # An imported b2c account: accept the old bcrypt password once and replace it with argon2id
+        # now. Only reached after the SSO refusal above, and everything below (suspension, second
+        # factor, reopening, the trial clock) applies exactly as for any other password sign-in.
+        if not verify_legacy_password(user.legacy_password_hash, password):
+            raise InvalidCredentials()
+        await repository.set_password_hash(session, user.id, hash_password(password))
+        await session.refresh(user)  # the UPDATE bypassed the loaded row; the sign-in below reads it
     # A closed account is let through to finish signing in, but reopens only when the session is
     # minted (`service_mfa._issue_session`), after any second factor.
     if user.status != "active" and not await service_close_account.can_reopen(session, user, now=now):

@@ -570,7 +570,8 @@ footer code{font-size:12px}
         <tr data-search="livekit_token_ttl"><td class="f">LIVEKIT_TOKEN_TTL_SECONDS</td><td class="t">3600</td><td class="n">Room token lifetime.</td></tr>
         <tr data-search="cloud overflow max concurrent"><td class="f">LIVEKIT_CLOUD_OVERFLOW_ENABLED<br>LIVEKIT_CLOUD_MAX_CONCURRENT</td><td class="t">false / 20</td><td class="n"><em>Defaults match the legacy backends exactly</em>, because the Redis key is shared with them during coexistence — if these numbers disagree, two backends will disagree about how full Cloud is.</td></tr>
         <tr data-search="cloud slot ttl pending"><td class="f">…SLOT_PENDING_TTL / …SLOT_TTL</td><td class="t">300 / 2100</td><td class="n">How long a reservation is held before a worker connects, and for a whole session after.</td></tr>
-        <tr data-search="email_from"><td class="f">EMAIL_FROM</td><td class="t">OSCE Guide &lt;noreply@…&gt;</td><td class="n">Envelope sender.</td></tr>
+        <tr data-search="support_email"><td class="f">SUPPORT_EMAIL</td><td class="t">hello@osceguide.com</td><td class="n">The mailbox people are told to write to, and where safety reports and spend alerts go. The envelope sender derives from it, so blank refuses to boot.</td></tr>
+        <tr data-search="email_from"><td class="f">EMAIL_FROM</td><td class="t">OSCE Guide &lt;SUPPORT_EMAIL&gt; (derived)</td><td class="n">Envelope sender. Set it only where the sender and the reply-to inbox differ; Resend refuses a sender off its verified domain.</td></tr>
         <tr data-search="stripe_secret_key"><td class="f">STRIPE_SECRET_KEY</td><td class="t">—</td><td class="n">Checkout. Not in the required ten, so a deploy can boot without being able to sell.</td></tr>
         <tr data-search="marking model effort anthropic"><td class="f">MARKING_PRIMARY_MODEL / _EFFORT<br>MARKING_FALLBACK_MODEL<br>ANTHROPIC_API_KEY</td><td class="t">gpt-6-luna / low<br>claude-sonnet-4-5</td><td class="n">Effort is set <em>explicitly</em> because unset means “medium” under any gpt-5 model — a cost decision nobody made.</td></tr>
         <tr data-search="worker_concurrency jobs"><td class="f">WORKER_CONCURRENCY</td><td class="t">4</td><td class="n">Background job parallelism.</td></tr>
@@ -650,6 +651,7 @@ const SCHEMA = [
        ["email", "citext not null unique", "citext so <em>Alice@…</em> and <em>alice@…</em> collide in the database, not only in code that remembers to lowercase"],
        ["name", "varchar(200) not null default ''", ""],
        ["password_hash", "text null", "null for provider-only accounts"],
+       ["legacy_password_hash", "text null", "a b2c bcrypt hash carried by the import; accepted once at sign-in, then replaced by argon2id in <em>password_hash</em> and nulled. Dropped at decommission"],
        ["status", "varchar(32) not null default 'active'", ""],
        ["is_platform_admin", "bool not null default false", ""],
        ["must_change_password", "bool not null default false", "gates all but <em>ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED</em>"],

@@ -25,12 +25,18 @@ be attached to anybody until their legacy document ids are resolved.
 from __future__ import annotations
 
 from app.migration.load_attempts import legacy_ref_for, load_attempts
-from app.migration.load_people import LEGACY_SOURCE_REF, exams_by_code, load_users
+from app.migration.load_people import (
+    LEGACY_SOURCE_REF,
+    backfill_legacy_passwords,
+    exams_by_code,
+    load_users,
+)
 from app.migration.report import LoadReport
 
 __all__ = [
     "LEGACY_SOURCE_REF",
     "LoadReport",
+    "backfill_legacy_passwords",
     "exams_by_code",
     "legacy_ref_for",
     "load_attempts",
