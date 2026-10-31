@@ -7,9 +7,9 @@ from httpx import AsyncClient
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.settings import get_settings
 from app.features.notifications.models import OutboundMessage
 from app.features.peer_practice import service
-from app.core.settings import get_settings
 from tests.support.catalog import ensure_exam
 from tests.support.fakes import FakeVoiceTokens
 from tests.support.library import publish_library_station
