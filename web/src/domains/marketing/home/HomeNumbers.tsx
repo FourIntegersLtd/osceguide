@@ -39,8 +39,8 @@ export function HomeNumbers() {
         {CARDS.map((c) => {
           const v = c.value(stats);
           return (
-            <div key={c.label} className="rounded-2xl border border-white/15 bg-white/5 p-6 text-center">
-              <div className="font-landing-heading text-3xl font-bold text-white sm:text-[34px]">{typeof v === "number" ? v.toLocaleString() : v}</div>
+            <div key={c.label} className="rounded-2xl border border-white/15 bg-white/5 p-4 text-center sm:p-6">
+              <div className="font-landing-heading text-2xl font-bold text-white sm:text-3xl">{typeof v === "number" ? v.toLocaleString() : v}</div>
               <div className="mt-2 text-sm text-site-on-navy">{c.label}</div>
             </div>
           );

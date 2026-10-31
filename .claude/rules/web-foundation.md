@@ -52,6 +52,8 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
 - This is not the Next.js you know: read `node_modules/next/dist/docs/` before writing code.
 - A day is picked with `foundation/ui/DatePicker` (react-day-picker); keep days as `YYYY-MM-DD` via
   `dateDay.ts`, never `new Date("YYYY-MM-DD")` (UTC) for a calendar. Exam date has no time of day.
+  A journey never picks a day of the current month: the 28th is past from the 29th on. Click
+  next month first.
 - Verifying from a git worktree: `npm ci`, copy `web/.env.local` in, run `npm run dev -- -p 3101` and
   pass `VERIFY_WEB_URL`; `npx playwright test` starts its own :3101, so stop yours first, and
   its global setup registers accounts (api rate-limits: wait a minute between runs).

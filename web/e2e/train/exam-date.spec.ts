@@ -16,6 +16,8 @@ test("TRAIN-5 picking an exam day saves it and closes the calendar", async ({ pa
   await page.getByRole("button", { name: /^Add .*date/i }).click();
 
   const calendar = page.getByRole("dialog");
+  // Next month's 28th is always in the future; this month's is past from the 29th.
+  await calendar.getByRole("button", { name: /next month/i }).click();
   await calendar.getByRole("button", { name: /\b28th\b/ }).first().click();
   await expect(calendar).toBeHidden();
   await expect(page.getByText(/^Exam: 28 /)).toBeVisible();

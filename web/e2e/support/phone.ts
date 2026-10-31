@@ -14,8 +14,8 @@ const SCROLL_SETTLE_MS = 100;
 
 /**
  * Scroll the way a thumb does, from the middle of the screen, until nothing
- * moves, then require `last` (by default the last piece of content in <main>)
- * on screen. The check is an IntersectionObserver, so content clipped by a box
+ * moves, then require `last` (by default the last piece of content in <main>) on screen.
+ * The check is an IntersectionObserver, so content clipped by a box
  * that cannot scroll fails, as the station room's doctor information did.
  * Nothing may scroll sideways. An open dialog locks the scroll, so one fails at
  * once by name rather than as an unreachable end (CI once met the exam-date prompt).
@@ -44,10 +44,17 @@ function scrolled(page: Page): Promise<number> {
   return page.evaluate(() => [...document.querySelectorAll("*")].reduce((sum, el) => sum + el.scrollTop, window.scrollY));
 }
 
-/** Whether the last visible piece of content in <main> is on screen and not clipped. */
+/**
+ * Whether the last visible piece of content is on screen and not clipped: the page footer's when
+ * the page has one after <main> (public pages: a phone-height footer pushes <main> off the top at
+ * the end of the scroll), otherwise <main>'s.
+ */
 function lastContentOnScreen(page: Page): Promise<boolean> {
   return page.evaluate(() => {
-    const root = document.querySelector("main") ?? document.body;
+    const main = document.querySelector("main");
+    // The site footer, not a card's: the last <footer> that <main> does not contain.
+    const footer = [...document.querySelectorAll("footer")].filter((el) => !main?.contains(el)).at(-1);
+    const root = footer ?? main ?? document.body;
     const last = [...root.querySelectorAll("*")]
       .filter(
         (el) =>
