@@ -121,7 +121,6 @@ export default function CascLandingPage() {
       <HomePractice
         eyebrow=""
         title="Practice with Colleagues"
-        sub="Choose between instant matching or scheduled sessions and practice in real-time video consultations."
       />
       <HomeNeurodiversity />
       <LandingPricingSection appType="casc" />

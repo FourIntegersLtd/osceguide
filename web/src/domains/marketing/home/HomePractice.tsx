@@ -18,13 +18,11 @@ const TRIO: readonly PracticeItem[] = [
 type HomePracticeProps = {
   eyebrow?: string;
   title?: string;
-  sub?: string;
 };
 
 export function HomePractice({
   eyebrow = "Practice with colleagues",
   title = "Practise with a real person, on your schedule",
-  sub = "Choose between instant matching or scheduled sessions and practise in real-time video consultations.",
 }: HomePracticeProps) {
   return (
     <Section id="practice" tone="pale">
@@ -32,7 +30,6 @@ export function HomePractice({
         <div className="lg:col-span-2">
           {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
           <h2 className="mt-3 font-landing-heading text-3xl font-bold leading-tight text-site-ink sm:text-4xl">{title}</h2>
-          <p className="mt-4 text-lg text-site-body">{sub}</p>
           <div className="mt-8 space-y-6">
             {TRIO.map(({ Icon, title, body }) => (
               <div key={title} className="flex gap-4">
