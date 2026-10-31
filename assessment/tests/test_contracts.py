@@ -16,6 +16,7 @@ from osce_assessment.contracts import (
     EvaluationPolicy,
     InteractionMode,
     MessageRole,
+    parse_gender,
     RuntimeHint,
     Scenario,
     ScenarioRef,
@@ -156,3 +157,18 @@ def test_a_definition_needs_no_evaluation_policy_until_something_scores_it() -> 
     )
     assert definition.evaluation_policy is None
     assert "evaluation_policy" not in definition.model_dump(exclude_none=True)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("male", "male"), (" M ", "male"), ("Male, 45", "male"), ("male (54)", "male"), ("(Male)", "male"),
+        ("man", "male"), ("boy", "male"), ("Mr.", "male"),
+        ("Female", "female"), ("f.", "female"), ("woman", "female"), ("girl", "female"),
+        ("Mrs", "female"), ("Ms.", "female"), ("miss", "female"), ("female (28)", "female"),
+        ("M/F", None), ("Male/Female", None), ("male or female", None),
+        ("", None), (None, None), ("nonsense", None), ("45 year old", None),
+    ],
+)
+def test_parse_gender_reads_the_leading_word(raw, expected) -> None:
+    assert parse_gender(raw) == expected

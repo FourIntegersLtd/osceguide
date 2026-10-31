@@ -13,7 +13,7 @@ import logging
 from typing import Any
 
 from livekit.agents import Agent, AgentSession
-from osce_assessment.contracts import AIInteractionProfile, InteractionMode, MessageCallback, MessageRole
+from osce_assessment.contracts import AIInteractionProfile, InteractionMode, MessageCallback, MessageRole, parse_gender
 from osce_assessment.runtime._awaitable import maybe_await
 from voice_infra.audio_input import build_room_options
 from voice_infra.latency import ConversationLatencyTracker
@@ -37,14 +37,15 @@ def role_for(profile: AIInteractionProfile) -> str:
 def voice_gender(profile: AIInteractionProfile, default: str | None) -> str:
     """The profile's ``voice`` names the gendered voice; the scenario's patient gender is the fallback.
 
-    platform-api already reduces the station's wording to ``male``/``female``. A patient with neither
-    is Female and logged, so a missing field is visible; the tutor has no gender and is always Female.
+    Either may be the station's raw wording ("Male, 45", "Mrs", "m"); ``parse_gender`` reads the leading
+    word, the same rule platform-api uses. A patient with neither is Female and logged, so a missing
+    field is visible; the tutor has no gender and is always Female.
     """
-    chosen = (profile.voice or default or "").strip().lower()
-    gender = {"male": "Male", "m": "Male", "female": "Female", "f": "Female"}.get(chosen)
+    chosen = (profile.voice or default or "").strip()
+    gender = parse_gender(chosen)
     if gender is None and profile.mode is InteractionMode.PATIENT:
         logger.warning("patient gender %r is missing or unrecognised; defaulting to a female voice", chosen)
-    return gender or "Female"
+    return gender.capitalize() if gender else "Female"  # the voice pools key on "Male"/"Female"
 
 
 class LiveKitInteractionAdapter:

@@ -8,6 +8,7 @@ from .framework import (
     InvalidScoreError,
     UnknownCompetencyError,
 )
+from .gender import parse_gender
 from .rating import FieldRole, Rating
 from .models import (
     AIInteractionProfile,
@@ -37,6 +38,7 @@ from .ports import (
 )
 
 __all__ = [
+    "parse_gender",
     "AIInteractionProfile",
     "AssessmentAttempt",
     "AssessmentDefinition",

@@ -43,3 +43,16 @@ def test_worker_source_names_no_product_station_or_storage() -> None:
             elif isinstance(node, ast.Constant) and isinstance(node.value, str) and FORBIDDEN_WORDS.search(node.value):
                 offenders.append(f"{path.name}:{node.lineno} {node.value!r}")
     assert offenders == []
+
+
+def test_the_worker_reads_gender_only_through_the_shared_parser() -> None:
+    """A second hand-written male/female set is how "Male, 45" once became a female voice."""
+    spellings = {"m", "male", "f", "female", "man", "woman"}
+    voice_pool_keys = {"Male", "Female"}  # what voice_infra keys its voices on, not a reading of station text
+    offenders = [
+        f"{path.name}:{node.lineno} {node.value!r}"
+        for path in PACKAGE.rglob("*.py")
+        for node in ast.walk(ast.parse(path.read_text()))
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value not in voice_pool_keys and node.value.lower() in spellings
+    ]
+    assert offenders == []

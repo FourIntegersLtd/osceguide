@@ -226,3 +226,11 @@ def test_station_gender_reaches_the_patient_voice_pool(monkeypatch, scenario_gen
 def test_a_patient_with_no_gender_is_female_and_logged(caplog) -> None:
     assert adapter_module.voice_gender(PROFILE, None) == "Female"
     assert "missing or unrecognised" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("Male, 45", "Male"), ("Mrs", "Female"), ("other", "Female")],
+)
+def test_voice_gender_accepts_the_wordings_stations_really_carry(raw, expected) -> None:
+    assert adapter_module.voice_gender(PROFILE, raw) == expected

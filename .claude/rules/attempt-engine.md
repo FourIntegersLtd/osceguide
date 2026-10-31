@@ -87,3 +87,4 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
 - A transcript is lost, cut short or not delivered back, so the attempt is never marked.
 - The engine or a worker learns a product, tenant, exam code or station field (boundary breach).
 - A voice, model or persona changes mid-consultation, or is hard-coded instead of from settings.
+- A male patient speaks with a female voice: the station's gender wording ("Male, 45", "Mr") was not recognised and silently became Female. Gender is read only by `osce_assessment.contracts.parse_gender`; a guard forbids a second hand-written set.

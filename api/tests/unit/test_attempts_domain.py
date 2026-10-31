@@ -411,3 +411,11 @@ def test_a_set_station_walked_away_from_after_it_started_still_uses_a_trial_stat
     counts = domain.count_trial_use(sat, station_by_version=STATION_BY_VERSION, starting_station_id=None)
 
     assert counts.set_stations == 1
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("Male, 45", "male"), ("Mrs.", "female"), ("other", None)],
+)
+def test_patient_gender_tolerates_the_wordings_stations_really_carry(raw, expected) -> None:
+    assert domain_definition.patient_gender({"patient_information": {"gender": raw}}) == expected
