@@ -95,11 +95,17 @@ def test_the_example_env_file_loads(monkeypatch: pytest.MonkeyPatch) -> None:
     ]
 
 
-def test_mail_defaults_use_the_one_domain_resend_has_verified() -> None:
+def test_mail_defaults_use_the_one_domain_resend_has_verified(monkeypatch: pytest.MonkeyPatch) -> None:
     """Resend refuses any sender off its verified domain (403), so every email
     the outbox sends failed while the default was noreply@osceguide.com. The
     support address is the one platform-web shows people, read from its source.
+
+    The addresses are cleared from the environment first: these are the declared
+    defaults, so a stale `SUPPORT_EMAIL` on a developer's machine or left behind
+    by an earlier test must not decide whether this passes.
     """
+    monkeypatch.delenv("SUPPORT_EMAIL", raising=False)
+    monkeypatch.delenv("EMAIL_FROM", raising=False)
     settings = Settings(_env_file=None, app_env=AppEnv.local)
     web_support = Path(__file__).parents[3] / "web/src/foundation/support.ts"
     assert settings.email_from == "OSCE Guide <hello@fourintegers.com>"
