@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from collections.abc import AsyncIterator, Awaitable
-from datetime import datetime, timedelta
+from collections.abc import AsyncIterator, Awaitable, Callable
+from datetime import UTC, datetime, timedelta
 from typing import TypeVar
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import __version__
+from app.core import observability
 from app.core.auth import Principal
-from app.core.db import SessionOpener
+from app.core.db import SessionOpener, savepoint
 from app.core.events import voice_queue_topic
 from app.core.logging import get_logger
 from app.core.ports import EventBus
@@ -21,11 +22,12 @@ from app.core.settings import Settings, get_settings
 from app.core.sse import Snapshot, event_stream
 from app.features.attempts import service as attempts_service
 from app.features.attempts.jobs import SCORING_TASK, record_marking_gave_up
-from app.features.health import repository, repository_jobs
+from app.features.health import repository, repository_jobs, repository_size, service_size
 from app.features.health.errors import JobNotCancellable, JobNotFound, JobNotRetryable, MessageNotRetryable
 from app.features.health.repository_jobs import JobEventRef, JobRef
 from app.features.health.schemas import (
     CheckState,
+    DatabaseSizeRead,
     HealthResponse,
     JobEventRead,
     JobRead,
@@ -43,6 +45,8 @@ from app.features.voice import service as voice_service
 log = get_logger(__name__)
 T = TypeVar("T")
 CHECK_TIMEOUT_SECONDS = 2.0
+# The size read is limited by the server, not by cancelling it; this only stops a server that never answers.
+SIZE_BACKSTOP_SECONDS = 5.0
 # The checks whose failure leaves the platform up but degraded; a failed database is `down`.
 DEGRADING = ("redis", "content")
 # How often the machinery stream re-reads what changes with nobody announcing
@@ -58,10 +62,12 @@ STALLED_AFTER_SECONDS = 180
 MAX_STALLED_REQUEUES = 3
 
 
-async def _answers_in_time(name: str, query: Awaitable[T]) -> T | None:
+async def _answers_in_time(
+    name: str, query: Awaitable[T], *, timeout: float = CHECK_TIMEOUT_SECONDS
+) -> T | None:
     """What a check's query returns within the timeout, or None when it fails; never raises."""
     try:
-        return await asyncio.wait_for(query, CHECK_TIMEOUT_SECONDS)
+        return await asyncio.wait_for(query, timeout)
     except Exception as exc:  # noqa: BLE001 - health must never raise
         log.warning("health check failed", check=name, error=str(exc))
         return None
@@ -107,13 +113,36 @@ async def health_report(session: AsyncSession, redis: Redis | None) -> HealthRes
 # --- What the console asks about the platform's own machinery.
 
 
+async def _measured_size(session: AsyncSession) -> DatabaseSizeRead:
+    """The database's size; raises if the server gives up on it after `CHECK_TIMEOUT_SECONDS`.
+
+    The session is shared with the checks around it, so the time limit is the server's
+    (`statement_timeout`), not an asyncio cancel: abandoning a query mid-flight on a shared connection
+    leaves it unusable for every statement after. A savepoint takes the failed statement's error,
+    and the limit with it.
+    """
+    async with savepoint(session):
+        await repository_size.limit_statement_time(session, seconds=CHECK_TIMEOUT_SECONDS)
+        size = await service_size.database_size(session, now=datetime.now(UTC))
+        await repository_size.restore_statement_time(session)
+        return size
+
+
 async def platform_health(session: AsyncSession, redis: Redis | None) -> PlatformHealth:
-    """The public health report, plus the queue's counts by status and when a worker last checked in."""
+    """The public health report, plus the queue's counts by status, when a worker last checked in and how
+    full the database is.
+
+    The size is measured now, not read from the daily task's history, so it is there with no worker running.
+    When it cannot be read it is left out and the rest of the report stands.
+    """
     report = await health_report(session, redis)
     return PlatformHealth(
         **report.model_dump(),
         jobs_by_status=await repository_jobs.counts_by_status(session),
         worker_seen_at=await repository_jobs.latest_worker_heartbeat(session),
+        database_size=await _answers_in_time(
+            "database_size", _measured_size(session), timeout=CHECK_TIMEOUT_SECONDS + SIZE_BACKSTOP_SECONDS
+        ),
     )
 
 
@@ -228,6 +257,31 @@ async def abandon_stale_attempts(session: AsyncSession, *, now: datetime) -> lis
     return await attempts_service.abandon_stale_attempts(session, now=now)
 
 
+async def _run_recorded(
+    opener: SessionOpener, name: str, step: Callable[[AsyncSession], Awaitable[T]], *, now: datetime
+) -> T | None:
+    """Run one step in its own transaction. A step that raises is rolled back and written to the platform
+    audit log (`sweep.failed`), where staff read it, instead of only the process log. Returns what the step
+    returned once its transaction has committed, None if it failed."""
+    try:
+        async with opener() as session:
+            result = await step(session)
+        return result
+    except Exception as exc:  # noqa: BLE001 - a failing step must not stop the next, and is recorded
+        log.error("sweep step failed", step=name, error=str(exc))
+        async with opener() as session:
+            await service_audit.record_system(
+                session,
+                action="sweep.failed",
+                target_type="sweep",
+                target_id=name,
+                summary=f"{name} failed: {exc}",
+                meta={"error": f"{type(exc).__name__}: {exc}"},
+                at=now,
+            )
+        return None
+
+
 async def run_sweep(opener: SessionOpener, *, now: datetime) -> None:
     """Run each step of the five-minute sweep in its own transaction.
 
@@ -239,21 +293,62 @@ async def run_sweep(opener: SessionOpener, *, now: datetime) -> None:
         ("abandon_stale_attempts", lambda session: abandon_stale_attempts(session, now=now)),
     )
     for name, step in steps:
-        try:
-            async with opener() as session:
-                await step(session)
-        except Exception as exc:  # noqa: BLE001 - a failing step must not stop the next, and is recorded
-            log.error("sweep step failed", step=name, error=str(exc))
-            async with opener() as session:
-                await service_audit.record_system(
-                    session,
-                    action="sweep.failed",
-                    target_type="sweep",
-                    target_id=name,
-                    summary=f"{name} failed: {exc}",
-                    meta={"error": f"{type(exc).__name__}: {exc}"},
-                    at=now,
-                )
+        await _run_recorded(opener, name, step, now=now)
+
+
+async def run_size_check(opener: SessionOpener, *, now: datetime) -> None:
+    """The daily size reading; a failure is written to the platform audit log like the sweep's.
+
+    A person is paged only after the reading has committed, so a commit that fails and is run again
+    pages once, not twice.
+    """
+    page = await _run_recorded(
+        opener,
+        "record_database_size",
+        lambda session: service_size.record_database_size(session, now=now),
+        now=now,
+    )
+    if page:
+        observability.report_message(page, level="error")
+
+
+async def prune_job_history(
+    session: AsyncSession, delete_old_jobs: Callable[..., Awaitable[None]], *, now: datetime
+) -> None:
+    """Have procrastinate delete succeeded jobs past the retention, and record how many went.
+
+    The library's own delete does the work; deleting a job takes its events with it (`ON DELETE CASCADE`),
+    and the periodic-defer rows it leaves are pruned by procrastinate on its next tick. It returns no
+    count, so the jobs it will remove are counted first.
+    """
+    days = get_settings().job_history_retention_days
+    removed = await repository_jobs.succeeded_jobs_before(session, now - timedelta(days=days))
+    await delete_old_jobs(nb_hours=days * 24)
+    if removed:
+        await service_audit.record_system(
+            session,
+            action="jobs.pruned",
+            target_type="job",
+            target_id="history",
+            summary=(
+                f"Removed {removed} succeeded {'job' if removed == 1 else 'jobs'} "
+                f"and their events older than {days} days."
+            ),
+            meta={"removed": removed, "older_than_days": days},
+            at=now,
+        )
+
+
+async def run_job_pruning(
+    opener: SessionOpener, *, delete_old_jobs: Callable[..., Awaitable[None]], now: datetime
+) -> None:
+    """The daily queue clean-up; a failure is written to the platform audit log like the sweep's."""
+    await _run_recorded(
+        opener,
+        "prune_job_history",
+        lambda session: prune_job_history(session, delete_old_jobs, now=now),
+        now=now,
+    )
 
 
 async def retry_job(session: AsyncSession, job_id: int, *, actor: Principal, now: datetime) -> None:

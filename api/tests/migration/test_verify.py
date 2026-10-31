@@ -111,3 +111,19 @@ async def test_rows_made_after_the_cutover_are_not_counted_as_imported(
     counts = await verify.imported_counts(db_session)
 
     assert counts.attempts == 1, "the new attempt has no legacy_ref and is not an import"
+
+
+async def test_a_compacted_load_still_verifies(db_session: AsyncSession) -> None:
+    from app.features.attempts import repository_transcript as transcripts
+
+    migrated = await _loaded(db_session)
+    attempt_id = await db_session.scalar(select(TranscriptMessage.attempt_id).limit(1))
+    assert attempt_id is not None
+    await transcripts.mark_transcript_complete(
+        db_session, attempt_id, runtime_label=None, at=migrated[0].messages[0].spoken_at
+    )
+    assert await transcripts.compact(db_session, attempt_id) is True
+
+    expected = verify.ExpectedCounts(users=1, entitlements=0, attempts=1, messages=3, results=0)
+    assert await verify.compare_counts(db_session, expected) == []
+    assert await verify.spot_check(db_session, migrated) == []

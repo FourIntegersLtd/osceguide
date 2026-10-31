@@ -20,6 +20,17 @@ So a column counts as documented when its name appears inside any backticked
 span of that table's section, with `x_at/by` expanded to `x_at` and `x_by`. A
 column mentioned nowhere at all is the drift worth failing on.
 
+It also asks every table how it grows. `transcript_messages` reached 419 MB of a 500 MB database that
+held 65 MB of text (77 rows an attempt, three indexes, no retention story) because nobody asked what a
+row cost. So each section declares
+
+    **Growth:** per-turn. **Retention:** compacted into transcripts.messages by compact_transcripts.
+
+with a class from GROWTH_CLASSES, and a table that grows `per-turn` or `unbounded` must also say what
+removes or compacts its rows. A retention that is a placeholder fails. A table whose honest answer is
+"nothing yet" writes `**Retention:** GAP: <what is missing>` and is listed in KNOWN_GAPS with the same
+reason: the list is bounded and only shrinks, so a gap is visible and cannot quietly grow.
+
 What this cannot check is the half that rots silently: whether the *reason*
 given for a delete rule or a partial index is still the real one. Read those.
 
@@ -69,6 +80,104 @@ def mentioned_names(section: str) -> set[str]:
     return names
 
 
+GROWTH_CLASSES = ("fixed", "per-user", "per-org", "per-attempt", "per-turn", "unbounded")
+NEEDS_RETENTION = ("per-turn", "unbounded")
+GROWTH_LINE = re.compile(r"\*\*Growth:\*\*\s*([A-Za-z-]+)\.?(.*?)(?:\n[ \t]*\n|\Z)", re.S)
+RETENTION = re.compile(r"\*\*Retention:\*\*\s*(.+)", re.S)
+PLACEHOLDER = re.compile(r"^(none|n/?a|tbd|todo|-+|unknown|later|nothing)\b[\s.]*$", re.I)
+MIN_RETENTION_WORDS = 4
+
+# Tables that grow per turn or without bound and have no retention yet: `table -> what is missing`.
+# Each section says `**Retention:** GAP: ...`. The ceiling only shrinks; closing a gap removes its entry.
+KNOWN_GAPS: dict[str, str] = {
+    "site_messages": ("public contact form rows are never deleted or archived; nothing bounds a spam run."),
+    "refresh_chains": ("revoked and expired chains are never deleted; one row per sign-in, forever."),
+    "refresh_tokens": (
+        "every rotation adds a row and spent or expired tokens are never deleted; the fastest- "
+        "growing auth table."
+    ),
+    "password_reset_tokens": ("used and expired tokens are never deleted; one row per reset request."),
+    "audit_log": (
+        "append-only by design with no archive or age limit; needs a retention period decision (a "
+        "legal one) and an archive step."
+    ),
+    "stripe_events": (
+        "one row per acted-on webhook delivery, kept forever; only the recent window is needed for "
+        "replay protection."
+    ),
+    "partner_arrivals": (
+        "one row per public link click, never pruned and not bounded by anything a user does; a bot "
+        "can inflate it."
+    ),
+    "practice_queue_entries": (
+        "expiry only flips status to expired; the row is never deleted, one per queue join."
+    ),
+    "assistant_transcript_messages": (
+        "turns of help sessions are kept and never pruned; other kinds store none."
+    ),
+    "learning_events": (
+        "written by the browser on every read, listen or practice and deleted only when the user "
+        "asks to be forgotten."
+    ),
+    "outbound_messages": (
+        "sent and failed rows are kept forever (only erasure requests delete unsent mail); needs an "
+        "age-based prune of sent rows."
+    ),
+}
+KNOWN_GAPS_CEILING = 11
+
+
+def _declaration(section: str) -> tuple[str | None, str]:
+    """`(growth class, the rest of that paragraph)`, the class None when the section declares none."""
+    found = GROWTH_LINE.search(section)
+    return (found.group(1).lower(), found.group(2)) if found else (None, "")
+
+
+def _retention(rest: str) -> str | None:
+    found = RETENTION.search(rest)
+    return found.group(1).strip() if found else None
+
+
+def _is_gap(retention: str | None) -> bool:
+    return retention is not None and retention.upper().startswith("GAP")
+
+
+def growth_problems(sections: dict[str, str]) -> list[str]:
+    """Each table's growth declaration that is missing, unknown, or lacks the retention its class needs."""
+    problems: list[str] = []
+    for name in sorted(sections):
+        growth, rest = _declaration(sections[name])
+        if growth is None:
+            problems.append(
+                f"{name}: declares no growth class. Add `**Growth:** <{' | '.join(GROWTH_CLASSES)}>`."
+            )
+        elif growth not in GROWTH_CLASSES:
+            problems.append(f"{name}: growth class `{growth}` is not one of {', '.join(GROWTH_CLASSES)}.")
+        elif growth in NEEDS_RETENTION:
+            retention = _retention(rest)
+            if _is_gap(retention):
+                if name not in KNOWN_GAPS:
+                    problems.append(
+                        f"{name}: declares a retention GAP but is not in KNOWN_GAPS. Close the gap."
+                    )
+            elif (
+                retention is None
+                or PLACEHOLDER.match(retention)
+                or len(retention.split()) < MIN_RETENTION_WORDS
+            ):
+                problems.append(
+                    f"{name}: grows {growth} and declares no retention. Say what removes or compacts its "
+                    "rows: `**Retention:** ...`."
+                )
+    return problems
+
+
+def open_gaps() -> set[str]:
+    """Tables whose section currently declares a retention GAP."""
+    sections = documented_sections(DOC.read_text(encoding="utf-8"))
+    return {name for name, section in sections.items() if _is_gap(_retention(_declaration(section)[1]))}
+
+
 def drift() -> list[str]:
     from app.core.db import Base, import_all_models
 
@@ -95,6 +204,8 @@ def drift() -> list[str]:
         absent = sorted(column for column in expected if column not in named)
         if absent:
             problems.append(f"{name}: columns not mentioned in its section: {', '.join(absent)}")
+
+    problems += growth_problems({name: sections[name] for name in sorted(set(tables) & set(sections))})
 
     counted = re.search(r"(\d+) tables across (\d+) slices", markdown)
     if counted and int(counted.group(1)) != len(tables):

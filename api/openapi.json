@@ -4491,6 +4491,52 @@
         "title": "DashboardSummaryRead",
         "type": "object"
       },
+      "DatabaseSizeRead": {
+        "description": "How full the database is against its budget, measured when asked.",
+        "properties": {
+          "budget_bytes": {
+            "title": "Budget Bytes",
+            "type": "integer"
+          },
+          "forecast": {
+            "$ref": "#/components/schemas/SizeForecastRead"
+          },
+          "level": {
+            "enum": [
+              "ok",
+              "warning",
+              "critical"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "percent_used": {
+            "title": "Percent Used",
+            "type": "number"
+          },
+          "top_relations": {
+            "items": {
+              "$ref": "#/components/schemas/RelationSizeRead"
+            },
+            "title": "Top Relations",
+            "type": "array"
+          },
+          "total_bytes": {
+            "title": "Total Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_bytes",
+          "budget_bytes",
+          "percent_used",
+          "level",
+          "top_relations",
+          "forecast"
+        ],
+        "title": "DatabaseSizeRead",
+        "type": "object"
+      },
       "DebriefSummaryRead": {
         "properties": {
           "action_plan": {
@@ -12566,7 +12612,7 @@
         "type": "object"
       },
       "PlatformHealth": {
-        "description": "The liveness report plus what only the console needs: the queue and the worker.",
+        "description": "The liveness report plus what only the console needs: the queue, the worker and the database's size.",
         "properties": {
           "checks": {
             "additionalProperties": {
@@ -12583,6 +12629,16 @@
           "commit": {
             "title": "Commit",
             "type": "string"
+          },
+          "database_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatabaseSizeRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "jobs_by_status": {
             "additionalProperties": {
@@ -14387,6 +14443,49 @@
           "temporary_password"
         ],
         "title": "ReissueTemporaryPassword",
+        "type": "object"
+      },
+      "RelationSizeRead": {
+        "description": "One table with its indexes, and what a row of it costs.",
+        "properties": {
+          "bytes_per_row": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes Per Row"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rows"
+          },
+          "total_bytes": {
+            "title": "Total Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "total_bytes",
+          "rows",
+          "bytes_per_row"
+        ],
+        "title": "RelationSizeRead",
         "type": "object"
       },
       "ReleasedCandidate": {
@@ -17202,6 +17301,60 @@
           "totals"
         ],
         "title": "SittingReport",
+        "type": "object"
+      },
+      "SizeForecastRead": {
+        "description": "Where the size is heading, or why it cannot yet be said.",
+        "properties": {
+          "bytes_per_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes Per Day"
+          },
+          "days_until_full": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Until Full"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "readings_used": {
+            "title": "Readings Used",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "insufficient_data",
+              "not_growing",
+              "growing",
+              "over_budget"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "bytes_per_day",
+          "days_until_full",
+          "readings_used",
+          "note"
+        ],
+        "title": "SizeForecastRead",
         "type": "object"
       },
       "SkippedMembership": {

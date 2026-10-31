@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts.models import AssessmentResult, Attempt, TranscriptMessage
+from app.features.attempts.repository_transcript import seen_message_ids
 from app.migration.attempts import MigratedAttempt
 from app.migration.load_people import exams_by_code
 from app.migration.report import LoadReport
@@ -99,13 +100,7 @@ async def load_attempts(
         else:
             report.attempts_existing += 1
 
-        seen = set(
-            (
-                await session.scalars(
-                    select(TranscriptMessage.message_id).where(TranscriptMessage.attempt_id == attempt.id)
-                )
-            ).all()
-        )
+        seen = await seen_message_ids(session, attempt.id)
         for message in migrated.messages:
             if message.message_id in seen:
                 continue

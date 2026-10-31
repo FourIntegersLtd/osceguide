@@ -248,6 +248,13 @@ class Settings(BaseSettings):
     # How often a worker records that it is alive. The exam-day board calls the
     # worker down after six missed beats.
     worker_heartbeat_seconds: float = 10.0
+    # The database's size budget, in MiB: the host's quota (the free plan's 500 MB flips the database
+    # read-only). The Ops screen and the daily reading measure against it; 60% writes an audit row,
+    # 80% also reports to Sentry.
+    database_size_budget_mb: int = 500
+    # Succeeded jobs, and with them their events, are deleted this many days after they finish. Failed
+    # jobs are kept: staff retry them from the Ops screen.
+    job_history_retention_days: int = 14
 
     # --- HTTP ---
     # `NoDecode`: pydantic-settings would otherwise JSON-decode a `list[str]`

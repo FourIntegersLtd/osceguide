@@ -28,6 +28,7 @@ log = get_logger(__name__)
 PLATFORM_DEFAULT_POLICY = "platform-default@1"
 SCORING_QUEUE = "scoring"
 SCORING_TASK = "score_attempt"
+COMPACTION_BATCH = 50
 
 # A model call fails for reasons that pass: a timeout, a rate limit, a malformed answer. procrastinate
 # retries while `job.attempts` (the failed runs so far) is under `max_attempts`, so a job runs 1 + 3
@@ -289,3 +290,12 @@ def register() -> None:
             last_try=is_last_try(context.job),
             open_session=job_session,
         )
+
+    @app.periodic(cron="*/10 * * * *")
+    @app.task(name="compact_transcripts", queue="attempts")
+    async def compact_transcripts(timestamp: int = 0) -> None:
+        """Fold finished transcripts' rows into one document each, every ten minutes."""
+        from app.core.db import job_session
+        from app.features.attempts.service_compaction import compact_ready_transcripts
+
+        await compact_ready_transcripts(job_session, limit=COMPACTION_BATCH)

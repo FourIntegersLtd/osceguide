@@ -13,6 +13,7 @@ feature slice is built, tests first) and `docs/README.md` (the doc map) first.
   mocked repository.
 - **A migration and `docs/DATA-MODEL.md` change in the same commit.**
   `make data-model` fails otherwise.
+- **A migration that creates a table enables RLS on it** (`ALTER TABLE x ENABLE ROW LEVEL SECURITY`, no policies); a test fails otherwise.
 - **ADRs are never edited** after acceptance; supersede with a new one.
 - **B2B defines its own exams.** Platform exams are the consumer catalogue; an
   institution never waits on them (ADR 0017).

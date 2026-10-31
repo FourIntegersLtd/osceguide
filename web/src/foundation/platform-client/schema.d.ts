@@ -10010,6 +10010,26 @@ export interface components {
             /** Utm Campaign */
             utm_campaign?: string | null;
         };
+        /**
+         * DatabaseSizeRead
+         * @description How full the database is against its budget, measured when asked.
+         */
+        DatabaseSizeRead: {
+            /** Budget Bytes */
+            budget_bytes: number;
+            forecast: components["schemas"]["SizeForecastRead"];
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "ok" | "warning" | "critical";
+            /** Percent Used */
+            percent_used: number;
+            /** Top Relations */
+            top_relations: components["schemas"]["RelationSizeRead"][];
+            /** Total Bytes */
+            total_bytes: number;
+        };
         /** DebriefSummaryRead */
         DebriefSummaryRead: {
             /** Action Plan */
@@ -13066,7 +13086,7 @@ export interface components {
         };
         /**
          * PlatformHealth
-         * @description The liveness report plus what only the console needs: the queue and the worker.
+         * @description The liveness report plus what only the console needs: the queue, the worker and the database's size.
          */
         PlatformHealth: {
             /** Checks */
@@ -13075,6 +13095,7 @@ export interface components {
             };
             /** Commit */
             commit: string;
+            database_size?: components["schemas"]["DatabaseSizeRead"] | null;
             /** Jobs By Status */
             jobs_by_status: {
                 [key: string]: number;
@@ -13810,6 +13831,20 @@ export interface components {
         ReissueTemporaryPassword: {
             /** Temporary Password */
             temporary_password: string;
+        };
+        /**
+         * RelationSizeRead
+         * @description One table with its indexes, and what a row of it costs.
+         */
+        RelationSizeRead: {
+            /** Bytes Per Row */
+            bytes_per_row: number | null;
+            /** Name */
+            name: string;
+            /** Rows */
+            rows: number | null;
+            /** Total Bytes */
+            total_bytes: number;
         };
         /** ReleasedCandidate */
         ReleasedCandidate: {
@@ -14955,6 +14990,25 @@ export interface components {
             rating?: components["schemas"]["RatingRead"] | null;
             sitting: components["schemas"]["ConsoleSitting"];
             totals: components["schemas"]["ReportTotals"];
+        };
+        /**
+         * SizeForecastRead
+         * @description Where the size is heading, or why it cannot yet be said.
+         */
+        SizeForecastRead: {
+            /** Bytes Per Day */
+            bytes_per_day: number | null;
+            /** Days Until Full */
+            days_until_full: number | null;
+            /** Note */
+            note: string;
+            /** Readings Used */
+            readings_used: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "insufficient_data" | "not_growing" | "growing" | "over_budget";
         };
         /** SkippedMembership */
         SkippedMembership: {

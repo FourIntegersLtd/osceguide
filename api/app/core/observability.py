@@ -37,3 +37,17 @@ def configure_sentry(settings: Settings) -> bool:
         max_request_body_size="never",
     )
     return True
+
+
+def report_message(message: str, *, level: str = "error") -> bool:
+    """Send one message to Sentry, so a condition no exception carries still reaches a person.
+
+    Returns whether it was handed to the SDK; with no DSN configured the SDK drops it.
+    """
+    try:
+        import sentry_sdk
+    except ImportError:
+        log.warning("sentry-sdk is not installed; message not reported", message=message)
+        return False
+    sentry_sdk.capture_message(message, level=level)  # type: ignore[arg-type]
+    return True

@@ -17,11 +17,13 @@ from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
 from app.features.attempts import repository
 from app.features.attempts import repository_transcript as transcripts
+from app.features.attempts.models import TranscriptMessage
 from app.features.identity import repository as identity_repo
 from tests.support.catalog import ensure_exam
 from tests.support.rubrics import frozen_rubric
@@ -204,6 +206,63 @@ async def test_a_chunk_for_a_different_attempt_is_refused(
     )
     assert response.status_code == 409
     assert response.json()["code"] == "attempt_mismatch"
+
+
+async def test_a_chunk_after_compaction_stores_nothing(client: AsyncClient, db_session: AsyncSession) -> None:
+    """The final transcript carried every turn, so a late chunk is dropped, not stored beside the document."""
+    attempt_id = await an_attempt(db_session)
+    url = f"/api/worker/attempts/{attempt_id}/transcript-chunks"
+    await client.post(
+        f"/api/worker/attempts/{attempt_id}/transcript",
+        json={"attempt_id": str(attempt_id), "transcript": transcript(attempt_id)},
+        headers=worker_headers(),
+    )
+    assert await transcripts.compact(db_session, attempt_id) is True
+
+    late = {"attempt_id": str(attempt_id), "message": chunk("late", 9)}
+    assert (await client.post(url, json=late, headers=worker_headers())).status_code == 202
+
+    assert [t.message_id for t in await transcripts.chunks_for(db_session, attempt_id)] == ["m0", "m1"]
+    assert await transcripts.seen_message_ids(db_session, attempt_id) == {"m0", "m1"}
+    rows = await db_session.scalar(
+        select(func.count()).select_from(TranscriptMessage).where(TranscriptMessage.attempt_id == attempt_id)
+    )
+    assert rows == 0
+
+
+async def test_a_duplicate_chunk_before_compaction_is_still_stored_once(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    attempt_id = await an_attempt(db_session)
+    url = f"/api/worker/attempts/{attempt_id}/transcript-chunks"
+    body = {"attempt_id": str(attempt_id), "message": chunk("m1", 1)}
+    await client.post(url, json=body, headers=worker_headers())
+    await client.post(url, json=body, headers=worker_headers())
+
+    assert [t.message_id for t in await transcripts.chunks_for(db_session, attempt_id)] == ["m1"]
+
+
+async def test_a_transcript_delivered_after_compaction_changes_nothing(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    attempt_id = await an_attempt(db_session)
+    url = f"/api/worker/attempts/{attempt_id}/transcript"
+    await client.post(
+        url,
+        json={"attempt_id": str(attempt_id), "transcript": transcript(attempt_id)},
+        headers=worker_headers(),
+    )
+    await transcripts.compact(db_session, attempt_id)
+
+    again = await client.post(
+        url,
+        json={"attempt_id": str(attempt_id), "transcript": transcript(attempt_id, turns=5)},
+        headers=worker_headers(),
+    )
+
+    assert again.status_code == 202
+    assert [t.seq for t in await transcripts.chunks_for(db_session, attempt_id)] == [0, 1]
+    assert await transcripts.chunk_count(db_session, attempt_id) == 2
 
 
 # --------------------------------------------------------------------------

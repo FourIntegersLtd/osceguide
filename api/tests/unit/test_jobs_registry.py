@@ -46,6 +46,8 @@ FEATURE_TASKS = {
     "reclaim_stalled_jobs",
     # Unregistered, bought access lapses with no warning (S-12).
     "warn_expiring_access",
+    "record_database_size",
+    "prune_job_history",
 }
 PERIODIC_TASKS = {
     "deliver_outbound_messages",
@@ -57,6 +59,8 @@ PERIODIC_TASKS = {
     "check_partner_spend",
     "reclaim_stalled_jobs",
     "warn_expiring_access",
+    "record_database_size",
+    "prune_job_history",
 }
 
 

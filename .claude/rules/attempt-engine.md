@@ -70,6 +70,21 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
   `server_time` (`stationClock.ts`), aged from `briefReceivedAt` against a wall-clock deadline. No
   browser storage, no tick-by-tick decrement: either one lets a reload, a sleeping tab or the next
   person in the tab move the time. Practice has no server deadline; the duration is the client's.
+- Transcript turns have two homes: `transcript_messages` rows while live, `transcripts.messages` (a
+  `{"v":1,"turns":[...]}` document) once compacted. Read only through `repository_transcript.chunks_for`
+  (returns `domain.Turn`, never an ORM row) and count with `chunk_counts_for`; a new direct query on
+  `TranscriptMessage` breaks the day rows go.
+- **Read order: rows first, the document only when there are none.** Readers hold no lock and each
+  statement takes a fresh snapshot, so compaction can commit between the two. It only deletes rows and a
+  document is never removed, so rows-then-document always finds the turns; document-then-rows can see
+  neither and report an empty transcript (a candidate failed `empty_transcript`). Never reverse it.
+- "Compacted" is `Transcript.message_count IS NOT NULL` and nothing else (`is_compacted`). An attempt
+  with no rows is never compacted, never ready (`attempt_ids_ready_to_compact` requires rows).
+- Compaction is a periodic job (`compact_transcripts`), never inline on `accept_transcript`. Writers
+  (`accept_chunk`, `accept_transcript`) and `compact` take `lock_transcript` first; erasure deletes the
+  `transcripts` row before the rows (compaction's order). Batch order and why: the docstring of
+  `attempt_ids_ready_to_compact`. Race tests hold a real lock and wait on `pg_locks`
+  (`tests/integration/test_compaction_race.py`).
 
 ## Deploys and laptops
 - Push to `main` touching `assessment/` deploys staging (K3s, namespace
@@ -88,3 +103,4 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
 - The engine or a worker learns a product, tenant, exam code or station field (boundary breach).
 - A voice, model or persona changes mid-consultation, or is hard-coded instead of from settings.
 - A male patient speaks with a female voice: the station's gender wording ("Male, 45", "Mr") was not recognised and silently became Female. Gender is read only by `osce_assessment.contracts.parse_gender`; a guard forbids a second hand-written set.
+- A reader queries `transcript_messages` directly and sees an empty transcript for a compacted attempt (the attempt is failed `empty_transcript`, the debrief says not ready, the export is blank).

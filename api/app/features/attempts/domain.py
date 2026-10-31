@@ -13,7 +13,9 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Any
 
 
 class Status(StrEnum):
@@ -116,6 +118,53 @@ def should_store_chunk(message_id: str, seen: frozenset[str] | set[str]) -> bool
     """Chunks repeat. The worker posts them best-effort and never reads the
     response, so the same turn can arrive more than once."""
     return message_id not in seen
+
+
+@dataclass(frozen=True)
+class Turn:
+    """One spoken turn as the rest of the app sees it, whether it is stored as a row or in a document."""
+
+    message_id: str
+    seq: int
+    role: str
+    message: str
+    spoken_at: datetime
+
+
+def to_document(turns: Sequence[Turn]) -> dict[str, object]:
+    """A finished transcript as one JSON document (`transcripts.messages`).
+
+    Keys are spelled out on purpose: TOAST compresses the repetition. The row `id` and
+    `created_at` are not kept, because nothing reads them. `spoken_at` is UTC isoformat with
+    microseconds, so it round-trips a `timestamptz` exactly.
+    """
+    return {
+        "v": 1,
+        "turns": [
+            {
+                "message_id": turn.message_id,
+                "seq": turn.seq,
+                "role": turn.role,
+                "message": turn.message,
+                "spoken_at": turn.spoken_at.astimezone(UTC).isoformat(),
+            }
+            for turn in turns
+        ],
+    }
+
+
+def from_document(document: Mapping[str, Any]) -> list[Turn]:
+    """The turns in a `to_document` document, in stored order."""
+    return [
+        Turn(
+            message_id=entry["message_id"],
+            seq=entry["seq"],
+            role=entry["role"],
+            message=entry["message"],
+            spoken_at=datetime.fromisoformat(entry["spoken_at"]),
+        )
+        for entry in document["turns"]
+    ]
 
 
 def should_accept_transcript(*, already_complete: bool) -> bool:

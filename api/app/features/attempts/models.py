@@ -168,6 +168,12 @@ class Transcript(Base, UUIDPrimaryKey, Timestamps):
     complete: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     runtime_label: Mapped[str | None] = mapped_column(String(64))
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # A finished attempt's turns as one document ({"v": 1, "turns": [...]}), replacing its
+    # transcript_messages rows. Deferred so a page read never detoasts it; the count is plain.
+    # "Compacted" means `message_count IS NOT NULL`: compaction writes both columns in one
+    # statement, never for an attempt with no rows, so the count is always positive when set.
+    messages: Mapped[dict[str, Any] | None] = mapped_column(JSONB, deferred=True)
+    message_count: Mapped[int | None] = mapped_column(Integer)
 
 
 class AssessmentResult(Base, UUIDPrimaryKey, Timestamps):

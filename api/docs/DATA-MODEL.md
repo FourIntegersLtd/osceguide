@@ -32,6 +32,15 @@
 > explains it, or the next engineer will implement against a rationale that no
 > longer holds.
 >
+>
+> **Growth and retention.** Every table section starts with `**Growth:** <class>.`, where the class is
+> `fixed`, `per-user`, `per-org`, `per-attempt`, `per-turn` or `unbounded`. A `per-turn` or `unbounded` table
+> must also say `**Retention:** ...`, naming the job, service or rule that prunes, compacts or archives it
+> (four words at least; `none` is rejected). A table that genuinely has no such story writes
+> `**Retention:** GAP: <what is missing>` and is listed in `KNOWN_GAPS` in `scripts/check_data_model.py`;
+> that list has a ceiling that only shrinks. This is the rule that would have caught `transcript_messages`
+> filling the 500 MB database.
+>
 > Last verified against the code: **2026-09-18**, branch `feat/tutor-memory`.
 > `scripts/check_data_model.py` runs on every `make arch`, so the table and
 > column names here cannot drift from the schema; what no checker holds is the
@@ -40,7 +49,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-79 tables across 25 slices. Every table's classes live in `app/features/<slice>/models.py`
+80 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -83,6 +92,8 @@ names both.
 ## identity — 5 tables
 
 ### `users`
+
+**Growth:** per-user.
 | Field | Type | Notes |
 |---|---|---|
 | `email` | `citext not null unique` | citext so `Alice@…` and `alice@…` collide in the database, not only in code that remembers to lowercase |
@@ -113,6 +124,8 @@ names both.
 Domain: `MIN_PASSWORD_LENGTH = 12`.
 
 ### `user_identities`
+
+**Growth:** per-user.
 An external provider's handle on a user: Clerk, Entra or SAML, and the legacy
 consumer import. Written by `identity.service_sso.sign_in_external` on a first
 single sign-on, and by `app.migration.load_people`. See `organization_sso` below.
@@ -127,6 +140,8 @@ single sign-on, and by `app.migration.load_people`. See `organization_sso` below
 UNIQUE `(provider, subject)`.
 
 ### `organization_sso`
+
+**Growth:** per-org.
 One organisation's sign-in arrangement. At most one row per organisation.
 
 Replaces a hostname allow-list that was compiled into the browser bundle, with
@@ -151,6 +166,8 @@ enforced in the database by migration
 `02a17a847052_sso_only_disables_password_login`).
 
 ### `organization_sso_bindings`
+
+**Growth:** per-org.
 A host, or an email domain, that means one organisation.
 
 | Field | Type | Notes |
@@ -164,6 +181,8 @@ A hostname belongs to exactly one, and two rows claiming `nhs.net` would make
 home-realm discovery a coin toss.
 
 ### `organization_saml_connections`
+
+**Growth:** per-org.
 One organisation's SAML 2.0 identity provider (E-20), for an institution whose IdP
 speaks only SAML. Owned by `sso`, beside `organization_sso`, whose `provider` is
 `saml` and whose `issuer` holds the IdP's entity id when this is the way in. At
@@ -182,6 +201,8 @@ URLs are built on, under `PUBLIC_API_URL`.
 | `enabled` | `bool not null` | a disabled connection answers `saml_connection_not_found` |
 
 ### `cvs`
+
+**Growth:** per-user.
 A learner's uploaded CV, and what was read out of it. The PDF is not stored:
 its text is pulled on upload and the structured result is what the product
 reads back. `created_at` is the upload time the list sorts by.
@@ -197,6 +218,8 @@ reads back. `created_at` is the upload time the list sorts by.
 | `completed_at` | `timestamptz null` | when the read finished |
 
 ### `site_messages`
+
+**Growth:** unbounded. **Retention:** GAP: public contact form rows are never deleted or archived; nothing bounds a spam run.
 Somebody wrote to us from the public site, or from inside the product.
 
 | Field | Type | Notes |
@@ -214,6 +237,8 @@ Somebody wrote to us from the public site, or from inside the product.
 INDEX `(kind, created_at)` — the inbox reads one kind at a time, newest first.
 
 ### `refresh_chains`
+
+**Growth:** unbounded. **Retention:** GAP: revoked and expired chains are never deleted; one row per sign-in, forever.
 One sign-in, from which a series of refresh tokens is issued.
 
 | Field | Type | Notes |
@@ -225,6 +250,8 @@ One sign-in, from which a series of refresh tokens is issued.
 | `user_agent` | `varchar(255) null` | |
 
 ### `refresh_tokens`
+
+**Growth:** unbounded. **Retention:** GAP: every rotation adds a row and spent or expired tokens are never deleted; the fastest-growing auth table.
 | Field | Type | Notes |
 |---|---|---|
 | `chain_id` | `uuid not null` → `refresh_chains.id` CASCADE | indexed |
@@ -237,10 +264,14 @@ evidence: a replayed token is simply not found, which is indistinguishable from 
 token that never existed, so the leaked chain stays alive.
 
 ### `password_reset_tokens`
+
+**Growth:** unbounded. **Retention:** GAP: used and expired tokens are never deleted; one row per reset request.
 `user_id` → `users.id` CASCADE, `token_hash varchar(64) not null unique`,
 `expires_at timestamptz not null`, `used_at timestamptz null`.
 
 ### `user_mfa`
+
+**Growth:** per-user.
 One authenticator for one account. `user_id` is the primary key, so there is
 no second secret. `confirmed_at` stays null until a code from that secret has
 been accepted; until then the row is an enrolment in progress, not a second
@@ -274,6 +305,8 @@ effect at the next password sign-in. A refresh chain already issued keeps
 working until it expires or is revoked.
 
 ### `user_mfa_recovery_codes`
+
+**Growth:** per-user.
 Ten single-use codes, shown once when the authenticator is confirmed or when
 they are regenerated. Only the argon2 hash is stored. No `created_at` or
 `updated_at`: `used_at` is the only clock that matters.
@@ -287,6 +320,8 @@ they are regenerated. Only the argon2 hash is stored. No `created_at` or
 ## tenancy — 3 tables
 
 ### `organizations`
+
+**Growth:** fixed.
 | Field | Type | Notes |
 |---|---|---|
 | `contact_name` / `contact_email` | `varchar(200)` / `varchar(320) null` | who to write to about the account; the organisation's own admin keeps them (B-33) |
@@ -301,6 +336,8 @@ they are regenerated. Only the argon2 hash is stored. No `created_at` or
 | `require_staff_mfa` | `bool not null default false` | when set, a membership whose role is outside `END_USER_ROLES` must use a second factor. Same precedent as `organization_sso.sso_only`: the organisation states a sign-in rule. Takes effect at the next password sign-in; existing refresh chains continue |
 
 ### `memberships`
+
+**Growth:** per-org.
 A person's role in an organisation. A user may hold several, in several orgs.
 
 | Field | Type | Notes |
@@ -320,6 +357,8 @@ Role vocabularies live in `tenancy.domain`:
 `END_USER_ROLES = {trainee, practice_user}`, `ASSIGNED_STAFF_ROLE = "supervisor"`.
 
 ### `audit_log`
+
+**Growth:** unbounded. **Retention:** GAP: append-only by design with no archive or age limit; needs a retention period decision (a legal one) and an archive step.
 Append-only. No `updated_at`: nothing edits these.
 
 | Field | Type | Notes |
@@ -339,6 +378,8 @@ Indexes on `(org_id, at)` and `(actor_user_id, at)`.
 ## catalog — 2 tables
 
 ### `exams`
+
+**Growth:** fixed.
 **Starts empty.** An exam is written, not seeded — by a platform admin through
 `POST /platform/exams`, or by an institution through `POST /orgs/{slug}/exams`.
 Replaces b2c's `app_type` string and the 4×20 `COLLECTION_MAPPING` it indexed —
@@ -380,6 +421,8 @@ version's own id, so a stored result traces back to the exact wording it was
 marked against; the column named one of four frameworks the engine shipped.
 
 ### `org_programmes`
+
+**Growth:** per-org.
 One organisation offering one exam. This is what `b2b_exams` rows were. The exam
 is either the institution's own or one the platform published; the programme
 carries no content, it is the label a year's sittings are grouped under.
@@ -407,6 +450,8 @@ existed, and one of three `.txt` prompts chosen by a dict keyed on framework
 id — so adding an exam meant a release of the engine.
 
 ### `rubrics`
+
+**Growth:** fixed.
 Owned by the platform or by one organisation, the same shape `stations` uses.
 Deliberately has **no `exam_id`**: an exam names the rubric version it is marked
 with, never the other way round, which is what lets an institution author a
@@ -422,6 +467,8 @@ rubric without first inventing an exam to hang it on.
 CHECK `ck_rubrics_owner_matches_org`: `(owner_kind='platform' AND org_id IS NULL) OR (owner_kind='org' AND org_id IS NOT NULL)`.
 
 ### `rubric_versions`
+
+**Growth:** fixed.
 One immutable revision. The version's **id is the framework id** the engine and
 `attempt_results.framework_id` record, so a result traces back to the exact
 wording of the rubric that produced it.
@@ -450,6 +497,8 @@ reads, so the two cannot drift apart.
 ## stations — 5 tables
 
 ### `station_templates`
+
+**Growth:** fixed.
 A station shape: what a station of this kind contains, and what each block of
 it is for. Owned by the platform or by an org — it was org-only, so the
 platform's library stations had no template and were rendered by a formatter
@@ -470,6 +519,8 @@ idea — "what a station of this kind contains" — with no repository, service,
 route or reader anywhere in the app or the tests.)
 
 ### `station_template_versions`
+
+**Growth:** fixed.
 | Field | Type | Notes |
 |---|---|---|
 | `owner_kind` | `varchar(16) not null` | mirrors the template's owner |
@@ -484,6 +535,8 @@ route or reader anywhere in the app or the tests.)
 UNIQUE `(template_id, version)`; index `(org_id, status)`; CHECK `ck_station_template_versions_owner_matches_org`.
 
 ### `stations`
+
+**Growth:** fixed.
 A scenario a candidate can be given. `owner_kind` is what unifies b2c's four
 Firestore collections with b2b's org-authored instances: the platform library and an
 institution's own stations are the same thing with a different owner, so an attempt
@@ -502,6 +555,8 @@ CHECK `ck_stations_owner_matches_org`: `platform` ⇒ `org_id IS NULL`, `org` �
 `org_id IS NOT NULL`. Indexes `(org_id, exam_id)` and `(exam_id, owner_kind)`.
 
 ### `station_versions`
+
+**Growth:** fixed.
 One immutable revision of a station's content. An attempt references a version, never
 a station, so editing a station tomorrow cannot change what somebody was assessed on
 yesterday.
@@ -519,6 +574,8 @@ yesterday.
 UNIQUE `(station_id, version)`.
 
 ### `station_flags`
+
+**Growth:** per-user.
 A report that a station is wrong, and what staff did about it. The retiring
 client appended `{station_id, mock_id, flagged: true}` to the *user's* document
 instead, so a report was visible only to the person who made it and the content
@@ -540,6 +597,8 @@ CHECK `ck_station_flags_status`; index `(status, created_at)` — the queue is
 "what is still open, oldest first".
 
 ### `station_imports`
+
+**Growth:** per-org.
 One uploaded station document (a PDF or a Word file) and what was drafted from
 it, for an institution that already has a station library and should not have
 to retype it. The file is not kept: its text is pulled on upload. Two
@@ -574,6 +633,8 @@ comes via its programme instead — see `attempts.rubric_version_id` below.
 ## inbox — 2 tables
 
 ### `user_messages`
+
+**Growth:** per-user.
 One in-app message to one person, or an announcement to everybody.
 
 | Field | Type | Notes |
@@ -594,6 +655,8 @@ announcements. An announcement is visible to accounts created at or before it, s
 not inherit history.
 
 ### `user_message_reads`
+
+**Growth:** per-user.
 That one person opened one message.
 
 | Field | Type | Notes |
@@ -604,6 +667,8 @@ That one person opened one message.
 ## station_sets — 2 tables
 
 ### `station_sets`
+
+**Growth:** per-user.
 A learner's own collection of stations to practise.
 
 | Field | Type | Notes |
@@ -615,6 +680,8 @@ A learner's own collection of stations to practise.
 | `completed_at` | `timestamptz null` | |
 
 ### `station_set_entries`
+
+**Growth:** per-user.
 One station inside a set, with how often it has been run. The counters are the reason
 a set is not a circuit: a slot is sat once.
 
@@ -634,6 +701,8 @@ UNIQUE `(set_id, position)`. Partial index `ix_station_set_entries_flagged` on
 ## media — 1 table
 
 ### `media_items`
+
+**Growth:** fixed.
 A slide deck, summary, blog post or podcast episode. One table with a kind rather
 than four per product: b2c has sixteen collections for these and the same
 publish-and-read logic in each.
@@ -662,6 +731,8 @@ it named, so an item unpublished since indexing cannot leak.
 ## attempts — 5 tables
 
 ### `attempts`
+
+**Growth:** per-attempt.
 One candidate running one scenario. `id` is its own identity: b2c made the attempt id
 the room name and b2b made it the slot id; both leaked an implementation detail into
 the worker contract, and b2b's meant re-dispatching a slot overwrote the first
@@ -710,6 +781,8 @@ Transitions (`domain._ALLOWED`) run `created → running → interaction_complet
 evaluated`, with `failed` reachable throughout; `TERMINAL = {evaluated, failed}`.
 
 ### `transcript_messages`
+
+**Growth:** per-turn. **Retention:** compact_transcripts folds an attempt's turns into transcripts.messages an hour after delivery and deletes the rows, so only live attempts hold per-turn rows.
 One turn. No `updated_at`: a spoken turn is never edited.
 
 | Field | Type | Notes |
@@ -726,12 +799,18 @@ UNIQUE `(attempt_id, message_id)` — chunk posts repeat, because the worker sen
 best-effort and never reads the response.
 
 ### `transcripts`
+
+**Growth:** per-attempt.
 The delivery record for an attempt's turns.
 
 `attempt_id` → `attempts.id` CASCADE (UNIQUE), `complete bool not null default false`,
 `runtime_label varchar(64) null`, `delivered_at timestamptz null`.
+`messages jsonb null` (the finished attempt's turns as `{"v": 1, "turns": [...]}`, replacing its
+`transcript_messages` rows; ORM-deferred), `message_count int null` (turns in `messages`; null until compacted).
 
 ### `attempt_live_coverage`
+
+**Growth:** per-attempt.
 One durable live-coverage snapshot per practice attempt. Unlike the base models,
 this table has no separate `id` or timestamps.
 
@@ -744,6 +823,8 @@ Upserted by serialized `coverage` jobs. Coverage records observed behaviours,
 not grades; exam-slot attempts never receive this coaching feed.
 
 ### `assessment_results`
+
+**Growth:** per-attempt.
 What the engine scored, kept immutably.
 
 | Field | Type | Notes |
@@ -766,6 +847,8 @@ candidate's outcome has to be defensible months later, so the database refuses t
 it be edited at all.
 
 ### `candidate_result_revisions`
+
+**Growth:** per-attempt.
 One version of a decision. Never updated; a change is a new revision. No `updated_at`.
 
 | Field | Type | Notes |
@@ -793,6 +876,8 @@ names its releaser, so an incomplete record cannot be written. Assessment and
 recruitment outcomes are cross-checked in `domain._COMPATIBLE`.
 
 ### `candidate_result_events`
+
+**Growth:** per-attempt.
 What happened to a decision, append-only. No `updated_at`.
 
 `revision_id` → `candidate_result_revisions.id` CASCADE (indexed),
@@ -800,6 +885,8 @@ What happened to a decision, append-only. No `updated_at`.
 `idempotency_key varchar(200) not null unique`, `at timestamptz not null default now()`.
 
 ### `candidate_result_notifications`
+
+**Growth:** per-attempt.
 Outbox for telling a candidate — a row rather than an email sent inline, so a release
 is not lost because a mail provider was briefly down.
 
@@ -826,6 +913,8 @@ they have different owners, lifecycles and uniqueness.
 `RAG_VALUES = (R, A, G)`, `REVIEW_STATUSES = (draft, completed)`.
 
 ### `slot_reviews`
+
+**Growth:** per-attempt.
 A rubric filled in against one slot, by staff or by a peer observer.
 
 | Field | Type | Notes |
@@ -843,6 +932,8 @@ UNIQUE `(slot_id, submitted_by)` — one review per person per slot; submitting 
 edits the first.
 
 ### `gp_lead_reviews`
+
+**Growth:** per-attempt.
 A revisioned second opinion on a slot. One per slot, edited in place, with a revision
 counter because two reviewers can hold the same screen open (`ReviewConflict`).
 
@@ -852,6 +943,8 @@ counter because two reviewers can hold the same screen open (`ReviewConflict`).
 `notes text null`, `reviewed_by` → `users.id` SET NULL, `completed_at timestamptz null`.
 
 ### `circuit_reviews`
+
+**Growth:** per-org.
 What a supervisor finalises for a whole circuit.
 
 `circuit_id` → `circuits.id` CASCADE (UNIQUE), `org_id` → `organizations.id` CASCADE,
@@ -869,6 +962,8 @@ Domain bounds: `EXAM_MAX_STATIONS = 12`, `DEFAULT_READING_MINUTES = 3`,
 `SIMULATION_BOUNDS = (1, 180)`.
 
 ### `sittings`
+
+**Growth:** per-org.
 A scheduled event an organisation holds.
 
 | Field | Type | Notes |
@@ -885,6 +980,8 @@ A scheduled event an organisation holds.
 | `rubric_version_id` | `uuid **not null**` → `rubric_versions.id` RESTRICT | resolved from the sitting's `programme_id` at create time: the programme's exam must name a published rubric version. Replaces the former `feedback_template_version_id` binding |
 
 ### `circuits`
+
+**Growth:** per-org.
 | Field | Type | Notes |
 |---|---|---|
 | `revision` | `int not null default 1` | raised by one on every edit; a write that names an older one is refused `stale_revision` (B-15) |
@@ -918,6 +1015,8 @@ that no longer matches and does nothing. That is the whole concurrency design �
 no lease, no claim table, one integer.
 
 ### `circuit_interventions`
+
+**Growth:** per-org.
 What a human did to a running examination, and why. Append-only, and no
 `updated_at`: an intervention is a fact about a moment, not a row anybody edits.
 When a candidate says their station went wrong, the question is what was done to
@@ -935,6 +1034,8 @@ it and by whom, and before this the answer was nowhere.
 | `at` | `timestamptz not null` | |
 
 ### `circuit_run_history`
+
+**Growth:** per-org.
 One finished run of a circuit, as the exam-day board last saw it: written once by
 `service_steps.finish` in the transaction that ends the circuit, never edited. The
 board is built live from running circuits, so without this a circuit that ended
@@ -958,6 +1059,8 @@ left nothing to look back at. No `updated_at`. Read by
 UNIQUE `(circuit_id, ended_at)`: a rescued circuit that ends again is a second run.
 
 ### `circuit_stations`
+
+**Growth:** per-org.
 Replaces b2b's `station_refs jsonb`. A real row per station, so a station cannot be
 deleted out from under a circuit and "which circuits use this station?" is a query.
 No `updated_at`.
@@ -967,12 +1070,16 @@ No `updated_at`.
 UNIQUE `(circuit_id, position)`.
 
 ### `circuit_trainees`
+
+**Growth:** per-org.
 Replaces b2b's `trainee_ids text[]`. No `updated_at`.
 
 `circuit_id` → `circuits.id` CASCADE, `trainee_id` → `users.id` CASCADE,
 `position int not null`. UNIQUE `(circuit_id, trainee_id)`.
 
 ### `slots`
+
+**Growth:** per-org.
 One trainee at one station. Carries no transcript and no feedback: those live on the
 attempt, which is what makes a re-dispatch keep the first recording instead of
 overwriting it. The id is globally unique because the worker and several routes
@@ -1004,11 +1111,15 @@ A slot carries no clock. That is the circuit's: see `circuits` above.
 ## roster — 5 tables
 
 ### `cohorts`
+
+**Growth:** per-org.
 `org_id` → `organizations.id` CASCADE, `name varchar(200) not null`,
 `academic_year varchar(32) null`, `status varchar(32) not null default 'active'`.
 UNIQUE `(org_id, name)`.
 
 ### `trainees`
+
+**Growth:** per-org.
 Someone an organisation teaches. Separate from `users` because an institution rosters
 people before they have ever signed in — `user_id` is filled when they do.
 
@@ -1026,6 +1137,8 @@ people before they have ever signed in — `user_id` is filled when they do.
 UNIQUE `(org_id, email)`.
 
 ### `trainee_groups`
+
+**Growth:** per-org.
 | Field | Type | Notes |
 |---|---|---|
 | `org_id` | `uuid not null` → `organizations.id` CASCADE | |
@@ -1035,6 +1148,8 @@ UNIQUE `(org_id, email)`.
 UNIQUE `(org_id, label_normalized)`.
 
 ### `trainee_group_members`
+
+**Growth:** per-org.
 The table b2b does not have. Without it, membership is a string match between a
 trainee's cohort and a group's label, recomputed on every circuit build: renaming a
 group empties it, two groups sharing a label collide, and nobody can be in two groups.
@@ -1043,6 +1158,8 @@ group empties it, two groups sharing a label collide, and nobody can be in two g
 (indexed). UNIQUE `(group_id, trainee_id)`.
 
 ### `scim_tokens`
+
+**Growth:** per-org.
 A bearer token an organisation's identity provider (Entra, Okta) uses to provision
 its roster over SCIM 2.0 (E-21), issued by the organisation's admin. Only the hash is
 kept: the token is shown once, and a dump must not let anybody add people to an
@@ -1065,6 +1182,8 @@ institution. Revoked, never deleted.
 ## entitlements — 1 table
 
 ### `entitlements`
+
+**Growth:** per-user.
 A record of access, separate from whatever caused it. Append-only in practice:
 revoking sets `revoked_at` rather than deleting the row, so "why could they do that?"
 stays answerable after the fact, and a refund can revoke access without erasing the
@@ -1089,6 +1208,8 @@ Domain: `ALLOWED_TRIAL_STATIONS = 3`, `TRIAL_DAYS = 14`.
 ## billing — 5 tables
 
 ### `plans`
+
+**Growth:** fixed.
 What a Stripe price buys. A row rather than a hardcoded table keyed by pence: b2c
 matches the amount paid against `PRICE_CONFIG` and raises on a miss, so changing a
 price — or taking a payment in another currency, or honouring a Stripe coupon —
@@ -1105,6 +1226,8 @@ breaks the purchase *after* the card has been charged.
 | `active` | `bool not null default true` | |
 
 ### `stripe_events`
+
+**Growth:** unbounded. **Retention:** GAP: one row per acted-on webhook delivery, kept forever; only the recent window is needed for replay protection.
 Every webhook delivery we have acted on — the thing b2c has no equivalent of. Stripe
 retries until it gets a 2xx, and without this a retry re-runs the grant. No
 `updated_at`.
@@ -1119,6 +1242,8 @@ retries until it gets a 2xx, and without this a retry re-runs the grant. No
 | `failure` | `text null` | why a delivery was received but not applied: an address with no account, a price with no plan. Kept rather than rolled back, so it can be reconciled by hand or applied by Stripe's next retry once fixed |
 
 ### `payments`
+
+**Growth:** per-user.
 | Field | Type | Notes |
 |---|---|---|
 | `user_id` | `uuid not null` → `users.id` **RESTRICT** | a payment outlives the account |
@@ -1136,6 +1261,8 @@ retries until it gets a 2xx, and without this a retry re-runs the grant. No
 | `plan_starts_at` / `plan_ends_at` | `timestamptz null` | the window the payment bought, frozen so a later change to the plan cannot rewrite a document already sent |
 
 ### `invoices`
+
+**Growth:** per-org.
 What an organisation is billed, under the purchase order its finance team raised
 (E-22). An institution pays on an invoice rather than a card, and its finance
 office will not pay one that does not quote their PO number.
@@ -1155,6 +1282,8 @@ office will not pay one that does not quote their PO number.
 | `created_by` | `uuid null` → `users.id` SET NULL | the console user who raised it |
 
 ### `invoice_lines`
+
+**Growth:** per-org.
 One line on an invoice. No `updated_at`: lines are written with the invoice and
 never edited.
 
@@ -1173,6 +1302,8 @@ never edited.
 `ATTRIBUTION_WINDOW = 90 days`, landing paths under `/exams/`.
 
 ### `partner_arrivals`
+
+**Growth:** unbounded. **Retention:** GAP: one row per public link click, never pruned and not bounded by anything a user does; a bot can inflate it.
 Somebody landing here from a partner's link.
 
 | Field | Type | Notes |
@@ -1186,6 +1317,8 @@ Somebody landing here from a partner's link.
 | `landed_at` | `timestamptz not null default now()` | |
 
 ### `acquisitions`
+
+**Growth:** per-user.
 The partner a user was acquired through, decided once. Immutable by intention:
 re-attributing an existing user because they later clicked another link is how a
 partner's numbers stop being reconcilable.
@@ -1195,6 +1328,8 @@ partner's numbers stop being reconcilable.
 `acquired_at timestamptz not null default now()`.
 
 ### `partner_pilot_configs`
+
+**Growth:** fixed.
 A partner pilot's commercial settings (G-1), ported from b2c's `partner_pilot_config`
 collection: what a click costs, and at which estimated spend to email the team. One
 row per partner, written on the first edit; until then the b2c defaults apply in
@@ -1215,11 +1350,15 @@ range an admin happened to view, so the same spend alerted or not depending on t
 dates picked.
 
 ### `partner_reporters`
+
+**Growth:** fixed.
 Someone allowed to read one partner's numbers, and nothing else.
 `partner varchar(32) not null`, `email citext not null`, `revoked_at timestamptz null`.
 UNIQUE `(partner, email)`.
 
 ### `referrals`
+
+**Growth:** per-user.
 `referrer_user_id` → `users.id` CASCADE (indexed), `code varchar(32) not null unique`,
 `referred_user_id` → `users.id` SET NULL, `redeemed_at timestamptz null`,
 `earned_pence int not null default 0`, `plan_code varchar(64) null` — the
@@ -1238,6 +1377,8 @@ that takes back a credit already paid out when its purchase is refunded or dispu
 (S-13); the referrer's balance is the sum of `earned_pence`, so it nets off the next payout.
 
 ### `referral_payout_details`
+
+**Growth:** per-user.
 Where a referrer sits the bank details settlement pays out to (A1), added
 because the retiring client's Settings screen collects them but nothing here
 stored them. `user_id` → `users.id` CASCADE (UNIQUE — one set of details per
@@ -1262,6 +1403,8 @@ and comment tables: they are the same shape, and b2c's three near-identical
 collections per product (twelve in total) is what happens otherwise.
 
 ### `posts`
+
+**Growth:** per-user.
 Carries the `Addressed` columns (`visibility`, `audience_org_id`, `audience_group_id`).
 
 | Field | Type | Notes |
@@ -1286,6 +1429,8 @@ station comment a constraint violation. Plus CHECK `AUDIENCE_CHECK` and indexes 
 query filters on before anything else.
 
 ### `post_likes`
+
+**Growth:** per-user.
 Who liked what. A row rather than a counter on the post: b2c increments a number, so a
 double tap counts twice and nothing can be undone.
 
@@ -1298,6 +1443,8 @@ UNIQUE `(post_id, user_id)`.
 `CANCELLABLE_STATUSES = {available, claimed}`.
 
 ### `availability_posts`
+
+**Growth:** per-user.
 A time someone is free to practise with a peer. Carries the `Addressed` columns.
 
 | Field | Type | Notes |
@@ -1312,6 +1459,8 @@ A time someone is free to practise with a peer. Carries the `Addressed` columns.
 | `claimed_at` / `cancelled_at` | `timestamptz null` | |
 
 ### `peer_sessions`
+
+**Growth:** per-user.
 The session a claim creates. Two people, one room, one appointed time.
 
 `post_id` → `availability_posts.id` SET NULL (nullable),
@@ -1329,6 +1478,8 @@ hour" email to both participants; also the job's idempotency check).
 ## peer_practice — 3 tables
 
 ### `practice_queue_entries`
+
+**Growth:** unbounded. **Retention:** GAP: expiry only flips status to expired; the row is never deleted, one per queue join.
 Someone waiting to be paired. Carries the `Addressed` columns.
 
 | Field | Type | Notes |
@@ -1346,6 +1497,8 @@ person per exam; joining twice keeps the place you already have. Partial index o
 `(exam_id, seq)` WHERE `status = 'waiting'` is the matcher's read.
 
 ### `practice_sessions`
+
+**Growth:** per-user.
 Two people practising, one as doctor and one as patient.
 
 `exam_id` → `exams.id` RESTRICT, `doctor_user_id` and `patient_user_id` → `users.id`
@@ -1386,6 +1539,8 @@ Partial index `ix_practice_sessions_recording_state` on `recording_state` WHERE
 majority, and the transcription job only ever asks after the rest.
 
 ### `practice_history`
+
+**Growth:** per-user.
 What part someone last played, and how often they have practised. A row rather than
 fields on the user: it is peer-practice's business, and b2c putting it on the user
 document is why the matcher reaches into four different collections to find it.
@@ -1400,6 +1555,8 @@ document is why the matcher reaches into four different collections to find it.
 ## assistant — 2 tables
 
 ### `assistant_sessions`
+
+**Growth:** per-user.
 One conversation where the assistant helps someone use the product.
 
 | Field | Type | Notes |
@@ -1416,6 +1573,8 @@ One conversation where the assistant helps someone use the product.
 | `usage` | `jsonb null` | |
 
 ### `assistant_transcript_messages`
+
+**Growth:** per-turn. **Retention:** GAP: turns of help sessions are kept and never pruned; other kinds store none.
 Turns, kept only for `help` sessions (`_KEEPS_TRANSCRIPT`). The other three kinds are
 navigation; storing them would collect recordings of people's screens for nothing.
 No `updated_at`.
@@ -1431,6 +1590,8 @@ What the tutor knows about one learner. Sits above `assistant` and `attempts`; b
 announce their moments through `bind_*` seams, so nothing below imports this.
 
 ### `learning_events`
+
+**Growth:** unbounded. **Retention:** GAP: written by the browser on every read, listen or practice and deleted only when the user asks to be forgotten.
 One thing this person read, practised or listened to. Written by the browser as it
 happens: a summary opened in the app leaves no other trace, and the tutor asking how
 it went is the point of collecting them.
@@ -1452,6 +1613,8 @@ the same thing inside ten minutes are one visit, because somebody who opens a su
 follows a link and comes back has not read it twice.
 
 ### `tutor_notes`
+
+**Growth:** per-user.
 Something the tutor wrote down: how a conversation ended, or a fact it was told. Two
 kinds in one table because they are read together and forgotten together.
 
@@ -1465,6 +1628,8 @@ kinds in one table because they are read together and forgotten together.
 | `created_at` | `timestamptz not null default now()` | |
 
 ### `debrief_summaries`
+
+**Growth:** per-attempt.
 What a debrief concluded and what was agreed about it.
 
 | Field | Type | Notes |
@@ -1479,6 +1644,8 @@ What a debrief concluded and what was agreed about it.
 | `created_at` | `timestamptz not null default now()` | |
 
 ### `material_chunks`
+
+**Growth:** fixed.
 The study material and the app's help articles cut into passages, with the vector each is
 retrieved by. Derived data entirely: every row is rebuilt from `station_versions`,
 `media_items` and `assistant/help_content.json` (corpus `help`; `exam_id` is null for an
@@ -1503,6 +1670,8 @@ slice that owns the source of truth. See ADR 0019.
 ## notifications — 1 table
 
 ### `outbound_messages`
+
+**Growth:** unbounded. **Retention:** GAP: sent and failed rows are kept forever (only erasure requests delete unsent mail); needs an age-based prune of sent rows.
 One outbox rather than one per slice: a message is a message, and a single queue is
 the only way "what is stuck?" has one answer.
 
@@ -1527,6 +1696,14 @@ is taken back. Retry backoff: `BASE_RETRY_SECONDS = 30`, capped at
 `MAX_RETRY_SECONDS = 3600`.
 
 ---
+
+## health — 1 table
+
+### `database_size_readings`
+
+**Growth:** fixed. One row per calendar day, so about 400 rows at steady state.
+
+`taken_on date not null unique`, `total_bytes bigint not null` (`pg_database_size` at the reading), `relations jsonb not null default '[]'` (the ten largest public tables by `pg_total_relation_size`, each `{name, total_bytes, rows}`), `alert_level smallint not null default 0` (0 below 60% of `DATABASE_SIZE_BUDGET_MB`, 1 from 60%, 2 from 80%; the stored level is how a crossing is alerted once rather than every run). Owned by `health`. Written by the daily `record_database_size` task, which upserts on `taken_on` and trims rows older than 400 days. Row level security is on and no policy is defined.
 
 # Voice routing
 

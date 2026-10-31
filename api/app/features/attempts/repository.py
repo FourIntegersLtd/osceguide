@@ -20,7 +20,7 @@ from sqlalchemy.orm import aliased
 from app.core.pagination import keyset_page
 from app.core.search import contains_text
 from app.features.attempts.domain import Kind, Status, TrialAttempt
-from app.features.attempts.models import Attempt, AttemptLiveCoverage, TranscriptMessage
+from app.features.attempts.models import Attempt, AttemptLiveCoverage, Transcript, TranscriptMessage
 
 # The product's names for `Attempt.kind`, exactly as
 # `web/src/capabilities/transcripts/api.ts`'s `KIND_LABELS` spells
@@ -591,7 +591,15 @@ async def trial_candidates(
     `searched` distinguishes "no search was asked for" from "the search
     matched nothing", since an empty pair of id lists must mean the latter.
     """
-    has_transcript = exists(select(TranscriptMessage.id).where(TranscriptMessage.attempt_id == Attempt.id))
+    has_transcript = or_(
+        exists(select(TranscriptMessage.id).where(TranscriptMessage.attempt_id == Attempt.id)),
+        # Compacted: the turns are a document (`message_count IS NOT NULL`, as `is_compacted`).
+        exists(
+            select(Transcript.id).where(
+                Transcript.attempt_id == Attempt.id, Transcript.message_count.is_not(None)
+            )
+        ),
+    )
     stmt = select(Attempt).where(
         Attempt.org_id == org_id if org_id is not None else Attempt.org_id.is_(None), has_transcript
     )

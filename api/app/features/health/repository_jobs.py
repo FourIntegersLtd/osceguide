@@ -212,3 +212,16 @@ async def cancel_waiting(session: AsyncSession, job_id: int) -> None:
 async def cancel_running(session: AsyncSession, job_id: int) -> None:
     """Stop a job whose worker died: `aborted`, procrastinate's word for a running job stopped."""
     await session.execute(text("SELECT procrastinate_finish_job_v1(:id, 'aborted', false)"), {"id": job_id})
+
+
+async def succeeded_jobs_before(session: AsyncSession, cutoff: datetime) -> int:
+    """How many succeeded jobs finished before `cutoff`: the ones procrastinate's delete will remove."""
+    row = await session.execute(
+        text(
+            "SELECT count(*) FROM procrastinate_jobs job WHERE job.status = 'succeeded' AND "
+            "(SELECT max(event.at) FROM procrastinate_events event "
+            "WHERE event.job_id = job.id AND event.type = 'succeeded') < :cutoff"
+        ),
+        {"cutoff": cutoff},
+    )
+    return int(row.scalar_one())

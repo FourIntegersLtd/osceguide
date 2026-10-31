@@ -28,7 +28,8 @@ from dataclasses import dataclass
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts.models import AssessmentResult, Attempt, TranscriptMessage
+from app.features.attempts.models import AssessmentResult, Attempt, Transcript, TranscriptMessage
+from app.features.attempts.repository_transcript import chunks_for
 from app.features.entitlements.models import Entitlement
 from app.features.identity.models import User
 from app.migration.attempts import MigratedAttempt
@@ -67,11 +68,20 @@ async def imported_counts(session: AsyncSession) -> ExpectedCounts:
             or 0
         ),
         attempts=int(await session.scalar(select(func.count()).select_from(imported_attempts)) or 0),
+        # Rows still in `transcript_messages` plus turns compacted into a document (`message_count`).
         messages=int(
             await session.scalar(
                 select(func.count())
                 .select_from(TranscriptMessage)
                 .where(TranscriptMessage.attempt_id.in_(select(imported_attempts.c.id)))
+            )
+            or 0
+        )
+        + int(
+            await session.scalar(
+                select(func.coalesce(func.sum(Transcript.message_count), 0)).where(
+                    Transcript.attempt_id.in_(select(imported_attempts.c.id))
+                )
             )
             or 0
         ),
@@ -124,17 +134,9 @@ async def spot_check(session: AsyncSession, sample: Sequence[MigratedAttempt]) -
             problems.append(f"{ref} is in the export but not in the database.")
             continue
 
-        stored_rows = (
-            await session.execute(
-                select(
-                    TranscriptMessage.seq,
-                    TranscriptMessage.role,
-                    TranscriptMessage.message,
-                ).where(TranscriptMessage.attempt_id == attempt_id)
-            )
-        ).all()
+        stored_turns = await chunks_for(session, attempt_id)
 
-        stored = transcript_fingerprint([(row[0], row[1], row[2]) for row in stored_rows])
+        stored = transcript_fingerprint([(turn.seq, turn.role, turn.message) for turn in stored_turns])
         source = transcript_fingerprint([(turn.seq, turn.role, turn.message) for turn in migrated.messages])
         if stored != source:
 
@@ -143,6 +145,6 @@ async def spot_check(session: AsyncSession, sample: Sequence[MigratedAttempt]) -
 
             problems.append(
                 f"{ref}: the stored transcript does not match the export "
-                f"({turns(len(stored_rows))} stored, {turns(len(migrated.messages))} in the export)."
+                f"({turns(len(stored_turns))} stored, {turns(len(migrated.messages))} in the export)."
             )
     return problems

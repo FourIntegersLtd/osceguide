@@ -166,6 +166,22 @@ async def accept_chunk(
     """Store one turn as it is spoken, and nudge live coverage if it was the candidate's."""
     _same_attempt(attempt_id, body_attempt_id)
     attempt = await _require(session, attempt_id)
+    await transcripts.lock_transcript(session, attempt_id)
+    if await transcripts.is_compacted(session, attempt_id):
+        # The turns already live in the document, so storing this would leave a row beside it. For
+        # a repeat that loses nothing; the final transcript this chunk would have preceded was
+        # delivered long ago. A genuinely new turn is lost, though (a salvaged attempt had no final
+        # delivery to cover it), so say so rather than look like a repeat.
+        known = await transcripts.seen_message_ids(session, attempt_id)
+        if domain.should_store_chunk(message.message_id, known):
+            log.warning(
+                "transcript.late_turn_dropped",
+                attempt_id=str(attempt_id),
+                message_id=message.message_id,
+                seq=message.seq,
+                role=message.role,
+            )
+        return
     seen = await transcripts.seen_message_ids(session, attempt_id)
     if not domain.should_store_chunk(message.message_id, seen):
         return
@@ -198,6 +214,7 @@ async def accept_transcript(
     """
     _same_attempt(attempt_id, body_attempt_id)
     attempt = await _require(session, attempt_id)
+    await transcripts.lock_transcript(session, attempt_id)
 
     existing = await transcripts.transcript_for(session, attempt_id)
     if not domain.should_accept_transcript(already_complete=bool(existing and existing.complete)):

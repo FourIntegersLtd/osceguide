@@ -19,6 +19,7 @@ import {
   type Machinery,
   type TutorMemoryReindex,
 } from "@/domains/platform/support/api";
+import { DatabaseSize } from "@/domains/platform/DatabaseSize";
 import { UndeliveredMail } from "@/domains/platform/UndeliveredMail";
 import { formatMoment, liveFeedLabel } from "@/domains/platform/support";
 import { BackgroundTasks, type JobStatus } from "@/domains/platform/BackgroundTasks";
@@ -124,6 +125,8 @@ export function Ops() {
           </AsyncBoundary>
         </Panel>
       </div>
+
+      <AsyncBoundary state={health}>{(h) => <DatabaseSize size={h.database_size} />}</AsyncBoundary>
 
       <BackgroundTasks
         status={status}

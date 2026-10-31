@@ -54,6 +54,14 @@ STATE: dict[str, str | None] = {
         "tests/http/test_platform_ops_routes.py::"
         "test_mail_abandoned_in_an_outage_is_listed_and_sent_again_on_retry"
     ),
+    "record_database_size": (
+        "tests/repository/test_health_database_size.py::"
+        "test_a_failing_reading_is_written_to_the_audit_log_not_lost"
+    ),
+    "prune_job_history": (
+        "tests/repository/test_health_database_size.py::"
+        "test_a_failing_prune_is_written_to_the_audit_log_not_lost"
+    ),
 }
 
 # Tasks whose service catches every failure and writes it on the row (the handlers are visible in
@@ -79,6 +87,7 @@ NO_OWN_STATE: dict[str, str] = {
     ),
     "sweep_circuits": "periodic, each circuit's step is isolated and logged; the next minute runs it again",
     "clear_room_agents": "best-effort LiveKit cleanup with its own retry strategy; nobody waits on it",
+    "compact_transcripts": "periodic, idempotent; the next tick retries",
     "check_partner_spend": "periodic alert; a missed day is caught by the next daily run",
     "erase_closed_accounts": "periodic; an account that fails stays due and is retried by the next run",
     "expire_practice_queue": "periodic, idempotent; stale places are expired by the next minute's run",
@@ -111,7 +120,9 @@ NO_OWN_STATE: dict[str, str] = {
     ),
     "warn_expiring_access": "periodic hourly; the warning window is a week wide",
 }
-NO_OWN_STATE_CEILING = 20
+# 21: `compact_transcripts` is periodic and idempotent, writes no row anyone waits on, and so belongs
+# here rather than in STATE (which means "writes the failure on the row a person is waiting on").
+NO_OWN_STATE_CEILING = 21
 
 
 def test_every_registered_task_says_how_its_failure_is_seen() -> None:

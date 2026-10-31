@@ -49,11 +49,50 @@ class JobsPage(BaseModel):
     next_before_id: int | None = None
 
 
+# The words for the alert levels, in the order `domain.alert_level` counts them (0, 1, 2).
+SizeLevel = Literal["ok", "warning", "critical"]
+
+
+class RelationSizeRead(BaseModel):
+    """One table with its indexes, and what a row of it costs."""
+
+    name: str
+    total_bytes: int
+    # Estimated from the planner's statistics; None until the table has been analysed.
+    rows: int | None
+    bytes_per_row: int | None
+
+
+class SizeForecastRead(BaseModel):
+    """Where the size is heading, or why it cannot yet be said."""
+
+    state: Literal["insufficient_data", "not_growing", "growing", "over_budget"]
+    bytes_per_day: int | None
+    days_until_full: int | None
+    readings_used: int
+    # One sentence for the screen.
+    note: str
+
+
+class DatabaseSizeRead(BaseModel):
+    """How full the database is against its budget, measured when asked."""
+
+    total_bytes: int
+    budget_bytes: int
+    percent_used: float
+    # ok below 60% of the budget, warning from 60%, critical from 80%.
+    level: SizeLevel
+    top_relations: list[RelationSizeRead]
+    forecast: SizeForecastRead
+
+
 class PlatformHealth(HealthResponse):
-    """The liveness report plus what only the console needs: the queue and the worker."""
+    """The liveness report plus what only the console needs: the queue, the worker and the database's size."""
 
     jobs_by_status: dict[str, int]
     worker_seen_at: datetime | None
+    # None when the size could not be read: the rest of the report is still true.
+    database_size: DatabaseSizeRead | None = None
 
 
 class MachineryCapacity(BaseModel):

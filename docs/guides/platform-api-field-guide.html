@@ -646,7 +646,7 @@ const SCHEMA = [
   g:"Foundation", sub:"Who you are and who you work for",
   slices:[
    {s:"identity", n:"", tables:[
-     {t:"users", b:"", f:[
+     {t:"users", b:"Growth: per-user.", f:[
        ["email", "citext not null unique", "citext so <em>Alice@…</em> and <em>alice@…</em> collide in the database, not only in code that remembers to lowercase"],
        ["name", "varchar(200) not null default ''", ""],
        ["password_hash", "text null", "null for provider-only accounts"],
@@ -672,13 +672,13 @@ const SCHEMA = [
        ["avatar_url", "text null", "this person's profile photo, written by <em>identity.service.upload_avatar</em>; stored in S3 like a station photo"],
        ["engagement_email_sent_at", "timestamptz null", "set once <em>identity.jobs.send_engagement_emails</em> queues the \"come try a station\" nudge for this person; also the job's idempotency check (<em>UPDATE ... WHERE ... IS NULL ... RETURNING</em>), and backfilled by <em>app.migration</em> from legacy's <em>inactive_engagement_email_sent_at</em> for anyone imported from Firestore"]],
       r:[["Why", "Domain: <em>MIN_PASSWORD_LENGTH = 12</em>."]]},
-     {t:"user_identities", b:"An external provider's handle on a user: Clerk, Entra or SAML, and the legacy consumer import. Written by <em>identity.service_sso.sign_in_external</em> on a first single sign-on, and by <em>app.migration.load_people</em>. See <em>organization_sso</em> below.", f:[
+     {t:"user_identities", b:"Growth: per-user. An external provider's handle on a user: Clerk, Entra or SAML, and the legacy consumer import. Written by <em>identity.service_sso.sign_in_external</em> on a first single sign-on, and by <em>app.migration.load_people</em>. See <em>organization_sso</em> below.", f:[
        ["user_id", "uuid not null → users.id CASCADE", ""],
        ["provider", "varchar(32) not null", ""],
        ["subject", "varchar(255) not null", "the provider's own id"],
        ["tenant_slug", "varchar(100) null", "for provider-side tenancy"]],
       r:[["unique", "<em>(provider, subject)</em>"]]},
-     {t:"organization_sso", b:"One organisation's sign-in arrangement. At most one row per organisation. Replaces a hostname allow-list that was compiled into the browser bundle, with the tenant slug, the button's wording and the \"no password form here\" rule beside it.", f:[
+     {t:"organization_sso", b:"Growth: per-org. One organisation's sign-in arrangement. At most one row per organisation. Replaces a hostname allow-list that was compiled into the browser bundle, with the tenant slug, the button's wording and the \"no password form here\" rule beside it.", f:[
        ["org_id", "uuid not null → organizations.id CASCADE", "UNIQUE"],
        ["provider", "varchar(32) not null", "<em>clerk</em> or <em>entra</em>; selects which adapter verifies the id token at sign-in"],
        ["issuer", "varchar(255) null", "the broker's own identity. Not a secret"],
@@ -687,12 +687,12 @@ const SCHEMA = [
        ["sign_in_label", "varchar(80) null", "null takes the provider's default rather than rendering a button with no words"],
        ["default_exam_code", "varchar(32) null", "which exam a white-label site lands on"]],
       r:[["Why", "Sign-in exchanges the broker's code for an id token, then verifies issuer, audience and signature against the provider's JWKS (<em>sso/entra.py</em> for Entra, <em>sso/clerk.py</em> for Clerk). When <em>sso_only</em> is true, password login is refused for that organisation (<em>identity/service_sessions.py</em>, <em>login_with_memberships</em>, enforced in the database by migration <em>02a17a847052_sso_only_disables_password_login</em>)."]]},
-     {t:"organization_sso_bindings", b:"A host, or an email domain, that means one organisation.", f:[
+     {t:"organization_sso_bindings", b:"Growth: per-org. A host, or an email domain, that means one organisation.", f:[
        ["sso_id", "uuid not null → organization_sso.id CASCADE", ""],
        ["kind", "varchar(16) not null", "CHECK <em>host</em> or <em>email_domain</em>"],
        ["value", "citext not null", "stored as a <em>Host:</em> header will arrive: lower-cased, no scheme, path or port"]],
       r:[["unique", "<em>(kind, value)</em> — across the whole platform, not within an organisation. A hostname belongs to exactly one, and two rows claiming <em>nhs.net</em> would make home-realm discovery a coin toss."]]},
-     {t:"organization_saml_connections", b:"One organisation's SAML 2.0 identity provider (E-20), for an institution whose IdP speaks only SAML. Owned by <em>sso</em>, beside <em>organization_sso</em>, whose <em>provider</em> is <em>saml</em> and whose <em>issuer</em> holds the IdP's entity id when this is the way in. At most one per organisation. The row's <em>id</em> is the public handle the SP metadata (<em>GET /sso/saml/{id}/metadata</em>) and assertion consumer (<em>POST /sso/saml/{id}/acs</em>) URLs are built on, under <em>PUBLIC_API_URL</em>.", f:[
+     {t:"organization_saml_connections", b:"Growth: per-org. One organisation's SAML 2.0 identity provider (E-20), for an institution whose IdP speaks only SAML. Owned by <em>sso</em>, beside <em>organization_sso</em>, whose <em>provider</em> is <em>saml</em> and whose <em>issuer</em> holds the IdP's entity id when this is the way in. At most one per organisation. The row's <em>id</em> is the public handle the SP metadata (<em>GET /sso/saml/{id}/metadata</em>) and assertion consumer (<em>POST /sso/saml/{id}/acs</em>) URLs are built on, under <em>PUBLIC_API_URL</em>.", f:[
        ["org_id", "uuid not null → organizations.id CASCADE", "UNIQUE <em>uq_organization_saml_connections_org_id</em>"],
        ["idp_entity_id", "varchar(500) not null", "checked against every response's issuer"],
        ["idp_sso_url", "varchar(1000) not null", "where the AuthnRequest is sent (HTTP-Redirect)"],
@@ -702,7 +702,7 @@ const SCHEMA = [
        ["last_name_attribute", "varchar(255) null", "Entra's claim URIs by default"],
        ["display_name_attribute", "varchar(255) null", "Entra's claim URIs by default"],
        ["enabled", "bool not null", "a disabled connection answers <em>saml_connection_not_found</em>"]]},
-     {t:"cvs", b:"A learner's uploaded CV, and what was read out of it. The PDF is not stored: its text is pulled on upload and the structured result is what the product reads back. <em>created_at</em> is the upload time the list sorts by.", f:[
+     {t:"cvs", b:"Growth: per-user. A learner's uploaded CV, and what was read out of it. The PDF is not stored: its text is pulled on upload and the structured result is what the product reads back. <em>created_at</em> is the upload time the list sorts by.", f:[
        ["user_id", "uuid not null → users.id CASCADE", "indexed; a CV is read by its owner and nobody else"],
        ["status", "varchar(16) not null default 'processing'", "moves one way: <em>processing</em> → <em>completed</em> or <em>failed</em>"],
        ["original_filename", "varchar(255) not null default ''", "what the person called the file; never re-opened"],
@@ -710,7 +710,7 @@ const SCHEMA = [
        ["structured", "jsonb null", "the sections, as <em>cv.schemas.StructuredCv</em>. Null until the job completes"],
        ["error", "text null", "why it failed, for the person to read. Null unless <em>status</em> is <em>failed</em>"],
        ["completed_at", "timestamptz null", "when the read finished"]]},
-     {t:"site_messages", b:"Somebody wrote to us from the public site, or from inside the product.", f:[
+     {t:"site_messages", b:"Growth: unbounded. Retention: GAP: public contact form rows are never deleted or archived; nothing bounds a spam run. Somebody wrote to us from the public site, or from inside the product.", f:[
        ["kind", "varchar(32) not null", "CHECK <em>contact</em> or <em>product_feedback</em>. Separate because they are read by different people"],
        ["name", "varchar(120) null", ""],
        ["email", "citext null", "required for <em>contact</em> (in the domain, not the column): somebody asking a question has to be answerable"],
@@ -721,23 +721,23 @@ const SCHEMA = [
        ["handled_at", "timestamptz null", ""],
        ["handled_by", "uuid null → users.id SET NULL", ""]],
       r:[["index", "<em>(kind, created_at)</em> — the inbox reads one kind at a time, newest first."]]},
-     {t:"refresh_chains", b:"One sign-in, from which a series of refresh tokens is issued.", f:[
+     {t:"refresh_chains", b:"Growth: unbounded. Retention: GAP: revoked and expired chains are never deleted; one row per sign-in, forever. One sign-in, from which a series of refresh tokens is issued.", f:[
        ["user_id", "uuid not null → users.id CASCADE", ""],
        ["expires_at", "timestamptz not null", ""],
        ["revoked_at", "timestamptz null", ""],
        ["revoked_reason", "varchar(32) null", ""],
        ["user_agent", "varchar(255) null", ""]]},
-     {t:"refresh_tokens", b:"", f:[
+     {t:"refresh_tokens", b:"Growth: unbounded. Retention: GAP: every rotation adds a row and spent or expired tokens are never deleted; the fastest-growing auth table.", f:[
        ["chain_id", "uuid not null → refresh_chains.id CASCADE", "indexed"],
        ["token_hash", "varchar(64) not null unique", ""],
        ["used_at", "timestamptz null", ""]],
       r:[["Why", "Every token is kept, spent or not, because that is the only way reuse can be told from forgery. Overwriting a single <em>current_token_hash</em> on rotation loses the evidence: a replayed token is simply not found, which is indistinguishable from a token that never existed, so the leaked chain stays alive."]]},
-     {t:"password_reset_tokens", b:"<em>user_id</em> → <em>users.id</em> CASCADE, <em>token_hash varchar(64) not null unique</em>, <em>expires_at timestamptz not null</em>, <em>used_at timestamptz null</em>.", f:[
+     {t:"password_reset_tokens", b:"Growth: unbounded. Retention: GAP: used and expired tokens are never deleted; one row per reset request. <em>user_id</em> → <em>users.id</em> CASCADE, <em>token_hash varchar(64) not null unique</em>, <em>expires_at timestamptz not null</em>, <em>used_at timestamptz null</em>.", f:[
        ["user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
        ["token_hash", "varchar(64) not null unique", ""],
        ["expires_at", "timestamptz not null", ""],
        ["used_at", "timestamptz null", ""]]},
-     {t:"user_mfa", b:"One authenticator for one account. <em>user_id</em> is the primary key, so there is no second secret. <em>confirmed_at</em> stays null until a code from that secret has been accepted; until then the row is an enrolment in progress, not a second factor. <em>last_used_step</em> is the TOTP counter of the last accepted code, and a later code at that step or earlier is refused as a replay. The secret is Fernet ciphertext under <em>MFA_SECRET_KEY</em>, never the shared secret itself. No <em>updated_at</em>.", flags:["no updated_at"], f:[
+     {t:"user_mfa", b:"Growth: per-user. One authenticator for one account. <em>user_id</em> is the primary key, so there is no second secret. <em>confirmed_at</em> stays null until a code from that secret has been accepted; until then the row is an enrolment in progress, not a second factor. <em>last_used_step</em> is the TOTP counter of the last accepted code, and a later code at that step or earlier is refused as a replay. The secret is Fernet ciphertext under <em>MFA_SECRET_KEY</em>, never the shared secret itself. No <em>updated_at</em>.", flags:["no updated_at"], f:[
        ["user_id", "uuid not null → users.id CASCADE", "primary key"],
        ["secret_ciphertext", "text not null", "Fernet token, not the TOTP secret"],
        ["confirmed_at", "timestamptz null", "null until the first code is accepted"],
@@ -746,13 +746,13 @@ const SCHEMA = [
       r:[["Why", "Password login, registration and the legacy token exchange all go through one gate (<em>identity.service_mfa.finish_password_sign_in</em>). When the authenticator is confirmed the response is <em>mfa_required</em> and a challenge JWT (<em>typ</em> <em>mfa_challenge</em>, five minutes). When policy requires one and none is confirmed, the response is <em>mfa_enrolment_required</em> (<em>typ</em> <em>mfa_enrol</em>, ten minutes). The access-token verifier rejects both types."],
          ["Why", "SSO sign-in (<em>identity.service_sso.sign_in_external</em>) does not use the gate. The identity provider owns the second factor, so this platform does not ask for another. Password reset and accepting an invitation do not mint a session; they set a password, and the next login is the gate."],
          ["Why", "Requiring MFA, or an organisation turning <em>require_staff_mfa</em> on, takes effect at the next password sign-in. A refresh chain already issued keeps working until it expires or is revoked."]]},
-     {t:"user_mfa_recovery_codes", b:"Ten single-use codes, shown once when the authenticator is confirmed or when they are regenerated. Only the argon2 hash is stored. No <em>created_at</em> or <em>updated_at</em>: <em>used_at</em> is the only clock that matters.", flags:["no updated_at"], f:[
+     {t:"user_mfa_recovery_codes", b:"Growth: per-user. Ten single-use codes, shown once when the authenticator is confirmed or when they are regenerated. Only the argon2 hash is stored. No <em>created_at</em> or <em>updated_at</em>: <em>used_at</em> is the only clock that matters.", flags:["no updated_at"], f:[
        ["user_id", "uuid not null → users.id CASCADE", "indexed"],
        ["code_hash", "text not null", "argon2id, same hasher as a password"],
        ["used_at", "timestamptz null", "set when the code signs someone in; a second use is refused"]]}
    ]},
    {s:"tenancy", n:"", tables:[
-     {t:"organizations", b:"", f:[
+     {t:"organizations", b:"Growth: fixed.", f:[
        ["contact_name", "varchar(200)", "who to write to about the account; the organisation's own admin keeps them (B-33)"],
        ["contact_email", "varchar(320) null", "who to write to about the account; the organisation's own admin keeps them (B-33)"],
        ["slug", "citext not null unique", "the URL identifier and nothing else — every FK everywhere points at <em>id</em>, which is the mistake b2b made the other way round"],
@@ -765,7 +765,7 @@ const SCHEMA = [
        ["suspended_at", "timestamptz null", ""],
        ["suspended_by", "uuid null → users.id SET NULL", ""],
        ["require_staff_mfa", "bool not null default false", "when set, a membership whose role is outside <em>END_USER_ROLES</em> must use a second factor. Same precedent as <em>organization_sso.sso_only</em>: the organisation states a sign-in rule. Takes effect at the next password sign-in; existing refresh chains continue"]]},
-     {t:"memberships", b:"A person's role in an organisation. A user may hold several, in several orgs.", f:[
+     {t:"memberships", b:"Growth: per-org. A person's role in an organisation. A user may hold several, in several orgs.", f:[
        ["org_id", "uuid not null → organizations.id CASCADE", ""],
        ["user_id", "uuid not null → users.id CASCADE", "indexed"],
        ["role", "varchar(32) not null", "see role sets below"],
@@ -774,7 +774,7 @@ const SCHEMA = [
        ["revoked_at", "timestamptz null", ""]],
       r:[["unique", "<em>(org_id, user_id, role)</em>"],
          ["Why", "Role vocabularies live in <em>tenancy.domain</em>: <em>ORG_ADMIN_ROLES = {owner, admin, institution_admin, partner_admin}</em>, <em>INSTITUTION_ADMIN_ROLES = {owner, admin, institution_admin}</em>, <em>END_USER_ROLES = {trainee, practice_user}</em>, <em>ASSIGNED_STAFF_ROLE = \"supervisor\"</em>."]]},
-     {t:"audit_log", b:"Append-only. No <em>updated_at</em>: nothing edits these.", flags:["append-only", "no updated_at"], f:[
+     {t:"audit_log", b:"Growth: unbounded. Retention: GAP: append-only by design with no archive or age limit; needs a retention period decision (a legal one) and an archive step. Append-only. No <em>updated_at</em>: nothing edits these.", flags:["append-only", "no updated_at"], f:[
        ["org_id", "uuid null → organizations.id CASCADE", ""],
        ["actor_user_id", "uuid null → users.id SET NULL", ""],
        ["actor_email", "varchar(320) null", "kept even when the user row goes"],
@@ -787,7 +787,7 @@ const SCHEMA = [
       r:[["Why", "Indexes on <em>(org_id, at)</em> and <em>(actor_user_id, at)</em>."]]}
    ]},
    {s:"catalog", n:"", tables:[
-     {t:"exams", b:"Starts empty. An exam is written, not seeded — by a platform admin through <em>POST /platform/exams</em>, or by an institution through <em>POST /orgs/{slug}/exams</em>. Replaces b2c's <em>app_type</em> string and the 4×20 <em>COLLECTION_MAPPING</em> it indexed — a fifth exam is a row here, not another twenty collection names, and not a release either: four rows used to be inserted by a migration and mirrored by a frozen tuple in <em>catalog.domain</em>, pinned to each other by a unit test. Owned (ADR 0017), the same way a station or a rubric is. A *platform* exam is the consumer catalogue. An *org* exam is an institution's own: written without asking us, published on its own schedule, and never in <em>GET /exams</em>.", f:[
+     {t:"exams", b:"Growth: fixed. Starts empty. An exam is written, not seeded — by a platform admin through <em>POST /platform/exams</em>, or by an institution through <em>POST /orgs/{slug}/exams</em>. Replaces b2c's <em>app_type</em> string and the 4×20 <em>COLLECTION_MAPPING</em> it indexed — a fifth exam is a row here, not another twenty collection names, and not a release either: four rows used to be inserted by a migration and mirrored by a frozen tuple in <em>catalog.domain</em>, pinned to each other by a unit test. Owned (ADR 0017), the same way a station or a rubric is. A *platform* exam is the consumer catalogue. An *org* exam is an institution's own: written without asking us, published on its own schedule, and never in <em>GET /exams</em>.", f:[
        ["revision", "int not null default 1", "raised by one on every edit; a write that names an older one is refused <em>stale_revision</em> (B-15)"],
        ["owner_kind", "varchar(16) not null default 'platform'", "<em>platform</em> (the consumer catalogue) or <em>org</em>"],
        ["org_id", "uuid null → organizations.id CASCADE", "set iff <em>owner_kind = 'org'</em>"],
@@ -804,7 +804,7 @@ const SCHEMA = [
          ["check", "<em>ck_exams_owner_matches_org</em>: <em>owner_kind = 'platform'</em> requires <em>org_id IS NULL</em>, <em>owner_kind = 'org'</em> requires it set"],
          ["unique", "<em>uq_exams_platform_code</em> on <em>(code) WHERE org_id IS NULL</em> and <em>uq_exams_org_code</em> on <em>(org_id, code) WHERE org_id IS NOT NULL</em>. One namespace would let whoever registered a code first reserve it for every institution."],
          ["Why", "<em>framework_id</em> is gone. What everything downstream records is the rubric version's own id, so a stored result traces back to the exact wording it was marked against; the column named one of four frameworks the engine shipped."]]},
-     {t:"org_programmes", b:"One organisation offering one exam. This is what <em>b2b_exams</em> rows were. The exam is either the institution's own or one the platform published; the programme carries no content, it is the label a year's sittings are grouped under.", f:[
+     {t:"org_programmes", b:"Growth: per-org. One organisation offering one exam. This is what <em>b2b_exams</em> rows were. The exam is either the institution's own or one the platform published; the programme carries no content, it is the label a year's sittings are grouped under.", f:[
        ["org_id", "uuid not null → organizations.id CASCADE", ""],
        ["exam_id", "uuid not null → exams.id RESTRICT", "an exam this org can see"],
        ["status", "varchar(32) not null default 'draft'", "<em>OFFERABLE_PROGRAMME_STATUSES = {active}</em>. The institution's own status, separate from the exam's"],
@@ -818,13 +818,13 @@ const SCHEMA = [
   g:"Content", sub:"The material a candidate is given",
   slices:[
    {s:"rubrics", n:"What a candidate is marked against, and who wrote it. This used to be three files in the engine package — a Python constant, a hand-written JSON Schema whose <em>description</em> strings were the only place the marking descriptors existed, and one of three <em>.txt</em> prompts chosen by a dict keyed on framework id — so adding an exam meant a release of the engine.", tables:[
-     {t:"rubrics", b:"Owned by the platform or by one organisation, the same shape <em>stations</em> uses. Deliberately has no <em>exam_id</em>: an exam names the rubric version it is marked with, never the other way round, which is what lets an institution author a rubric without first inventing an exam to hang it on.", f:[
+     {t:"rubrics", b:"Growth: fixed. Owned by the platform or by one organisation, the same shape <em>stations</em> uses. Deliberately has no <em>exam_id</em>: an exam names the rubric version it is marked with, never the other way round, which is what lets an institution author a rubric without first inventing an exam to hang it on.", f:[
        ["owner_kind", "varchar(16) not null", "<em>platform</em> or <em>org</em>"],
        ["org_id", "uuid null → organizations.id CASCADE", "null exactly when <em>owner_kind='platform'</em>"],
        ["title", "varchar(200) not null", ""],
        ["current_version_id", "uuid null → rubric_versions.id SET NULL", "set on publish"]],
       r:[["check", "<em>ck_rubrics_owner_matches_org</em>: <em>(owner_kind='platform' AND org_id IS NULL) OR (owner_kind='org' AND org_id IS NOT NULL)</em>"]]},
-     {t:"rubric_versions", b:"One immutable revision. The version's id is the framework id the engine and <em>attempt_results.framework_id</em> record, so a result traces back to the exact wording of the rubric that produced it.", f:[
+     {t:"rubric_versions", b:"Growth: fixed. One immutable revision. The version's id is the framework id the engine and <em>attempt_results.framework_id</em> record, so a result traces back to the exact wording of the rubric that produced it.", f:[
        ["revision", "int not null default 1", "raised by one on every edit; a write that names an older one is refused <em>stale_revision</em> (B-15)"],
        ["rubric_id", "uuid not null → rubrics.id CASCADE", ""],
        ["org_id", "uuid null → organizations.id CASCADE", "mirrors the rubric's owner"],
@@ -842,7 +842,7 @@ const SCHEMA = [
       r:[["Why", "The result schema a marker fills is derived from <em>structure</em>, not stored: the descriptors an author typed become the property descriptions the model reads, so the two cannot drift apart."]]}
    ]},
    {s:"stations", n:"", tables:[
-     {t:"station_templates", b:"A station shape: what a station of this kind contains, and what each block of it is for. Owned by the platform or by an org — it was org-only, so the platform's library stations had no template and were rendered by a formatter that branched on the exam's code, which is why a new exam needed engine code.", f:[
+     {t:"station_templates", b:"Growth: fixed. A station shape: what a station of this kind contains, and what each block of it is for. Owned by the platform or by an org — it was org-only, so the platform's library stations had no template and were rendered by a formatter that branched on the exam's code, which is why a new exam needed engine code.", f:[
        ["owner_kind", "varchar(16) not null", "<em>platform</em> or <em>org</em>"],
        ["org_id", "uuid null → organizations.id CASCADE", "null exactly when <em>owner_kind='platform'</em>"],
        ["exam_id", "uuid null → exams.id SET NULL", "a label, not a binding"],
@@ -850,7 +850,7 @@ const SCHEMA = [
        ["copied_from_id", "uuid null → station_templates.id SET NULL", "the platform template an org's copy was made from"]],
       r:[["check", "<em>ck_station_templates_owner_matches_org</em>; UNIQUE <em>(org_id, copied_from_id)</em> where <em>copied_from_id</em> is set: one copy of a platform template per org"],
          ["Why", "(<em>station_schemas</em> is gone. It was a second document-shaped table for the same idea — \"what a station of this kind contains\" — with no repository, service, route or reader anywhere in the app or the tests.)"]]},
-     {t:"station_template_versions", b:"", f:[
+     {t:"station_template_versions", b:"Growth: fixed.", f:[
        ["owner_kind", "varchar(16) not null", "mirrors the template's owner"],
        ["org_id", "uuid null → organizations.id CASCADE", ""],
        ["template_id", "uuid not null → station_templates.id CASCADE", ""],
@@ -862,7 +862,7 @@ const SCHEMA = [
        ["archived_at", "timestamptz null", ""],
        ["archived_by", "uuid null → users.id ON DELETE SET NULL", ""]],
       r:[["unique", "<em>(template_id, version)</em>; index <em>(org_id, status)</em>; CHECK <em>ck_station_template_versions_owner_matches_org</em>"]]},
-     {t:"stations", b:"A scenario a candidate can be given. <em>owner_kind</em> is what unifies b2c's four Firestore collections with b2b's org-authored instances: the platform library and an institution's own stations are the same thing with a different owner, so an attempt points at one column rather than a union of sources.", f:[
+     {t:"stations", b:"Growth: fixed. A scenario a candidate can be given. <em>owner_kind</em> is what unifies b2c's four Firestore collections with b2b's org-authored instances: the platform library and an institution's own stations are the same thing with a different owner, so an attempt points at one column rather than a union of sources.", f:[
        ["owner_kind", "varchar(16) not null", "<em>platform</em> | <em>org</em>"],
        ["org_id", "uuid null → organizations.id CASCADE", ""],
        ["exam_id", "uuid not null → exams.id RESTRICT", ""],
@@ -870,7 +870,7 @@ const SCHEMA = [
        ["status", "varchar(32) not null default 'draft'", "<em>draft</em> | <em>published</em> | <em>archived</em>"],
        ["current_version_id", "uuid null → station_versions.id SET NULL (use_alter)", "set once a version is published; attempts bind to the version, never here"]],
       r:[["check", "<em>ck_stations_owner_matches_org</em>: <em>platform</em> ⇒ <em>org_id IS NULL</em>, <em>org</em> ⇒ <em>org_id IS NOT NULL</em>. Indexes <em>(org_id, exam_id)</em> and <em>(exam_id, owner_kind)</em>."]]},
-     {t:"station_versions", b:"One immutable revision of a station's content. An attempt references a version, never a station, so editing a station tomorrow cannot change what somebody was assessed on yesterday.", f:[
+     {t:"station_versions", b:"Growth: fixed. One immutable revision of a station's content. An attempt references a version, never a station, so editing a station tomorrow cannot change what somebody was assessed on yesterday.", f:[
        ["station_id", "uuid not null → stations.id CASCADE", ""],
        ["org_id", "uuid null → organizations.id CASCADE", ""],
        ["version", "int not null", ""],
@@ -883,7 +883,7 @@ const SCHEMA = [
        ["archived_at", "timestamptz null", ""],
        ["archived_by", "uuid null → users.id ON DELETE SET NULL", ""]],
       r:[["unique", "<em>(station_id, version)</em>"]]},
-     {t:"station_flags", b:"A report that a station is wrong, and what staff did about it. The retiring client appended <em>{station_id, mock_id, flagged: true}</em> to the *user's* document instead, so a report was visible only to the person who made it and the content team never saw one at all.", f:[
+     {t:"station_flags", b:"Growth: per-user. A report that a station is wrong, and what staff did about it. The retiring client appended <em>{station_id, mock_id, flagged: true}</em> to the *user's* document instead, so a report was visible only to the person who made it and the content team never saw one at all.", f:[
        ["station_id", "uuid not null → stations.id CASCADE", "what the report is about, which is why this is a table of its own rather than a column on <em>users</em>"],
        ["user_id", "uuid not null → users.id CASCADE", "who reported it"],
        ["status", "varchar(16) not null default 'open'", "<em>open</em> | <em>resolved</em>"],
@@ -892,7 +892,7 @@ const SCHEMA = [
        ["resolved_by", "uuid null → users.id SET NULL", ""],
        ["resolved_at", "timestamptz null", "cleared when a report is reopened, so an <em>open</em> row never answers twice"]],
       r:[["unique", "<em>(station_id, user_id)</em>: a second tap on the button is the same report, and the legacy answer to a repeat was a 400 the client surfaced as a failure. CHECK <em>ck_station_flags_status</em>; index <em>(status, created_at)</em> — the queue is \"what is still open, oldest first\"."]]},
-     {t:"station_imports", b:"One uploaded station document (a PDF or a Word file) and what was drafted from it, for an institution that already has a station library and should not have to retype it. The file is not kept: its text is pulled on upload. Two background jobs with a person between them: the first drafts a template and stops for it to be reviewed and published, the second copies the document's words into that template and leaves a draft station.", f:[
+     {t:"station_imports", b:"Growth: per-org. One uploaded station document (a PDF or a Word file) and what was drafted from it, for an institution that already has a station library and should not have to retype it. The file is not kept: its text is pulled on upload. Two background jobs with a person between them: the first drafts a template and stops for it to be reviewed and published, the second copies the document's words into that template and leaves a draft station.", f:[
        ["owner_kind", "varchar(16) not null", "<em>platform</em> | <em>org</em>"],
        ["org_id", "uuid null → organizations.id CASCADE", "null for the platform's own imports"],
        ["created_by", "uuid null → users.id SET NULL", "whose <em>/me/events</em> stream hears each step finish"],
@@ -909,7 +909,7 @@ const SCHEMA = [
          ["Why", "<em>feedback_templates</em>/<em>feedback_template_versions</em> (a narrowing of a rubric) were dropped 2026-09-24, migration <em>45481a44b73d</em>: authored but never mounted in <em>main.py</em>, never called by any live route, service or frontend caller, confirmed by a whole-tree grep before deletion. A sitting's rubric comes via its programme instead — see <em>attempts.rubric_version_id</em> below."]]}
    ]},
    {s:"inbox", n:"", tables:[
-     {t:"user_messages", b:"One in-app message to one person, or an announcement to everybody.", f:[
+     {t:"user_messages", b:"Growth: per-user. One in-app message to one person, or an announcement to everybody.", f:[
        ["recipient_user_id", "uuid null → users.id CASCADE", "null only for an announcement"],
        ["sender_user_id", "uuid null → users.id SET NULL", "the staff member; never shown to the recipient"],
        ["kind", "varchar(32) not null", "CHECK <em>ck_user_messages_kind</em>: <em>report_answer</em>, <em>reply</em>, <em>note</em> or <em>announcement</em>"],
@@ -919,19 +919,19 @@ const SCHEMA = [
        ["site_message_id", "uuid null → site_messages.id SET NULL", "the message a <em>reply</em> answers"],
        ["withdrawn_at", "timestamptz null", "announcements only: hidden from every inbox without losing the row"]],
       r:[["check", "<em>ck_user_messages_audience</em>: <em>(kind = 'announcement') = (recipient_user_id IS NULL)</em>, so an announcement has no recipient and nothing else lacks one. INDEX <em>(recipient_user_id, created_at, id)</em> for one person's inbox; partial INDEX <em>(created_at, id) WHERE recipient_user_id IS NULL</em> for announcements. An announcement is visible to accounts created at or before it, so a new sign-up does not inherit history."]]},
-     {t:"user_message_reads", b:"That one person opened one message.", flags:["no updated_at"], f:[
+     {t:"user_message_reads", b:"Growth: per-user. That one person opened one message.", flags:["no updated_at"], f:[
        ["user_id", "uuid not null → users.id, user_messages.id CASCADE", "composite primary key. Written only when somebody reads: an announcement is never fanned out into a row per user"],
        ["message_id", "uuid not null → users.id, user_messages.id CASCADE", "composite primary key. Written only when somebody reads: an announcement is never fanned out into a row per user"],
        ["read_at", "timestamptz not null default now()", ""]]}
    ]},
    {s:"station_sets", n:"", tables:[
-     {t:"station_sets", b:"A learner's own collection of stations to practise.", f:[
+     {t:"station_sets", b:"Growth: per-user. A learner's own collection of stations to practise.", f:[
        ["owner_user_id", "uuid not null → users.id CASCADE", "indexed with <em>created_at</em>"],
        ["exam_id", "uuid not null → exams.id RESTRICT", ""],
        ["name", "varchar(200) not null", ""],
        ["locked", "bool not null default false", "locked rather than deleted when access lapses, so the work reappears on renewal instead of vanishing"],
        ["completed_at", "timestamptz null", ""]]},
-     {t:"station_set_entries", b:"One station inside a set, with how often it has been run. The counters are the reason a set is not a circuit: a slot is sat once.", f:[
+     {t:"station_set_entries", b:"Growth: per-user. One station inside a set, with how often it has been run. The counters are the reason a set is not a circuit: a slot is sat once.", f:[
        ["set_id", "uuid not null → station_sets.id CASCADE", ""],
        ["position", "int not null", ""],
        ["station_version_id", "uuid not null → station_versions.id RESTRICT", ""],
@@ -942,7 +942,7 @@ const SCHEMA = [
       r:[["unique", "<em>(set_id, position)</em>. Partial index <em>ix_station_set_entries_flagged</em> on <em>set_id</em> where <em>flagged_at IS NOT NULL</em>, for the flagged-stations list."]]}
    ]},
    {s:"media", n:"", tables:[
-     {t:"media_items", b:"A slide deck, summary, blog post or podcast episode. One table with a kind rather than four per product: b2c has sixteen collections for these and the same publish-and-read logic in each.", f:[
+     {t:"media_items", b:"Growth: fixed. A slide deck, summary, blog post or podcast episode. One table with a kind rather than four per product: b2c has sixteen collections for these and the same publish-and-read logic in each.", f:[
        ["kind", "varchar(32) not null", "<em>slide_deck</em> | <em>summary</em> | <em>blog</em> | <em>podcast</em>"],
        ["slug", "varchar(120) not null unique", "<em>MAX_SLUG = 80</em> on generation"],
        ["title", "varchar(300) not null", ""],
@@ -961,7 +961,7 @@ const SCHEMA = [
   g:"The assessment core", sub:"One candidate ran one scenario, however they reached it",
   slices:[
    {s:"attempts", n:"", tables:[
-     {t:"attempts", b:"One candidate running one scenario. <em>id</em> is its own identity: b2c made the attempt id the room name and b2b made it the slot id; both leaked an implementation detail into the worker contract, and b2b's meant re-dispatching a slot overwrote the first recording.", f:[
+     {t:"attempts", b:"Growth: per-attempt. One candidate running one scenario. <em>id</em> is its own identity: b2c made the attempt id the room name and b2b made it the slot id; both leaked an implementation detail into the worker contract, and b2b's meant re-dispatching a slot overwrote the first recording.", f:[
        ["kind", "varchar(32) not null", "<em>practice</em> | <em>self_practice</em> | <em>set_station</em> | <em>debrief</em> | <em>exam_slot</em> | <em>peer</em>"],
        ["user_id", "uuid not null → users.id CASCADE", "indexed with <em>created_at</em>"],
        ["org_id", "uuid null → organizations.id CASCADE", "indexed with <em>created_at</em>"],
@@ -982,7 +982,7 @@ const SCHEMA = [
       r:[["Why", "The four references are <em>RESTRICT</em>, not <em>CASCADE</em> or <em>SET NULL</em>: an attempt is a recording of something that happened to a person, and deleting the slot it belonged to must not quietly take the transcript with it. <em>SET NULL</em> is not available either, because the CHECK below requires an <em>exam_slot</em> attempt to name its slot."],
          ["Why", "Constraints: - CHECK <em>ck_attempts_kind_matches_reference</em> — exactly one optional reference matches the kind. Written as a CHECK rather than left to the service, because six code paths create attempts and only one needs to be wrong for a slot to end up with two live attempts. - CHECK <em>ck_attempts_status</em> — <em>created</em>, <em>running</em>, <em>interaction_complete</em>, <em>evaluated</em>, <em>failed</em>. The vocabulary lives in the database as well as in <em>domain.Status</em>, because <em>set_status</em> took a bare string and a typo wrote a status nothing would ever match, stalling the attempt in it. - Partial UNIQUE <em>uq_attempts_live_slot</em> on <em>slot_id</em> WHERE <em>slot_id IS NOT NULL AND status &lt;&gt; 'failed'</em> — a slot has at most one attempt that has not failed; a re-dispatch fails the old one first. - Partial UNIQUE <em>uq_attempts_legacy_ref</em> WHERE <em>legacy_ref IS NOT NULL</em> — a second import run updates nothing rather than duplicating history."],
          ["Why", "Transitions (<em>domain._ALLOWED</em>) run <em>created → running → interaction_complete → evaluated</em>, with <em>failed</em> reachable throughout; <em>TERMINAL = {evaluated, failed}</em>."]]},
-     {t:"transcript_messages", b:"One turn. No <em>updated_at</em>: a spoken turn is never edited.", flags:["no updated_at"], f:[
+     {t:"transcript_messages", b:"Growth: per-turn. Retention: compact_transcripts folds an attempt's turns into transcripts.messages an hour after delivery and deletes the rows, so only live attempts hold per-turn rows. One turn. No <em>updated_at</em>: a spoken turn is never edited.", flags:["no updated_at"], f:[
        ["attempt_id", "uuid not null → attempts.id CASCADE", "indexed with <em>seq</em>"],
        ["message_id", "varchar(64) not null", "the worker's own id"],
        ["seq", "int not null", ""],
@@ -991,16 +991,18 @@ const SCHEMA = [
        ["spoken_at", "timestamptz not null", ""],
        ["created_at", "timestamptz not null default now()", ""]],
       r:[["unique", "<em>(attempt_id, message_id)</em> — chunk posts repeat, because the worker sends them best-effort and never reads the response."]]},
-     {t:"transcripts", b:"The delivery record for an attempt's turns. <em>attempt_id</em> → <em>attempts.id</em> CASCADE (UNIQUE), <em>complete bool not null default false</em>, <em>runtime_label varchar(64) null</em>, <em>delivered_at timestamptz null</em>.", f:[
+     {t:"transcripts", b:"Growth: per-attempt. The delivery record for an attempt's turns. <em>attempt_id</em> → <em>attempts.id</em> CASCADE (UNIQUE), <em>complete bool not null default false</em>, <em>runtime_label varchar(64) null</em>, <em>delivered_at timestamptz null</em>. <em>messages jsonb null</em> (the finished attempt's turns as <em>{\"v\": 1, \"turns\": [...]}</em>, replacing its <em>transcript_messages</em> rows; ORM-deferred), <em>message_count int null</em> (turns in <em>messages</em>; null until compacted).", f:[
        ["attempt_id", "uuid not null → attempts.id ON DELETE CASCADE", ""],
        ["complete", "boolean not null", ""],
        ["runtime_label", "varchar(64) null", ""],
-       ["delivered_at", "timestamptz null", ""]]},
-     {t:"attempt_live_coverage", b:"One durable live-coverage snapshot per practice attempt. Unlike the base models, this table has no separate <em>id</em> or timestamps.", flags:["no updated_at"], f:[
+       ["delivered_at", "timestamptz null", ""],
+       ["messages", "jsonb null", ""],
+       ["message_count", "integer null", ""]]},
+     {t:"attempt_live_coverage", b:"Growth: per-attempt. One durable live-coverage snapshot per practice attempt. Unlike the base models, this table has no separate <em>id</em> or timestamps.", flags:["no updated_at"], f:[
        ["attempt_id", "uuid not null → attempts.id CASCADE", "primary key"],
        ["snapshot", "jsonb not null", "Engine-validated coverage items and last processed sequence; labels are read from the frozen rubric"]],
       r:[["Why", "Upserted by serialized <em>coverage</em> jobs. Coverage records observed behaviours, not grades; exam-slot attempts never receive this coaching feed."]]},
-     {t:"assessment_results", b:"What the engine scored, kept immutably.", f:[
+     {t:"assessment_results", b:"Growth: per-attempt. What the engine scored, kept immutably.", f:[
        ["attempt_id", "uuid not null → attempts.id CASCADE", ""],
        ["framework_id", "varchar(64) not null", ""],
        ["policy_version", "varchar(128) not null", ""],
@@ -1010,7 +1012,7 @@ const SCHEMA = [
       r:[["unique", "<em>(attempt_id, policy_version)</em>: re-running the same policy stores nothing new, and scoring under a different one sits beside the old result rather than replacing it"]]}
    ]},
    {s:"results", n:"Ported from b2b's <em>sql/017</em>, including the part that matters most: revisions and events are append-only, enforced by a trigger rather than by convention. A candidate's outcome has to be defensible months later, so the database refuses to let it be edited at all.", tables:[
-     {t:"candidate_result_revisions", b:"One version of a decision. Never updated; a change is a new revision. No <em>updated_at</em>.", flags:["append-only", "no updated_at"], f:[
+     {t:"candidate_result_revisions", b:"Growth: per-attempt. One version of a decision. Never updated; a change is a new revision. No <em>updated_at</em>.", flags:["append-only", "no updated_at"], f:[
        ["org_id", "uuid not null → organizations.id CASCADE", ""],
        ["sitting_id", "uuid not null → sittings.id CASCADE", ""],
        ["trainee_id", "uuid not null → trainees.id CASCADE", ""],
@@ -1031,13 +1033,13 @@ const SCHEMA = [
        ["released_at", "timestamptz null", ""],
        ["created_at", "timestamptz not null default now()", ""]],
       r:[["unique", "<em>(sitting_id, trainee_id, revision)</em>; index <em>(org_id, sitting_id, trainee_id)</em>. CHECKs also enforce that a <em>signed_off</em> revision names its signer and a <em>released</em> one names its releaser, so an incomplete record cannot be written. Assessment and recruitment outcomes are cross-checked in <em>domain._COMPATIBLE</em>."]]},
-     {t:"candidate_result_events", b:"What happened to a decision, append-only. No <em>updated_at</em>. <em>revision_id</em> → <em>candidate_result_revisions.id</em> CASCADE (indexed), <em>event_type varchar(32) not null</em>, <em>actor_user_id</em> → <em>users.id</em> SET NULL, <em>idempotency_key varchar(200) not null unique</em>, <em>at timestamptz not null default now()</em>.", flags:["append-only", "no updated_at"], f:[
+     {t:"candidate_result_events", b:"Growth: per-attempt. What happened to a decision, append-only. No <em>updated_at</em>. <em>revision_id</em> → <em>candidate_result_revisions.id</em> CASCADE (indexed), <em>event_type varchar(32) not null</em>, <em>actor_user_id</em> → <em>users.id</em> SET NULL, <em>idempotency_key varchar(200) not null unique</em>, <em>at timestamptz not null default now()</em>.", flags:["append-only", "no updated_at"], f:[
        ["revision_id", "uuid not null → candidate_result_revisions.id ON DELETE CASCADE", ""],
        ["event_type", "varchar(32) not null", ""],
        ["actor_user_id", "uuid null → users.id ON DELETE SET NULL", ""],
        ["idempotency_key", "varchar(200) not null", ""],
        ["at", "timestamptz not null", ""]]},
-     {t:"candidate_result_notifications", b:"Outbox for telling a candidate — a row rather than an email sent inline, so a release is not lost because a mail provider was briefly down.", f:[
+     {t:"candidate_result_notifications", b:"Growth: per-attempt. Outbox for telling a candidate — a row rather than an email sent inline, so a release is not lost because a mail provider was briefly down.", f:[
        ["event_id", "uuid not null → candidate_result_events.id CASCADE", ""],
        ["channel", "varchar(16) not null default 'email'", ""],
        ["recipient", "varchar(320) not null", ""],
@@ -1051,7 +1053,7 @@ const SCHEMA = [
        ["last_error", "text null", ""]]}
    ]},
    {s:"reviews", n:"b2b keeps all three of these in one wide table discriminated by a <em>feedback_kind</em> column, with no foreign keys at all. Three tables here, each with real keys, because they have different owners, lifecycles and uniqueness.", tables:[
-     {t:"slot_reviews", b:"A rubric filled in against one slot, by staff or by a peer observer.", f:[
+     {t:"slot_reviews", b:"Growth: per-attempt. A rubric filled in against one slot, by staff or by a peer observer.", f:[
        ["slot_id", "uuid not null → slots.id CASCADE", ""],
        ["org_id", "uuid not null → organizations.id CASCADE", "indexed"],
        ["submitted_by", "uuid not null → users.id CASCADE", ""],
@@ -1061,7 +1063,7 @@ const SCHEMA = [
        ["notes", "text null", ""],
        ["completed_at", "timestamptz null", ""]],
       r:[["unique", "<em>(slot_id, submitted_by)</em> — one review per person per slot; submitting twice edits the first."]]},
-     {t:"gp_lead_reviews", b:"A revisioned second opinion on a slot. One per slot, edited in place, with a revision counter because two reviewers can hold the same screen open (<em>ReviewConflict</em>). <em>slot_id</em> → <em>slots.id</em> CASCADE (UNIQUE), <em>org_id</em> → <em>organizations.id</em> CASCADE, <em>revision int not null default 1</em>, <em>status varchar(16) not null default 'draft'</em>, <em>overall_rag varchar(1) null</em>, <em>field_values jsonb not null default {}</em>, <em>notes text null</em>, <em>reviewed_by</em> → <em>users.id</em> SET NULL, <em>completed_at timestamptz null</em>.", f:[
+     {t:"gp_lead_reviews", b:"Growth: per-attempt. A revisioned second opinion on a slot. One per slot, edited in place, with a revision counter because two reviewers can hold the same screen open (<em>ReviewConflict</em>). <em>slot_id</em> → <em>slots.id</em> CASCADE (UNIQUE), <em>org_id</em> → <em>organizations.id</em> CASCADE, <em>revision int not null default 1</em>, <em>status varchar(16) not null default 'draft'</em>, <em>overall_rag varchar(1) null</em>, <em>field_values jsonb not null default {}</em>, <em>notes text null</em>, <em>reviewed_by</em> → <em>users.id</em> SET NULL, <em>completed_at timestamptz null</em>.", f:[
        ["slot_id", "uuid not null → slots.id ON DELETE CASCADE", ""],
        ["org_id", "uuid not null → organizations.id ON DELETE CASCADE", ""],
        ["revision", "integer not null", ""],
@@ -1071,7 +1073,7 @@ const SCHEMA = [
        ["notes", "text null", ""],
        ["reviewed_by", "uuid null → users.id ON DELETE SET NULL", ""],
        ["completed_at", "timestamptz null", ""]]},
-     {t:"circuit_reviews", b:"What a supervisor finalises for a whole circuit. <em>circuit_id</em> → <em>circuits.id</em> CASCADE (UNIQUE), <em>org_id</em> → <em>organizations.id</em> CASCADE, <em>merged_notes text null</em>, <em>contributions jsonb null</em>, <em>finalized_at timestamptz null</em>, <em>finalized_by</em> → <em>users.id</em> SET NULL.", f:[
+     {t:"circuit_reviews", b:"Growth: per-org. What a supervisor finalises for a whole circuit. <em>circuit_id</em> → <em>circuits.id</em> CASCADE (UNIQUE), <em>org_id</em> → <em>organizations.id</em> CASCADE, <em>merged_notes text null</em>, <em>contributions jsonb null</em>, <em>finalized_at timestamptz null</em>, <em>finalized_by</em> → <em>users.id</em> SET NULL.", f:[
        ["circuit_id", "uuid not null → circuits.id ON DELETE CASCADE", ""],
        ["org_id", "uuid not null → organizations.id ON DELETE CASCADE", ""],
        ["merged_notes", "text null", ""],
@@ -1085,7 +1087,7 @@ const SCHEMA = [
   g:"Institutions running exams", sub:"A scheduled exam, its circuits, and the people being taught",
   slices:[
    {s:"sittings", n:"Domain bounds: <em>EXAM_MAX_STATIONS = 12</em>, <em>DEFAULT_READING_MINUTES = 3</em>, <em>DEFAULT_SIMULATION_MINUTES = 10</em>, <em>READING_BOUNDS = (1, 30)</em>, <em>SIMULATION_BOUNDS = (1, 180)</em>.", tables:[
-     {t:"sittings", b:"A scheduled event an organisation holds.", f:[
+     {t:"sittings", b:"Growth: per-org. A scheduled event an organisation holds.", f:[
        ["revision", "int not null default 1", "raised by one on every edit; a write that names an older one is refused <em>stale_revision</em> (B-15)"],
        ["org_id", "uuid not null → organizations.id CASCADE", "indexed with <em>status</em>"],
        ["programme_id", "uuid null → org_programmes.id SET NULL", ""],
@@ -1096,7 +1098,7 @@ const SCHEMA = [
        ["sitting_type", "varchar(32) not null default 'group_training'", ""],
        ["status", "varchar(32) not null default 'scheduled'", "<em>scheduled</em> → <em>in_progress</em> when a circuit starts → <em>completed</em> when every circuit on it has ended (D-7). A circuit that was never started holds it open; ending that circuit outright is what closes the sitting"],
        ["rubric_version_id", "uuid not null → rubric_versions.id RESTRICT", "resolved from the sitting's <em>programme_id</em> at create time: the programme's exam must name a published rubric version. Replaces the former <em>feedback_template_version_id</em> binding"]]},
-     {t:"circuits", b:"", f:[
+     {t:"circuits", b:"Growth: per-org.", f:[
        ["revision", "int not null default 1", "raised by one on every edit; a write that names an older one is refused <em>stale_revision</em> (B-15)"],
        ["sitting_id", "uuid not null → sittings.id CASCADE", ""],
        ["org_id", "uuid not null → organizations.id CASCADE", ""],
@@ -1118,7 +1120,7 @@ const SCHEMA = [
        ["voice_fault_at", "timestamptz null", "when the voice service last refused to bring the patient in (R-16); cleared by the step that succeeds"]],
       r:[["Why", "The examination clock is here, not on the slot. A break belongs to no slot — it is the circuit resting between stations — and that is the one thing a per-slot clock could not express, which is why breaks were stored and counted down by nobody. A pause has the same shape: stopping the clock must rewrite one deadline, and with the clock on two rows it rewrote two."],
          ["Why", "<em>phase_seq</em> is how a human beats the clock. Every transition is a job scheduled for the moment the phase ends, carrying the sequence it was scheduled against; any override bumps the sequence, so the job it raced arrives holding a number that no longer matches and does nothing. That is the whole concurrency design — no lease, no claim table, one integer."]]},
-     {t:"circuit_interventions", b:"What a human did to a running examination, and why. Append-only, and no <em>updated_at</em>: an intervention is a fact about a moment, not a row anybody edits. When a candidate says their station went wrong, the question is what was done to it and by whom, and before this the answer was nowhere.", flags:["append-only", "no updated_at"], f:[
+     {t:"circuit_interventions", b:"Growth: per-org. What a human did to a running examination, and why. Append-only, and no <em>updated_at</em>: an intervention is a fact about a moment, not a row anybody edits. When a candidate says their station went wrong, the question is what was done to it and by whom, and before this the answer was nowhere.", flags:["append-only", "no updated_at"], f:[
        ["org_id", "uuid not null → organizations.id CASCADE", ""],
        ["circuit_id", "uuid not null → circuits.id CASCADE", "indexed with <em>at</em>"],
        ["slot_id", "uuid null → slots.id SET NULL", "null for an override about the circuit rather than one station"],
@@ -1128,7 +1130,7 @@ const SCHEMA = [
        ["phase_seq_before", "int not null", "places the intervention against the transition it displaced"],
        ["phase_seq_after", "int not null", "places the intervention against the transition it displaced"],
        ["at", "timestamptz not null", ""]]},
-     {t:"circuit_run_history", b:"One finished run of a circuit, as the exam-day board last saw it: written once by <em>service_steps.finish</em> in the transaction that ends the circuit, never edited. The board is built live from running circuits, so without this a circuit that ended left nothing to look back at. No <em>updated_at</em>. Read by <em>GET /orgs/{org_slug}/live/history</em>.", flags:["no updated_at"], f:[
+     {t:"circuit_run_history", b:"Growth: per-org. One finished run of a circuit, as the exam-day board last saw it: written once by <em>service_steps.finish</em> in the transaction that ends the circuit, never edited. The board is built live from running circuits, so without this a circuit that ended left nothing to look back at. No <em>updated_at</em>. Read by <em>GET /orgs/{org_slug}/live/history</em>.", flags:["no updated_at"], f:[
        ["org_id", "uuid not null → organizations.id CASCADE", "index <em>(org_id, ended_at)</em> — the history's query"],
        ["circuit_id", "uuid null → circuits.id SET NULL", "SET NULL so a later delete keeps what happened on the day"],
        ["sitting_id", "uuid null → sittings.id SET NULL", ""],
@@ -1143,15 +1145,15 @@ const SCHEMA = [
        ["stations_completed", "int not null", "completed counts slots actually sat, not skipped ones"],
        ["status", "varchar(16) not null", "<em>completed</em> | <em>ended_early</em> (<em>domain_run.run_status</em>)"]],
       r:[["unique", "<em>(circuit_id, ended_at)</em>: a rescued circuit that ends again is a second run"]]},
-     {t:"circuit_stations", b:"Replaces b2b's <em>station_refs jsonb</em>. A real row per station, so a station cannot be deleted out from under a circuit and \"which circuits use this station?\" is a query. No <em>updated_at</em>. <em>circuit_id</em> → <em>circuits.id</em> CASCADE, <em>position int not null</em>, <em>station_version_id</em> → <em>station_versions.id</em> RESTRICT. UNIQUE <em>(circuit_id, position)</em>.", flags:["no updated_at"], f:[
+     {t:"circuit_stations", b:"Growth: per-org. Replaces b2b's <em>station_refs jsonb</em>. A real row per station, so a station cannot be deleted out from under a circuit and \"which circuits use this station?\" is a query. No <em>updated_at</em>. <em>circuit_id</em> → <em>circuits.id</em> CASCADE, <em>position int not null</em>, <em>station_version_id</em> → <em>station_versions.id</em> RESTRICT. UNIQUE <em>(circuit_id, position)</em>.", flags:["no updated_at"], f:[
        ["circuit_id", "uuid not null → circuits.id ON DELETE CASCADE", ""],
        ["position", "integer not null", ""],
        ["station_version_id", "uuid not null → station_versions.id ON DELETE RESTRICT", ""]]},
-     {t:"circuit_trainees", b:"Replaces b2b's <em>trainee_ids text[]</em>. No <em>updated_at</em>. <em>circuit_id</em> → <em>circuits.id</em> CASCADE, <em>trainee_id</em> → <em>users.id</em> CASCADE, <em>position int not null</em>. UNIQUE <em>(circuit_id, trainee_id)</em>.", flags:["no updated_at"], f:[
+     {t:"circuit_trainees", b:"Growth: per-org. Replaces b2b's <em>trainee_ids text[]</em>. No <em>updated_at</em>. <em>circuit_id</em> → <em>circuits.id</em> CASCADE, <em>trainee_id</em> → <em>users.id</em> CASCADE, <em>position int not null</em>. UNIQUE <em>(circuit_id, trainee_id)</em>.", flags:["no updated_at"], f:[
        ["circuit_id", "uuid not null → circuits.id ON DELETE CASCADE", ""],
        ["trainee_id", "uuid not null → users.id ON DELETE CASCADE", ""],
        ["position", "integer not null", ""]]},
-     {t:"slots", b:"One trainee at one station. Carries no transcript and no feedback: those live on the attempt, which is what makes a re-dispatch keep the first recording instead of overwriting it. The id is globally unique because the worker and several routes address a slot directly; every user-facing route still resolves <em>org_id</em> from the row.", f:[
+     {t:"slots", b:"Growth: per-org. One trainee at one station. Carries no transcript and no feedback: those live on the attempt, which is what makes a re-dispatch keep the first recording instead of overwriting it. The id is globally unique because the worker and several routes address a slot directly; every user-facing route still resolves <em>org_id</em> from the row.", f:[
        ["circuit_id", "uuid not null → circuits.id CASCADE", ""],
        ["org_id", "uuid not null → organizations.id CASCADE", "indexed with <em>status</em>"],
        ["slot_index", "int not null", ""],
@@ -1167,12 +1169,12 @@ const SCHEMA = [
          ["Why", "A slot carries no clock. That is the circuit's: see <em>circuits</em> above."]]}
    ]},
    {s:"roster", n:"", tables:[
-     {t:"cohorts", b:"<em>org_id</em> → <em>organizations.id</em> CASCADE, <em>name varchar(200) not null</em>, <em>academic_year varchar(32) null</em>, <em>status varchar(32) not null default 'active'</em>. UNIQUE <em>(org_id, name)</em>.", f:[
+     {t:"cohorts", b:"Growth: per-org. <em>org_id</em> → <em>organizations.id</em> CASCADE, <em>name varchar(200) not null</em>, <em>academic_year varchar(32) null</em>, <em>status varchar(32) not null default 'active'</em>. UNIQUE <em>(org_id, name)</em>.", f:[
        ["org_id", "uuid not null → organizations.id ON DELETE CASCADE", ""],
        ["name", "varchar(200) not null", ""],
        ["academic_year", "varchar(32) null", ""],
        ["status", "varchar(32) not null", ""]]},
-     {t:"trainees", b:"Someone an organisation teaches. Separate from <em>users</em> because an institution rosters people before they have ever signed in — <em>user_id</em> is filled when they do.", f:[
+     {t:"trainees", b:"Growth: per-org. Someone an organisation teaches. Separate from <em>users</em> because an institution rosters people before they have ever signed in — <em>user_id</em> is filled when they do.", f:[
        ["revision", "int not null default 1", "raised by one on every edit; a write that names an older one is refused <em>stale_revision</em> (B-15)"],
        ["org_id", "uuid not null → organizations.id CASCADE", "indexed with <em>cohort_id</em>"],
        ["user_id", "uuid null → users.id SET NULL", "filled on first sign-in"],
@@ -1183,15 +1185,15 @@ const SCHEMA = [
        ["access_revoked_at", "timestamptz null", "raises <em>TraineeRevoked</em>"],
        ["anonymised_at", "timestamptz null", "GDPR erasure for a row <em>DELETE</em> refuses (<em>trainee_in_use</em>) — <em>service_edit.anonymise_trainee</em> scrubs <em>email</em>/<em>first_name</em>/<em>last_name</em> and sets this, keeping any decision on record"]],
       r:[["unique", "<em>(org_id, email)</em>"]]},
-     {t:"trainee_groups", b:"", f:[
+     {t:"trainee_groups", b:"Growth: per-org.", f:[
        ["org_id", "uuid not null → organizations.id CASCADE", ""],
        ["label", "varchar(200) not null", ""],
        ["label_normalized", "varchar(200) not null", "stored so the uniqueness constraint means what people expect: \"Cohort A\" and \"cohort a\" are one group"]],
       r:[["unique", "<em>(org_id, label_normalized)</em>"]]},
-     {t:"trainee_group_members", b:"The table b2b does not have. Without it, membership is a string match between a trainee's cohort and a group's label, recomputed on every circuit build: renaming a group empties it, two groups sharing a label collide, and nobody can be in two groups. <em>group_id</em> → <em>trainee_groups.id</em> CASCADE, <em>trainee_id</em> → <em>trainees.id</em> CASCADE (indexed). UNIQUE <em>(group_id, trainee_id)</em>.", f:[
+     {t:"trainee_group_members", b:"Growth: per-org. The table b2b does not have. Without it, membership is a string match between a trainee's cohort and a group's label, recomputed on every circuit build: renaming a group empties it, two groups sharing a label collide, and nobody can be in two groups. <em>group_id</em> → <em>trainee_groups.id</em> CASCADE, <em>trainee_id</em> → <em>trainees.id</em> CASCADE (indexed). UNIQUE <em>(group_id, trainee_id)</em>.", f:[
        ["group_id", "uuid not null → trainee_groups.id ON DELETE CASCADE", ""],
        ["trainee_id", "uuid not null → trainees.id ON DELETE CASCADE", ""]]},
-     {t:"scim_tokens", b:"A bearer token an organisation's identity provider (Entra, Okta) uses to provision its roster over SCIM 2.0 (E-21), issued by the organisation's admin. Only the hash is kept: the token is shown once, and a dump must not let anybody add people to an institution. Revoked, never deleted.", f:[
+     {t:"scim_tokens", b:"Growth: per-org. A bearer token an organisation's identity provider (Entra, Okta) uses to provision its roster over SCIM 2.0 (E-21), issued by the organisation's admin. Only the hash is kept: the token is shown once, and a dump must not let anybody add people to an institution. Revoked, never deleted.", f:[
        ["org_id", "uuid not null → organizations.id CASCADE", "indexed"],
        ["token_hash", "varchar(64) not null unique", "sha256 hex; the token carries 256 bits, so there is nothing to salt against"],
        ["token_prefix", "varchar(16) not null", "the first characters, to tell tokens apart on screen"],
@@ -1206,7 +1208,7 @@ const SCHEMA = [
   g:"Access, money and growth", sub:"May this person do this, what it cost, and who sent them",
   slices:[
    {s:"entitlements", n:"", tables:[
-     {t:"entitlements", b:"A record of access, separate from whatever caused it. Append-only in practice: revoking sets <em>revoked_at</em> rather than deleting the row, so \"why could they do that?\" stays answerable after the fact, and a refund can revoke access without erasing the payment that bought it.", f:[
+     {t:"entitlements", b:"Growth: per-user. A record of access, separate from whatever caused it. Append-only in practice: revoking sets <em>revoked_at</em> rather than deleting the row, so \"why could they do that?\" stays answerable after the fact, and a refund can revoke access without erasing the payment that bought it.", f:[
        ["user_id", "uuid not null → users.id CASCADE", ""],
        ["exam_id", "uuid not null → exams.id RESTRICT", ""],
        ["source", "varchar(32) not null", "CHECK: <em>purchase</em> | <em>org_grant</em> | <em>trial</em> | <em>sso_tenant</em> | <em>admin</em>"],
@@ -1219,7 +1221,7 @@ const SCHEMA = [
       r:[["Why", "Partial index <em>ix_entitlements_live</em> on <em>(user_id, exam_id)</em> WHERE <em>revoked_at IS NULL</em> — the only lookup the access check performs. Domain: <em>ALLOWED_TRIAL_STATIONS = 3</em>, <em>TRIAL_DAYS = 14</em>."]]}
    ]},
    {s:"billing", n:"", tables:[
-     {t:"plans", b:"What a Stripe price buys. A row rather than a hardcoded table keyed by pence: b2c matches the amount paid against <em>PRICE_CONFIG</em> and raises on a miss, so changing a price — or taking a payment in another currency, or honouring a Stripe coupon — breaks the purchase *after* the card has been charged.", f:[
+     {t:"plans", b:"Growth: fixed. What a Stripe price buys. A row rather than a hardcoded table keyed by pence: b2c matches the amount paid against <em>PRICE_CONFIG</em> and raises on a miss, so changing a price — or taking a payment in another currency, or honouring a Stripe coupon — breaks the purchase *after* the card has been charged.", f:[
        ["code", "varchar(32) not null unique", "<em>one_month</em> | <em>three_month</em> | <em>six_month</em>"],
        ["stripe_price_id", "varchar(100) not null unique", ""],
        ["exam_code", "varchar(32) not null", "the exam the plan sells (B-2). Rows written before the constraint hold <em>''</em> and were taken off sale; settlement refuses an empty code with <em>unknown_plan</em>"],
@@ -1227,14 +1229,14 @@ const SCHEMA = [
        ["currency", "varchar(3) not null default 'gbp'", ""],
        ["duration_days", "int not null", "<em>DEFAULT_PLAN_DAYS = {one_month: 30, three_month: 90, six_month: 180}</em>"],
        ["active", "bool not null default true", ""]]},
-     {t:"stripe_events", b:"Every webhook delivery we have acted on — the thing b2c has no equivalent of. Stripe retries until it gets a 2xx, and without this a retry re-runs the grant. No <em>updated_at</em>.", flags:["no updated_at"], f:[
+     {t:"stripe_events", b:"Growth: unbounded. Retention: GAP: one row per acted-on webhook delivery, kept forever; only the recent window is needed for replay protection. Every webhook delivery we have acted on — the thing b2c has no equivalent of. Stripe retries until it gets a 2xx, and without this a retry re-runs the grant. No <em>updated_at</em>.", flags:["no updated_at"], f:[
        ["event_id", "varchar(100) not null unique", ""],
        ["event_type", "varchar(100) not null", "<em>ACCESS_GRANTING_EVENTS = {checkout.session.completed}</em>"],
        ["received_at", "timestamptz not null default now()", ""],
        ["processed_at", "timestamptz null", ""],
        ["payload", "jsonb null", ""],
        ["failure", "text null", "why a delivery was received but not applied: an address with no account, a price with no plan. Kept rather than rolled back, so it can be reconciled by hand or applied by Stripe's next retry once fixed"]]},
-     {t:"payments", b:"", f:[
+     {t:"payments", b:"Growth: per-user.", f:[
        ["user_id", "uuid not null → users.id RESTRICT", "a payment outlives the account"],
        ["plan_id", "uuid null → plans.id SET NULL", ""],
        ["stripe_payment_intent_id", "varchar(100) not null unique", ""],
@@ -1250,7 +1252,7 @@ const SCHEMA = [
        ["amount_tax_pence", "int not null default 0", ""],
        ["plan_starts_at", "timestamptz null", "the window the payment bought, frozen so a later change to the plan cannot rewrite a document already sent"],
        ["plan_ends_at", "timestamptz null", "the window the payment bought, frozen so a later change to the plan cannot rewrite a document already sent"]]},
-     {t:"invoices", b:"What an organisation is billed, under the purchase order its finance team raised (E-22). An institution pays on an invoice rather than a card, and its finance office will not pay one that does not quote their PO number.", f:[
+     {t:"invoices", b:"Growth: per-org. What an organisation is billed, under the purchase order its finance team raised (E-22). An institution pays on an invoice rather than a card, and its finance office will not pay one that does not quote their PO number.", f:[
        ["org_id", "uuid not null → organizations.id RESTRICT", "an organisation with invoices has a ledger; index <em>(org_id, issued_at)</em>"],
        ["invoice_number", "varchar(32) not null unique", "<em>INV-&lt;year&gt;-&lt;6 digits&gt;</em>, the digits from the <em>invoice_number_seq</em> sequence so two invoices raised at once never share one and none is reused"],
        ["po_number", "varchar(64) null", "the customer's purchase order; the org admin may set it while the invoice is <em>issued</em>"],
@@ -1264,7 +1266,7 @@ const SCHEMA = [
        ["voided_at", "timestamptz null", "set by the move to that status"],
        ["notes", "text null", ""],
        ["created_by", "uuid null → users.id SET NULL", "the console user who raised it"]]},
-     {t:"invoice_lines", b:"One line on an invoice. No <em>updated_at</em>: lines are written with the invoice and never edited.", flags:["no updated_at"], f:[
+     {t:"invoice_lines", b:"Growth: per-org. One line on an invoice. No <em>updated_at</em>: lines are written with the invoice and never edited.", flags:["no updated_at"], f:[
        ["invoice_id", "uuid not null → invoices.id CASCADE", ""],
        ["position", "int not null", "UNIQUE <em>(invoice_id, position)</em>"],
        ["description", "varchar(300) not null", "from the payment's plan when a payment is named and no description is given"],
@@ -1274,7 +1276,7 @@ const SCHEMA = [
        ["payment_id", "uuid null → payments.id SET NULL", "the settled payment (typically a console-entered bank transfer, <em>service_settlement</em>) this line bills for"]]}
    ]},
    {s:"growth", n:"<em>PILOT_PARTNERS = {bmj}</em>, <em>PILOT_EXAMS = (sca, plab, ortho)</em>, <em>ATTRIBUTION_WINDOW = 90 days</em>, landing paths under <em>/exams/</em>.", tables:[
-     {t:"partner_arrivals", b:"Somebody landing here from a partner's link.", f:[
+     {t:"partner_arrivals", b:"Growth: unbounded. Retention: GAP: one row per public link click, never pruned and not bounded by anything a user does; a bot can inflate it. Somebody landing here from a partner's link.", f:[
        ["partner", "varchar(32) not null", "indexed with <em>landed_at</em>"],
        ["exam_code", "varchar(32) null", ""],
        ["visitor_key", "varchar(64) not null", "anonymous until they sign up; this is what links the two. Indexed"],
@@ -1282,24 +1284,24 @@ const SCHEMA = [
        ["landing_path", "varchar(300) null", ""],
        ["utm", "jsonb null", ""],
        ["landed_at", "timestamptz not null default now()", ""]]},
-     {t:"acquisitions", b:"The partner a user was acquired through, decided once. Immutable by intention: re-attributing an existing user because they later clicked another link is how a partner's numbers stop being reconcilable. <em>user_id</em> → <em>users.id</em> CASCADE (UNIQUE), <em>partner varchar(32) not null</em>, <em>exam_code varchar(32) null</em>, <em>arrival_id</em> → <em>partner_arrivals.id</em> SET NULL, <em>acquired_at timestamptz not null default now()</em>.", f:[
+     {t:"acquisitions", b:"Growth: per-user. The partner a user was acquired through, decided once. Immutable by intention: re-attributing an existing user because they later clicked another link is how a partner's numbers stop being reconcilable. <em>user_id</em> → <em>users.id</em> CASCADE (UNIQUE), <em>partner varchar(32) not null</em>, <em>exam_code varchar(32) null</em>, <em>arrival_id</em> → <em>partner_arrivals.id</em> SET NULL, <em>acquired_at timestamptz not null default now()</em>.", f:[
        ["user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
        ["partner", "varchar(32) not null", ""],
        ["exam_code", "varchar(32) null", ""],
        ["arrival_id", "uuid null → partner_arrivals.id ON DELETE SET NULL", ""],
        ["acquired_at", "timestamptz not null", ""]]},
-     {t:"partner_pilot_configs", b:"A partner pilot's commercial settings (G-1), ported from b2c's <em>partner_pilot_config</em> collection: what a click costs, and at which estimated spend to email the team. One row per partner, written on the first edit; until then the b2c defaults apply in code (<em>DEFAULT_COST_PER_CLICK_PENCE = 40</em>, thresholds £500 / £1,000 / £2,500), so an empty table changes nothing.", f:[
+     {t:"partner_pilot_configs", b:"Growth: fixed. A partner pilot's commercial settings (G-1), ported from b2c's <em>partner_pilot_config</em> collection: what a click costs, and at which estimated spend to email the team. One row per partner, written on the first edit; until then the b2c defaults apply in code (<em>DEFAULT_COST_PER_CLICK_PENCE = 40</em>, thresholds £500 / £1,000 / £2,500), so an empty table changes nothing.", f:[
        ["partner", "varchar(32) not null", "UNIQUE <em>uq_partner_pilot_configs_partner</em>"],
        ["cost_per_click_pence", "int not null", "every raw arrival is taken as a paid click"],
        ["spend_alert_thresholds_pence", "jsonb not null", "ascending pence amounts; each alerts once"],
        ["spend_alert_recipients", "jsonb not null", "email addresses; empty means <em>SUPPORT_EMAIL</em>"],
        ["last_alerted_threshold_pence", "int not null default 0", "the highest threshold already alerted; <em>reset_spend_alerts</em> clears it"]],
       r:[["Why", "The daily <em>check_partner_spend</em> job judges the whole pilot so far (from the partner's first arrival), not a screen's chosen range — b2c alerted from whichever range an admin happened to view, so the same spend alerted or not depending on the dates picked."]]},
-     {t:"partner_reporters", b:"Someone allowed to read one partner's numbers, and nothing else. <em>partner varchar(32) not null</em>, <em>email citext not null</em>, <em>revoked_at timestamptz null</em>. UNIQUE <em>(partner, email)</em>.", f:[
+     {t:"partner_reporters", b:"Growth: fixed. Someone allowed to read one partner's numbers, and nothing else. <em>partner varchar(32) not null</em>, <em>email citext not null</em>, <em>revoked_at timestamptz null</em>. UNIQUE <em>(partner, email)</em>.", f:[
        ["partner", "varchar(32) not null", ""],
        ["email", "citext not null", ""],
        ["revoked_at", "timestamptz null", ""]]},
-     {t:"referrals", b:"<em>referrer_user_id</em> → <em>users.id</em> CASCADE (indexed), <em>code varchar(32) not null unique</em>, <em>referred_user_id</em> → <em>users.id</em> SET NULL, <em>redeemed_at timestamptz null</em>, <em>earned_pence int not null default 0</em>, <em>plan_code varchar(64) null</em> — the redeeming purchase's plan, carried onto the row so <em>GET /me/referrals/history</em> (A2) can show \"Subscription type (referee)\" without a join back through billing. A row with no <em>redeemed_at</em> is a person's shareable code, reusable as in b2c; each purchase made with it is its own redeemed row coded <em>&lt;CODE&gt;-&lt;suffix&gt;</em>. Settlement happens outside the product; these four are the record of whether it has: <em>payout_status varchar(16) not null default 'unpaid'</em> (indexed with <em>redeemed_at IS NOT NULL</em>, since the settlement queue never asks about a code nobody has used), <em>paid_at timestamptz null</em>, <em>paid_by_user_id</em> → <em>users.id</em> SET NULL, and <em>payout_reference varchar(64) null</em> — the bank transfer's own reference. <em>clawback_of_id</em> → <em>referrals.id</em> SET NULL (UNIQUE) is set only on the negative row that takes back a credit already paid out when its purchase is refunded or disputed (S-13); the referrer's balance is the sum of <em>earned_pence</em>, so it nets off the next payout.", f:[
+     {t:"referrals", b:"Growth: per-user. <em>referrer_user_id</em> → <em>users.id</em> CASCADE (indexed), <em>code varchar(32) not null unique</em>, <em>referred_user_id</em> → <em>users.id</em> SET NULL, <em>redeemed_at timestamptz null</em>, <em>earned_pence int not null default 0</em>, <em>plan_code varchar(64) null</em> — the redeeming purchase's plan, carried onto the row so <em>GET /me/referrals/history</em> (A2) can show \"Subscription type (referee)\" without a join back through billing. A row with no <em>redeemed_at</em> is a person's shareable code, reusable as in b2c; each purchase made with it is its own redeemed row coded <em>&lt;CODE&gt;-&lt;suffix&gt;</em>. Settlement happens outside the product; these four are the record of whether it has: <em>payout_status varchar(16) not null default 'unpaid'</em> (indexed with <em>redeemed_at IS NOT NULL</em>, since the settlement queue never asks about a code nobody has used), <em>paid_at timestamptz null</em>, <em>paid_by_user_id</em> → <em>users.id</em> SET NULL, and <em>payout_reference varchar(64) null</em> — the bank transfer's own reference. <em>clawback_of_id</em> → <em>referrals.id</em> SET NULL (UNIQUE) is set only on the negative row that takes back a credit already paid out when its purchase is refunded or disputed (S-13); the referrer's balance is the sum of <em>earned_pence</em>, so it nets off the next payout.", f:[
        ["referrer_user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
        ["code", "varchar(32) not null", ""],
        ["referred_user_id", "uuid null → users.id ON DELETE SET NULL", ""],
@@ -1311,7 +1313,7 @@ const SCHEMA = [
        ["payout_reference", "varchar(64) null", ""],
        ["plan_code", "varchar(64) null", ""],
        ["clawback_of_id", "uuid null → referrals.id ON DELETE SET NULL", ""]]},
-     {t:"referral_payout_details", b:"Where a referrer sits the bank details settlement pays out to (A1), added because the retiring client's Settings screen collects them but nothing here stored them. <em>user_id</em> → <em>users.id</em> CASCADE (UNIQUE — one set of details per person), <em>bank_name varchar(200) not null</em>, <em>account_holder_name varchar(200) not null</em>, <em>sort_code_ciphertext text not null</em>, <em>account_number_ciphertext text not null</em>. The sort code and account number are Fernet-encrypted at rest (<em>app.core.secrets_at_rest</em>, key <em>PAYOUT_DETAILS_KEY</em>) and never stored in the clear: <em>GET /me/referral-payout-details</em> decrypts and returns the full sort code (it only identifies a bank branch) but masks the account number to its last 4 digits; the platform admin settlement queue (<em>ReferralAdminRead.payout_details</em>) is the only reader that sees the account number decrypted in full.", f:[
+     {t:"referral_payout_details", b:"Growth: per-user. Where a referrer sits the bank details settlement pays out to (A1), added because the retiring client's Settings screen collects them but nothing here stored them. <em>user_id</em> → <em>users.id</em> CASCADE (UNIQUE — one set of details per person), <em>bank_name varchar(200) not null</em>, <em>account_holder_name varchar(200) not null</em>, <em>sort_code_ciphertext text not null</em>, <em>account_number_ciphertext text not null</em>. The sort code and account number are Fernet-encrypted at rest (<em>app.core.secrets_at_rest</em>, key <em>PAYOUT_DETAILS_KEY</em>) and never stored in the clear: <em>GET /me/referral-payout-details</em> decrypts and returns the full sort code (it only identifies a bank branch) but masks the account number to its last 4 digits; the platform admin settlement queue (<em>ReferralAdminRead.payout_details</em>) is the only reader that sees the account number decrypted in full.", f:[
        ["user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
        ["bank_name", "varchar(200) not null", ""],
        ["account_holder_name", "varchar(200) not null", ""],
@@ -1324,24 +1326,26 @@ const SCHEMA = [
   g:"Consumer social features", sub:"Talking to, practising with, and being helped by somebody else",
   slices:[
    {s:"community", n:"One <em>posts</em> table with a self-referencing parent rather than separate question, reply and comment tables: they are the same shape, and b2c's three near-identical collections per product (twelve in total) is what happens otherwise.", tables:[
-     {t:"posts", b:"Carries the <em>Addressed</em> columns (<em>visibility</em>, <em>audience_org_id</em>, <em>audience_group_id</em>).", flags:["addressed"], f:[
+     {t:"posts", b:"Growth: per-user. Carries the <em>Addressed</em> columns (<em>visibility</em>, <em>audience_org_id</em>, <em>audience_group_id</em>).", flags:["addressed"], f:[
        ["kind", "varchar(16) not null", "<em>question</em> | <em>reply</em> | <em>comment</em>"],
        ["parent_id", "uuid null → posts.id CASCADE", "indexed"],
-       ["author_id", "uuid not null → users.id CASCADE", ""],
+       ["author_id", "uuid null → users.id CASCADE", "null only for an assistant reply (<em>is_assistant</em>)"],
        ["exam_id", "uuid null → exams.id SET NULL", "indexed with <em>created_at</em>"],
        ["station_id", "uuid null → stations.id CASCADE", "a comment about a specific station, which b2c keeps in its own collection. Indexed"],
        ["title", "varchar(300) null", ""],
        ["body", "text not null", "<em>MAX_CONTENT = 10_000</em>"],
        ["tags", "jsonb not null default '[]'", "a question's tags — ≤ 5 normalized lowercase keys, ≤ 32 chars each (<em>domain.clean_tags</em>). GIN-indexed (<em>ix_posts_tags</em>) for the feed's <em>tag</em> containment filter. Replies and comments carry <em>[]</em>"],
+       ["category", "varchar(16) not null default 'general'", "<em>general</em>, <em>platform</em>, <em>skills</em> or <em>exam</em> (<em>domain.CATEGORIES</em>); <em>tags</em> are its subtags. A reply carries its question's. Indexed with <em>created_at</em> (<em>ix_posts_category_created</em>)"],
+       ["is_assistant", "bool not null default false", "the OSCE Guide assistant wrote it (<em>community.jobs.reply_as_assistant</em>); such a post has no <em>author_id</em>"],
        ["removed_at", "timestamptz null", ""],
        ["removed_by", "uuid null → users.id SET NULL", ""]],
       r:[["check", "<em>ck_posts_parent_matches_kind</em>: a question starts a thread (no parent), a reply sits under a post, a comment sits under a station (no parent, station required). The first version of this said \"anything but a question has a parent\", which made every station comment a constraint violation. Plus CHECK <em>AUDIENCE_CHECK</em> and indexes on <em>(audience_org_id, created_at)</em> and <em>(audience_group_id, created_at)</em>, which the list query filters on before anything else."]]},
-     {t:"post_likes", b:"Who liked what. A row rather than a counter on the post: b2c increments a number, so a double tap counts twice and nothing can be undone. <em>post_id</em> → <em>posts.id</em> CASCADE, <em>user_id</em> → <em>users.id</em> CASCADE. UNIQUE <em>(post_id, user_id)</em>.", f:[
+     {t:"post_likes", b:"Growth: per-user. Who liked what. A row rather than a counter on the post: b2c increments a number, so a double tap counts twice and nothing can be undone. <em>post_id</em> → <em>posts.id</em> CASCADE, <em>user_id</em> → <em>users.id</em> CASCADE. UNIQUE <em>(post_id, user_id)</em>.", f:[
        ["post_id", "uuid not null → posts.id ON DELETE CASCADE", ""],
        ["user_id", "uuid not null → users.id ON DELETE CASCADE", ""]]}
    ]},
    {s:"marketplace", n:"<em>JOIN_WINDOW = 10 minutes</em>, <em>CLAIMABLE_STATUSES = {available}</em>, <em>CANCELLABLE_STATUSES = {available, claimed}</em>.", tables:[
-     {t:"availability_posts", b:"A time someone is free to practise with a peer. Carries the <em>Addressed</em> columns.", flags:["addressed"], f:[
+     {t:"availability_posts", b:"Growth: per-user. A time someone is free to practise with a peer. Carries the <em>Addressed</em> columns.", flags:["addressed"], f:[
        ["owner_user_id", "uuid not null → users.id CASCADE", "indexed"],
        ["exam_id", "uuid not null → exams.id RESTRICT", ""],
        ["starts_at", "timestamptz not null", "partial index WHERE <em>status = 'available'</em>"],
@@ -1351,7 +1355,7 @@ const SCHEMA = [
        ["claimed_by_user_id", "uuid null → users.id SET NULL", ""],
        ["claimed_at", "timestamptz null", ""],
        ["cancelled_at", "timestamptz null", ""]]},
-     {t:"peer_sessions", b:"The session a claim creates. Two people, one room, one appointed time. <em>post_id</em> → <em>availability_posts.id</em> SET NULL (nullable), <em>owner_user_id</em> and <em>claimer_user_id</em> → <em>users.id</em> CASCADE (indexed together), <em>exam_id</em> → <em>exams.id</em> RESTRICT, <em>starts_at timestamptz not null</em>, <em>room_name varchar(200) null</em>, <em>status varchar(16) not null default 'scheduled'</em>, <em>practice_session_id</em> → <em>practice_sessions.id</em> SET NULL (nullable — filled once the matched pair opens their LiveKit room), <em>doctor_user_id</em> and <em>patient_user_id</em> → <em>users.id</em> SET NULL (nullable — the two roles are appointed when the session starts, not when it is scheduled), <em>ended_at timestamptz null</em>, <em>cancelled_at timestamptz null</em>, <em>reminder_sent_at timestamptz null</em> (set once <em>marketplace.jobs.send_marketplace_session_reminders</em> queues the \"starts in an hour\" email to both participants; also the job's idempotency check).", f:[
+     {t:"peer_sessions", b:"Growth: per-user. The session a claim creates. Two people, one room, one appointed time. <em>post_id</em> → <em>availability_posts.id</em> SET NULL (nullable), <em>owner_user_id</em> and <em>claimer_user_id</em> → <em>users.id</em> CASCADE (indexed together), <em>exam_id</em> → <em>exams.id</em> RESTRICT, <em>starts_at timestamptz not null</em>, <em>room_name varchar(200) null</em>, <em>status varchar(16) not null default 'scheduled'</em>, <em>practice_session_id</em> → <em>practice_sessions.id</em> SET NULL (nullable — filled once the matched pair opens their LiveKit room), <em>doctor_user_id</em> and <em>patient_user_id</em> → <em>users.id</em> SET NULL (nullable — the two roles are appointed when the session starts, not when it is scheduled), <em>ended_at timestamptz null</em>, <em>cancelled_at timestamptz null</em>, <em>reminder_sent_at timestamptz null</em> (set once <em>marketplace.jobs.send_marketplace_session_reminders</em> queues the \"starts in an hour\" email to both participants; also the job's idempotency check).", f:[
        ["post_id", "uuid null → availability_posts.id ON DELETE SET NULL", ""],
        ["owner_user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
        ["claimer_user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
@@ -1367,7 +1371,7 @@ const SCHEMA = [
        ["reminder_sent_at", "timestamptz null", ""]]}
    ]},
    {s:"peer_practice", n:"", tables:[
-     {t:"practice_queue_entries", b:"Someone waiting to be paired. Carries the <em>Addressed</em> columns.", flags:["addressed"], f:[
+     {t:"practice_queue_entries", b:"Growth: unbounded. Retention: GAP: expiry only flips status to expired; the row is never deleted, one per queue join. Someone waiting to be paired. Carries the <em>Addressed</em> columns.", flags:["addressed"], f:[
        ["seq", "bigint not null unique, GENERATED … AS IDENTITY", "a queue is ordered by arrival, and <em>created_at</em> cannot express that: everyone joining in one transaction shares a <em>now()</em>, and breaking the tie on a random uuid gives a stable order that is not the order they arrived in"],
        ["user_id", "uuid not null → users.id CASCADE", ""],
        ["exam_id", "uuid not null → exams.id RESTRICT", ""],
@@ -1376,7 +1380,7 @@ const SCHEMA = [
        ["left_at", "timestamptz null", ""],
        ["expires_at", "timestamptz null", "a waiting entry's own deadline; distinct from <em>left_at</em> which is when the person actually left"]],
       r:[["Why", "Partial UNIQUE on <em>(user_id, exam_id)</em> WHERE <em>status = 'waiting'</em> — one live place per person per exam; joining twice keeps the place you already have. Partial index on <em>(exam_id, seq)</em> WHERE <em>status = 'waiting'</em> is the matcher's read."]]},
-     {t:"practice_sessions", b:"Two people practising, one as doctor and one as patient. <em>exam_id</em> → <em>exams.id</em> RESTRICT, <em>doctor_user_id</em> and <em>patient_user_id</em> → <em>users.id</em> CASCADE (indexed together), <em>station_version_id</em> → <em>station_versions.id</em> SET NULL, <em>peer_session_id</em> → <em>peer_sessions.id</em> SET NULL (the marketplace claim that started this — <em>use_alter</em> because <em>peer_sessions</em> itself points back here), <em>room_name varchar(200) null</em>, <em>status varchar(16) not null default 'matched'</em>, <em>current_phase varchar(16) null</em> (the phase the session is in — preparation, consultation, feedback — driven by the circuit clock), <em>phase_ends_at timestamptz null</em>, <em>doctor_joined_at</em> / <em>patient_joined_at</em> / <em>preparation_started_at timestamptz null</em> (per-participant timing), <em>started_at</em> / <em>ended_at timestamptz null</em>, <em>end_reason varchar(32) null</em>, <em>feedback_rating int null</em>, <em>feedback_comment varchar(2000) null</em>, <em>would_practice_again bool null</em>. The accept handshake: a matched pair starts <em>status='pending_accept'</em> rather than joinable, with <em>accept_expires_at timestamptz null</em> — 120 seconds after the match, past which a still-silent side's pairing times out (<em>end_reason='no_response'</em>). <em>doctor_accepted_at</em> / <em>patient_accepted_at timestamptz null</em> record when each side accepted; once both are set the session becomes <em>status='matched'</em>. A decline before both accept ends the session with <em>end_reason='declined'</em>. Both are null for a marketplace-booked pair (<em>peer_session_id</em> set), which skips the handshake and starts <em>matched</em> straight away — the pair already agreed to a fixed time when they booked it. Recording and feedback: <em>egress_id varchar(128) null</em> (the LiveKit Egress the stop has to find), <em>recording_key varchar(512) null</em> (the S3 object key — the URL is presigned on demand, never stored), <em>recording_state varchar(16) not null default 'none'</em> (<em>none</em> | <em>recording</em> | <em>stopped</em> | <em>failed</em>; a recording that started and never stopped is otherwise invisible), <em>recording_error varchar(200) null</em>, <em>doctor_attempt_id</em> → <em>attempts.id</em> SET NULL — the doctor's scored <em>kind='peer'</em> attempt. It is the readable half of the link <em>attempts.peer_session_id</em> already provides in the other direction; without it the session read cannot tell the client where its feedback is without a reverse scan. Only the doctor is marked: the rubric is written for the doctor's performance, so the patient's session carries no attempt. Partial index <em>ix_practice_sessions_recording_state</em> on <em>recording_state</em> WHERE <em>recording_state &lt;&gt; 'none'</em> — a session that was never recorded is the uninteresting majority, and the transcription job only ever asks after the rest.", f:[
+     {t:"practice_sessions", b:"Growth: per-user. Two people practising, one as doctor and one as patient. <em>exam_id</em> → <em>exams.id</em> RESTRICT, <em>doctor_user_id</em> and <em>patient_user_id</em> → <em>users.id</em> CASCADE (indexed together), <em>station_version_id</em> → <em>station_versions.id</em> SET NULL, <em>peer_session_id</em> → <em>peer_sessions.id</em> SET NULL (the marketplace claim that started this — <em>use_alter</em> because <em>peer_sessions</em> itself points back here), <em>room_name varchar(200) null</em>, <em>status varchar(16) not null default 'matched'</em>, <em>current_phase varchar(16) null</em> (the phase the session is in — preparation, consultation, feedback — driven by the circuit clock), <em>phase_ends_at timestamptz null</em>, <em>doctor_joined_at</em> / <em>patient_joined_at</em> / <em>preparation_started_at timestamptz null</em> (per-participant timing), <em>started_at</em> / <em>ended_at timestamptz null</em>, <em>end_reason varchar(32) null</em>, <em>feedback_rating int null</em>, <em>feedback_comment varchar(2000) null</em>, <em>would_practice_again bool null</em>. The accept handshake: a matched pair starts <em>status='pending_accept'</em> rather than joinable, with <em>accept_expires_at timestamptz null</em> — 120 seconds after the match, past which a still-silent side's pairing times out (<em>end_reason='no_response'</em>). <em>doctor_accepted_at</em> / <em>patient_accepted_at timestamptz null</em> record when each side accepted; once both are set the session becomes <em>status='matched'</em>. A decline before both accept ends the session with <em>end_reason='declined'</em>. Both are null for a marketplace-booked pair (<em>peer_session_id</em> set), which skips the handshake and starts <em>matched</em> straight away — the pair already agreed to a fixed time when they booked it. Recording and feedback: <em>egress_id varchar(128) null</em> (the LiveKit Egress the stop has to find), <em>recording_key varchar(512) null</em> (the S3 object key — the URL is presigned on demand, never stored), <em>recording_state varchar(16) not null default 'none'</em> (<em>none</em> | <em>recording</em> | <em>stopped</em> | <em>failed</em>; a recording that started and never stopped is otherwise invisible), <em>recording_error varchar(200) null</em>, <em>doctor_attempt_id</em> → <em>attempts.id</em> SET NULL — the doctor's scored <em>kind='peer'</em> attempt. It is the readable half of the link <em>attempts.peer_session_id</em> already provides in the other direction; without it the session read cannot tell the client where its feedback is without a reverse scan. Only the doctor is marked: the rubric is written for the doctor's performance, so the patient's session carries no attempt. Partial index <em>ix_practice_sessions_recording_state</em> on <em>recording_state</em> WHERE <em>recording_state &lt;&gt; 'none'</em> — a session that was never recorded is the uninteresting majority, and the transcription job only ever asks after the rest.", f:[
        ["exam_id", "uuid not null → exams.id ON DELETE RESTRICT", ""],
        ["doctor_user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
        ["patient_user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
@@ -1403,14 +1407,14 @@ const SCHEMA = [
        ["recording_state", "varchar(16) not null", ""],
        ["recording_error", "varchar(200) null", ""],
        ["doctor_attempt_id", "uuid null → attempts.id ON DELETE SET NULL", ""]]},
-     {t:"practice_history", b:"What part someone last played, and how often they have practised. A row rather than fields on the user: it is peer-practice's business, and b2c putting it on the user document is why the matcher reaches into four different collections to find it.", f:[
+     {t:"practice_history", b:"Growth: per-user. What part someone last played, and how often they have practised. A row rather than fields on the user: it is peer-practice's business, and b2c putting it on the user document is why the matcher reaches into four different collections to find it.", f:[
        ["user_id", "uuid not null → users.id CASCADE, UNIQUE", ""],
        ["last_role", "varchar(16) null", "<em>doctor</em> | <em>patient</em>"],
        ["session_count", "int not null default 0", ""],
        ["never_doctor", "bool not null default false", "replaces b2c's hardcoded list of three personal email addresses; those accounts were set by migration <em>39cc97f742b6</em> (P-2), which gave any of them without a history row one"]]}
    ]},
    {s:"assistant", n:"", tables:[
-     {t:"assistant_sessions", b:"One conversation where the assistant helps someone use the product.", f:[
+     {t:"assistant_sessions", b:"Growth: per-user. One conversation where the assistant helps someone use the product.", f:[
        ["user_id", "uuid not null → users.id CASCADE", "indexed with <em>created_at</em>"],
        ["session_type", "varchar(32) not null", "<em>help</em> | <em>onboarding</em> | <em>dashboard</em> | <em>consulting-doctor</em> (alias: <em>athena-doctor</em>)"],
        ["instructions", "text not null", "rendered backend-side, exactly as an attempt's are — the worker holds no templates and is handed finished text"],
@@ -1422,7 +1426,7 @@ const SCHEMA = [
        ["completed_at", "timestamptz null", ""],
        ["end_reason", "varchar(64) null", ""],
        ["usage", "jsonb null", ""]]},
-     {t:"assistant_transcript_messages", b:"Turns, kept only for <em>help</em> sessions (<em>_KEEPS_TRANSCRIPT</em>). The other three kinds are navigation; storing them would collect recordings of people's screens for nothing. No <em>updated_at</em>. Same shape as <em>transcript_messages</em>: <em>session_id</em> → <em>assistant_sessions.id</em> CASCADE, <em>message_id varchar(64)</em>, <em>seq int</em>, <em>role varchar(16)</em>, <em>message text</em>, <em>spoken_at timestamptz</em>, <em>created_at timestamptz default now()</em>. UNIQUE <em>(session_id, message_id)</em>; index <em>(session_id, seq)</em>.", flags:["no updated_at"], f:[
+     {t:"assistant_transcript_messages", b:"Growth: per-turn. Retention: GAP: turns of help sessions are kept and never pruned; other kinds store none. Turns, kept only for <em>help</em> sessions (<em>_KEEPS_TRANSCRIPT</em>). The other three kinds are navigation; storing them would collect recordings of people's screens for nothing. No <em>updated_at</em>. Same shape as <em>transcript_messages</em>: <em>session_id</em> → <em>assistant_sessions.id</em> CASCADE, <em>message_id varchar(64)</em>, <em>seq int</em>, <em>role varchar(16)</em>, <em>message text</em>, <em>spoken_at timestamptz</em>, <em>created_at timestamptz default now()</em>. UNIQUE <em>(session_id, message_id)</em>; index <em>(session_id, seq)</em>.", flags:["no updated_at"], f:[
        ["session_id", "uuid not null → assistant_sessions.id ON DELETE CASCADE", ""],
        ["message_id", "varchar(64) not null", ""],
        ["seq", "integer not null", ""],
@@ -1431,7 +1435,7 @@ const SCHEMA = [
        ["spoken_at", "timestamptz not null", ""]]}
    ]},
    {s:"tutor_memory", n:"What the tutor knows about one learner. Sits above <em>assistant</em> and <em>attempts</em>; both announce their moments through <em>bind_*</em> seams, so nothing below imports this.", tables:[
-     {t:"learning_events", b:"One thing this person read, practised or listened to. Written by the browser as it happens: a summary opened in the app leaves no other trace, and the tutor asking how it went is the point of collecting them.", flags:["no updated_at"], f:[
+     {t:"learning_events", b:"Growth: unbounded. Retention: GAP: written by the browser on every read, listen or practice and deleted only when the user asks to be forgotten. One thing this person read, practised or listened to. Written by the browser as it happens: a summary opened in the app leaves no other trace, and the tutor asking how it went is the point of collecting them.", flags:["no updated_at"], f:[
        ["user_id", "uuid not null → users.id CASCADE", "indexed with <em>occurred_at</em>"],
        ["exam_id", "uuid null → exams.id RESTRICT", "an exam outlives any learner; deleting one should fail loudly, not quietly erase everybody's history of studying for it"],
        ["kind", "varchar(16) not null", "CHECK <em>viewed</em> | <em>practised</em> | <em>listened</em>"],
@@ -1442,14 +1446,14 @@ const SCHEMA = [
        ["meta", "jsonb null", ""],
        ["created_at", "timestamptz not null default now()", "no <em>updated_at</em>: an event happened once"]],
       r:[["Why", "Index <em>(user_id, ref_kind, ref_id, occurred_at)</em> is the dedup read: two sightings of the same thing inside ten minutes are one visit, because somebody who opens a summary, follows a link and comes back has not read it twice."]]},
-     {t:"tutor_notes", b:"Something the tutor wrote down: how a conversation ended, or a fact it was told. Two kinds in one table because they are read together and forgotten together.", flags:["no updated_at"], f:[
+     {t:"tutor_notes", b:"Growth: per-user. Something the tutor wrote down: how a conversation ended, or a fact it was told. Two kinds in one table because they are read together and forgotten together.", flags:["no updated_at"], f:[
        ["user_id", "uuid not null → users.id CASCADE", "indexed with <em>created_at</em>"],
        ["exam_id", "uuid null → exams.id RESTRICT", ""],
        ["session_id", "uuid null → assistant_sessions.id SET NULL", "not CASCADE: the summary is what survives the conversation, and the turns are deleted on purpose once it is written"],
        ["kind", "varchar(24) not null", "CHECK <em>session_summary</em> | <em>stated_fact</em>"],
        ["body", "jsonb not null", "<em>session_summary</em>: <em>{summary, agreed_next_steps[], topics[]}</em>. <em>stated_fact</em>: <em>{fact}</em>, clipped to 300 characters — longer and it stops being a fact and becomes a paragraph the tutor recites"],
        ["created_at", "timestamptz not null default now()", ""]]},
-     {t:"debrief_summaries", b:"What a debrief concluded and what was agreed about it.", flags:["no updated_at"], f:[
+     {t:"debrief_summaries", b:"Growth: per-attempt. What a debrief concluded and what was agreed about it.", flags:["no updated_at"], f:[
        ["attempt_id", "uuid not null → attempts.id CASCADE", "UNIQUE. Enforced here rather than by the job checking first: the queue may deliver twice, and two summaries would have the tutor agreeing two different plans"],
        ["user_id", "uuid not null → users.id CASCADE", "indexed with <em>created_at</em>"],
        ["exam_id", "uuid null → exams.id RESTRICT", ""],
@@ -1458,7 +1462,7 @@ const SCHEMA = [
        ["narrative", "text null", ""],
        ["model_used", "varchar(64) null", ""],
        ["created_at", "timestamptz not null default now()", ""]]},
-     {t:"material_chunks", b:"The study material and the app's help articles cut into passages, with the vector each is retrieved by. Derived data entirely: every row is rebuilt from <em>station_versions</em>, <em>media_items</em> and <em>assistant/help_content.json</em> (corpus <em>help</em>; <em>exam_id</em> is null for an article every exam shares) by the nightly <em>reindex_material</em> job, which is why dropping this table loses nothing but the time to run it again. Owned by <em>tutor_memory</em> rather than by the slices the text comes from — a rebuildable index belongs to the reader that needs it, not to the slice that owns the source of truth. See ADR 0019.", flags:["derived", "no updated_at"], f:[
+     {t:"material_chunks", b:"Growth: fixed. The study material and the app's help articles cut into passages, with the vector each is retrieved by. Derived data entirely: every row is rebuilt from <em>station_versions</em>, <em>media_items</em> and <em>assistant/help_content.json</em> (corpus <em>help</em>; <em>exam_id</em> is null for an article every exam shares) by the nightly <em>reindex_material</em> job, which is why dropping this table loses nothing but the time to run it again. Owned by <em>tutor_memory</em> rather than by the slices the text comes from — a rebuildable index belongs to the reader that needs it, not to the slice that owns the source of truth. See ADR 0019.", flags:["derived", "no updated_at"], f:[
        ["corpus", "varchar(24) not null", "CHECK <em>station</em> | <em>summary</em> | <em>slide_deck</em> | <em>podcast</em> | <em>blog</em>"],
        ["source_id", "varchar(120) not null", "A string, not a foreign key: the corpora live in different slices, and a key per corpus would make adding a third one a schema change. The re-index retires a deleted source's passages on its next run, which is the honest cost"],
        ["exam_id", "uuid null → exams.id CASCADE", "Indexed with <em>corpus</em>. CASCADE, unlike the other tutor tables' RESTRICT: those hold somebody's history and must not vanish quietly, while this holds a copy of a catalogue being deleted — and passages of an exam nobody can buy are passages nobody may be read"],
@@ -1470,7 +1474,7 @@ const SCHEMA = [
        ["indexed_at", "timestamptz not null default now()", ""]]}
    ]},
    {s:"notifications", n:"", tables:[
-     {t:"outbound_messages", b:"One outbox rather than one per slice: a message is a message, and a single queue is the only way \"what is stuck?\" has one answer.", f:[
+     {t:"outbound_messages", b:"Growth: unbounded. Retention: GAP: sent and failed rows are kept forever (only erasure requests delete unsent mail); needs an age-based prune of sent rows. One outbox rather than one per slice: a message is a message, and a single queue is the only way \"what is stuck?\" has one answer.", f:[
        ["channel", "varchar(16) not null default 'email'", ""],
        ["recipient", "varchar(320) not null", ""],
        ["subject", "varchar(300) not null", ""],
@@ -1484,6 +1488,13 @@ const SCHEMA = [
        ["delivered_at", "timestamptz null", ""],
        ["last_error", "text null", ""]],
       r:[["Why", "A crash between claiming and sending left <em>processing</em> rows that the due index cannot see and nothing ever looked at again; a claim older than <em>CLAIM_TIMEOUT_SECONDS = 600</em> is taken back. Retry backoff: <em>BASE_RETRY_SECONDS = 30</em>, capped at <em>MAX_RETRY_SECONDS = 3600</em>."]]}
+   ]},
+   {s:"health", n:"", tables:[
+     {t:"database_size_readings", b:"Growth: fixed. One row per calendar day, so about 400 rows at steady state. <em>taken_on date not null unique</em>, <em>total_bytes bigint not null</em> (<em>pg_database_size</em> at the reading), <em>relations jsonb not null default '[]'</em> (the ten largest public tables by <em>pg_total_relation_size</em>, each <em>{name, total_bytes, rows}</em>), <em>alert_level smallint not null default 0</em> (0 below 60% of <em>DATABASE_SIZE_BUDGET_MB</em>, 1 from 60%, 2 from 80%; the stored level is how a crossing is alerted once rather than every run). Owned by <em>health</em>. Written by the daily <em>record_database_size</em> task, which upserts on <em>taken_on</em> and trims rows older than 400 days. Row level security is on and no policy is defined.", f:[
+       ["taken_on", "date not null", ""],
+       ["total_bytes", "bigint not null", ""],
+       ["relations", "jsonb not null", ""],
+       ["alert_level", "smallint not null", ""]]}
    ]}
   ]
 }
