@@ -20,6 +20,7 @@ class LoadReport:
     stations_created: int = 0
     stations_existing: int = 0
     payments_created: int = 0
+    payments_repaired: int = 0
     referrals_created: int = 0
     media_created: int = 0
     media_existing: int = 0
@@ -61,6 +62,7 @@ class LoadReport:
             stations_created=self.stations_created + other.stations_created,
             stations_existing=self.stations_existing + other.stations_existing,
             payments_created=self.payments_created + other.payments_created,
+            payments_repaired=self.payments_repaired + other.payments_repaired,
             referrals_created=self.referrals_created + other.referrals_created,
             media_created=self.media_created + other.media_created,
             media_existing=self.media_existing + other.media_existing,
@@ -88,7 +90,8 @@ class LoadReport:
             f"attempts {self.attempts_created} created / {self.attempts_existing} already there; "
             f"messages {self.messages_created}; results {self.results_created}; "
             f"stations {self.stations_created} created / {self.stations_existing} already there; "
-            f"payments {self.payments_created}; referrals {self.referrals_created}; "
+            f"payments {self.payments_created} created / {self.payments_repaired} repaired; "
+            f"referrals {self.referrals_created}; "
             f"media {self.media_created} created / {self.media_existing} already there; "
             f"podcasts {self.podcasts_created} created / {self.podcasts_existing} already there; "
             f"community posts {self.community_posts_created} created / "

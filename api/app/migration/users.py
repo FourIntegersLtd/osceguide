@@ -26,6 +26,17 @@ LEGACY_PRODUCT_TO_EXAM = {
 }
 
 
+# Firestore `plan_type` -> the suffix of the platform plan code (`<exam>_<suffix>`, e.g. `sca_1m`).
+# Shared by the user-document import and the `*_payments` import so they cannot drift.
+PLAN_SUFFIX_BY_LEGACY_PLAN_TYPE = {"one_month": "1m", "three_month": "3m", "six_month": "6m"}
+
+
+def platform_plan_code(exam_code: str, plan_type: str) -> str | None:
+    """The platform plan code for a legacy exam and `plan_type`, or None if the plan type is unknown."""
+    suffix = PLAN_SUFFIX_BY_LEGACY_PLAN_TYPE.get(str(plan_type or "").strip())
+    return f"{exam_code}_{suffix}" if suffix else None
+
+
 class UnknownLegacyProduct(ValueError):
     """An `app_type` with no exam.
 
@@ -320,9 +331,11 @@ def legacy_payment_for(record: dict[str, Any]) -> MergedLegacyPayment | None:
     if not email:
         raise UnusableRecord("A record has no email address.")
     exam_code = exam_for_product(record.get("app_type"))
-    plan_code = str(record.get("plan_type") or "one_month").strip()
-    if not plan_code or plan_code == "no_plan":
-        plan_code = "one_month"
+    plan_type = str(record.get("plan_type") or "one_month").strip()
+    if not plan_type or plan_type == "no_plan":
+        plan_type = "one_month"
+    # An unknown plan_type is kept as it came, so the loader reports it instead of guessing a plan.
+    plan_code = platform_plan_code(exam_code, plan_type) or plan_type
     legacy_id = str(record.get("id") or record.get("user_id") or "unknown")
     product = str(record.get("app_type") or "sca")
     stripe_id = str(record.get("stripe_payment_intent_id") or "").strip()

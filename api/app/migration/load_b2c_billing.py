@@ -25,9 +25,13 @@ from app.features.billing.models import Payment, Plan
 from app.features.growth.models import PartnerArrival, PartnerReporter, Referral
 from app.migration.b2c_lookups import Lookups, StepReport
 from app.migration.legacy_ids import legacy_row_id
-from app.migration.users import UnknownLegacyProduct, exam_for_product, parse_timestamp
+from app.migration.users import (
+    PLAN_SUFFIX_BY_LEGACY_PLAN_TYPE,
+    UnknownLegacyProduct,
+    exam_for_product,
+    parse_timestamp,
+)
 
-_PLAN_SUFFIX = {"one_month": "1m", "three_month": "3m", "six_month": "6m"}
 _FILL = (
     "checkout_session_id",
     "receipt_url",
@@ -98,7 +102,7 @@ async def load_payments(
             )
             continue
         exam = str(doc.get("app_type") or "").lower()
-        suffix = _PLAN_SUFFIX.get(str(doc.get("plan_type") or ""), "")
+        suffix = PLAN_SUFFIX_BY_LEGACY_PLAN_TYPE.get(str(doc.get("plan_type") or ""), "")
         session.add(
             Payment(
                 id=legacy_row_id(f"{exam}:payment:{doc.get('id')}"),

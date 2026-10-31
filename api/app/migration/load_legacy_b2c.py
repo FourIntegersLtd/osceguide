@@ -24,31 +24,44 @@ async def load_legacy_payments(
 ) -> LoadReport:
     """Load legacy Stripe payments, matched to platform users by email.
 
-    Skips a payment already recorded by its `stripe_payment_intent_id`. A payment for
+    Skips a payment already recorded by its `stripe_payment_intent_id`, except that one
+    left with no plan and 0p is given its plan and price. A payment for
     an email not in `user_ids` (the user step's output) is reported, not guessed at.
     """
     report = LoadReport()
-    plans = {
-        str(code).lower(): plan_id
-        for code, plan_id in (await session.execute(select(Plan.code, Plan.id))).all()
-    }
+    plan_rows = (await session.execute(select(Plan.code, Plan.id, Plan.amount_pence))).all()
+    plans = {str(code).lower(): plan_id for code, plan_id, _ in plan_rows}
+    plan_amounts = {plan_id: int(amount) for _, plan_id, amount in plan_rows}
     for merged in payments:
         email = merged.email.strip().lower()
         user_id = user_ids.get(email)
         if user_id is None:
             report.problem(f"Legacy payment for {email!r}, who is not in the user export.")
             continue
+        plan_id = plans.get(merged.plan_code.lower())
+        if plan_id is None:
+            report.problem(
+                f"Legacy payment {merged.stripe_payment_intent_id!r} for {email!r}: "
+                f"no platform plan {merged.plan_code!r}; imported without a plan."
+            )
+        plan_amount_pence = plan_amounts.get(plan_id) if plan_id is not None else None
         existing = await session.scalar(
-            select(Payment.id).where(Payment.stripe_payment_intent_id == merged.stripe_payment_intent_id)
+            select(Payment).where(Payment.stripe_payment_intent_id == merged.stripe_payment_intent_id)
         )
         if existing is not None:
+            # An earlier run that could not resolve the plan left plan NULL and 0p; repair only that.
+            if (
+                existing.plan_id is None
+                and existing.amount_total_pence == 0
+                and plan_amount_pence is not None
+            ):
+                existing.plan_id = plan_id
+                existing.amount_total_pence = plan_amount_pence
+                report.payments_repaired += 1
             continue
-        plan_id = plans.get(merged.plan_code.lower())
         amount = merged.amount_pence
-        if plan_id is not None and amount == 0:
-            plan_amount_pence = await session.scalar(select(Plan.amount_pence).where(Plan.id == plan_id))
-            if plan_amount_pence is not None:
-                amount = int(plan_amount_pence)
+        if amount == 0 and plan_amount_pence is not None:
+            amount = plan_amount_pence
         session.add(
             Payment(
                 user_id=user_id,
