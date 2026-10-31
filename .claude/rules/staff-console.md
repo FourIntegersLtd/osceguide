@@ -51,6 +51,14 @@ Owner: `staff-console-owner`. Proof: `verify-staff-console`. Staff actions are p
 - **Database size is watched, not hoped for.** `GET /platform/health` carries `database_size`, measured live by `health.service_size` (no worker needed). The daily `record_database_size` task stores a reading in `database_size_readings` and writes one `database.size_warning` (60% of `DATABASE_SIZE_BUDGET_MB`) or `database.size_critical` (80%, plus Sentry) audit row per crossing, using the stored `alert_level`, not per run. `prune_job_history` runs procrastinate's `delete_old_jobs` (`JOB_HISTORY_RETENTION_DAYS`); events cascade, failed jobs stay. A periodic task that must not fail silently uses `_run_recorded` (writes `sweep.failed`) and goes in `STATE` in `test_jobs_fail_visibly` with a forcing test, not in `NO_OWN_STATE`.
 
 - **The size alarm's three rules.** The health size read is limited by the server (`statement_timeout` inside a savepoint), never by cancelling the query: an asyncio cancel mid-query on the request's shared session breaks every later statement. `record_database_size` returns the Sentry sentence and `run_size_check` sends it after the commit (a page from inside is sent again when a failed commit is retried). The compare-then-write takes `pg_advisory_xact_lock` first (`tests/integration/test_database_size_race.py`). `FactList` truncates values: a sentence goes in its own paragraph.
+- **Never re-chain a migration that has already been applied anywhere.** `alembic_version` holds one
+  pointer, so moving a migration's `down_revision` makes alembic treat every newly inserted ancestor
+  as already run: `upgrade head` reports nothing to do and the columns never appear. It bit production
+  on 2026-10-31 (the RLS migration had been applied by hand before the transcript and size migrations
+  were chained in front of it). Before editing any `down_revision`, run `alembic current` against every
+  deployed database, not just a local one. Repair is `alembic stamp <the real parent>` then
+  `alembic upgrade head`; it only works because these migrations' `upgrade()` are idempotent or fail
+  loudly. No guard catches this: the file was untracked, so nothing could compare it against `main`.
 - **`VACUUM` needs a session or direct connection**, never Supabase's `:6543` transaction pooler. Plain `VACUUM` returns only the heap tail; indexes keep their size until `VACUUM FULL`.
 
 ## What a failure looks like here
