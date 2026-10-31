@@ -65,6 +65,7 @@ from app.core.db import (  # noqa: E402
     get_engine,
     get_session,
     get_session_opener,
+    libpq_url,
     sqlalchemy_url,
 )
 from app.core.settings import get_settings  # noqa: E402
@@ -154,6 +155,29 @@ def _drop_worker_database(base_url: str, worker_url: str) -> None:
         conn.execute(f'DROP DATABASE IF EXISTS "{worker_db}" WITH (FORCE)')
 
 
+def _create_supabase_api_roles(database_url: str) -> None:
+    """Make the test database look like Supabase: `anon` and `authenticated` exist and every
+    new table is granted to them by default, so the RLS migration's revoke has work to do.
+    Roles are cluster-wide, so tolerate them existing already and parallel workers racing."""
+    import psycopg
+
+    sql = """
+    DO $$
+    DECLARE r text;
+    BEGIN
+      FOREACH r IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+        BEGIN
+          EXECUTE format('CREATE ROLE %I NOLOGIN', r);
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END;
+        EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO %I', r);
+      END LOOP;
+    END $$;
+    """
+    with psycopg.connect(libpq_url(database_url), autocommit=True) as conn:
+        conn.execute(sql)
+
+
 @pytest.fixture(scope="session")
 def migrated_database(database_url: str) -> str:
     from alembic.config import Config
@@ -164,6 +188,7 @@ def migrated_database(database_url: str) -> str:
     get_settings.cache_clear()
     cfg = Config(str(ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(ROOT / "alembic"))
+    _create_supabase_api_roles(database_url)
     command.upgrade(cfg, "head")
     return database_url
 
