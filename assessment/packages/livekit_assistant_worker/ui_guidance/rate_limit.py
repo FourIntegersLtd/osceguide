@@ -7,10 +7,9 @@ job's spending into the next job that happens to share the interpreter.
 
 from __future__ import annotations
 
-import os
 import time
 
-MAX_PER_MINUTE = int(os.getenv("UI_GUIDANCE_MAX_CALLS_PER_MINUTE", "30"))
+MAX_PER_MINUTE = 30
 WINDOW_SECONDS = 60.0
 
 

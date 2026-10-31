@@ -5,7 +5,6 @@ The frontend counterpart lives in ``frontend/src/shared/livekit-ui-guidance``;
 """
 
 from livekit_assistant_worker.ui_guidance.agent import GuidanceAgent
-from livekit_assistant_worker.ui_guidance.config import is_ui_guidance_enabled
 from livekit_assistant_worker.ui_guidance.navigation import NavigationModeState
 from livekit_assistant_worker.ui_guidance.pointer_tags import POINTER_TAG_SYNTAX, PointerTag
 from livekit_assistant_worker.ui_guidance.progress import GuidanceProgress
@@ -19,5 +18,4 @@ __all__ = [
     "POINTER_TAG_SYNTAX",
     "PointerTag",
     "build_computer_toolset",
-    "is_ui_guidance_enabled",
 ]

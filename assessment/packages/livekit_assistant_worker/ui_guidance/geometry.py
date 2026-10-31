@@ -8,11 +8,10 @@ being written out twice at each call site.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
-DEFAULT_WIDTH = int(os.getenv("UI_GUIDANCE_DISPLAY_WIDTH", "1280"))
-DEFAULT_HEIGHT = int(os.getenv("UI_GUIDANCE_DISPLAY_HEIGHT", "720"))
+DEFAULT_WIDTH = 1280
+DEFAULT_HEIGHT = 720
 
 
 @dataclass(frozen=True)

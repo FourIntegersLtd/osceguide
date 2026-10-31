@@ -29,7 +29,7 @@ from .session_cap import SessionCap, register_session_cap
 from .tools.navigation_mode import build_offer_navigation_modes_tool
 from .tools.remote import build_remote_tools
 from .transcript import GPT_LIVE_LATE_ITEMS_S, TranscriptDelivery, TranscriptRecorder
-from .ui_guidance import ComputerToolset, NavigationModeState, build_computer_toolset, is_ui_guidance_enabled
+from .ui_guidance import ComputerToolset, NavigationModeState, build_computer_toolset
 from .ui_guidance.browser import BrowserChannel
 
 logger = logging.getLogger(__name__)
@@ -119,13 +119,12 @@ class AssistantVoiceSession:
         tools: list = []
         if session.mode.ui_guidance and session.extras.screen_ui_guidance:
             tools.append(build_offer_navigation_modes_tool(ctx))
-            if is_ui_guidance_enabled():
-                try:
-                    self.guidance = build_computer_toolset(ctx, session.worker_type.value, self.navigation)
-                    tools.append(self.guidance.as_function_tool())
-                except Exception as exc:  # noqa: BLE001 — guidance is optional
-                    self.guidance = None
-                    logger.warning("[ui_guidance] computer tool failed to load: %s", exc, exc_info=True)
+            try:
+                self.guidance = build_computer_toolset(ctx, session.worker_type.value, self.navigation)
+                tools.append(self.guidance.as_function_tool())
+            except Exception as exc:  # noqa: BLE001 — guidance is optional
+                self.guidance = None
+                logger.warning("[ui_guidance] computer tool failed to load: %s", exc, exc_info=True)
         # Built here because the tool needs it, started later: time zero is when the
         # interaction opens, not when the tool list is assembled. A backend that sends
         # no plan gets no clock and no tool, which is the old behaviour exactly.
