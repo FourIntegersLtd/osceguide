@@ -17,6 +17,7 @@ from typing import Any, BinaryIO
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import publish_after_commit, user_topic
+from app.core.llm import OPENAI_FAST
 from app.core.logging import get_logger
 from app.core.ports import GuidelineIndex, GuidelineWeb
 from app.core.settings import Settings, get_settings
@@ -34,7 +35,6 @@ from app.features.media_production.errors import (
 from app.features.media_production.repository import defer_job, lock_for_media
 from app.features.media_production.s3 import delete_object, upload_fileobj
 from app.features.media_production.schemas import MediaRead
-from app.features.media_production.slide_narration import READER_MODEL
 from app.features.media_production.slide_narration import complete as model_reply
 
 log = get_logger(__name__)
@@ -263,7 +263,7 @@ def second_reader(settings: Settings, system: str) -> script_check.Complete:
 
     Claude answers if it is unavailable.
     """
-    return lambda prompt: model_reply(settings, prompt, system=system, openai_model=READER_MODEL)
+    return lambda prompt: model_reply(settings, prompt, system=system, openai_model=OPENAI_FAST)
 
 
 def with_error(content: dict[str, Any], step: str, error: Exception) -> dict[str, Any]:

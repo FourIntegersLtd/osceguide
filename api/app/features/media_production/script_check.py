@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
 
+from app.core.llm import json_object
 from app.core.settings import Settings
 from app.features.media_production.errors import AvUnavailable
 from app.features.media_production.podcast_script import generate_script, split_script
@@ -28,7 +29,6 @@ from app.features.media_production.slide_narration import (
     _TALK_WORDS,
     AUDIO_TAG,
     NARRATION_WORKERS,
-    json_object,
     keeps_stored_narration,
     narrate_deck,
     plain_speech,

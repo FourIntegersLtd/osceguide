@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exam_settings import ExamSettings
+from app.core.llm import (
+    OPENAI_STRONG,
+    NoModelKey,
+    claude_reply,
+    first_that_answers,
+    json_object,
+    openai_reply,
+)
 from app.core.settings import Settings
 from app.features.catalog import service as catalog
 from app.features.generation import exam_prompts
@@ -170,8 +177,9 @@ async def generate_podcast(*, prompt: str, exam_code: str | None, settings: Sett
     return await _titled(normalize_podcast_response(raw), "title", prompt, settings)
 
 
-GENERATION_MODEL = "gpt-6.1-sol"
-GENERATION_FALLBACK_MODEL = "claude-sonnet-5-5"
+# Room for a whole slide deck or script, with Claude's thinking counted in it.
+_CLAUDE_MAX_TOKENS = 16_000
+_CLAUDE_SECONDS = 300
 
 
 async def _json_completion(*, settings: Settings, system: str, user: str) -> dict[str, Any]:
@@ -179,45 +187,52 @@ async def _json_completion(*, settings: Settings, system: str, user: str) -> dic
 
     Refuses before calling out if no API key is configured, and refuses again if the model's
     reply is not itself a JSON object, so callers never have to guard against a malformed shape.
-    Tries `gpt-6.1-sol` first, falling back to `claude-sonnet-5-5` when the primary fails.
+    Tries `claude-sonnet-5-5` first, falling back to `gpt-6.1-sol` when Claude fails, is cut off
+    or does not answer with a JSON object.
     """
-    if not settings.openai_api_key.strip() and not settings.anthropic_api_key.strip():
-        raise GenerationUnavailable()
 
-    text: str | None = None
-    if settings.openai_api_key.strip():
-        from openai import AsyncOpenAI
-
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
-        try:
-            response = await client.chat.completions.create(
-                model=GENERATION_MODEL,
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-            )
-            text = response.choices[0].message.content or "{}"
-        except Exception:  # noqa: BLE001 - any failure of the first provider falls through to the second
-            text = None
-
-    if text is None:
-        if not settings.anthropic_api_key.strip():
-            raise GenerationUnavailable()
-        from anthropic import AsyncAnthropic
-
-        fallback_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
-        fallback_response = await fallback_client.messages.create(
-            model=GENERATION_FALLBACK_MODEL,
-            max_tokens=4096,
+    async def from_claude(api_key: str) -> dict[str, Any]:
+        """Claude's reply as a JSON object."""
+        reply = await claude_reply(
+            api_key,
             system=system + "\n\nRespond with a single JSON object and nothing else.",
             messages=[{"role": "user", "content": user}],
+            max_tokens=_CLAUDE_MAX_TOKENS,
+            timeout=_CLAUDE_SECONDS,
         )
-        text = next((block.text for block in fallback_response.content if block.type == "text"), "{}")
+        return _json_object(reply)
 
-    parsed = json.loads(text)
-    if not isinstance(parsed, dict):
+    async def from_openai(api_key: str) -> dict[str, Any]:
+        """OpenAI's reply as a JSON object, asked when Claude has no key or failed."""
+        reply = await openai_reply(
+            api_key,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+            model=OPENAI_STRONG,
+            timeout=_CLAUDE_SECONDS,
+            response_format={"type": "json_object"},
+        )
+        return _json_object(reply)
+
+    try:
+        return await first_that_answers(
+            [
+                ("claude", settings.anthropic_api_key, from_claude),
+                ("openai", settings.openai_api_key, from_openai),
+            ]
+        )
+    except GenerationUnavailable:
+        raise
+    except NoModelKey as exc:
+        raise GenerationUnavailable() from exc
+    except Exception as exc:  # noqa: BLE001 - the last provider failing, whatever the SDK raised
+        raise GenerationUnavailable("The model did not answer; try again") from exc
+
+
+def _json_object(text: str) -> dict[str, Any]:
+    """The JSON object in a reply, or `GenerationUnavailable`."""
+    parsed = json_object(text)
+    if parsed is None:
         raise GenerationUnavailable("Model did not return a JSON object")
     return parsed
 

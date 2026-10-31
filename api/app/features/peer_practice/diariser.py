@@ -9,10 +9,10 @@ of two uploads to stitch.
 
 from __future__ import annotations
 
-import asyncio
 import json
-from typing import Any, Literal
+from typing import Any
 
+from app.core.llm import CLAUDE_HAIKU, OPENAI_FAST, NoModelKey, claude_reply, first_that_answers, openai_reply
 from app.core.ports import TranscriptionFailed
 from app.core.settings import get_settings
 from app.features.peer_practice.transcript_prompt import (
@@ -21,10 +21,12 @@ from app.features.peer_practice.transcript_prompt import (
 )
 
 _TIMEOUT_SECONDS = 180
-# Reasoning off on purpose: this is not judgement, it is cutting a block of
-# text where a speaker changes (gpt-4o-mini retires on 2027-01-14).
-DIARISATION_MODEL = "gpt-6-luna"
-DIARISATION_REASONING_EFFORT: Literal["none"] = "none"
+# Claude's thinking counts in max_tokens, so a long consultation needs room beyond its turns.
+_CLAUDE_MAX_TOKENS = 16_000
+_OPENAI_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {"name": "turns", "schema": TURNS_SCHEMA, "strict": False},
+}
 
 
 async def to_turns(raw_transcript: str) -> list[dict[str, str]]:
@@ -32,34 +34,54 @@ async def to_turns(raw_transcript: str) -> list[dict[str, str]]:
 
     The roles are named for what `attempts` already understands: its worker
     treats `doctor` as the candidate, so nothing has to be translated between
-    here and the marking.
+    here and the marking. Claude splits first; OpenAI answers if Claude has no
+    key or fails.
     """
     if not raw_transcript.strip():
         raise TranscriptionFailed("There is no transcript to split into turns")
-    client = _client()
+    settings = get_settings()
 
-    def call() -> str:
-        """The model's answer to one diarisation request, run in a thread below."""
-        response = client.chat.completions.create(
-            model=DIARISATION_MODEL,
-            messages=[
-                {"role": "system", "content": HUMAN_TRANSCRIPT_CONVERSION_PROMPT},
-                {"role": "user", "content": raw_transcript},
-            ],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {"name": "turns", "schema": TURNS_SCHEMA, "strict": False},
-            },
-            reasoning_effort=DIARISATION_REASONING_EFFORT,
+    async def by_claude(api_key: str) -> list[dict[str, str]]:
+        """The turns as Haiku splits them."""
+        reply = await claude_reply(
+            api_key,
+            system=HUMAN_TRANSCRIPT_CONVERSION_PROMPT,
+            messages=[{"role": "user", "content": raw_transcript}],
+            max_tokens=_CLAUDE_MAX_TOKENS,
             timeout=_TIMEOUT_SECONDS,
+            model=CLAUDE_HAIKU,
+            schema=TURNS_SCHEMA,
+            effort="low",
         )
-        return str(response.choices[0].message.content or "")
+        return _clean(json.loads(reply))
+
+    async def by_openai(api_key: str) -> list[dict[str, str]]:
+        """The turns as OpenAI splits them, asked when Claude has no key or failed."""
+        reply = await openai_reply(
+            api_key,
+            system=HUMAN_TRANSCRIPT_CONVERSION_PROMPT,
+            messages=[{"role": "user", "content": raw_transcript}],
+            model=OPENAI_FAST,
+            timeout=_TIMEOUT_SECONDS,
+            # Reasoning off on purpose: this only cuts text where a speaker changes.
+            reasoning_effort="none",
+            response_format=_OPENAI_RESPONSE_FORMAT,
+        )
+        return _clean(json.loads(reply))
 
     try:
-        parsed = json.loads(await asyncio.to_thread(call))
+        return await first_that_answers(
+            [
+                ("claude", settings.anthropic_api_key, by_claude),
+                ("openai", settings.openai_api_key, by_openai),
+            ]
+        )
+    except NoModelKey as exc:
+        raise TranscriptionFailed("No model key is configured, so turns cannot be recovered") from exc
+    except TranscriptionFailed:
+        raise
     except Exception as exc:  # noqa: BLE001 - every failure here is the same failure
         raise TranscriptionFailed(f"The transcript could not be split into turns: {exc}") from exc
-    return _clean(parsed)
 
 
 def _clean(parsed: Any) -> list[dict[str, str]]:
@@ -80,15 +102,3 @@ def _clean(parsed: Any) -> list[dict[str, str]]:
     if not turns:
         raise TranscriptionFailed("No turns could be recovered from the transcript")
     return turns
-
-
-def _client() -> Any:
-    """The OpenAI client used to split raw speech into turns, or refuse if unavailable."""
-    settings = get_settings()
-    if not settings.openai_api_key:
-        raise TranscriptionFailed("No OpenAI key is configured, so turns cannot be recovered")
-    try:
-        from openai import OpenAI  # optional dependency
-    except ImportError as exc:  # pragma: no cover - depends on deployment extras
-        raise TranscriptionFailed("The OpenAI SDK is not installed") from exc
-    return OpenAI(api_key=settings.openai_api_key)

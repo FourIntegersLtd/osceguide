@@ -69,7 +69,8 @@ PRICES: dict[str, tuple[float, float, float]] = {
     "gpt-5.6-luna": (0.20, 0.02, 1.20),
     "gpt-6-luna": (0.10, 0.01, 0.50),  # developers.openai.com/api/docs/pricing, short context
     "gpt-5.6-terra": (2.00, 0.20, 12.00),
-    "claude-sonnet-5-5": (2.00, 0.10, 10.00),  # platform.claude.com pricing; the marking fallback
+    "claude-sonnet-5-5": (2.00, 0.20, 10.00),  # platform.claude.com pricing; the marking fallback
+    "claude-haiku-5-5": (0.10, 0.01, 0.50),  # platform.claude.com pricing, prompts up to 100K tokens
 }
 
 # Mirrors voice_infra.speech._openai_llm. Kept as a local rule rather than an

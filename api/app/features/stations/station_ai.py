@@ -1,4 +1,4 @@
-"""OpenAI structured parse helpers for station autogeneration."""
+"""Structured parse of station autogeneration: Claude first, OpenAI second."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from typing import TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.llm import OPENAI_STRONG, NoModelKey, claude_reply, first_that_answers
 from app.core.logging import get_logger
 from app.core.settings import Settings
 from app.features.generation.errors import GenerationUnavailable
@@ -14,15 +15,15 @@ logger = get_logger(__name__)
 
 TModel = TypeVar("TModel", bound=BaseModel)
 
-# gpt-6.1-sol primary (o3 shut down 2026-12-11), claude-sonnet-5-5 fallback: the legacy pairing (b2c's
-# `ai_service._get_model_details`), restored after a regression left this
-# hardcoded to gpt-4o.
-STATION_AUTOGENERATE_MODEL = "gpt-6.1-sol"
-STATION_AUTOGENERATE_FALLBACK_MODEL = "claude-sonnet-5-5"
+
+class _ParseFailed(Exception):
+    """A provider's parse failed; the message is what the caller shows."""
+
+
 PARSE_TIMEOUT_SEC = 480
 # Room for the whole answer. Transcribing a long station document writes most
 # of the document back out, which 4096 tokens cut off part-way.
-FALLBACK_MAX_TOKENS = 32_000
+CLAUDE_MAX_TOKENS = 32_000
 
 
 async def parse_ai_structured(
@@ -30,69 +31,65 @@ async def parse_ai_structured(
     response_model: type[TModel],
     *,
     settings: Settings,
-    model: str = STATION_AUTOGENERATE_MODEL,
+    openai_model: str = OPENAI_STRONG,
     log_prefix: str = "[PLATFORM_AUTOGENERATE]",
 ) -> tuple[TModel | None, str]:
-    """Structured parse against `model`, falling back to Anthropic when the primary refuses or times out."""
-    if not settings.openai_api_key.strip() and not settings.anthropic_api_key.strip():
-        return None, "No model provider is configured (set OPENAI_API_KEY or ANTHROPIC_API_KEY)"
+    """Structured parse by Claude first, then by OpenAI's `openai_model` when Claude is missing or fails.
 
-    parsed, err = await _parse_with_openai(
-        messages, response_model, settings=settings, model=model, log_prefix=log_prefix
-    )
-    if parsed is not None:
-        return parsed, ""
-    if not settings.anthropic_api_key.strip():
-        return None, err
-    logger.warning(
-        "%s falling back to %s after primary failure: %s",
-        log_prefix,
-        STATION_AUTOGENERATE_FALLBACK_MODEL,
-        err,
-    )
-    return await _parse_with_anthropic(
-        messages,
-        response_model,
-        settings=settings,
-        model=STATION_AUTOGENERATE_FALLBACK_MODEL,
-        log_prefix=log_prefix,
-    )
+    A double failure reports Claude's error, the first provider's.
+    """
+
+    claude_failure: list[_ParseFailed] = []
+
+    async def by_claude(api_key: str) -> TModel:
+        """Claude's parse, remembering why it failed for the report if OpenAI fails too."""
+        try:
+            return await _parse_with_anthropic(
+                messages, response_model, api_key=api_key, log_prefix=log_prefix
+            )
+        except _ParseFailed as failure:
+            claude_failure.append(failure)
+            raise
+
+    async def by_openai(api_key: str) -> TModel:
+        """OpenAI's parse, asked when Claude has no key or failed."""
+        return await _parse_with_openai(
+            messages, response_model, api_key=api_key, model=openai_model, log_prefix=log_prefix
+        )
+
+    try:
+        parsed = await first_that_answers(
+            [
+                ("claude", settings.anthropic_api_key, by_claude),
+                ("openai", settings.openai_api_key, by_openai),
+            ]
+        )
+    except NoModelKey:
+        return None, "No model provider is configured (set OPENAI_API_KEY or ANTHROPIC_API_KEY)"
+    except _ParseFailed as failure:
+        return None, str((claude_failure or [failure])[0])
+    return parsed, ""
 
 
 async def _parse_with_openai(
     messages: list[dict[str, str]],
     response_model: type[TModel],
     *,
-    settings: Settings,
+    api_key: str,
     model: str,
     log_prefix: str,
-) -> tuple[TModel | None, str]:
-    """Call OpenAI beta.chat.completions.parse. Returns (parsed, error_message)."""
-    if not settings.openai_api_key.strip():
-        return None, "OpenAI is not configured (set OPENAI_API_KEY)"
-
+) -> TModel:
+    """Call OpenAI beta.chat.completions.parse; `_ParseFailed` when it fails or parses nothing."""
     from openai import AsyncOpenAI
 
-    client = AsyncOpenAI(api_key=settings.openai_api_key)
     try:
-        response = await client.beta.chat.completions.parse(
-            model=model,
-            messages=messages,  # type: ignore[arg-type]
-            response_format=response_model,
-            timeout=PARSE_TIMEOUT_SEC,
-        )
-        parsed = response.choices[0].message.parsed
-        if parsed is None:
-            refusal = response.choices[0].message.refusal
-            return None, f"Structured parse returned empty: {refusal or 'unknown'}"
-        logger.debug(
-            "%s parse ok model=%s responseModel=%s finishReason=%s",
-            log_prefix,
-            model,
-            response_model.__name__,
-            response.choices[0].finish_reason,
-        )
-        return parsed, ""
+        async with AsyncOpenAI(api_key=api_key) as client:
+            response = await client.beta.chat.completions.parse(
+                model=model,
+                messages=messages,  # type: ignore[arg-type]
+                response_format=response_model,
+                timeout=PARSE_TIMEOUT_SEC,
+            )
     except Exception as exc:
         logger.warning(
             "%s structured parse failed model=%s responseModel=%s error=%s",
@@ -102,64 +99,52 @@ async def _parse_with_openai(
             exc,
             exc_info=True,
         )
-        return None, str(exc)
+        raise _ParseFailed(str(exc)) from exc
+    parsed = response.choices[0].message.parsed
+    if parsed is None:
+        refusal = response.choices[0].message.refusal
+        raise _ParseFailed(f"Structured parse returned empty: {refusal or 'unknown'}")
+    logger.debug(
+        "%s parse ok model=%s responseModel=%s finishReason=%s",
+        log_prefix,
+        model,
+        response_model.__name__,
+        response.choices[0].finish_reason,
+    )
+    return parsed
 
 
 async def _parse_with_anthropic(
     messages: list[dict[str, str]],
     response_model: type[TModel],
     *,
-    settings: Settings,
-    model: str,
+    api_key: str,
     log_prefix: str,
-) -> tuple[TModel | None, str]:
-    """The same structured-output contract via Anthropic's tool-use, for the fallback model."""
-    from anthropic import AsyncAnthropic
-
-    client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+) -> TModel:
+    """The structured parse by Claude: the response model's schema (a few KB) goes in `output_config`."""
     system = "\n".join(message["content"] for message in messages if message["role"] == "system")
-    user_messages = [
-        {"role": message["role"], "content": message["content"]}
-        for message in messages
-        if message["role"] != "system"
-    ]
-    tool_name = "emit_result"
+    user_messages = [message for message in messages if message["role"] != "system"]
     try:
-        response = await client.messages.create(
-            model=model,
-            max_tokens=FALLBACK_MAX_TOKENS,
-            # claude-sonnet-5-5 answers 400 to a forced tool_choice, so the system prompt asks for the tool.
-            system="\n\n".join(filter(None, [system, f"Answer by calling {tool_name}."])),
-            messages=user_messages,  # type: ignore[arg-type]  # plain dicts, not MessageParam
-            tools=[
-                {
-                    "name": tool_name,
-                    "description": f"Return {response_model.__name__} as structured data.",
-                    "input_schema": response_model.model_json_schema(),
-                }
-            ],
+        text = await claude_reply(
+            api_key,
+            system=system,
+            messages=user_messages,
+            max_tokens=CLAUDE_MAX_TOKENS,
             timeout=PARSE_TIMEOUT_SEC,
+            schema=response_model.model_json_schema(),
         )
-        if response.stop_reason == "max_tokens":
-            return None, "Fallback model ran out of room before it finished its answer"
-        tool_use = next((block for block in response.content if block.type == "tool_use"), None)
-        if tool_use is None:
-            return None, "Fallback model returned no structured result"
-        parsed = response_model.model_validate(tool_use.input)
-        logger.debug(
-            "%s parse ok (fallback) model=%s responseModel=%s", log_prefix, model, response_model.__name__
-        )
-        return parsed, ""
+        parsed = response_model.model_validate_json(text)
     except Exception as exc:
         logger.warning(
-            "%s fallback structured parse failed model=%s responseModel=%s error=%s",
+            "%s Claude structured parse failed responseModel=%s error=%s",
             log_prefix,
-            model,
             response_model.__name__,
             exc,
             exc_info=True,
         )
-        return None, str(exc)
+        raise _ParseFailed(str(exc)) from exc
+    logger.debug("%s parse ok (claude) responseModel=%s", log_prefix, response_model.__name__)
+    return parsed
 
 
 async def generate_station_autogenerate(
@@ -167,14 +152,14 @@ async def generate_station_autogenerate(
     *,
     settings: Settings,
     log_prefix: str = "[PLATFORM_AUTOGENERATE]",
-    model: str = STATION_AUTOGENERATE_MODEL,
+    openai_model: str = OPENAI_STRONG,
 ) -> tuple[StationContentAutogenerateModel | None, str]:
     """Generate station instance content via structured parse."""
     parsed, err = await parse_ai_structured(
         messages,
         StationContentAutogenerateModel,
         settings=settings,
-        model=model,
+        openai_model=openai_model,
         log_prefix=log_prefix,
     )
     if parsed is None and not settings.openai_api_key.strip() and not settings.anthropic_api_key.strip():

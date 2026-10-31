@@ -64,7 +64,7 @@ def chat(monkeypatch):
             now=datetime.now(UTC),
             index=material(sca, plab) if index == "default" else index,
             guidelines=guidelines,
-            settings=SimpleNamespace(openai_api_key="test"),
+            settings=SimpleNamespace(openai_api_key="test", anthropic_api_key=""),
         )
         prompt = completion.call_args.kwargs["messages"][0]["content"] if completion.called else None
         return result.reply, prompt

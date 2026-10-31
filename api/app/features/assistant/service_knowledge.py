@@ -3,7 +3,6 @@
 import asyncio
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,13 +11,11 @@ from app.core.errors import AppError, InvalidInput
 from app.core.logging import get_logger
 from app.core.ports import GuidelineIndex, GuidelinePassage, MaterialIndex, Passage
 from app.core.settings import Settings
+from app.features.assistant import service_llm
 from app.features.assistant.schemas import ChatMessage, KnowledgeChat, KnowledgeReply
 from app.features.catalog import service as catalog
 from app.features.media import service_search
 from app.features.tutor_memory import service_search as tutor_search
-
-if TYPE_CHECKING:  # pragma: no cover - a type, never imported at runtime
-    from openai.types.chat import ChatCompletionMessageParam
 
 log = get_logger(__name__)
 
@@ -34,7 +31,7 @@ GUIDELINE_LIMIT = 12
 
 
 class KnowledgeUnavailable(AppError):
-    """Athena could not answer: no OpenAI key configured, the call failed, or it gave an empty reply."""
+    """Athena could not answer: no model key configured, the call failed, or it gave an empty reply."""
 
     status = 503
     code = "knowledge_unavailable"
@@ -86,34 +83,16 @@ async def answer(
                 "guidelines. Try a more specific condition or question."
             )
         )
-    if not settings.openai_api_key.strip():
-        raise KnowledgeUnavailable()
-    # Imported here, not at module scope: `tests/contract/test_engine_adapter.py`
-    # holds this backend to ADR 0013's claim that importing the engine pulls in
-    # no LLM SDK, and an eager import here is also startup time every process
-    # pays — including the worker, which never answers a knowledge question.
-    from openai import AsyncOpenAI, OpenAIError  # optional dependency
-
     try:
-        async with AsyncOpenAI(api_key=settings.openai_api_key, timeout=45, max_retries=1) as client:
-            completion = await client.chat.completions.create(
-                model="gpt-6-luna",
-                reasoning_effort="low",  # grounded answers: a little thought, not gpt-5-nano's default medium
-                max_completion_tokens=4000,
-                messages=[
-                    {"role": "system", "content": _system_prompt(passages, guideline_passages)},
-                    # The name is quoted because it is imported under TYPE_CHECKING only:
-                    # `cast` evaluates its first argument at runtime, so the bare
-                    # name raised NameError on every grounded answer.
-                    *[cast("ChatCompletionMessageParam", message.model_dump()) for message in body.messages],
-                ],
-            )
-        reply = (completion.choices[0].message.content or "").strip()
-        if not reply:
-            raise KnowledgeUnavailable()
-        return KnowledgeReply(reply=reply)
-    except OpenAIError as exc:
+        reply = await service_llm.complete(
+            settings,
+            _system_prompt(passages, guideline_passages),
+            [message.model_dump() for message in body.messages],
+            max_tokens=4000,
+        )
+    except service_llm.ModelUnavailable as exc:
         raise KnowledgeUnavailable() from exc
+    return KnowledgeReply(reply=reply)
 
 
 def _search_query(messages: list[ChatMessage]) -> str:

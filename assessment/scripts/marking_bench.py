@@ -6,7 +6,8 @@
     report  compare each arm with a baseline arm: rating agreement, mean absolute
             per-domain difference, schema failures, cost per mark and latency
 
-An arm is a model id (a ``claude-`` id is marked through the engine's fallback path);
+An arm is a model id (a ``claude-`` id is marked through the engine's fallback path;
+``claude-haiku-5-5@low`` sends that effort, a bare claude id keeps the model's default);
 repeat one (``gpt-6-luna,gpt-6-luna``) to measure its run-to-run
 noise, which is the bar a cheaper model has to stay within. Arms are labelled
 ``model#n`` in the output.
@@ -45,7 +46,8 @@ from parity_run import to_engine_transcript  # noqa: E402
 class _Recording:
     """An OpenAI or Anthropic client that remembers each call's token usage and latency."""
 
-    def __init__(self, client: Any) -> None:
+    def __init__(self, client: Any, claude_effort: str | None = None) -> None:
+        self.claude_effort = claude_effort
         self.usage: list[tuple[int, int, int]] = []
         self.seconds = 0.0
         self._client = client
@@ -67,10 +69,13 @@ class _Recording:
         return response
 
     def _anthropic(self, **kwargs: Any) -> Any:
+        if self.claude_effort:
+            kwargs = {**kwargs, "output_config": {"effort": self.claude_effort}}
         response = self._timed(self._client.messages.create, kwargs)
         u = response.usage
         cached = getattr(u, "cache_read_input_tokens", 0) or 0
-        self.usage.append((u.input_tokens + cached, cached, u.output_tokens))
+        written = getattr(u, "cache_creation_input_tokens", 0) or 0  # billed here at the plain input rate
+        self.usage.append((u.input_tokens + cached + written, cached, u.output_tokens))
         return response
 
 
@@ -82,8 +87,12 @@ def cost(model: str, usage: list[tuple[int, int, int]]) -> float | None:
     return sum(((p - c) * rate_in + c * rate_cached + o * rate_out) / 1e6 for p, c, o in usage)
 
 
-def mark(case: dict[str, Any], model: str, effort: str | None) -> dict[str, Any]:
-    """One case marked by one model, as the scoring job does it (no examiner context, title "Station")."""
+def mark(case: dict[str, Any], arm_model: str, effort: str | None) -> dict[str, Any]:
+    """One case marked by one model, as the scoring job does it (no examiner context, title "Station").
+
+    ``arm_model`` may be ``claude-id@effort``, which sends that effort to the claude model.
+    """
+    model, _, claude_effort = arm_model.partition("@")
     from openai import OpenAI
 
     from osce_assessment.contracts import (
@@ -110,7 +119,7 @@ def mark(case: dict[str, Any], model: str, effort: str | None) -> dict[str, Any]
     if fallback:
         from anthropic import Anthropic
 
-        client = _Recording(Anthropic())
+        client = _Recording(Anthropic(), claude_effort or None)
         evaluator = LLMEvaluator(framework_provider=StaticFrameworkProvider(framework),
                                  primary_client=lambda: None, fallback_client=lambda: client)
     else:

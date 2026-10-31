@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import logging
 import re
 
 from app.core.settings import Settings
 from app.features.generation import service as generation
+from app.features.media_production.slide_narration import complete
 
-PODCAST_SCRIPT_MODEL = "gpt-6.1-sol"
-PODCAST_SCRIPT_FALLBACK_MODEL = "claude-sonnet-5-5"
-
-logger = logging.getLogger(__name__)
+# At low effort a script takes about a minute and a half; a stall is cut off well before OpenAI is asked.
+_CLAUDE_SECONDS = 150
 
 SPEAKERS = ("Ben", "Michelle")
 
@@ -25,40 +23,15 @@ _SYSTEM_PROMPT = (
 def generate_script(settings: Settings, source_text: str) -> str:
     """Asks the model to turn `source_text` into a Ben-and-Michelle dialogue script.
 
-    Tries `gpt-6.1-sol` first, falling back to `claude-sonnet-5-5` when the primary fails.
+    Tries `claude-sonnet-5-5` first, falling back to `gpt-6.1-sol` when Claude fails or has no key.
     """
-    prompt = generation.podcast_script_prompt(source_text)
-    if settings.openai_api_key.strip():
-        from openai import OpenAI  # optional dependency
-
-        client = OpenAI(api_key=settings.openai_api_key)
-        try:
-            response = client.chat.completions.create(
-                model=PODCAST_SCRIPT_MODEL,
-                messages=[
-                    {"role": "system", "content": _SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            return (response.choices[0].message.content or "").strip()
-        except Exception:
-            logger.warning(
-                "Podcast script generation via %s failed, falling back to %s",
-                PODCAST_SCRIPT_MODEL,
-                PODCAST_SCRIPT_FALLBACK_MODEL,
-                exc_info=True,
-            )
-
-    from anthropic import Anthropic  # optional dependency
-
-    fallback_client = Anthropic(api_key=settings.anthropic_api_key)
-    fallback_response = fallback_client.messages.create(
-        model=PODCAST_SCRIPT_FALLBACK_MODEL,
-        max_tokens=8000,
+    return complete(
+        settings,
+        generation.podcast_script_prompt(source_text),
         system=_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return next((block.text for block in fallback_response.content if block.type == "text"), "").strip()
+        claude_first=True,
+        claude_seconds=_CLAUDE_SECONDS,
+    ).strip()
 
 
 def split_script(script: str) -> list[tuple[str, str]]:

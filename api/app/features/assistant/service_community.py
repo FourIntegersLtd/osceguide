@@ -8,6 +8,7 @@ import re
 from collections.abc import Awaitable, Callable
 
 from app.core.settings import Settings
+from app.features.assistant import service_llm
 from app.features.assistant.content.packs import BASE
 
 
@@ -55,24 +56,15 @@ def help_drafter(settings: Settings) -> Callable[[str, str], Awaitable[str | Non
 
     # What the help pack says to a question, or why it cannot.
     async def draft(title: str, body: str) -> str | None:
-        if not settings.openai_api_key.strip():
-            raise AssistantUnavailable()
-        # Imported here for the same reason as `service_knowledge`: importing the engine pulls in no LLM SDK.
-        from openai import AsyncOpenAI
-
-        async with AsyncOpenAI(api_key=settings.openai_api_key, timeout=45, max_retries=1) as client:
-            completion = await client.chat.completions.create(
-                model="gpt-6-luna",
-                reasoning_effort="low",  # a little thought, not the model default
-                max_completion_tokens=2000,
-                messages=[
-                    {"role": "system", "content": system_prompt()},
-                    {"role": "user", "content": f"{title}\n\n{body}"},
-                ],
+        try:
+            reply = await service_llm.complete(
+                settings,
+                system_prompt(),
+                [{"role": "user", "content": f"{title}\n\n{body}"}],
+                max_tokens=2000,
             )
-        reply = (completion.choices[0].message.content or "").strip()
-        if not reply:
-            raise AssistantUnavailable()
+        except service_llm.ModelUnavailable as exc:
+            raise AssistantUnavailable() from exc
         return parse_reply(reply)
 
     return draft

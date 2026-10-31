@@ -38,6 +38,18 @@ Owner: `content-owner`. Proof: `verify-content`.
 - A read widened to make a screen work.
 - A second open draft, or a screen that assumes a station survives deleting its last version.
 - A published station with no `patient_information` or template, so its attempts are never marked.
-- Content models (gpt-6.1-sol writer, claude-sonnet-5-5 fallback, gpt-6-luna reader, gpt-transcribe) are
-  literals checked by `api/tests/guards/test_model_retirements.py`. `claude-sonnet-5-5` answers 400 to a forced
-  `tool_choice` and to any `temperature` but 1; `gpt-6.1-sol` takes no `reasoning_effort` of `none`.
+- Content models are literals checked by `api/tests/guards/test_model_retirements.py`. Claude is the first
+  provider, OpenAI the second: claude-sonnet-5-5 for station generation and import (`stations/station_ai.py`),
+  JSON generation (`generation/service.py`) and podcast scripts (`podcast_script.py`, via
+  `slide_narration.complete(claude_first=True)`); claude-haiku-5-5 splits peer transcripts into turns
+  (`peer_practice/diariser.py`, matched sonnet and gpt-6-luna on 3 samples); gpt-6.1-sol / gpt-6-luna /
+  gpt-transcribe answer when Claude has no key or fails. `app/core/llm.py` is the one home of model calls
+  (`claude_reply`, `openai_reply`, `first_that_answers`, `json_object`): cached system, no temperature, no `tool_choice`,
+  `output_config` carries both `format` and `effort`; `effort="low"` for podcast scripts (25s, not 200s) and the diariser.
+  Models are `core.llm` constants (`CLAUDE_*`, `OPENAI_STRONG` gpt-6.1-sol, `OPENAI_FAST` gpt-6-luna); `openai_reply` takes `messages`, optional `max_tokens`/`reasoning_effort`/`response_format`, and raises `LlmReplyUnusable` on an empty reply so the fall-through happens. `slide_narration.complete` defaults Claude to 16000 tokens at `effort="low"` (the fact checker and second reader depend on it: a cut-off raises and silently hands the check to the writer's own model).
+  The sync `slide_narration.complete` runs them on a private event loop (never `asyncio.run`: it unsets the thread's loop). Claude 5.5
+  answers 400 to a forced `tool_choice` and any `temperature` but 1; its thinking counts in `max_tokens` (give
+  16000+); `output_config` schemas compile only to about 7KB (the station schemas are 0.3-2.4KB). A bigger
+  schema goes through the engine's `ask_by_tool` instead. `gpt-6.1-sol` takes no `reasoning_effort` of `none`.
+- A test that builds `Settings(openai_api_key=...)` still reads `ANTHROPIC_API_KEY` from `.env`: pass
+  `anthropic_api_key=""` to mean "no Claude key", or the "OpenAI only" case silently runs on Claude.

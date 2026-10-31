@@ -23,16 +23,15 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
+# Re-exported: a caller in another slice hands in its own checking model as one.
+from app.core.llm import json_object
 from app.core.logging import get_logger
 from app.core.ports import GuidelineIndex, GuidelinePassage, GuidelineWeb, WebAnswer
 from app.core.settings import get_settings
 from app.features.media_production.errors import ClaimOutsideItem
-
-# Re-exported: a caller in another slice hands in its own checking model as one.
 from app.features.media_production.script_check import Complete as Complete
 from app.features.media_production.script_check import slide_source
 from app.features.media_production.slide_narration import complete as model_reply
-from app.features.media_production.slide_narration import json_object
 from app.features.media_production.summary_text import format_summary_for_podcast
 from app.features.tutor_memory import service_search as tutor_search
 

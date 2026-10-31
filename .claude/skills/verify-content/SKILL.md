@@ -105,3 +105,8 @@ separately; one combined run was killed once.
   with a trace nowhere near the real cause. Capture any id you need later into
   a plain variable right after creating the row, and order requests so a
   success (which commits) happens before one you expect to fail.
+- **A before/after of a model call** (generation, import, podcast, diarisation): call the function with
+  `Settings(openai_api_key=..., anthropic_api_key="")` for the OpenAI side (an omitted key is read from
+  `.env`, so the "OpenAI" run is really Claude), run it with `PYTHONPATH=.`, and send output to a file:
+  a podcast script takes ~50-70s and JSON station drafts ~60s.
+- Live call for a Claude path: a script in the scratchpad (not `$TMPDIR`, whose stray `http.py` shadows the stdlib), run with `PYTHONPATH=.`; wrap `anthropic.resources.messages.AsyncMessages.create` to print `usage`. Podcast script at `effort=low`: ~25s, 2.8k output tokens; diariser: ~1.5s.

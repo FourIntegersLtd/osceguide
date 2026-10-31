@@ -8,8 +8,11 @@ from typing import Any
 import pytest
 
 from app.core.ports import GuidelinePassage, WebAnswer
+from app.core.settings import Settings
+from app.features.media_production import service_facts
 from app.features.media_production.service_facts import check_facts, lines_of, sections_of
 from tests.support.fakes import FakeGuidelineIndex, FakeGuidelineWeb
+from tests.support.llm_fakes import install_fake_sdks
 
 DECK = {
     "slides": [
@@ -281,3 +284,28 @@ async def test_an_earlier_verdict_whose_wrong_line_has_gone_is_judged_afresh() -
 
     assert library.searches == [(QUESTION, 5, True)]
     assert again["claims"][0]["verdict"] == "supported"
+
+
+@pytest.mark.asyncio
+async def test_the_deployed_checker_asks_claude_first_with_room_to_think(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Claude thinks inside max_tokens and a cut-off raises, so without headroom the "different
+    model checks it" path would quietly fall to the model that wrote the script."""
+    monkeypatch.setattr(
+        service_facts, "get_settings", lambda: Settings(anthropic_api_key="a", openai_api_key="o")
+    )
+    providers = install_fake_sdks(monkeypatch, claude=json.dumps({"claims": []}))
+
+    await service_facts.check_as_deployed(
+        title="New hypertension",
+        sections=sections_of("slide_deck", "New hypertension", DECK),
+        guidelines=FakeGuidelineIndex([NG136]),
+        web=FakeGuidelineWeb(WEB),
+    )
+
+    sent = providers.claude_sent
+    assert providers.asked == ["claude"]
+    assert sent["max_tokens"] >= 16000
+    assert sent["output_config"] == {"effort": "low"}
+    assert sent["system"][0]["text"] == service_facts.FACT_SYSTEM

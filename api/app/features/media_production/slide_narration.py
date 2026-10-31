@@ -9,19 +9,25 @@ shows a bullet exactly when its line starts, so alignment holds by construction.
 
 from __future__ import annotations
 
+import asyncio
 import json
-import logging
 import re
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
+from app.core.llm import (
+    OPENAI_STRONG,
+    Effort,
+    NoModelKey,
+    claude_reply,
+    first_that_answers,
+    json_object,
+    openai_reply,
+)
 from app.core.settings import Settings
 from app.features.media_production.errors import AvUnavailable
 
-NARRATION_MODEL = "gpt-6.1-sol"
 # The script's second reader: an OpenAI model other than the writer's, so it does not mark its own words.
-READER_MODEL = "gpt-6-luna"
-NARRATION_FALLBACK_MODEL = "claude-sonnet-5-5"
 _ATTEMPTS = 3
 _MAX_SECTIONS = 4
 # Slides narrated (and read) at once: a deck's whole script in about the time of its slowest slide.
@@ -37,8 +43,6 @@ AUDIO_TAG = re.compile(r"\[[^\]]*\]")
 _OPENING_FILLER = re.compile(
     r"^(?:right|okay|ok|alright|all right|so|now|well)\s*(?:,|\.{3}|…|\.|!)\s*", re.I
 )
-
-logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = (
     "You write what Ben says in a medical teaching video, one slide at a time. Ben is an experienced UK GP "
@@ -138,30 +142,9 @@ def slide_items(slide: dict[str, Any]) -> list[str]:
 # One reply is a slide's lines or a whole deck read through: minutes, never the SDKs' default of ten
 # minutes tried three times, which held an agent run half an hour on one stalled connection.
 _REPLY_SECONDS = 240
-
-
-def _from_openai(api_key: str, system: str, prompt: str, model: str = NARRATION_MODEL) -> str:
-    """One reply from an OpenAI model, gpt-6.1-sol unless told otherwise."""
-    from openai import OpenAI  # optional dependency
-
-    response = OpenAI(api_key=api_key, timeout=_REPLY_SECONDS, max_retries=1).chat.completions.create(
-        model=model,
-        messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
-    )
-    return response.choices[0].message.content or ""
-
-
-def _from_claude(api_key: str, system: str, prompt: str) -> str:
-    """One reply from Claude."""
-    from anthropic import Anthropic  # optional dependency
-
-    reply = Anthropic(api_key=api_key, timeout=_REPLY_SECONDS, max_retries=1).messages.create(
-        model=NARRATION_FALLBACK_MODEL,
-        max_tokens=3000,
-        system=system,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return next((block.text for block in reply.content if block.type == "text"), "")
+# Claude 5.5 thinks by default and the thinking counts in max_tokens: a cut-off reply raises and
+# would silently fall to OpenAI, so every caller gets headroom and low effort unless it says otherwise.
+_CLAUDE_MAX_TOKENS = 16_000
 
 
 def complete(
@@ -169,45 +152,56 @@ def complete(
     prompt: str,
     *,
     system: str = _SYSTEM_PROMPT,
-    openai_model: str = NARRATION_MODEL,
+    openai_model: str = OPENAI_STRONG,
     claude_first: bool = False,
+    claude_max_tokens: int = _CLAUDE_MAX_TOKENS,
+    claude_effort: Effort | None = "low",
+    claude_seconds: float = _REPLY_SECONDS,
 ) -> str:
     """One model reply, from `openai_model` (gpt-6.1-sol unless told otherwise).
 
-    Claude answers if it is unavailable.
+    Claude answers if it is unavailable. Blocking: every caller runs in a worker thread, so the
+    shared async helpers run on a loop of their own.
 
     `claude_first` turns the order round, for a second reader that should not be the model
     that wrote the words it is reading.
     """
 
-    def from_openai(api_key: str, system: str, prompt: str) -> str:
-        return _from_openai(api_key, system, prompt, openai_model)
+    async def from_openai(api_key: str) -> str:
+        """The reply from `openai_model`."""
+        return await openai_reply(
+            api_key,
+            system=system,
+            messages=[{"role": "user", "content": prompt}],
+            model=openai_model,
+            timeout=_REPLY_SECONDS,
+        )
 
-    askers = [(settings.openai_api_key, from_openai), (settings.anthropic_api_key, _from_claude)]
+    async def from_claude(api_key: str) -> str:
+        """The reply from Claude."""
+        return await claude_reply(
+            api_key,
+            system=system,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=claude_max_tokens,
+            timeout=claude_seconds,
+            effort=claude_effort,
+        )
+
+    attempts = [
+        ("openai", settings.openai_api_key, from_openai),
+        ("claude", settings.anthropic_api_key, from_claude),
+    ]
     if claude_first:
-        askers.reverse()
-    usable = [(key, ask) for key, ask in askers if key.strip()]
-    if not usable:
-        raise AvUnavailable("No language model is configured on this environment")
-    for key, ask in usable[:-1]:
-        try:
-            return ask(key, system, prompt)
-        except Exception:
-            logger.warning("Model call via %s failed, falling back", ask.__name__, exc_info=True)
-    key, ask = usable[-1]
-    return ask(key, system, prompt)
-
-
-def json_object(reply: str) -> dict[str, Any] | None:
-    """The JSON object in a model reply, or None if there is none."""
-    match = re.search(r"\{.*\}", reply, re.S)
-    if not match:
-        return None
+        attempts.reverse()
+    # A loop of its own that is never made the thread's current one, so this leaves no mark on a caller's.
+    loop = asyncio.new_event_loop()
     try:
-        parsed = json.loads(match.group(0))
-    except json.JSONDecodeError:
-        return None
-    return parsed if isinstance(parsed, dict) else None
+        return loop.run_until_complete(first_that_answers(attempts))
+    except NoModelKey as exc:
+        raise AvUnavailable("No language model is configured on this environment") from exc
+    finally:
+        loop.close()
 
 
 def _said(value: object) -> str:

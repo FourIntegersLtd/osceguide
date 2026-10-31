@@ -10,8 +10,10 @@ from __future__ import annotations
 import pytest
 
 from app.core.ports import Transcriber, TranscriptionFailed
+from app.core.settings import Settings
 from app.features.peer_practice import diariser
 from tests.support.fakes import FakeTranscriber
+from tests.support.llm_fakes import install_fake_sdks
 
 
 def test_the_transcriber_double_conforms_to_the_port() -> None:
@@ -67,23 +69,81 @@ async def test_an_empty_recording_never_reaches_the_model() -> None:
         await diariser.to_turns("   ")
 
 
-async def test_the_split_asks_gpt_6_luna_with_reasoning_off(monkeypatch: pytest.MonkeyPatch) -> None:
-    """gpt-4o-mini retires on 2027-01-14; a reasoning model must be told to skip reasoning."""
-    sent: dict[str, object] = {}
+def _settings(monkeypatch: pytest.MonkeyPatch, **keys: str) -> None:
+    monkeypatch.setattr(diariser, "get_settings", lambda: Settings(**keys))
 
-    class _Completions:
-        def create(self, **kwargs: object) -> object:
-            sent.update(kwargs)
-            content = '{"messages": [{"role": "doctor", "message": "Hello."}]}'
-            message = type("Message", (), {"content": content})()
-            return type("Response", (), {"choices": [type("Choice", (), {"message": message})()]})()
 
-    client = type("Client", (), {"chat": type("Chat", (), {"completions": _Completions()})()})()
-    monkeypatch.setattr(diariser, "_client", lambda: client)
+_CLAUDE_TURNS = '{"messages": [{"role": "patient", "message": "From Claude."}]}'
+_OPENAI_TURNS = '{"messages": [{"role": "doctor", "message": "From OpenAI."}]}'
+
+
+async def test_claude_splits_first_with_no_temperature_and_openai_is_not_asked(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _settings(monkeypatch, anthropic_api_key="a", openai_api_key="o")
+    providers = install_fake_sdks(monkeypatch, claude=_CLAUDE_TURNS, openai=_OPENAI_TURNS)
 
     turns = await diariser.to_turns("Hello.")
 
-    assert turns == [{"role": "doctor", "message": "Hello."}]
-    assert sent["model"] == diariser.DIARISATION_MODEL
+    sent = providers.claude_sent
+    assert turns == [{"role": "patient", "message": "From Claude."}]
+    assert providers.asked == ["claude"]
+    assert sent["model"] == "claude-haiku-5-5"
+    assert sent["messages"] == [{"role": "user", "content": "Hello."}]
+    assert sent["output_config"]["effort"] == "low"
+    assert sent["output_config"]["format"]["type"] == "json_schema"
+    assert not {"temperature", "tool_choice"} & set(sent)
+
+
+async def test_openai_splits_when_claude_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    _settings(monkeypatch, anthropic_api_key="a", openai_api_key="o")
+    providers = install_fake_sdks(monkeypatch, claude=RuntimeError("anthropic down"), openai=_OPENAI_TURNS)
+
+    turns = await diariser.to_turns("Hello.")
+
+    sent = providers.openai_sent
+    assert turns == [{"role": "doctor", "message": "From OpenAI."}]
+    assert sent["model"] == "gpt-6-luna"
     assert sent["reasoning_effort"] == "none"
+    assert sent["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {"name": "turns", "schema": diariser.TURNS_SCHEMA, "strict": False},
+    }
+    assert sent["messages"][1] == {"role": "user", "content": "Hello."}
     assert "temperature" not in sent and "max_tokens" not in sent
+
+
+async def test_openai_splits_when_the_anthropic_key_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    _settings(monkeypatch, openai_api_key="o")
+    providers = install_fake_sdks(monkeypatch, openai=_OPENAI_TURNS)
+
+    assert await diariser.to_turns("Hello.") == [{"role": "doctor", "message": "From OpenAI."}]
+    assert providers.asked == ["openai"]
+
+
+async def test_a_claude_reply_with_no_usable_turn_falls_back_to_openai(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _settings(monkeypatch, anthropic_api_key="a", openai_api_key="o")
+    providers = install_fake_sdks(
+        monkeypatch, claude='{"messages": [{"role": "narrator", "message": "x"}]}', openai=_OPENAI_TURNS
+    )
+
+    assert await diariser.to_turns("Hello.") == [{"role": "doctor", "message": "From OpenAI."}]
+    assert providers.asked == ["claude", "openai"]
+
+
+async def test_no_key_at_all_is_a_transcription_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    _settings(monkeypatch)
+    with pytest.raises(TranscriptionFailed):
+        await diariser.to_turns("Hello.")
+
+
+async def test_claude_failing_with_no_openai_key_surfaces_claudes_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _settings(monkeypatch, anthropic_api_key="a")
+    install_fake_sdks(monkeypatch, claude=RuntimeError("anthropic down"))
+
+    with pytest.raises(TranscriptionFailed, match="anthropic down"):
+        await diariser.to_turns("Hello.")
