@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.notifications.models import OutboundMessage
 from app.features.peer_practice import service
+from app.core.settings import get_settings
 from tests.support.catalog import ensure_exam
 from tests.support.fakes import FakeVoiceTokens
 from tests.support.library import publish_library_station
@@ -603,7 +604,9 @@ async def test_an_abuse_report_is_emailed_to_support(
         .scalars()
         .all()
     )
-    assert [m.recipient for m in queued] == ["support@osceguide.com"]
+    # The configured support address, not a literal: a developer's `.env` overrides it,
+    # and which address is the declared default is pinned by `test_settings`.
+    assert [m.recipient for m in queued] == [get_settings().support_email]
     assert queued[0].payload["reporter"] == "abuse-a@example.com"
     assert queued[0].payload["reported"] == "abuse-b@example.com"
     assert queued[0].payload["message"] == "They were rude throughout."
@@ -630,7 +633,9 @@ async def test_a_no_show_report_is_emailed_to_support(
         .scalars()
         .all()
     )
-    assert [m.recipient for m in queued] == ["support@osceguide.com"]
+    # The configured support address, not a literal: a developer's `.env` overrides it,
+    # and which address is the declared default is pinned by `test_settings`.
+    assert [m.recipient for m in queued] == [get_settings().support_email]
     assert queued[0].payload["reporter"] == "noshow-a@example.com"
 
 
