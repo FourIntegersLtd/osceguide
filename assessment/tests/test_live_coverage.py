@@ -74,7 +74,7 @@ def window() -> tuple[TranscriptMessage, ...]:
 
 
 def policy(**overrides) -> EvaluationPolicy:
-    base = dict(framework_id=SCA, primary_model="fast-model", fallback_model="fallback-model", version="live-1")
+    base = dict(framework_id=SCA, openai_model="fast-model", anthropic_model="fallback-model", version="live-1")
     base.update(overrides)
     return EvaluationPolicy(**base)
 
@@ -109,7 +109,7 @@ class FakeFallback:
 
     def _create(self, **kwargs):
         self.calls.append(kwargs)
-        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=self._payload)])
+        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", id="t", input=self._payload)])
 
 
 def detector(primary=None, fallback=None, **kwargs) -> LiveCoverageDetector:
@@ -307,14 +307,15 @@ def test_the_fallback_sends_no_temperature_unless_the_policy_sets_one() -> None:
     fallback = FakeFallback(payload=reported())
     detector(FakePrimary(error=RuntimeError("down")), fallback).detect(snapshot=snapshot(), messages=window(), policy=policy())
     detector(FakePrimary(error=RuntimeError("down")), fallback).detect(
-        snapshot=snapshot(), messages=window(), policy=policy(fallback_temperature=0.3)
+        snapshot=snapshot(), messages=window(), policy=policy(anthropic_temperature=0.3)
     )
 
     assert "temperature" not in fallback.calls[0]
     assert fallback.calls[1]["temperature"] == 0.3
     # claude-sonnet-5-5 answers 400 to a forced tool_choice: the prompt asks for the tool instead.
     assert "tool_choice" not in fallback.calls[0]
-    assert fallback.calls[0]["system"].endswith("\n\nAnswer by calling " + fallback.calls[0]["tools"][0]["name"] + ".")
+    assert fallback.calls[0]["system"][0]["text"].endswith("\n\nAnswer by calling live_coverage.")
+    assert fallback.calls[0]["system"][0]["cache_control"] == {"type": "ephemeral"}
 
 
 def test_nothing_new_is_the_ordinary_answer() -> None:
@@ -354,3 +355,16 @@ def test_coverage_states_carry_no_rag_grade() -> None:
     # Red is a judgement about quality, which only the end-of-consultation
     # evaluator makes. Nothing here can put one on a learner's screen.
     assert {s.value for s in CoverageState} == {"partial", "covered"}
+
+
+def test_the_policy_can_ask_anthropic_first_and_openai_answers_when_it_fails() -> None:
+    item = dict(competency_id="opens_consultation", state="covered", quote=OPENED)
+    primary, fallback = FakePrimary(payload=reported(item)), FakeFallback(payload=reported(item))
+    detector(primary, fallback).detect(snapshot=snapshot(), messages=window(), policy=policy(first_provider="anthropic"))
+    assert (len(fallback.calls), len(primary.calls)) == (1, 0)
+
+    primary, down = FakePrimary(payload=reported(item)), FakeFallback(payload=None)
+    down.messages = SimpleNamespace(create=lambda **kw: (_ for _ in ()).throw(RuntimeError("down")))
+    result = detector(primary, down).detect(snapshot=snapshot(), messages=window(), policy=policy(first_provider="anthropic"))
+    assert len(primary.calls) == 1
+    assert result.by_id["opens_consultation"].state is CoverageState.COVERED

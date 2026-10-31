@@ -5,7 +5,7 @@ The framework supplies the result *shape* as data; the policy supplies the
 factories and used through the smallest surface they share with the real
 SDKs, so this module imports no vendor code and the tests use plain fakes.
 
-Primary path: a chat completion constrained by the framework's schema in the
+Primary path (``first_provider`` swaps the two): a chat completion constrained by the framework's schema in the
 provider's strict structured-output mode. Fallback path: a tool call (asked for, not forced)
 whose input schema is the same framework schema, which needs no extra
 library. The result payload is checked against the schema before it is
@@ -34,12 +34,11 @@ from ..prompts import render_user_prompt
 from ..schemas.strict import to_strict_json_schema
 from ..schemas.tidy import tidy_against_schema
 from ..schemas.validate import validate_against_schema
-from .fallback_call import ask_by_tool
+from .anthropic_call import ask_by_tool
+from .providers import ClientFactory, ordered_slots
 from .rendering import render_transcript_for_marking
 
 logger = logging.getLogger(__name__)
-
-ClientFactory = Callable[[], Any | None]
 
 
 class EvaluationError(RuntimeError):
@@ -111,28 +110,21 @@ class LLMEvaluator:
         payload: dict[str, Any] | None = None
         provider = model = ""
 
-        primary = self._primary()
-        if primary is not None:
+        for slot in ordered_slots(policy, openai=self._primary, anthropic=self._fallback):
+            if payload is not None or not slot.configured:
+                continue
+            client = slot.factory()  # type: ignore[misc]
+            if client is None:
+                attempts.append(f"{slot.label}: not configured")
+                continue
+            score = self._score_openai if slot.provider == "openai" else self._score_anthropic
             try:
-                payload = self._score_primary(primary, policy, framework.result_schema, schema_name, system, user)
-                provider, model = "primary", policy.primary_model
-            except Exception as exc:  # noqa: BLE001 — recorded, then fall back
-                attempts.append(f"primary {policy.primary_model}: {exc}")
-                logger.warning("primary scoring failed attempt=%s: %s", attempt.attempt_id, exc)
-        else:
-            attempts.append("primary: not configured")
-
-        if payload is None and policy.fallback_model and self._fallback is not None:
-            fallback = self._fallback()
-            if fallback is not None:
-                try:
-                    payload = self._score_fallback_checked(fallback, policy, framework.result_schema, schema_name, system, user, attempts)
-                    provider, model = "fallback", policy.fallback_model
-                except Exception as exc:  # noqa: BLE001 — recorded
-                    attempts.append(f"fallback {policy.fallback_model}: {exc}")
-                    logger.error("fallback scoring failed attempt=%s: %s", attempt.attempt_id, exc)
-            else:
-                attempts.append("fallback: not configured")
+                payload = score(client, policy, framework.result_schema, schema_name, system, user, slot.label, attempts)
+                provider, model = slot.label, slot.model or ""
+            except Exception as exc:  # noqa: BLE001 — recorded, then the next provider
+                attempts.append(f"{slot.label} {slot.model}: {exc}")
+                log = logger.warning if slot.label == "primary" else logger.error
+                log("%s scoring failed attempt=%s: %s", slot.label, attempt.attempt_id, exc)
 
         if payload is None:
             raise EvaluationError("no provider produced a result: " + "; ".join(attempts), attempts)
@@ -171,10 +163,12 @@ class LLMEvaluator:
     # -- provider calls ------------------------------------------------------
 
     @staticmethod
-    def _score_primary(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
-        """Ask the primary provider for a JSON object matching the schema."""
+    def _score_openai(
+        client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str, *_: Any
+    ) -> dict[str, Any]:
+        """Ask the OpenAI slot for a JSON object matching the schema."""
         kwargs: dict[str, Any] = {
-            "model": policy.primary_model,
+            "model": policy.openai_model,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
@@ -185,8 +179,8 @@ class LLMEvaluator:
             },
             "timeout": policy.timeout_s,
         }
-        if policy.primary_reasoning_effort is not None:
-            kwargs["reasoning_effort"] = policy.primary_reasoning_effort
+        if policy.openai_reasoning_effort is not None:
+            kwargs["reasoning_effort"] = policy.openai_reasoning_effort
         response = client.chat.completions.create(**kwargs)
         message = response.choices[0].message
         refusal = getattr(message, "refusal", None)
@@ -197,34 +191,23 @@ class LLMEvaluator:
             raise ProviderError("empty response")
         return _as_object(json.loads(content))
 
-    @classmethod
-    def _score_fallback_checked(
-        cls, client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str, attempts: list[str]
+    @staticmethod
+    def _score_anthropic(
+        client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str,
+        label: str, attempts: list[str],
     ) -> dict[str, Any]:
-        """Score by the fallback, asking once more when the reply misses the schema.
+        """Ask the Anthropic slot for the same object through a recording tool it is told to call.
 
         Without a forced tool call claude-sonnet-5-5 sometimes nests a field as a string or lifts it
-        to the top level (4 of 16 staging SCA marks). The caller validates the second reply.
+        to the top level, so a reply that misses the schema is answered with its own errors, twice.
         """
-        payload = cls._score_fallback(client, policy, schema, name, system, user)
-        slips = validate_against_schema(tidy_against_schema(payload, schema), schema)
-        if not slips:
-            return payload
-        listed = "; ".join(slips[:10])
-        attempts.append(f"fallback {policy.fallback_model}: corrected after {listed}")
-        correction = (
-            f"\n\nYour last {name} call did not match its schema: {listed}. "
-            "Every object field is a JSON object nested where the schema puts it, never a string."
-        )
-        return cls._score_fallback(client, policy, schema, name, system + correction, user)
-
-    @staticmethod
-    def _score_fallback(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
-        """Ask the fallback provider for the same object through a recording tool it is told to call."""
-        return ask_by_tool(
+        value, corrections = ask_by_tool(
             client, policy, schema=schema, name=name, description="Record the structured assessment.",
             system=system, user=user, error=ProviderError,
+            check=lambda payload: validate_against_schema(tidy_against_schema(payload, schema), schema),
         )
+        attempts.extend(f"{label} {policy.anthropic_model}: corrected after {note}" for note in corrections)
+        return value
 
 
 def _as_object(value: Any) -> dict[str, Any]:

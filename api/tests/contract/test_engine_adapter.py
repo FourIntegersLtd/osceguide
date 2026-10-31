@@ -235,3 +235,29 @@ async def test_the_adapter_reports_a_failure_rather_than_an_empty_result() -> No
             policy_version="platform-default@1",
             transcript=[{"role": "user", "message": "Hi", "seq": 0, "message_id": "m0"}],
         )
+
+
+@pytest.mark.asyncio
+async def test_the_marking_provider_reaches_the_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.ports import EvaluationFailed
+    from app.core.settings import AppEnv, Settings
+    from app.features.attempts.evaluator import EngineEvaluator
+
+    monkeypatch.setenv("MARKING_PRIMARY_PROVIDER", "anthropic")
+    settings = Settings(_env_file=None, app_env=AppEnv.local)
+    monkeypatch.setattr("app.features.attempts.evaluator.get_settings", lambda: settings)
+    captured: dict[str, object] = {}
+
+    class CapturingEngine:
+        def evaluate(self, attempt, transcript, policy, scenario):  # type: ignore[no-untyped-def]
+            captured["policy"] = policy
+            raise RuntimeError("stop here")
+
+    with pytest.raises(EvaluationFailed):
+        await EngineEvaluator(lambda framework: CapturingEngine()).evaluate(
+            rubric=frozen_rubric(),
+            policy_version="p@1",
+            transcript=[{"role": "user", "message": "Hi", "seq": 0, "message_id": "m0"}],
+        )
+
+    assert captured["policy"].first_provider == "anthropic"  # type: ignore[union-attr]

@@ -37,7 +37,7 @@ def rendered_attempt(attempt_id: str, candidate_ref: str) -> tuple[AssessmentAtt
         id="e2e-def", version="1", framework_id="sca-rcgp-v1",
         scenario_ref=ScenarioRef(source=ScenarioSource.INLINE, scenario_id="e2e-station"),
         interaction_profile=profile,
-        evaluation_policy=EvaluationPolicy(framework_id="sca-rcgp-v1", primary_model="none"),
+        evaluation_policy=EvaluationPolicy(framework_id="sca-rcgp-v1", openai_model="none"),
         snapshot_at=datetime.now(timezone.utc),
     )
     return AssessmentAttempt(attempt_id=attempt_id, definition=definition, candidate_ref=candidate_ref), scenario

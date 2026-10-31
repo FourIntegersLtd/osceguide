@@ -54,9 +54,9 @@ def definition() -> AssessmentDefinition:
         ),
         evaluation_policy=EvaluationPolicy(
             framework_id=FRAMEWORK.id,
-            primary_model="primary-model",
-            primary_reasoning_effort="low",
-            fallback_model="fallback-model",
+            openai_model="primary-model",
+            openai_reasoning_effort="low",
+            anthropic_model="fallback-model",
             version="policy-7",
         ),
         snapshot_at=FIXED_TIME,

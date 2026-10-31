@@ -106,3 +106,16 @@ def test_mail_defaults_use_the_one_domain_resend_has_verified() -> None:
     assert settings.support_email == "hello@fourintegers.com"
     shown = re.search(r'SUPPORT_EMAIL = "([^"]+)"', web_support.read_text())
     assert shown and shown.group(1) == settings.support_email
+
+
+def test_openai_marks_first_unless_the_provider_is_switched(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("MARKING_PRIMARY_PROVIDER", raising=False)
+    assert Settings(_env_file=None, app_env=AppEnv.local).marking_primary_provider == "openai"
+    monkeypatch.setenv("MARKING_PRIMARY_PROVIDER", "anthropic")
+    assert Settings(_env_file=None, app_env=AppEnv.local).marking_primary_provider == "anthropic"
+
+
+def test_an_unknown_marking_provider_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MARKING_PRIMARY_PROVIDER", "gemini")
+    with pytest.raises(ValidationError, match="marking_primary_provider"):
+        Settings(_env_file=None, app_env=AppEnv.local)

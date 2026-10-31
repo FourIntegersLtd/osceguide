@@ -91,7 +91,7 @@ def evaluate(turns: list[tuple[str, str]], *, framework: "CompetencyFramework", 
         import anthropic
 
         anthropic_client = anthropic.Anthropic()
-    policy = EvaluationPolicy(framework_id=framework_id, primary_model=model, primary_reasoning_effort=reasoning_effort, fallback_model="claude-sonnet-5-5" if anthropic_client else None)
+    policy = EvaluationPolicy(framework_id=framework_id, openai_model=model, openai_reasoning_effort=reasoning_effort, anthropic_model="claude-sonnet-5-5" if anthropic_client else None)
     scenario = Scenario(id="parity", source=ScenarioSource.INLINE, title=station)
     attempt = AssessmentAttempt(
         attempt_id="parity",

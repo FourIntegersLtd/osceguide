@@ -171,3 +171,37 @@ async def test_a_finished_debrief_queues_the_tutors_summary(client, db_session, 
     await complete_interaction(db_session, attempt, now=NOW)
 
     assert (DEBRIEF_SUMMARY_TASK, "todo") in await _jobs(db_session, sat.attempt_id)
+
+
+async def test_the_marking_provider_setting_reaches_the_coverage_policy(db_session, make_actor, monkeypatch):
+    from osce_assessment.evaluation.live_coverage import LiveCoverageDetector
+
+    from app.core.settings import AppEnv, Settings
+    from app.features.attempts import service_coverage
+
+    monkeypatch.setenv("MARKING_PRIMARY_PROVIDER", "anthropic")
+    settings = Settings(_env_file=None, app_env=AppEnv.local)
+    monkeypatch.setattr(service_coverage, "get_settings", lambda: settings)
+    captured = {}
+
+    def detect(self, *, snapshot, messages, policy):
+        captured["policy"] = policy
+        return snapshot
+
+    monkeypatch.setattr(LiveCoverageDetector, "detect", detect)
+    await make_actor("coverage-policy@example.com")
+    sat = await _entitled_attempt(db_session, "coverage-policy@example.com")
+    await repository.freeze_definition(
+        db_session, sat.attempt_id, definition=frozen_definition(str(sat.attempt_id)), at=NOW
+    )
+    await accept_chunk(
+        db_session,
+        sat.attempt_id,
+        body_attempt_id=str(sat.attempt_id),
+        message=TranscriptMessageIn(role="user", message="Hello", timestamp=NOW, message_id="first", seq=0),
+    )
+
+    await update_coverage(db_session, sat.attempt_id)
+
+    assert captured["policy"].first_provider == "anthropic"
+    assert captured["policy"].openai_model == settings.marking_primary_model

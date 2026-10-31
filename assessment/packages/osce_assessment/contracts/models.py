@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -121,13 +121,16 @@ class EvaluationPolicy(Frozen):
     """
 
     framework_id: str
-    primary_model: str
-    primary_reasoning_effort: str | None = None
-    fallback_model: str | None = None
+    # ``primary_*`` is the OpenAI slot (strict json_schema) and ``fallback_*`` the Anthropic slot
+    # (tool call); ``first_provider`` picks which is asked first, the other answers if it fails.
+    first_provider: Literal["openai", "anthropic"] = "openai"
+    openai_model: str
+    openai_reasoning_effort: str | None = None
+    anthropic_model: str | None = None
     # Claude 5.5 thinks by default and its thinking counts here: 7500 cut 7 of 16 SCA marks short.
-    fallback_max_tokens: int = Field(default=16000, gt=0)
+    anthropic_max_tokens: int = Field(default=16000, gt=0)
     # None sends no temperature: Claude 5.5 models refuse any value but their default.
-    fallback_temperature: float | None = Field(default=None, ge=0.0)
+    anthropic_temperature: float | None = Field(default=None, ge=0.0)
     timeout_s: int = Field(default=480, gt=0)
     system_prompt_override: str | None = None
     version: str = "1"

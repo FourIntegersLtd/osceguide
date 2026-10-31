@@ -115,7 +115,7 @@ def test_the_evaluator_stores_the_tidied_marking() -> None:
         "cultural_linguistic_considerations": ["language_adaptations"],
         "language_adaptations": None,
     }
-    policy = EvaluationPolicy(framework_id=framework.id, primary_model="m", system_prompt_override="Mark it.", version="v1")
+    policy = EvaluationPolicy(framework_id=framework.id, openai_model="m", system_prompt_override="Mark it.", version="v1")
     definition = AssessmentDefinition(
         id="v1",
         version="v1",

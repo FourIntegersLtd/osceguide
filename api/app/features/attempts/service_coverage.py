@@ -102,9 +102,10 @@ async def update_coverage(session: AsyncSession, attempt_id: uuid.UUID) -> None:
     settings = get_settings()
     policy = EvaluationPolicy(
         framework_id=framework_id,
-        primary_model=settings.marking_primary_model,
-        primary_reasoning_effort=settings.marking_primary_effort,
-        fallback_model=settings.marking_fallback_model,
+        first_provider=settings.marking_primary_provider,
+        openai_model=settings.marking_primary_model,
+        openai_reasoning_effort=settings.marking_primary_effort,
+        anthropic_model=settings.marking_fallback_model,
         version="live-coverage@1",
     )
     detector = LiveCoverageDetector(

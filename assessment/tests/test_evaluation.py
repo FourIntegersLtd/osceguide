@@ -38,7 +38,7 @@ SIMPLE = CompetencyFramework(
 
 
 def policy(**overrides) -> EvaluationPolicy:
-    base = dict(framework_id=SIMPLE.id, primary_model="primary-model", fallback_model="fallback-model", version="p7")
+    base = dict(framework_id=SIMPLE.id, openai_model="primary-model", anthropic_model="fallback-model", version="p7")
     base.update(overrides)
     return EvaluationPolicy(**base)
 
@@ -91,7 +91,7 @@ class FakeFallback:
             raise self._error
         if self._blocks is not None:
             return SimpleNamespace(content=self._blocks)
-        return SimpleNamespace(content=[SimpleNamespace(type="text", text="thinking"), SimpleNamespace(type="tool_use", input=self._payload)])
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text="thinking"), SimpleNamespace(type="tool_use", id="tu1", input=self._payload)])
 
 
 def evaluator(primary=None, fallback=None, frameworks=None) -> LLMEvaluator:
@@ -151,7 +151,7 @@ def test_primary_call_shape_is_strict_structured_output() -> None:
 
 def test_reasoning_effort_is_forwarded_only_when_the_policy_sets_it() -> None:
     primary = FakePrimary(content=json.dumps(GOOD))
-    evaluator(primary).evaluate(ATTEMPT, transcript(), policy(system_prompt_override="S", primary_reasoning_effort="low"), scenario())
+    evaluator(primary).evaluate(ATTEMPT, transcript(), policy(system_prompt_override="S", openai_reasoning_effort="low"), scenario())
     assert primary.calls[0]["reasoning_effort"] == "low"
 
 
@@ -203,7 +203,7 @@ def test_primary_exception_falls_back_with_a_tool_call() -> None:
     primary = FakePrimary(error=RuntimeError("down"))
     fallback = FakeFallback(payload=GOOD)
     evaluator(primary, fallback).evaluate(
-        ATTEMPT, transcript(), policy(system_prompt_override="SYS", fallback_max_tokens=123, fallback_temperature=0.5), scenario()
+        ATTEMPT, transcript(), policy(system_prompt_override="SYS", anthropic_max_tokens=123, anthropic_temperature=0.5), scenario()
     )
 
     kwargs = fallback.calls[0]
@@ -211,7 +211,9 @@ def test_primary_exception_falls_back_with_a_tool_call() -> None:
     assert kwargs["max_tokens"] == 123 and kwargs["temperature"] == 0.5
     # claude-sonnet-5-5 answers 400 to a forced tool_choice ("tool" and "any"), so the
     # fallback asks for the tool in the system prompt and leaves the choice to the model.
-    assert kwargs["system"] == "SYS\n\nAnswer by calling simple-v1."
+    assert kwargs["system"] == [
+        {"type": "text", "text": "SYS\n\nAnswer by calling simple-v1.", "cache_control": {"type": "ephemeral"}}
+    ]
     assert kwargs["messages"] == [{"role": "user", "content": primary.calls[0]["messages"][1]["content"]}]
     assert "tool_choice" not in kwargs
     (tool,) = kwargs["tools"]
@@ -238,13 +240,24 @@ def test_non_object_primary_output_falls_back() -> None:
     assert "not an object" in result.raw_metadata["attempts"][0]
 
 
-def test_a_fallback_reply_off_the_schema_is_asked_for_once_more() -> None:
+def scripted_fallback(*replies) -> FakeFallback:
+    """A fallback that answers each call with the next tool input, recording the messages it was sent."""
+    fallback = FakeFallback(payload=None)
+    queue = iter(replies)
+
+    def create(**kwargs):
+        fallback.calls.append({**kwargs, "messages": list(kwargs["messages"])})
+        reply = next(queue)
+        blocks = [SimpleNamespace(type="thinking"), SimpleNamespace(type="tool_use", id=f"tu{len(fallback.calls)}", input=reply)]
+        return SimpleNamespace(content=blocks)
+
+    fallback.messages = SimpleNamespace(create=create)
+    return fallback
+
+
+def test_a_fallback_reply_off_the_schema_is_answered_with_its_errors_in_the_same_conversation() -> None:
     """Seen live on claude-sonnet-5-5 without a forced tool: nested objects sent as strings."""
-    fallback = FakeFallback(payload=GOOD)
-    replies = iter([{"overall": "G"}, GOOD])
-    fallback.messages = SimpleNamespace(
-        create=lambda **kw: (fallback.calls.append(kw), SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=next(replies))]))[1]
-    )
+    fallback = scripted_fallback({"overall": "G"}, GOOD)
 
     result = evaluator(FakePrimary(error=RuntimeError("down")), fallback).evaluate(
         ATTEMPT, transcript(), policy(system_prompt_override="SYS"), scenario()
@@ -252,16 +265,116 @@ def test_a_fallback_reply_off_the_schema_is_asked_for_once_more() -> None:
 
     assert result.result == GOOD and result.provider == "fallback"
     assert len(fallback.calls) == 2
-    assert fallback.calls[1]["system"].startswith("SYS\n\nYour last simple-v1 call did not match its schema: $.comment: required.")
-    assert result.raw_metadata["attempts"][-1] == "fallback fallback-model: corrected after $.comment: required"
+    first, second = fallback.calls
+    assert second["system"] == first["system"]
+    assert len(first["messages"]) == 1 and len(second["messages"]) == 3
+    assert second["messages"][0] == first["messages"][0]
+    assert second["messages"][1]["role"] == "assistant"
+    assert second["messages"][1]["content"][1].input == {"overall": "G"}
+    assert second["messages"][2] == {
+        "role": "user",
+        "content": [
+            {
+                "type": "tool_result",
+                "tool_use_id": "tu1",
+                "is_error": True,
+                "content": "The input did not match the schema:\n- $.comment: required\nCall simple-v1 again with a corrected input.",
+            }
+        ],
+    }
+    assert result.raw_metadata["attempts"] == ["primary primary-model: down", "fallback fallback-model: corrected after $.comment: required"]
 
 
-def test_a_second_fallback_reply_off_the_schema_is_an_error() -> None:
-    fallback = FakeFallback(payload={"overall": "G"})
+def test_a_fallback_gets_two_corrections_then_the_schema_error_is_raised() -> None:
+    fallback = scripted_fallback({"overall": "G"}, {"overall": "G"}, {"overall": "G"})
 
     with pytest.raises(EvaluationError, match="fallback result does not match the simple-v1 schema: \\$.comment: required"):
         evaluator(FakePrimary(error=RuntimeError("down")), fallback).evaluate(ATTEMPT, transcript(), policy(system_prompt_override="SYS"), scenario())
-    assert len(fallback.calls) == 2
+    assert len(fallback.calls) == 3
+    assert len(fallback.calls[2]["messages"]) == 5
+
+
+def test_a_fallback_that_forgets_the_tool_is_asked_again() -> None:
+    fallback = FakeFallback(payload=GOOD)
+    replies = iter([[SimpleNamespace(type="text", text="sorry")], [SimpleNamespace(type="tool_use", id="t", input=GOOD)]])
+    fallback.messages = SimpleNamespace(
+        create=lambda **kw: (fallback.calls.append({**kw, "messages": list(kw["messages"])}), SimpleNamespace(content=next(replies)))[1]
+    )
+
+    result = evaluator(None, fallback).evaluate(ATTEMPT, transcript(), policy(system_prompt_override="S"), scenario())
+
+    assert result.result == GOOD
+    assert fallback.calls[1]["messages"][2] == {"role": "user", "content": "You did not call simple-v1. Call it now with the assessment."}
+
+
+# --- provider order -------------------------------------------------------------
+
+
+def test_the_policy_can_ask_anthropic_first() -> None:
+    primary, fallback = FakePrimary(content=json.dumps(GOOD)), FakeFallback(payload=GOOD)
+
+    result = evaluator(primary, fallback).evaluate(
+        ATTEMPT, transcript(), policy(system_prompt_override="S", first_provider="anthropic"), scenario()
+    )
+
+    assert (len(fallback.calls), len(primary.calls)) == (1, 0)
+    assert result.provider == "primary" and result.model == "fallback-model"
+    assert result.raw_metadata == {"fallback_used": False, "attempts": [], "framework_version": "1"}
+
+
+def test_a_correction_note_names_the_slot_the_provider_was_asked_in() -> None:
+    fallback = scripted_fallback({"overall": "G"}, GOOD)
+
+    result = evaluator(FakePrimary(error=RuntimeError("down")), fallback).evaluate(
+        ATTEMPT, transcript(), policy(system_prompt_override="S", first_provider="anthropic"), scenario()
+    )
+
+    assert result.provider == "primary" and result.model == "fallback-model"
+    assert result.raw_metadata["attempts"] == ["primary fallback-model: corrected after $.comment: required"]
+
+
+@pytest.mark.parametrize(
+    ("blocks", "stop_reason", "message"),
+    [([], "end_turn", "anthropic reply was empty"), ([SimpleNamespace(type="text", text="no")], "refusal", "anthropic refused to answer")],
+)
+def test_an_empty_or_refused_anthropic_reply_is_not_retried(blocks, stop_reason, message) -> None:
+    fallback = FakeFallback(payload=GOOD)
+    fallback.messages = SimpleNamespace(
+        create=lambda **kw: (fallback.calls.append(kw), SimpleNamespace(content=blocks, stop_reason=stop_reason))[1]
+    )
+
+    with pytest.raises(EvaluationError, match=message):
+        evaluator(None, fallback).evaluate(ATTEMPT, transcript(), policy(system_prompt_override="S"), scenario())
+    assert len(fallback.calls) == 1
+
+
+def test_with_anthropic_first_a_failure_falls_back_to_openai() -> None:
+    primary, fallback = FakePrimary(content=json.dumps(GOOD)), FakeFallback(error=RuntimeError("overloaded"))
+
+    result = evaluator(primary, fallback).evaluate(
+        ATTEMPT, transcript(), policy(system_prompt_override="S", first_provider="anthropic"), scenario()
+    )
+
+    assert (len(fallback.calls), len(primary.calls)) == (1, 1)
+    assert result.provider == "fallback" and result.model == "primary-model"
+    assert result.raw_metadata["fallback_used"] is True
+    assert result.raw_metadata["attempts"] == ["primary fallback-model: overloaded"]
+
+
+def test_with_anthropic_first_a_missing_key_goes_to_openai() -> None:
+    primary = FakePrimary(content=json.dumps(GOOD))
+
+    result = evaluator(primary, None).evaluate(
+        ATTEMPT, transcript(), policy(system_prompt_override="S", first_provider="anthropic"), scenario()
+    )
+
+    assert result.model == "primary-model" and result.provider == "fallback"
+    assert result.raw_metadata["attempts"] == ["primary: not configured"]
+
+
+def test_a_provider_other_than_openai_or_anthropic_is_refused() -> None:
+    with pytest.raises(ValueError):
+        policy(first_provider="gemini")
 
 
 def test_unconfigured_primary_goes_straight_to_fallback() -> None:
@@ -287,7 +400,7 @@ def test_no_fallback_model_means_no_fallback_attempt() -> None:
     primary = FakePrimary(error=RuntimeError("down"))
     fallback = FakeFallback(payload=GOOD)
     with pytest.raises(EvaluationError) as excinfo:
-        evaluator(primary, fallback).evaluate(ATTEMPT, transcript(), policy(system_prompt_override="S", fallback_model=None), scenario())
+        evaluator(primary, fallback).evaluate(ATTEMPT, transcript(), policy(system_prompt_override="S", anthropic_model=None), scenario())
     assert fallback.calls == []
     assert excinfo.value.attempts == ["primary primary-model: down"]
 
@@ -383,5 +496,5 @@ def test_a_fallback_reply_cut_off_at_max_tokens_is_an_error() -> None:
     fallback = FakeFallback(payload=GOOD)
     fallback.messages = SimpleNamespace(create=lambda **kw: SimpleNamespace(stop_reason="max_tokens", content=[]))
 
-    with pytest.raises(EvaluationError, match="fallback reply cut off at max_tokens=16000"):
+    with pytest.raises(EvaluationError, match="anthropic reply cut off at max_tokens=16000"):
         evaluator(FakePrimary(error=RuntimeError("down")), fallback).evaluate(ATTEMPT, transcript(), policy(system_prompt_override="SYS"), scenario())

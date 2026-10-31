@@ -96,8 +96,8 @@ def mark(case: dict[str, Any], model: str, effort: str | None) -> dict[str, Any]
     # A claude- arm is marked by the fallback path alone, as when the primary fails.
     fallback = model.startswith("claude-")
     policy = EvaluationPolicy(
-        framework_id=framework.id, primary_model="none" if fallback else model,
-        primary_reasoning_effort=None if fallback else effort, fallback_model=model if fallback else None,
+        framework_id=framework.id, openai_model="none" if fallback else model,
+        openai_reasoning_effort=None if fallback else effort, anthropic_model=model if fallback else None,
         system_prompt_override=case["rubric"].get("system_prompt") or None,
     )
     attempt = AssessmentAttempt(attempt_id=case["attempt_id"], definition=AssessmentDefinition(

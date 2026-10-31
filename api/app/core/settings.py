@@ -12,7 +12,7 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Final
+from typing import Annotated, Final, Literal
 
 from fastapi import Depends
 from pydantic import Field, field_validator, model_validator
@@ -208,14 +208,17 @@ class Settings(BaseSettings):
     # Marking. One default for every exam, rather than b2c's gpt-5-mini and
     # b2b's gpt-4o producing results nobody can compare (E-2). The effort is
     # set explicitly: unset means "medium" under any gpt-5 model, which is a
-    # cost decision nobody made.
+    # cost decision nobody made. gpt-6-luna replaced gpt-5-mini (shutdown
+    # 2026-12-11) by owner decision 2026-10-31; it marks harsher (bench 2026-10-24).
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     # The clinical guideline library (`tutor_memory/guidelines.py`). Both unset means the
     # tutor and the help chat answer from our own material alone.
     clinical_buddy_url: str = "https://api.clinicalbuddy.co.uk"
     clinical_buddy_service_key: str = ""
-    marking_primary_model: str = "gpt-5-mini"
+    # Which provider marks first (scoring and live coverage); the other answers if it fails or has no key.
+    marking_primary_provider: Literal["openai", "anthropic"] = "openai"
+    marking_primary_model: str = "gpt-6-luna"
     marking_primary_effort: str = "low"
     marking_fallback_model: str = "claude-sonnet-5-5"
 

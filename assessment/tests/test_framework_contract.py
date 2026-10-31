@@ -142,7 +142,7 @@ def test_the_framework_holds_shape_and_says_nothing_about_which_model_runs() -> 
         "result_schema",
         "system_prompt",
     }
-    assert not fields & {"primary_model", "primary_reasoning_effort", "timeout_s"}
+    assert not fields & {"openai_model", "openai_reasoning_effort", "timeout_s"}
 
 
 def test_the_policy_holds_scoring_and_says_nothing_about_shape() -> None:
@@ -157,7 +157,7 @@ def test_the_policy_holds_scoring_and_says_nothing_about_shape() -> None:
         "result_schema",
         "schema_template",
     }
-    assert {"primary_model", "system_prompt_override", "version"} <= fields
+    assert {"openai_model", "system_prompt_override", "version"} <= fields
     assert "framework_id" in fields, "a policy must name the shape it scores"
 
 

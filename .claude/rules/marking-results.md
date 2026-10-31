@@ -48,11 +48,22 @@ are `institution-owner`'s; this is how a mark and an outcome are computed.
 - Swapping the marking model: measure first with `assessment/scripts/marking_bench.py` (staging
   attempts only); a candidate must stay within the incumbent's own run-to-run noise. 2026-10-24:
   every newer OpenAI model (gpt-6-luna, gpt-5.6-luna/terra) agreed with the others but marked
-  harsher than gpt-5-mini, so that bar needs a human decision, not a bench rerun.
-- The Anthropic fallback (claude-sonnet-5-5) sends no `temperature` and no forced `tool_choice`
-  (400 on either); the prompt asks for the tool. `strict: true` tools are refused for our schemas
-  (grammar too large, `minItems` > 1). Its thinking counts against `fallback_max_tokens` (16000;
-  7500 truncated 7 of 16), and a reply off the schema gets one corrective retry (still 2 of 16 miss).
+  harsher than gpt-5-mini. Owner decision 2026-10-31: marking_primary_model is gpt-6-luna now
+  (gpt-5-mini shuts down 2026-12-11), harsher marks accepted, no re-bench. Effort `low` passes
+  straight through as `reasoning_effort` (no allow-list). Railway may still set MARKING_PRIMARY_MODEL.
+- `MARKING_PRIMARY_PROVIDER` (`openai` default | `anthropic`, anything else refuses to boot) is
+  `EvaluationPolicy.first_provider`: it orders the two slots for scoring and live coverage
+  (`providers.ordered_slots`). `openai_*` is always the OpenAI slot and `anthropic_*` the Anthropic
+  one (the `primary_client`/`fallback_client` factories keep their names); a missing key falls through to the other. `provider`/`fallback_used` mean "first/second asked";
+  `model` is the model that actually marked. Marks as Anthropic-first are not benched (see below).
+- The Anthropic path (claude-sonnet-5-5, `anthropic_call.ask_by_tool`) sends no `temperature` and no
+  forced `tool_choice` (400 on either); the prompt asks for the tool. Structured outputs
+  (`output_config.format`, or strict tools) were measured 2026-10-31 with a strict, inlined schema,
+  `minItems` clamped: all 4 seeded rubrics (19-70KB) answer 400 "compiled grammar is too large", and so
+  do any two ~6.5KB PLAB domains together. Do not retry whole-rubric schemas. Its thinking counts
+  against `anthropic_max_tokens` (16000; 7500 truncated 7 of 16). A reply off the schema is answered in
+  the same conversation with its own errors (`tool_result`, `is_error`), up to twice; the system
+  prompt carries `cache_control`.
 
 ## What a failure looks like here
 - A wrong score with no error: a rule never called, a v1 rubric read as v2, a field silently dropped.

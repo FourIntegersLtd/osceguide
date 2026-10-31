@@ -38,11 +38,11 @@ from pydantic import Field
 from ..contracts import EvaluationPolicy, FrameworkProvider, MessageRole, TranscriptMessage
 from ..contracts._base import Frozen
 from ..schemas.strict import to_strict_json_schema
-from .fallback_call import ask_by_tool
+from .anthropic_call import ask_by_tool
+from .providers import ClientFactory, ordered_slots
 
 logger = logging.getLogger(__name__)
 
-ClientFactory = Callable[[], Any | None]
 
 # How many recent turns the detector is shown by default.
 DEFAULT_WINDOW_TURNS = 8
@@ -263,33 +263,28 @@ class LiveCoverageDetector:
         window: Sequence[TranscriptMessage],
         policy: EvaluationPolicy,
     ) -> dict[str, Any] | None:
-        """Ask the primary model, then the fallback, and return the parsed answer or None when neither gives one."""
+        """Ask the first provider the policy names, then the other, and return the parsed answer or None when neither gives one."""
         system = policy.system_prompt_override or SYSTEM_PROMPT
         user = self._user_prompt(framework, open_ids, window)
         schema = _result_schema(open_ids)
         name = "live_coverage"
 
-        primary = self._primary()
-        if primary is not None:
+        for slot in ordered_slots(policy, openai=self._primary, anthropic=self._fallback):
+            client = slot.factory() if slot.configured else None  # type: ignore[misc]
+            if client is None:
+                continue
+            call = self._call_openai if slot.provider == "openai" else self._call_anthropic
             try:
-                return self._call_primary(primary, policy, schema, name, system, user)
-            except Exception as exc:  # noqa: BLE001 — a missed pass is not fatal
-                logger.warning("live coverage primary %s failed: %s", policy.primary_model, exc)
-
-        if policy.fallback_model and self._fallback is not None:
-            fallback = self._fallback()
-            if fallback is not None:
-                try:
-                    return self._call_fallback(fallback, policy, schema, name, system, user)
-                except Exception as exc:  # noqa: BLE001 — logged; the next turn retries
-                    logger.warning("live coverage fallback %s failed: %s", policy.fallback_model, exc)
+                return call(client, policy, schema, name, system, user)
+            except Exception as exc:  # noqa: BLE001 — a missed pass is not fatal; the next turn retries
+                logger.warning("live coverage %s %s failed: %s", slot.provider, slot.model, exc)
         return None
 
     @staticmethod
-    def _call_primary(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
+    def _call_openai(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
         """Call an OpenAI-style chat model with a strict JSON schema and return the parsed object."""
         kwargs: dict[str, Any] = {
-            "model": policy.primary_model,
+            "model": policy.openai_model,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
@@ -300,8 +295,8 @@ class LiveCoverageDetector:
             },
             "timeout": policy.timeout_s,
         }
-        if policy.primary_reasoning_effort is not None:
-            kwargs["reasoning_effort"] = policy.primary_reasoning_effort
+        if policy.openai_reasoning_effort is not None:
+            kwargs["reasoning_effort"] = policy.openai_reasoning_effort
         response = client.chat.completions.create(**kwargs)
         message = response.choices[0].message
         if getattr(message, "refusal", None):
@@ -315,12 +310,13 @@ class LiveCoverageDetector:
         return parsed
 
     @staticmethod
-    def _call_fallback(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
+    def _call_anthropic(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
         """Call an Anthropic-style model through a recording tool it is told to call and return the tool input object."""
-        return ask_by_tool(
+        value, _ = ask_by_tool(
             client, policy, schema=schema, name=name, description="Record newly demonstrated behaviours.",
             system=system, user=user, error=LiveCoverageError,
         )
+        return value
 
     def _merge(
         self,

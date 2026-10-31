@@ -87,20 +87,20 @@ def test_policy_keeps_model_choice_as_data() -> None:
     """Two consumers differ by policy, not by engine branch."""
     framework_id = "sca-rcgp-v1"
     b2c = EvaluationPolicy(
-        framework_id=framework_id, primary_model="gpt-5-mini", primary_reasoning_effort="low"
+        framework_id=framework_id, openai_model="gpt-5-mini", openai_reasoning_effort="low"
     )
     b2b = EvaluationPolicy(
-        framework_id=framework_id, primary_model="gpt-4o", system_prompt_override="b2b wording"
+        framework_id=framework_id, openai_model="gpt-4o", system_prompt_override="b2b wording"
     )
     assert b2c.framework_id == b2b.framework_id
-    assert (b2c.primary_model, b2c.primary_reasoning_effort) == ("gpt-5-mini", "low")
-    assert (b2b.primary_model, b2b.primary_reasoning_effort) == ("gpt-4o", None)
+    assert (b2c.openai_model, b2c.openai_reasoning_effort) == ("gpt-5-mini", "low")
+    assert (b2b.openai_model, b2b.openai_reasoning_effort) == ("gpt-4o", None)
     assert b2c.timeout_s == b2b.timeout_s == 480
 
 
 def test_policy_rejects_non_positive_timeout() -> None:
     with pytest.raises(ValidationError):
-        EvaluationPolicy(framework_id="f", primary_model="m", timeout_s=0)
+        EvaluationPolicy(framework_id="f", openai_model="m", timeout_s=0)
 
 
 def test_transcript_message_seq_must_not_be_negative() -> None:
@@ -141,7 +141,7 @@ def _minimal_definition() -> AssessmentDefinition:
         framework_id="sca-rcgp-v1",
         scenario_ref=ScenarioRef(source=ScenarioSource.LIBRARY, scenario_id="s"),
         interaction_profile=AIInteractionProfile(mode=InteractionMode.PATIENT),
-        evaluation_policy=EvaluationPolicy(framework_id="sca-rcgp-v1", primary_model="m"),
+        evaluation_policy=EvaluationPolicy(framework_id="sca-rcgp-v1", openai_model="m"),
         snapshot_at=FIXED_TIME,
     )
 

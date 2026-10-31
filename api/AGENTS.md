@@ -35,6 +35,9 @@ make guards                                    # tests/guards only, fast
 
 ## Traps
 
+- **After an engine change, refresh the installed copy**: `poetry run pip install --force-reinstall --no-deps
+  ../assessment/packages/osce_assessment`. `poetry install` keeps a same-version path copy, so api tests
+  import the old engine.
 - **A provider deprecation** (a model id shut down by OpenAI, Anthropic, Cartesia or Google) goes in
   the `RETIREMENTS` table in `tests/guards/test_model_retirements.py` the day it is announced; the
   guard fails any source using that id within 240 days of its shutdown.

@@ -109,7 +109,7 @@ def test_the_policy_on_the_definition_is_what_reaches_the_evaluator(
     _, transcript, policy, seen_scenario = evaluator.calls[0]
     assert policy is attempt.definition.evaluation_policy
     assert seen_scenario is scenario
-    assert policy.primary_model == "primary-model"
+    assert policy.openai_model == "primary-model"
     assert len(transcript.messages) == len(SCRIPT)
 
 
