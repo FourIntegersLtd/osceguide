@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 
+from voice_infra.cloud_hosting import is_livekit_cloud
+
 
 def optional_agent_name(variable: str) -> str | None:
     return os.getenv(variable, "").strip() or None
@@ -37,12 +39,10 @@ def worker_port(variable: str, default: int) -> int:
     return port
 
 
-def required_deepgram_api_key() -> str:
-    """The Deepgram API key from the environment, failing loudly if it is missing."""
-    value = (os.getenv("DEEPGRAM_API_KEY") or "").strip()
-    if not value:
+def validate_speech_credentials() -> None:
+    """Self-hosted workers call Deepgram directly and need its key; Cloud speech goes through LiveKit inference."""
+    if not is_livekit_cloud() and not (os.getenv("DEEPGRAM_API_KEY") or "").strip():
         raise RuntimeError("DEEPGRAM_API_KEY must be set for direct Deepgram STT/TTS")
-    return value
 
 
 def optional_max_concurrent_jobs(variable: str, *, default: int | None = None) -> int | None:

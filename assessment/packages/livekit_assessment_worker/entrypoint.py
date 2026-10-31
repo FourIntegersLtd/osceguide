@@ -11,7 +11,7 @@ from voice_infra.sentry import init_sentry, raise_sentry_verify_error_if_request
 from voice_infra.worker_config import (
     optional_float,
     required_agent_name,
-    required_deepgram_api_key,
+    validate_speech_credentials,
     worker_port,
 )
 from voice_infra.worker_load import concurrent_job_load_settings
@@ -32,8 +32,8 @@ DEFAULT_DRAIN_TIMEOUT = 840
 
 
 def validate_environment() -> BackendRegistry:
-    """Fail fast: backends and the speech key must be configured."""
-    required_deepgram_api_key()
+    """Fail fast: backends must be configured, and the Deepgram key too unless on LiveKit Cloud."""
+    validate_speech_credentials()
     return BackendRegistry.from_env()
 
 

@@ -5,7 +5,7 @@ One Deployment per worker, in two environments on the same K3s cluster:
 | Environment | Namespace | LiveKit Cloud project | Backend | Changes when |
 |---|---|---|---|---|
 | staging | `assessment-platform-staging` | `new-test-agent` | `staging-api.osceguide.com` | CI passes on `main` (automatic) |
-| production | `assessment-platform` | the live project | the live backends | someone runs **Promote workers to production** |
+| production | `assessment-platform` | `osce-guide` (`osce-guide-pvrrgt8h`, eu-central; voicepipeline retired 2026-10-31) | the live backends | someone runs **Promote workers to production** |
 
 ## Layout
 

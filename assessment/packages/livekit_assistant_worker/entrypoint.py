@@ -11,7 +11,7 @@ from voice_infra.sentry import init_sentry, raise_sentry_verify_error_if_request
 from voice_infra.worker_config import (
     optional_float,
     required_agent_name,
-    required_deepgram_api_key,
+    validate_speech_credentials,
     worker_port,
 )
 from voice_infra.worker_load import concurrent_job_load_settings
@@ -39,8 +39,8 @@ def prewarm(proc: JobProcess) -> None:
 
 
 def validate_environment() -> BackendRegistry:
-    """Fail at startup if required settings are missing, and return the configured backends."""
-    required_deepgram_api_key()
+    """Fail at startup if backends (or, off LiveKit Cloud, the Deepgram key) are missing; return the backends."""
+    validate_speech_credentials()
     return BackendRegistry.from_env()
 
 

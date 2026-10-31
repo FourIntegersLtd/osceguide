@@ -17,6 +17,7 @@ SPEC = {"practice": {"base_url_env": "PRACTICE_URL", "secret_env": "PRACTICE_SEC
 def configured(monkeypatch):
     monkeypatch.setenv(BACKENDS_ENV, json.dumps(SPEC))
     monkeypatch.setenv("DEEPGRAM_API_KEY", "dg")
+    monkeypatch.setenv("OSCE_LIVEKIT_HOSTING", "self-hosted")
     monkeypatch.setenv(entrypoint.AGENT_NAME_ENV, "assessment-self-hosted")
     monkeypatch.setenv(entrypoint.PORT_ENV, "9001")
     monkeypatch.setenv(entrypoint.MAX_JOBS_ENV, "3")

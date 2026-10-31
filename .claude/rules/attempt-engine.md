@@ -44,6 +44,8 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
   (the one reader of `OSCE_LIVEKIT_HOSTING`). Cloud uses `livekit.agents.inference`, which needs
   `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` at construction (tests set them); self-hosted keeps the
   direct plugins and provider keys, unchanged.
+  `DEEPGRAM_API_KEY` is required at startup only self-hosted (`validate_speech_credentials`), not on
+  Cloud.
 - The tutor voice is one female persona on every provider (Deepgram athena first, then Cartesia Lucy, fixed; no OpenAI
   TTS tier, gpt-4o-mini-tts shuts down 2027-01-06 with no speech-endpoint successor); a fallback must not change who speaks (C-36). A new default voice goes in `VOICE_GENDERS` (`tests/test_voice_infra_speech.py`). `TUTOR_VOICE` (`coral`) is only the
   GPT-Live voice (`gpt_live.py`). `claude-haiku-5-5` rejects any `temperature` but its default: the Anthropic fallback sends none.

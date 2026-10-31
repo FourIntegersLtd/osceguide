@@ -71,3 +71,9 @@ def attempt(definition: AssessmentDefinition) -> AssessmentAttempt:
         candidate_ref="candidate-42",
         attempt_context={"correlation_a": "a-1", "correlation_b": "b-2"},
     )
+
+
+@pytest.fixture(autouse=True)
+def _hosting_is_self_hosted_unless_a_test_says_otherwise(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A shell exporting OSCE_LIVEKIT_HOSTING=cloud must not change which stack a test exercises."""
+    monkeypatch.setenv("OSCE_LIVEKIT_HOSTING", "self-hosted")

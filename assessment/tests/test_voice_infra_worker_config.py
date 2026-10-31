@@ -13,7 +13,7 @@ from voice_infra.worker_config import (
     optional_max_concurrent_jobs,
     required_agent_name,
     required_choice,
-    required_deepgram_api_key,
+    validate_speech_credentials,
     worker_port,
 )
 from voice_infra.worker_load import concurrent_job_load_fnc, concurrent_job_load_settings
@@ -53,12 +53,22 @@ def test_worker_port_default_and_parse(monkeypatch) -> None:
     assert worker_port("PORT_VAR", 8085) == 9000
 
 
-def test_deepgram_key_required_and_stripped(monkeypatch) -> None:
+@pytest.mark.parametrize("hosting", ["self-hosted", None, ""])
+def test_speech_key_required_when_not_on_cloud(monkeypatch, hosting) -> None:
     monkeypatch.delenv("DEEPGRAM_API_KEY", raising=False)
+    monkeypatch.delenv("OSCE_LIVEKIT_HOSTING", raising=False)
+    if hosting is not None:
+        monkeypatch.setenv("OSCE_LIVEKIT_HOSTING", hosting)
     with pytest.raises(RuntimeError, match="DEEPGRAM_API_KEY"):
-        required_deepgram_api_key()
+        validate_speech_credentials()
     monkeypatch.setenv("DEEPGRAM_API_KEY", "  dg  ")
-    assert required_deepgram_api_key() == "dg"
+    validate_speech_credentials()
+
+
+def test_speech_key_not_required_on_cloud(monkeypatch) -> None:
+    monkeypatch.delenv("DEEPGRAM_API_KEY", raising=False)
+    monkeypatch.setenv("OSCE_LIVEKIT_HOSTING", "cloud")
+    validate_speech_credentials()
 
 
 def test_max_concurrent_jobs_default_parse_and_disable(monkeypatch) -> None:
