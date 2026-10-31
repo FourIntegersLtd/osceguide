@@ -253,3 +253,51 @@ def test_rollout_deadline_outlasts_the_drain_of_the_pod_being_replaced(manifest)
     assert grace, f"{manifest} sets no terminationGracePeriodSeconds"
     assert deadline, f"{manifest} sets no progressDeadlineSeconds (Kubernetes defaults to 600)"
     assert int(deadline.group(1)) > int(grace.group(1))
+
+
+_FAKE_KUBECTL = """#!/usr/bin/env bash
+case "$*" in
+  *"get nodes"*) i=0; while [ "$i" -lt "$FAKE_NODE_COUNT" ]; do i=$((i+1)); echo "node/n$i"; done ;;
+  *"get secret"*) exit 0 ;;
+  *"apply -k"*) kubectl-real kustomize "${@: -1}" > "$FAKE_APPLIED" ;;
+  *) exit 0 ;;
+esac
+"""
+
+
+def _run_production_rollout(tmp_path: Path, node_count: int) -> tuple[subprocess.CompletedProcess[str], Path]:
+    manifests = tmp_path / "manifests"
+    shutil.copytree(K8S_DIR / "base", manifests / "base")
+    shutil.copytree(OVERLAYS_DIR, manifests / "overlays")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "kubectl-real").symlink_to(shutil.which("kubectl"))
+    fake = bin_dir / "kubectl"
+    fake.write_text(_FAKE_KUBECTL)
+    fake.chmod(0o755)
+    applied = tmp_path / "applied.yaml"
+    env = {
+        "PATH": f"{bin_dir}:/usr/bin:/bin",
+        "ENVIRONMENT": "production",
+        "K8S_MANIFEST_DIR": str(manifests),
+        "FAKE_NODE_COUNT": str(node_count),
+        "FAKE_APPLIED": str(applied),
+    }
+    result = subprocess.run(["bash", str(ROLLOUT_SCRIPT)], env=env, capture_output=True, text=True)
+    return result, applied
+
+
+@pytest.mark.skipif(shutil.which("kubectl") is None, reason="kubectl is not installed")
+def test_production_rollout_sets_replicas_to_the_labelled_node_count(tmp_path) -> None:
+    result, applied = _run_production_rollout(tmp_path, 3)
+    assert result.returncode == 0, result.stderr
+    assert "Production replicas = 3" in result.stdout
+    assert re.findall(r"^  replicas: (\d+)$", applied.read_text(), re.MULTILINE) == ["3", "3"]
+
+
+@pytest.mark.skipif(shutil.which("kubectl") is None, reason="kubectl is not installed")
+def test_production_rollout_refuses_when_no_node_is_labelled(tmp_path) -> None:
+    result, applied = _run_production_rollout(tmp_path, 0)
+    assert result.returncode != 0
+    assert "livekit-worker=true" in result.stderr
+    assert not applied.exists()

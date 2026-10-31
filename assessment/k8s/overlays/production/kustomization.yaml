@@ -28,9 +28,11 @@ images:
 commonAnnotations:
   osceguide.io/commit: unpinned
 
-# Production keeps the base's capacity (1 replica on the one remaining worker node,
-# 6 + 3 sessions; LiveKit Cloud carries the main load since 2026-10-24). The only
-# thing it adds is its Sentry label, so errors land under "production".
+# Production's per-pod capacity is the base's (6 + 3 sessions). Its replica count is
+# deliberately not set here: scripts/k8s_rollout_on_control_plane.sh appends a
+# `replicas:` block to the deploy's copy equal to the number of nodes labelled
+# osceguide.io/livekit-worker=true (a committed value would be reset on each promote).
+# This file renders the base's 1. The only other thing it adds is its Sentry label.
 patches:
   - patch: |-
       apiVersion: v1

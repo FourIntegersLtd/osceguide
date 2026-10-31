@@ -22,6 +22,7 @@ deploys on its own, only when its own folder changes:
 | `api/` | platform-api, the one backend (FastAPI). Replaces b2c-api and b2b-api | Railway, every push to `main` touching `api/` or the engine | Railway, from `production-api` ("Promote api to production") |
 | `web/` | platform-web, the one frontend (Next.js) | Vercel, every push to `main` touching `web/` or `api/openapi.json` | Vercel, from `production-web` ("Promote web to production") |
 | `assessment/` | The marking engine (`packages/osce_assessment`) and the LiveKit assessment and assistant workers | K3s, after CI assessment passes on `main` | K3s, from `production-workers` ("Promote workers to production") |
+| `infra/ansible/` | Ansible that joins a Hetzner server to the K3s cluster as a worker node | Run by hand (`infra/ansible/README.md`) | Same |
 
 The api installs the engine straight from `assessment/packages/osce_assessment`
 (a Poetry path dependency), so an engine change and the api change that uses

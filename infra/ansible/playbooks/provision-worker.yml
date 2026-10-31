@@ -1,0 +1,11 @@
+---
+- name: Provision OSCE Guide LiveKit worker
+  hosts: livekit_workers
+  become: true
+
+  vars_files:
+    - ../group_vars/livekit_workers.yml
+    - ../group_vars/livekit_workers_vault.yml
+
+  roles:
+    - k3s_worker

@@ -1,0 +1,8 @@
+---
+k3s_server_url: "https://10.0.0.3:6443"
+k3s_node_ip: "{{ private_ip }}"
+k3s_flannel_interface: "{{ private_interface }}"
+k3s_version: "v1.36.4+k3s1"
+
+livekit_worker_label_key: "osceguide.io/livekit-worker"
+livekit_worker_label_value: "true"

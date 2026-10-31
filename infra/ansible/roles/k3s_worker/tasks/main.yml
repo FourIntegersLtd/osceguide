@@ -1,0 +1,103 @@
+---
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Check that private interface exists
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.interfaces is defined
+      - k3s_flannel_interface in ansible_facts.interfaces
+    fail_msg: "Expected private interface {{ k3s_flannel_interface }} was not found."
+
+- name: Check private IP configuration
+  ansible.builtin.command:
+    cmd: "ip -4 addr show {{ k3s_flannel_interface }}"
+  register: private_ip_check
+  check_mode: false   # read-only, so --check can run the checks that depend on it
+  changed_when: false
+
+- name: Verify private IP is configured
+  ansible.builtin.assert:
+    that:
+      - k3s_node_ip in private_ip_check.stdout
+    fail_msg: "Expected private IP {{ k3s_node_ip }} was not found on {{ k3s_flannel_interface }}."
+
+- name: Check connectivity to K3s control plane
+  ansible.builtin.wait_for:
+    host: "10.0.0.3"
+    port: 6443
+    timeout: 10
+    state: started
+
+- name: Install curl
+  ansible.builtin.apt:
+    name: curl
+    state: present
+    update_cache: true
+
+- name: Create K3s configuration directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+
+- name: Configure K3s agent before installation
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Install K3s agent
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | \
+      INSTALL_K3S_VERSION="{{ k3s_version }}" \
+      INSTALL_K3S_EXEC="agent" \
+      sh -
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Enable and start K3s agent
+  ansible.builtin.systemd:
+    name: k3s-agent
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for K3s agent to become active
+  ansible.builtin.command:
+    cmd: systemctl is-active k3s-agent
+  register: k3s_service_status
+  check_mode: false   # read-only, so --check can run the checks that depend on it
+  retries: 10
+  delay: 3
+  until: k3s_service_status.stdout == "active"
+  changed_when: false
+
+- name: Wait for worker node to register with control plane
+  ansible.builtin.command:
+    cmd: "kubectl get node {{ k3s_node_name }}"
+  delegate_to: control-plane
+  register: worker_node_registration
+  check_mode: false   # read-only, so --check can run the checks that depend on it
+  retries: 20
+  delay: 3
+  until: worker_node_registration.rc == 0
+  changed_when: false
+
+- name: Read worker node information
+  ansible.builtin.command:
+    cmd: "kubectl get node {{ k3s_node_name }} -o json"
+  delegate_to: control-plane
+  register: worker_node_info
+  check_mode: false   # read-only, so --check can run the checks that depend on it
+  changed_when: false
+
+- name: Label worker for LiveKit
+  ansible.builtin.command:
+    cmd: "kubectl label node {{ k3s_node_name }} {{ livekit_worker_label_key }}={{ livekit_worker_label_value }}"
+  delegate_to: control-plane
+  when: >
+    ((worker_node_info.stdout | from_json).metadata.labels | default({}))
+    [livekit_worker_label_key] | default('') != livekit_worker_label_value

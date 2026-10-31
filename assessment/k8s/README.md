@@ -149,10 +149,17 @@ kubectl get nodes -L osceguide.io/livekit-worker     # every worker node: true
 kubectl label node <name> osceguide.io/livekit-worker=true
 ```
 
-`provision-worker.yml` applies the label; a manual `k3s agent` join does not.
-Replicas must not exceed the number of labelled nodes.
+`infra/ansible` (`provision-worker.yml`) joins a node and applies the label; a manual `k3s agent` join does not.
+Production replicas = the number of labelled worker nodes. The rollout script counts
+them and sets both Deployments to that number at every production rollout (0 labelled
+nodes aborts it), so a promote never resets a scaled-out fleet. Add or remove nodes with
+`infra/ansible/add-worker.sh` / `remove-worker.sh` (see `infra/ansible/README.md`), which
+also scale the Deployments and set Railway `LIVEKIT_SELF_HOSTED_SEATS` on `platform-api`
+and `platform-worker`.
 
 ## Capacity
+
+Production replicas follow the labelled nodes (see "Node labels"); staging pins 1.
 
 `LIVEKIT_*_MAX_CONCURRENT_JOBS` is a *per-pod* cap, so with one pod per node it is
 also the per-node admission limit. Each node carries an assessment pod **and** an

@@ -46,7 +46,7 @@ least 32 characters.
 | `LIVEKIT_TOKEN_TTL_SECONDS` | 3600 | Room token lifetime. |
 | `LIVEKIT_CLOUD_OVERFLOW_ENABLED` / `_MAX_CONCURRENT` | false / 20 | *Defaults match the legacy backends exactly*, because the Redis key is shared with them during coexistence — if these disagree, two backends disagree about how full Cloud is. |
 | `LIVEKIT_CLOUD_SLOT_PENDING_TTL_SECONDS` / `_SLOT_TTL_SECONDS` | 300 / 2100 | How long a reservation is held before a worker connects, and for a whole session after. |
-| `LIVEKIT_SELF_HOSTED_SEATS` | 18 | Assessment sessions our own workers take at once: replicas x `LIVEKIT_ASSESSMENT_MAX_CONCURRENT_JOBS` in assessment-platform's k8s overlay (3 x 6 in production, 1 x 2 on staging). Past these and Cloud's, candidates wait in line. Change it with the overlay. `GET /platform/voice/capacity` reports it as `self_hosted_seats_total` beside the seats taken. |
+| `LIVEKIT_SELF_HOSTED_SEATS` | 18 | Assessment sessions our own workers take at once: replicas x `LIVEKIT_ASSESSMENT_MAX_CONCURRENT_JOBS` (production: one replica per worker node, 6 each; staging 1 x 2). Past these and Cloud's, candidates wait in line. In production `infra/ansible/add-worker.sh` / `remove-worker.sh` set it when they change the nodes. `GET /platform/voice/capacity` reports it as `self_hosted_seats_total` beside the seats taken. |
 | `LIVEKIT_QUEUE_WAITER_TTL_SECONDS` | 90 | How long a waiter keeps their place with nobody watching it. Must exceed the stream heartbeat (25s). |
 | `EMAIL_FROM` | OSCE Guide \<noreply@…\> | Envelope sender. |
 | `STRIPE_SECRET_KEY` | — | Checkout. **Not** in the required ten, so a deploy can boot without being able to sell. |

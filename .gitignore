@@ -14,3 +14,7 @@ commons-work/
 
 # Local video exports (hosted on S3)
 /*.mp4
+
+# Ansible vault passwords
+.vault_pass*
+*.vault-password

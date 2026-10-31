@@ -54,6 +54,27 @@ for required_secret in assessment-worker-secrets ghcr-pull-credentials; do
   fi
 done
 
+# Production runs one replica of each worker per labelled node (one pod per node), so
+# the replica count is read from the cluster at each rollout; a promote never resets
+# it to the base's 1. The overlay file is this deploy's own copy, so appending is safe.
+if [[ "$ENVIRONMENT" == "production" ]]; then
+  worker_node_count="$(kubectl get nodes -l osceguide.io/livekit-worker=true -o name | wc -l | tr -d '[:space:]')"
+  if [[ "${worker_node_count:-0}" -lt 1 ]]; then
+    echo "No nodes are labelled osceguide.io/livekit-worker=true: refusing to deploy production with 0 replicas." >&2
+    echo "Label a worker node first; see k8s/README.md, 'Node labels'." >&2
+    exit 1
+  fi
+  echo "==> Production replicas = ${worker_node_count} (labelled worker nodes)"
+  cat >>"${OVERLAY_DIR}/kustomization.yaml" <<REPLICAS
+
+replicas:
+  - name: assessment-worker
+    count: ${worker_node_count}
+  - name: assistant-worker
+    count: ${worker_node_count}
+REPLICAS
+fi
+
 # Apply everything for this environment in one go: namespace, network policy,
 # config maps and both deployments, with the overlay's namespace, image and settings.
 echo "==> Applying ${ENVIRONMENT} (namespace ${NAMESPACE})"
