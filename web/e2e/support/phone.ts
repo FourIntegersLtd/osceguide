@@ -64,7 +64,8 @@ function lastContentOnScreen(page: Page): Promise<boolean> {
           !el.closest("[aria-hidden=true], [hidden], [role=dialog]"),
       )
       .at(-1);
-    if (!last) return true;
+    // No visible leaf found: a soft "true" here would silently pass. Keep polling until it fails.
+    if (!last) return false;
     return new Promise<boolean>((resolve) => {
       const observer = new IntersectionObserver(([entry]) => {
         observer.disconnect();
