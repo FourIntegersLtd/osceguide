@@ -68,3 +68,4 @@ Handles: `getByRole("button", { name: "Edit <name>" | "Delete <name>" })`,
 - The Start session button is a link only when the mic is ready and the
   session has a station; otherwise a disabled button (block the mic with an
   `addInitScript` rejecting `getUserMedia` and a denied `permissions.query`).
+- Unknown exam: force `**/api/v1/me/dashboard` to 502 with `page.route` after `signIn`. `/mocks` and `?tab=combine` then show only "We don't know your exam yet" (no progress bar, no form, no plans); the Consultation tips tab is also hidden (SCA only).

@@ -27,6 +27,7 @@ Owner: `content-owner` (staff queues `staff-console-owner`). Proof: `verify-cont
 - A slot's `status` is `available | claimed | cancelled` (a `Literal` on `PostRead`, so the generated web type is a union). `peer-practice/marketplace/copy.ts` `slotBadge` switches over it exhaustively; add a status in the api and the web type check fails there. "Expired" is an unclaimed slot in the past, never a status. A walkthrough account has no SCA entitlement here, so seed a cancelled slot by SQL to see it in the browser.
   jobs. Peer practice: queue pairing is race-safe, the accept handshake and recording have state
   over time, transcripts are diarised (`peer_practice/diariser.py`).
+- **The marketplace needs a named exam.** `useCurrentExam().code` is null while loading, when the api names none, and once `/me/dashboard` fails; `classifyExam` (`foundation/session/examCode.ts`) turns that into loading / unknown, and `PeerPractice` then shows a retry panel instead of the actions and lists (never a dead button, never an unfiltered `exam_code`-less slot read). `GET /marketplace/slots` without `exam_code` is still audience-bounded, so it is not a leak, but the web must not send it. No switcher: the retry is the only recovery. Each `useCurrentExam` instance reloads alone, so the nav footer's "Try again" does not refresh the page's.
 - Starting a peer room is `attempt-engine-owner`'s (`peer_practice/service_voice.py` is the join
   point; ask before changing it). Marking a peer session is not a mark.
 - CV reading (`cv/`) sends a user's document to a model.

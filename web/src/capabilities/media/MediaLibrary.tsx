@@ -170,7 +170,7 @@ export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind |
                   title={EMPTY[filter].title}
                   description={
                     examCode
-                      ? `Nothing published for ${examCode.toUpperCase()} yet. Switch exam in the menu or upgrade for full access.`
+                      ? `Nothing published for ${examCode.toUpperCase()} yet. Upgrade for full access.`
                       : EMPTY[filter].description
                   }
                 />

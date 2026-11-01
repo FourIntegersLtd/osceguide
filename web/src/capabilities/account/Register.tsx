@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { AccountCreatedNotSignedIn, register } from "@/foundation/platform-client";
-import { examAuthHref, normalizeExamCode } from "@/foundation/session/examSelection";
+import { examAuthHref, normalizeExamCode } from "@/foundation/session/examCode";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { useSession } from "@/foundation/session";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";

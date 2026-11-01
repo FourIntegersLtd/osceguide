@@ -1156,7 +1156,7 @@ async def test_a_different_plan_is_bought_while_one_is_live_and_extends_from_the
     assert paid.json()["status"] == "applied"
     user = await identity_repo.user_by_email(db_session, "upgrade@example.com")
     assert user is not None
-    first, second = sorted(await ent_repo.for_user(db_session, user.id), key=lambda grant: grant.created_at)
+    first, second = sorted(await ent_repo.for_user(db_session, user.id), key=lambda grant: grant.starts_at)
     assert first.ends_at is not None
     assert second.starts_at == first.ends_at
     assert second.ends_at == first.ends_at + timedelta(days=90)
@@ -1215,7 +1215,7 @@ async def test_refunding_the_first_plan_pulls_a_stacked_plan_forward(
     await post_event(client, checkout_event("evt_gap_2", "gap@example.com", "price_three_month"))
     user = await identity_repo.user_by_email(db_session, "gap@example.com")
     assert user is not None
-    first, second = sorted(await ent_repo.for_user(db_session, user.id), key=lambda grant: grant.created_at)
+    first, second = sorted(await ent_repo.for_user(db_session, user.id), key=lambda grant: grant.starts_at)
     assert second.starts_at == first.ends_at
 
     refunded = await post_event(client, charge_event("evt_gap_r", "charge.refunded", "pi_evt_gap_1"))

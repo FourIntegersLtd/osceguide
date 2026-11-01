@@ -18,13 +18,12 @@ export function LivePracticeButton({
   examCode,
 }: {
   queue: Queue;
-  examCode: string | null;
+  examCode: string;
 }) {
   const [showModal, setShowModal] = useState(false);
   const [isJoiningQueue, setIsJoiningQueue] = useState(false);
 
   const handleJoinQueue = async () => {
-    if (!examCode) return;
     setIsJoiningQueue(true);
     try {
       await queue.join(examCode);

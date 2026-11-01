@@ -14,14 +14,13 @@ import {
   Spinner,
 } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
-import { useCurrentExam } from "@/foundation/session";
+import { RequireExam } from "@/foundation/session";
 import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { browseLibrary, type LibraryStation } from "@/capabilities/stations";
 import { createSet } from "@/domains/train/api";
 import { combineIntro, describeCreateSetFailure, incompleteVersionIds } from "@/domains/train/mocks/model";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 import {
-  defaultExamCode,
   examByCode,
   type MockWorkspace,
 } from "@/domains/train/mocks/useMockWorkspace";
@@ -40,10 +39,12 @@ const COMBINE_STATIONS_PAGE_LIMIT = 25;
  * one session but not another, which the endpoint got wrong.
  */
 export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
+  return <RequireExam>{(examCode) => <CombineStationsForm workspace={workspace} examCode={examCode} />}</RequireExam>;
+}
+
+function CombineStationsForm({ workspace, examCode }: { workspace: MockWorkspace; examCode: string }) {
   const router = useRouter();
   const { hrefFor, surface } = useSurface();
-  const { code: currentExam } = useCurrentExam();
-  const examCode = defaultExamCode(workspace, currentExam);
   const [mockName, setMockName] = useState("");
   const [selected, setSelected] = useState<LibraryStation[]>([]);
   const [stationSearch, setStationSearch] = useState("");

@@ -61,8 +61,8 @@ def test_a_lapsed_exam_is_not_offered() -> None:
     """Only live grants reach this — the caller filters, and here is why.
 
     `entitlements.list_for_user` answers with every row somebody has ever held,
-    revoked and expired included. An exam they can no longer open must not stay
-    in the switcher because they once had it.
+    revoked and expired included. An exam they can no longer open must not be
+    offered because they once had it.
     """
     access = exam_access(live_entitlement_codes=[], account_exam_code=None, published_codes=PUBLISHED)
 

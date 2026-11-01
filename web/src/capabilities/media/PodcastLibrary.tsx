@@ -73,7 +73,7 @@ function PodcastLibraryBody({
         title="No episodes yet"
         description={
           allItemsCount > 0 && examCode
-            ? `Nothing published for ${examCode.toUpperCase()} yet. Switch exam in the menu or upgrade for full access.`
+            ? `Nothing published for ${examCode.toUpperCase()} yet. Upgrade for full access.`
             : "Episodes appear here as they are published."
         }
       />

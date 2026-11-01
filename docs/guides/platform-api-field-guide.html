@@ -1602,6 +1602,7 @@ const API = [
    ["POST","/api/v1/me/practice-sessions/{session_id}/voice-token","BEARER","A way into the room the pair were matched into"],
    ["POST","/api/v1/me/practice-sessions/{session_id}/end","BEARER","End it, with a reason"],
    ["GET","/api/v1/me/station-sets","BEARER","My practice sets"],
+   ["GET","/api/v1/me/station-sets/allowance","BEARER","How many new stations a session may hold: the free trial's stations left, or null when paid"],
    ["POST","/api/v1/me/station-sets","BEARER","Build a set from published station versions"],
    ["GET","/api/v1/me/station-sets/{set_id}","BEARER","A set with its entries and attempt counters"],
    ["DELETE","/api/v1/me/station-sets/{set_id}","BEARER","Throw a practice set away"],

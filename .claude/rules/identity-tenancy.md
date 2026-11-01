@@ -68,3 +68,5 @@ Proof: `verify-access`. Anything that touches auth is ask-first.
 - A reused or replayable token, link or SSO state; a password or session that survives the change meant to end it.
 - Sign-out on reload, or the next person in the tab given the last person's page.
 - Auth screens share `AuthShell`, `AuthFormField` and `AuthButton` in the new site look (`.site-root.site-auth`). The MFA code stays one input (paste, autofill and its label depend on it); don't split it into digit boxes.
+
+- **The opening exam is the oldest live grant, ties by id.** `entitlements.repository.for_user` orders by `(created_at, id)`; grants written in one transaction share `created_at`, and `exam_access.current` reads that order. A test that wants "first" and "second" grant sorts by `starts_at` itself. The web never falls back to `users.exam_code` (`resolveCurrentExam`): a null `current` means loading, failed or fail-closed, and screens ask nothing.

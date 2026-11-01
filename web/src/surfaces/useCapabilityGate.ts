@@ -2,10 +2,11 @@
 
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useCurrentExam, useSession } from "@/foundation/session";
+import { classifyExam, useCurrentExam, useSession } from "@/foundation/session";
 import { capabilitiesFor, capabilityById } from "@/capabilities";
 import { resolveWorkspace } from "@/surfaces/resolveWorkspace";
 import { surfaceForWorkspace } from "@/surfaces/registry";
+import { examForFilter } from "@/surfaces/examNav";
 
 export type CapabilityGate = "loading" | "allowed" | "bounce" | "missing";
 
@@ -19,7 +20,7 @@ export type CapabilityGate = "loading" | "allowed" | "bounce" | "missing";
 export function useCapabilityGate(id: string): CapabilityGate {
   const router = useRouter();
   const { session } = useSession();
-  const { code: examCode, loading: examLoading } = useCurrentExam();
+  const { code, loading: examLoading, error: examError } = useCurrentExam();
   const { workspace: slug } = useParams<{ workspace: string }>();
 
   const workspace = resolveWorkspace(slug ?? "", session?.user ?? null);
@@ -29,12 +30,13 @@ export function useCapabilityGate(id: string): CapabilityGate {
         can: session?.capabilities.can ?? {},
         includeHidden: true,
         // Same exam filter as the menu, so a URL cannot reach what the menu hides for this exam.
-        examCode,
+        examCode: examForFilter({ code, loading: examLoading }),
       }).some((entry) => entry.id === id)
     : false;
 
   // A capability that names no exams is not filtered by exam, so its answer does not change when the exam arrives.
-  const waiting = Boolean(capability?.exams) && examLoading;
+  // Only the genuinely unknown exam waits: a reload keeps the last known code, and blanking the page for it is a flash.
+  const waiting = Boolean(capability?.exams) && classifyExam({ code, loading: examLoading, error: examError }).kind === "loading";
   const bounceHref = !waiting && !mounted && workspace && capability?.unmountedGoesTo ? `/app/${slug}${capability.unmountedGoesTo}` : null;
 
   useEffect(() => {

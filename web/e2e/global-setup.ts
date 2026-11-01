@@ -128,6 +128,14 @@ export default async function globalSetup(): Promise<void> {
     await call(await login(accounts[role].email, PASSWORD), "/api/v1/me", { method: "PATCH", body: { exam_code: "sca" } });
   }
 
+  // The null-exam journeys (TRAIN-13) break the dashboard and then expect the retry to bring this exam back.
+  const learnerDashboard = await call(await login(accounts.consumer.email, PASSWORD), "/api/v1/me/dashboard");
+  if (learnerDashboard.current_exam_code !== "sca") {
+    throw new Error(
+      `the consumer's dashboard names ${String(learnerDashboard.current_exam_code)}, not sca: seed the exams with api/scripts/seed_platform.py`,
+    );
+  }
+
   // The admin sets the institution up the way the console would.
   const admin = await switchWorkspace(await login(accounts.admin.email, PASSWORD), slug);
   const programme = await call(admin, `/api/v1/orgs/${slug}/programmes`, { method: "POST", body: { exam_code: "sca" } });

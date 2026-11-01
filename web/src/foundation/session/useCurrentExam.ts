@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { platformRequest } from "@/foundation/platform-client";
 import type { components } from "@/foundation/platform-client";
-import { normalizeExamCode, resolveCurrentExam } from "./examSelection";
+import { resolveCurrentExam } from "./examCode";
 import { heldFromDashboard, NO_EXAMS, type HeldExams } from "@/foundation/session/examsAfterLoad";
 import { useSession } from "@/foundation/session/SessionProvider";
 
@@ -11,9 +11,8 @@ type Dashboard = components["schemas"]["Dashboard"];
 export type ExamSettings = components["schemas"]["ExamSettings"];
 
 /**
- * What every screen gets before the dashboard answers, and what an exam this
- * hook cannot describe (a `chosen` override the dashboard never priced in)
- * falls back to. Matches the backend's own field defaults
+ * What every screen gets before the dashboard answers, and for any exam the
+ * dashboard did not describe. Matches the backend's own field defaults
  * (`app/core/exam_settings.py`), so a screen reading this before the real
  * settings land behaves exactly as an exam with `{}` stored would.
  */
@@ -77,22 +76,14 @@ export interface CurrentExam {
 }
 
 /**
- * Which exam the whole signed-in app is showing.
+ * Which exam the whole signed-in app is showing: the one the backend names, and only that one.
  *
- * The retiring client answered this with a hostname: `sca.osceguide.com` set an
- * `appType` that every request carried, so there was one exam for the session
- * and the product had no exam picker anywhere. On one domain that had to be
- * derived, and four screens each derived it differently — the dashboard from
- * what had been attempted, the station library from the whole published
- * catalogue, peer practice from whichever exam sorted first. The result was a
- * dropdown on four screens of a product where holding one exam is the norm,
- * over exams nobody had bought.
- *
- * There is one answer now and the backend gives it: `exam_codes` and
- * `current_exam_code` on `GET /me/dashboard`, which are live entitlements plus
- * the exam the account was opened for, filtered through the published
- * catalogue. Nobody picks an exam: there is no switcher, the app
- * shows the one the backend names.
+ * `exam_codes` and `current_exam_code` on `GET /me/dashboard` are live entitlements plus the
+ * exam the account was opened for, filtered through the published catalogue, and `current` is a
+ * held exam whenever the person holds one. Nobody picks an exam in the browser and nothing is
+ * remembered there; moving someone to another exam is a support action. While the dashboard has
+ * not answered (or failed, or named none) `code` is `null`, and a screen asks nothing about an
+ * exam: it must not fall back to the account's sign-up exam, which the person may not hold.
  */
 export function useCurrentExam(): CurrentExam {
   const { session, status } = useSession();
@@ -102,7 +93,12 @@ export function useCurrentExam(): CurrentExam {
   const { codes, serverCurrent, dashboardExam } = held;
   const [error, setError] = useState<Error | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const reload = useCallback(() => setReloadKey((n) => n + 1), []);
+  // "Try again" must ask the api again: within SHARE_FOR_MS it would otherwise be handed the answer
+  // it is retrying (a 200 naming no exam is shared like any other).
+  const reload = useCallback(() => {
+    sharedLoad = null;
+    setReloadKey((n) => n + 1);
+  }, []);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -134,15 +130,10 @@ export function useCurrentExam(): CurrentExam {
     };
   }, [status, userId, reloadKey]);
 
-  const code = resolveCurrentExam({
-    serverCurrent,
-    accountExam: normalizeExamCode(session?.user.exam_code),
-    codes,
-  });
+  const code = resolveCurrentExam({ serverCurrent, codes });
 
-  // The dashboard only ever describes its own `current_exam_code`. When
-  // the code is anything else (the account's own exam, before the dashboard answers) it
-  // sees safe defaults rather than another exam's settings misapplied to this one — the same "nothing invented" rule as the code above.
+  // The dashboard only describes its own `current_exam_code`; any other code (there is none
+  // today) sees safe defaults, never another exam's settings misapplied to it.
   const onDashboardExam = dashboardExam !== null && dashboardExam.code === code;
   const name = onDashboardExam ? dashboardExam.name : null;
   const settings = onDashboardExam ? dashboardExam.settings : DEFAULT_EXAM_SETTINGS;

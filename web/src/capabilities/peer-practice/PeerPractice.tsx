@@ -15,7 +15,7 @@ import {
 import { useAsync } from "@/foundation/hooks";
 import { failureText } from "@/capabilities/peer-practice/support/failure";
 import { hasCode } from "@/foundation/platform-client";
-import { useCurrentExam } from "@/foundation/session";
+import { classifyExam, useCurrentExam } from "@/foundation/session";
 import {
   claimSlot,
   listMyPosts,
@@ -87,7 +87,8 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
   const [notice, setNotice] = useState<Notice | null>(null);
 
   // The exam is the app's, not this screen's: one answer, set once per account.
-  const { code: activeExam, name: activeExamName } = useCurrentExam();
+  const { code: activeExam, name: activeExamName, loading: examLoading, error: examError, reload: reloadExam } = useCurrentExam();
+  const exam = classifyExam({ code: activeExam, loading: examLoading, error: examError });
   const myPosts = useAsync((signal) => listMyPosts(signal), [reloadKey]);
 
   const say = useCallback((type: Notice["type"], text: string) => {
@@ -168,6 +169,28 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
     }
   }, [withdrawing, reloadAll, say]);
 
+  // No named exam: no action that would do nothing, and no list (an unfiltered read shows every exam's slots).
+  if (exam.kind !== "ready") {
+    return (
+      <>
+        <B2CPageHeader title="Marketplace" />
+        {exam.kind === "loading" ? (
+          <ListLoading />
+        ) : (
+          <ListLoadError
+            message={
+              exam.failed
+                ? "We could not work out which exam this is, so the marketplace is unavailable."
+                : "We could not find an exam for your account, so the marketplace is unavailable."
+            }
+            onRetry={reloadExam}
+          />
+        )}
+      </>
+    );
+  }
+  const examCode = exam.code;
+
   const actions = { onClaim: setClaiming, onWithdraw: setWithdrawing, claimingId };
 
   return (
@@ -176,7 +199,7 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
         title="Marketplace"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <LivePracticeButton queue={shared.queue} examCode={activeExam || null} />
+            <LivePracticeButton queue={shared.queue} examCode={examCode} />
             <Button type="button" onClick={() => setOffering((open) => !open)} className="gap-1.5">
               <HiOutlinePlus className="h-3.5 w-3.5 shrink-0" aria-hidden />
               <span>Post availability</span>
@@ -197,7 +220,7 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
           {tab === "upcoming" ? (
             <UpcomingSessions reloadKey={reloadKey} onOpenPracticeSession={shared.openSession} />
           ) : tab === "available" ? (
-            <SlotSections orgId={orgId ?? null} examCode={activeExam || null} reloadKey={reloadKey} actions={actions} />
+            <SlotSections orgId={orgId ?? null} examCode={examCode} reloadKey={reloadKey} actions={actions} />
           ) : (
             <AsyncBoundary
               state={myPosts}

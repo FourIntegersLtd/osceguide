@@ -1,18 +1,24 @@
 import { expect, test } from "@playwright/test";
 import { call, login, PASSWORD, register, stamp } from "../support/api";
-import { holdOnly } from "../support/db";
+import { seedSignedUpForButHolding } from "../support/db";
 import { dismissOverlays, openPage, signedInAs } from "../support/session";
 
-// Signed up for PLAB, then bought SCA. Every signed-in screen must ask about the exam the person
-// holds: the marketplace listed and claimed PLAB slots and the api refused each with `not_entitled`.
+// Signed up for PLAB, then bought SCA: every signed-in screen must ask about the exam the person
+// holds, not the sign-up exam (the marketplace listed and claimed PLAB slots and the api refused
+// each with `not_entitled`). The api answers `current = sca` here, so this spec proves the
+// end-to-end flow. The seeded `osceguide.exam.<userId>` = plab is a retired key that no production
+// code reads: it is the only guard against the deleted localStorage reader coming back (restoring
+// it in `useCurrentExam.ts` makes this spec red). It does not guard the sign-up-exam fallback:
+// "a null `current_exam_code` yields no exam, never `users.exam_code`" is proved in
+// `src/foundation/session/examCode.test.ts`.
 test("TRAIN-12 a person who signed up for one exam and holds another can claim a marketplace slot", async ({ page, context }) => {
   const id = stamp();
   const owner = `e2e-mkt-owner-${id}@example.com`;
   const taker = `e2e-mkt-taker-${id}@example.com`;
   await register(owner, "Mkt Owner");
   await register(taker, "Mkt Taker");
-  holdOnly(owner, "sca", "sca");
-  holdOnly(taker, "sca", "plab");
+  seedSignedUpForButHolding(owner, "sca", "sca");
+  const takerId = seedSignedUpForButHolding(taker, "sca", "plab");
 
   const ownerToken = await login(owner, PASSWORD);
   const slot = await call(ownerToken, "/api/v1/marketplace/slots", {
@@ -26,6 +32,7 @@ test("TRAIN-12 a person who signed up for one exam and holds another can claim a
     if (response.url().includes("/api/v1/marketplace") && response.status() === 403) refusals.push(response.url());
   });
 
+  await context.addInitScript((key) => window.localStorage.setItem(key, "plab"), `osceguide.exam.${takerId}`);
   await signedInAs(context, { email: taker, password: PASSWORD });
   await openPage(page, "/app/me/marketplace");
   await dismissOverlays(page);

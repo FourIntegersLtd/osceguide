@@ -12,7 +12,6 @@ import { useSurface } from "@/capabilities";
 import { holdsPaidAccess } from "@/capabilities/account/access";
 import { listEntitlements } from "@/capabilities/account/api";
 import { useAsync } from "@/foundation/hooks";
-import { examsFailedToLoad } from "@/surfaces/examNav";
 
 /**
  * The foot of the workspace sidebar (canvas `train-dashboard`): who you are
@@ -32,7 +31,7 @@ export function WorkspaceNavFooter({
   const { session, signOut } = useSession();
   const [signingOut, setSigningOut] = useState(false);
   const { hrefFor } = useSurface();
-  const { codes, code, error: examError, reload: reloadExams } = useCurrentExam();
+  const { code, error: examError, reload: reloadExams } = useCurrentExam();
   const userId = session?.user.id ?? null;
   // Not a gate, so a failed read hides the button rather than an error.
   const entitlements = useAsync(
@@ -40,11 +39,11 @@ export function WorkspaceNavFooter({
     [consumer, userId],
   );
 
-  const examLoadFailed = examsFailedToLoad({ consumer, codes, error: examError });
+  const examLoadFailed = consumer && examError !== null;
   const name = session?.user.name || session?.user.email || "Account";
   const email = session?.user.name ? session.user.email : null;
-  // `codes` is the exam the account was opened for plus any grants, so it is
-  // not evidence of payment; only a paid entitlement is.
+  // Holding an exam is not evidence of payment: it can be the exam the account was
+  // opened for, or a trial or an org's grant. Only a paid entitlement counts.
   const showUpgrade =
     consumer && entitlements.data !== null && !holdsPaidAccess(entitlements.data, code);
 

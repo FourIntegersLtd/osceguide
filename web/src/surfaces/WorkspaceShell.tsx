@@ -19,7 +19,7 @@ import { PeerPracticeProvider } from "@/capabilities/peer-practice/PeerPracticeP
 import { PendingFeedbackProvider } from "@/capabilities/pending-feedback";
 import type { HelpNavItem } from "@/capabilities/help/api";
 import type { NavItem, SurfaceManifest } from "@/surfaces/contract";
-import { examDetail } from "@/surfaces/examNav";
+import { examDetail, examForFilter } from "@/surfaces/examNav";
 import { WorkspaceSidebar } from "@/surfaces/WorkspaceSidebar";
 import { WorkspaceToolbar } from "@/surfaces/WorkspaceToolbar";
 import { PERSONAL_WORKSPACE, type Workspace } from "@/foundation/routing";
@@ -49,7 +49,8 @@ export function WorkspaceShell({
   const athena = athenaOffered(manifest.id);
   const staff = manifest.id === "platform";
   // The marketplace is SCA-only in navigation, like the retiring `scaOnly`.
-  const { code: examCode } = useCurrentExam();
+  const { code: currentCode, loading: examLoading } = useCurrentExam();
+  const examCode = examForFilter({ code: currentCode, loading: examLoading });
   const [menuOpen, setMenuOpen] = useState(false);
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [helpExpanded, setHelpExpanded] = useState(false);

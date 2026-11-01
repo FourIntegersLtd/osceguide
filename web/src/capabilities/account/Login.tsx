@@ -6,7 +6,7 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Alert } from "@/foundation/ui";
 import { hasCode, login, type components, type MfaChallenge } from "@/foundation/platform-client";
-import { examAuthHref, normalizeExamCode } from "@/foundation/session/examSelection";
+import { examAuthHref, normalizeExamCode } from "@/foundation/session/examCode";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { can, useSession } from "@/foundation/session";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";

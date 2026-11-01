@@ -57,10 +57,12 @@ export interface MountOptions {
   /** Include capabilities marked `hidden`. Off by default; nav does not want them. */
   includeHidden?: boolean;
   /**
-   * The person's exam, for capabilities that name the exams they serve.
-   * Left out, no capability is filtered by exam — route guards want that.
+   * The person's exam, for capabilities that name the exams they serve. Three cases, and `null` is
+   * not one of them (it does not compile): a code filters by it; `""` matches no exam (hide
+   * exam-specific items while the exam loads); left out, nothing is filtered. Build it with
+   * `examForFilter` (`surfaces/examNav.ts`), never from a raw `useCurrentExam().code`.
    */
-  examCode?: string | null;
+  examCode?: string;
 }
 
 /**
@@ -79,7 +81,7 @@ export function capabilitiesFor(
     if (staff && capability.staffRefusedOn?.includes(surface)) return false;
     if (!includeHidden && staff && capability.staffNavHiddenOn?.includes(surface)) return false;
     if (!permitted(capability.permission, can)) return false;
-    if (examCode !== undefined && capability.exams && !capability.exams.includes(examCode ?? "")) {
+    if (examCode !== undefined && capability.exams && !capability.exams.includes(examCode)) {
       return false;
     }
     return true;

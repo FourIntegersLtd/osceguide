@@ -15,7 +15,7 @@ import {
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
-import { useCurrentExam, useSession } from "@/foundation/session";
+import { RequireExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { createSet, readSetAllowance } from "@/domains/train/api";
 import { AddExamDate } from "@/capabilities/account/AddExamDate";
@@ -32,7 +32,6 @@ import {
 } from "@/domains/train/mocks/model";
 import {
   accessState,
-  defaultExamCode,
   useExamStations,
   type MockWorkspace,
 } from "@/domains/train/mocks/useMockWorkspace";
@@ -62,13 +61,23 @@ function examDatePromptSkipped(): boolean {
  * the stations the trial has left, which the server also enforces (`trial_station_limit`).
  */
 export function MockSetup({ workspace, onCreated }: { workspace: MockWorkspace; onCreated: () => void }) {
+  return <RequireExam>{(examCode) => <MockSetupForm workspace={workspace} examCode={examCode} onCreated={onCreated} />}</RequireExam>;
+}
+
+function MockSetupForm({
+  workspace,
+  examCode,
+  onCreated,
+}: {
+  workspace: MockWorkspace;
+  examCode: string;
+  onCreated: () => void;
+}) {
   const router = useRouter();
   const { hrefFor, surface } = useSurface();
   // An institution's trainee practises what the organisation granted: no trial, no plans.
   const org = isOrgSurface(surface);
   const { session, refresh } = useSession();
-  const { code: currentExam } = useCurrentExam();
-  const examCode = defaultExamCode(workspace, currentExam);
   // The old client counted and scanned this exam's sessions only.
   const examSets = useMemo(
     () => workspace.sets.filter((set) => set.exam_code === examCode),
@@ -86,7 +95,7 @@ export function MockSetup({ workspace, onCreated }: { workspace: MockWorkspace; 
   const name = `Session ${examSets.length + 1}`;
   const stations = useExamStations(workspace, examCode);
   const allowance = useAsync(
-    (signal) => (examCode ? readSetAllowance(examCode, signal) : Promise.resolve({ free_stations_left: null })),
+    (signal) => readSetAllowance(examCode, signal),
     [examCode],
   );
   const attempted = useMemo(() => attemptedVersionIds(examSets), [examSets]);

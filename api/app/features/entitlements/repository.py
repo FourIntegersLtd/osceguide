@@ -59,8 +59,17 @@ async def for_user_and_exam(
 
 async def for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Entitlement]:
     """Every grant this user has ever held, oldest first, revoked and lapsed
-    ones included."""
-    stmt = select(Entitlement).where(Entitlement.user_id == user_id).order_by(Entitlement.created_at)
+    ones included.
+
+    Oldest first, ties broken by id: the opening exam is the first live grant here (`exam_access`),
+    and two grants written in one transaction share `created_at`, so without the tiebreak it could
+    change between page loads.
+    """
+    stmt = (
+        select(Entitlement)
+        .where(Entitlement.user_id == user_id)
+        .order_by(Entitlement.created_at, Entitlement.id)
+    )
     return list((await session.execute(stmt)).scalars())
 
 

@@ -1,5 +1,5 @@
 import type { Plan } from "@/capabilities/account/api";
-import { normalizeExamCode } from "@/foundation/session/examSelection";
+import { normalizeExamCode } from "@/foundation/session/examCode";
 
 /**
  * The plans a signed-in account may buy: the exam the server holds for it, and

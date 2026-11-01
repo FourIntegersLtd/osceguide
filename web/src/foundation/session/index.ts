@@ -6,6 +6,8 @@ export {
   showsMarkingTips,
   hasStationSubtypes,
 } from "@/foundation/session/examSettingsRules";
+export { RequireExam } from "@/foundation/session/RequireExam";
+export { classifyExam, type ExamState } from "@/foundation/session/examCode";
 export { RequireSession, RequireCapability, RequireAnonymous } from "@/foundation/session/guards";
 export { PERMISSIONS, type Permission } from "@/foundation/session/permissions";
 export {

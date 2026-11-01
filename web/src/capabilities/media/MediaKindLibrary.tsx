@@ -144,7 +144,7 @@ function EmptyKind({ kind }: { kind: PortalKind }) {
       title={copy.emptyTitle}
       description={
         examCode
-          ? `Nothing published for ${examCode.toUpperCase()} yet. Switch exam in the menu or upgrade for full access.`
+          ? `Nothing published for ${examCode.toUpperCase()} yet. Upgrade for full access.`
           : copy.emptyDescription
       }
     />

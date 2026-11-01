@@ -51,8 +51,17 @@ export async function login(email: string, password: string): Promise<string> {
   return (await loginPatiently(email, password)).access_token;
 }
 
+/** Register, waiting out the api's per-address sign-up limit as `loginPatiently` does for sign-in. */
 export async function register(email: string, name: string): Promise<void> {
-  await call(null, "/api/v1/auth/register", { method: "POST", body: { email, password: PASSWORD, name } });
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await call(null, "/api/v1/auth/register", { method: "POST", body: { email, password: PASSWORD, name } });
+      return;
+    } catch (error) {
+      if (attempt >= 6 || !(error instanceof ApiError) || error.status !== 429) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 15_000));
+    }
+  }
 }
 
 export async function switchWorkspace(token: string, orgSlug: string): Promise<string> {

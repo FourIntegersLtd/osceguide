@@ -53,7 +53,8 @@ screenshot in `web/test-results/`.
 | TRAIN-6 | Speak a practice station and be marked | no, needs LiveKit | skipped |
 | TRAIN-7 | Help is on every learner screen (phone: floating button; desktop: toolbar, no Inbox icon) | yes | `train/help-everywhere.spec.ts` |
 | TRAIN-8 | On a phone (390px, touch) every screen scrolls to its end and nothing scrolls sideways: the station room, the peer room, every learner, institution and staff page | yes | `train/phone-layout.spec.ts` |
-| TRAIN-12 | Signed up for one exam, holds another, the browser remembers the sign-up exam: the marketplace lists and claims the held exam's slot, no `not_entitled` | yes | `train/marketplace-exam.spec.ts` |
+| TRAIN-12 | Signed up for one exam, holds another, the browser remembers the sign-up exam under the retired switcher's key (guards the deleted reader only; the null-exam rule is `examCode.test.ts`): the marketplace lists and claims the held exam's slot, no `not_entitled` | yes | `train/marketplace-exam.spec.ts` |
+| TRAIN-13 | The app does not know the learner's exam (the dashboard read fails with a 502, or the api names none): AI Practice (Setup and Combine tabs) and the marketplace explain it, offer "Try again", show no form, no actions, no progress bar and no free-trial paywall; the retry brings the real exam back | yes | `train/null-exam.spec.ts` |
 
 **TRAIN-1.** Actor: a registered consumer.
 1. Open `/login`, enter email and password, submit.

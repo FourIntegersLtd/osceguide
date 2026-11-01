@@ -62,13 +62,13 @@ describe("capability registry", () => {
 
   it("shows the marketplace in navigation to SCA candidates only", () => {
     // The retiring nav's `scaOnly`: PLAB, CASC and orthopaedic candidates
-    // never saw it. A direct link still opens it, so the route guard, which
-    // passes no exam, keeps finding it.
-    const navFor = (examCode: string | null) =>
+    // never saw it. A direct link still opens it, so the route guard,
+    // which filters by `examForFilter` (nothing once the exam is unknown), keeps finding it.
+    const navFor = (examCode: string) =>
       capabilitiesFor("train", { basePath: "/app/me", examCode }).map((capability) => capability.href);
     assert.ok(navFor("sca").includes("/app/me/marketplace"));
     assert.ok(!navFor("plab").includes("/app/me/marketplace"));
-    assert.ok(!navFor(null).includes("/app/me/marketplace"));
+    assert.ok(!navFor("").includes("/app/me/marketplace"));
     assert.ok(
       capabilitiesFor("train", { includeHidden: true })
         .map((capability) => capability.id)

@@ -111,13 +111,30 @@ export function endPeerSession(id: string): void {
 /**
  * An account whose sign-up exam is `signup` while its only live grant is for `held`: someone who
  * registered for one exam and then bought another. The api's `register` takes no exam, so the
- * sign-up exam is written the way `ChooseExam` would leave it.
+ * sign-up exam is written the way `ChooseExam` would leave it. Returns the user's id.
+ *
+ * Fails, naming the seed, when the user or either exam is missing: without that the UPDATE and
+ * INSERT touch no rows and the journey would test nothing (a fresh database needs
+ * `scripts/seed_platform.py`, which publishes the exams).
+ *
+ * `held` and `signup` go into the SQL as written, so pass literal exam codes.
  */
-export function holdOnly(email: string, held: string, signup: string): void {
+export function seedSignedUpForButHolding(email: string, held: string, signup: string): string {
   const quoted = email.replaceAll("'", "''");
+  const exam = (code: string) => `(select id from exams where code = '${code}' and owner_kind = 'platform')`;
   psql(`
-UPDATE users SET exam_code = '${signup}' WHERE email = '${quoted}';
-INSERT INTO entitlements (id, user_id, exam_id, source, starts_at, created_at, updated_at)
-  SELECT gen_random_uuid(), u.id, e.id, 'purchase', now(), now(), now()
-  FROM users u, exams e WHERE u.email = '${quoted}' AND e.code = '${held}' AND e.owner_kind = 'platform';`);
+DO $$
+DECLARE
+  u uuid := (select id from users where email = '${quoted}');
+  held_exam uuid := ${exam(held)};
+  signup_exam uuid := ${exam(signup)};
+BEGIN
+  IF u IS NULL THEN RAISE EXCEPTION 'e2e seed signed-up-but-holding: no user %', '${quoted}'; END IF;
+  IF held_exam IS NULL THEN RAISE EXCEPTION 'e2e seed signed-up-but-holding: no platform exam "${held}" (run api/scripts/seed_platform.py)'; END IF;
+  IF signup_exam IS NULL THEN RAISE EXCEPTION 'e2e seed signed-up-but-holding: no platform exam "${signup}" (run api/scripts/seed_platform.py)'; END IF;
+  UPDATE users SET exam_code = '${signup}' WHERE id = u;
+  INSERT INTO entitlements (id, user_id, exam_id, source, starts_at, created_at, updated_at)
+    VALUES (gen_random_uuid(), u, held_exam, 'purchase', now(), now(), now());
+END $$;`);
+  return psql(`select id from users where email = '${quoted}';`);
 }
