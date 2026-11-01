@@ -102,3 +102,6 @@ Skip `schema.d.ts`, `openapi.json` and `_generated/`: they are generated.
 ## Marketing pages (exam landings, /institutions)
 - Every public page sits in `SiteShell` (`exam` keeps partner attribution on Login/Start free; `links` swaps the centre links, e.g. institutions anchors). No per-page nav or footer.
 - Build bands from `home/Section`, `SectionHead`, `Eyebrow`, `IconTile`, `exam/ExamBlocks`; parameterise home sections (`HomePractice`, `HomeTestimonials`, `HomeFaq`) rather than fork. Only `site-*` tokens; the `landing-*`/`b2c-*` landing helpers are deleted.
+
+## Deploy config
+- `web/vercel.json` `git.deploymentEnabled` ends in `"**": false`, so every branch Vercel must build is listed by name: `main` (staging, the promote gate) and the branch `promote-web.yml` pushes (`production-web`). An unlisted branch is discarded with no build and no error: the promote just times out after 15 minutes (2026-10-25). `check:deploy-branches` enforces it; ci-web runs on `promote-web.yml` edits for that reason.

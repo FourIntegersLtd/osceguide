@@ -7,6 +7,10 @@ name: CI web
 # it, so a red main can reach staging (Vercel builds every push to web/) but
 # never production.
 #
+# promote-web.yml is in the filters because check:deploy-branches reads the
+# branch that workflow pushes and asserts web/vercel.json builds it. Renaming
+# the branch there must run that check, or the promote silently stops deploying.
+#
 # The last step regenerates the api types from api/openapi.json and fails if
 # the committed schema.d.ts differs: an api change that alters the contract
 # must land with the regenerated types in the same commit.
@@ -17,6 +21,7 @@ on:
       - "web/**"
       - "api/openapi.json"
       - ".github/workflows/ci-web.yml"
+      - ".github/workflows/promote-web.yml"
       - ".github/actions/**"
   push:
     branches: [main]
@@ -24,6 +29,7 @@ on:
       - "web/**"
       - "api/openapi.json"
       - ".github/workflows/ci-web.yml"
+      - ".github/workflows/promote-web.yml"
       - ".github/actions/**"
 
 # Reading the code is all this workflow does.

@@ -66,3 +66,4 @@ Owner: `staff-console-owner`. Proof: `verify-staff-console`. Staff actions are p
 - A staff action that is not platform-admin only or not audited.
 - A guard weakened to pass instead of the code moved.
 - A job not registered, or one that loops for ever on bad input.
+- A green `Promote api to production` is not a deploy: Railway production needs a human approval per service (platform-api and platform-worker; `railway api 'mutation { deploymentApprove(id: ...) }'`). Read `/health` after any promote.
