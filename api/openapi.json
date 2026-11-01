@@ -5752,6 +5752,7 @@
               "stale_revision",
               "station_being_produced",
               "station_empty",
+              "station_exam_mismatch",
               "station_flag_not_found",
               "station_has_no_template",
               "station_import_not_found",
@@ -22883,9 +22884,10 @@
                 }
               }
             },
-            "description": "station_not_published",
+            "description": "station_not_published, station_exam_mismatch",
             "x-codes": [
-              "station_not_published"
+              "station_not_published",
+              "station_exam_mismatch"
             ]
           },
           "422": {
@@ -35619,6 +35621,19 @@
               "unknown_exam"
             ]
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_version_not_usable",
+            "x-codes": [
+              "station_version_not_usable"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -36102,10 +36117,11 @@
                 }
               }
             },
-            "description": "attempt_limit_reached, set_locked",
+            "description": "attempt_limit_reached, set_locked, station_version_not_usable",
             "x-codes": [
               "attempt_limit_reached",
-              "set_locked"
+              "set_locked",
+              "station_version_not_usable"
             ]
           },
           "422": {

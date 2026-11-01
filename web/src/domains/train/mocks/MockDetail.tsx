@@ -20,7 +20,7 @@ import { readSet } from "@/domains/train/api";
 import { MockRules } from "@/domains/train/mocks/MockRules";
 import { MockStationsTable, type StationRow } from "@/domains/train/mocks/MockStationsTable";
 import { B2CHero } from "@/foundation/ui/B2CHero";
-import { entriesInOrder, sessionMinutes, stationLabel } from "@/domains/train/mocks/model";
+import { EXAM_NOT_OFFERED, canStartSession, entriesInOrder, sessionMinutes, stationLabel } from "@/domains/train/mocks/model";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -92,7 +92,7 @@ export function MockDetail({ setId }: { setId: string }) {
           const simulationMinutes = Math.round(timers.simulationSeconds / 60);
           const duration = sessionMinutes(set.total_entries, exam ? timers : null);
           const first = rows[0]?.entry ?? null;
-          const startsHere = !attempted && !set.locked;
+          const startsHere = canStartSession({ examOffered: exam !== null, attempted, locked: set.locked });
           // A session with no stations has nowhere to start; the button stays inert.
           const canStart = micReady && first !== null;
 
@@ -149,13 +149,19 @@ export function MockDetail({ setId }: { setId: string }) {
                 <MockStationsTable
                   set={set}
                   rows={rows}
-                  attemptLimit={exam?.station_attempt_limit ?? 3}
+                  attemptLimit={exam?.station_attempt_limit ?? null}
                 />
               ) : set.locked ? (
                 <B2CEmptyState
                   icon={HiOutlineLockClosed}
                   title="Nothing to review in this session"
                   description="This session is from a past subscription. It was never attempted, so there is no feedback or transcript to review, and reattempts are not available."
+                />
+              ) : exam === null ? (
+                <B2CEmptyState
+                  icon={HiOutlineLockClosed}
+                  title={EXAM_NOT_OFFERED.title}
+                  description={EXAM_NOT_OFFERED.description}
                 />
               ) : (
                 <MockRules exam={exam} onMicReadyChange={setMicReady} />

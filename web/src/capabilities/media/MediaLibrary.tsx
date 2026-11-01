@@ -28,6 +28,7 @@ import { MEDIA_KIND_ICON, MediaCard, MediaCardGrid, mediaKindOf } from "@/capabi
 import { SummaryIndex, SummaryIndexNav } from "@/capabilities/media/SummaryIndex";
 import { summaryGroups, type SummaryView } from "@/capabilities/media/summaryGroups";
 import { MediaSearchResults } from "@/capabilities/media/MediaSearchResults";
+import { emptyLibraryDescription, NO_EPISODES_COPY, NO_SLIDES_COPY } from "@/capabilities/media/support/emptyCopy";
 
 type Filter = MediaKind | "all";
 
@@ -41,7 +42,7 @@ const EMPTY: Record<Filter, { title: string; description: string }> = {
   },
   slide_deck: {
     title: "No slides available",
-    description: "Check back later for new content.",
+    description: NO_SLIDES_COPY,
   },
   summary: {
     title: "No summaries yet",
@@ -53,7 +54,7 @@ const EMPTY: Record<Filter, { title: string; description: string }> = {
   },
   podcast: {
     title: "No episodes yet",
-    description: "Episodes appear here as they are published.",
+    description: NO_EPISODES_COPY,
   },
 };
 
@@ -168,11 +169,7 @@ export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind |
                 <B2CEmptyState
                   icon={filter === "all" ? undefined : MEDIA_KIND_ICON[filter]}
                   title={EMPTY[filter].title}
-                  description={
-                    examCode
-                      ? `Nothing published for ${examCode.toUpperCase()} yet. Upgrade for full access.`
-                      : EMPTY[filter].description
-                  }
+                  description={emptyLibraryDescription(examCode, EMPTY[filter].description)}
                 />
               ) : filter === "summary" ? (
                 <SummaryLibrary items={items} view={summaryView} onViewChange={setSummaryView} hrefFor={hrefFor} />

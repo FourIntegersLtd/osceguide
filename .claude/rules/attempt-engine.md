@@ -104,3 +104,4 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
 - A voice, model or persona changes mid-consultation, or is hard-coded instead of from settings.
 - A male patient speaks with a female voice: the station's gender wording ("Male, 45", "Mr") was not recognised and silently became Female. Gender is read only by `osce_assessment.contracts.parse_gender`; a guard forbids a second hand-written set.
 - A reader queries `transcript_messages` directly and sees an empty transcript for a compacted attempt (the attempt is failed `empty_transcript`, the debrief says not ready, the export is blank).
+- A learner sits exam B's station on exam A's grant: `start_attempt` must compare the station's `exam_id` with the exam it resolves (`station_exam_mismatch`, 409) before entitlement; the client's `exam_code` alone is never trusted.

@@ -12,6 +12,9 @@ import {
   flaggedEntryPath,
   groupSets,
   incompleteVersionIds,
+  stationRowState,
+  rowStatusLabel,
+  canStartSession,
   sessionAction,
   sessionMinutes,
   sessionState,
@@ -121,6 +124,10 @@ describe("attempted and incomplete stations", () => {
   it("drops a station that has used its whole allowance", () => {
     const exhausted = [set({ entries: [entry("v1", 3)] })];
     assert.deepEqual(incompleteVersionIds(exhausted, 3), []);
+  });
+
+  it("offers nothing when the exam's attempt limit is unknown, rather than guessing one", () => {
+    assert.deepEqual(incompleteVersionIds(sets, null), []);
   });
 });
 
@@ -348,6 +355,7 @@ describe("mockRules", () => {
       "Find somewhere you can talk without interruptions, with a stable connection. If something goes wrong, flag the station and message support.",
       "You can attempt each station up to 3 times. Each station opens with reading time, and the consultation starts when you press Start simulation or reading time runs out.",
     ]);
+    assert.match(mockRules(null)[3] ?? "", /^Each station opens with reading time/);
     assert.match(mockRules(1)[3] ?? "", /^You can attempt each station once\./);
   });
 });
@@ -371,5 +379,57 @@ describe("combineIntro", () => {
   it("invites a pick once stations were sat, and says what unlocks it before", () => {
     assert.equal(combineIntro(true), "Pick the stations you found hardest and sit them again as one session.");
     assert.match(combineIntro(false), /^Available once you have sat a few stations/);
+  });
+});
+
+describe("stationRowState", () => {
+  it("fails closed when the exam's limit is unknown and attempts were made", () => {
+    assert.deepEqual(stationRowState({ attempts: 3 }, false, null), {
+      status: "unknown",
+      canAttempt: false,
+      canReviewLast: true,
+    });
+  });
+  it("offers no start on a never-attempted entry whose exam is retired", () => {
+    assert.deepEqual(stationRowState({ attempts: 0 }, false, null), {
+      status: "not_attempted",
+      canAttempt: false,
+      canReviewLast: false,
+    });
+  });
+  it("completes at the limit and counts below it", () => {
+    assert.equal(stationRowState({ attempts: 3 }, false, 3).status, "completed");
+    assert.equal(stationRowState({ attempts: 3 }, false, 3).canAttempt, false);
+    assert.deepEqual(stationRowState({ attempts: 1 }, false, 3), {
+      status: "counting",
+      canAttempt: true,
+      canReviewLast: false,
+    });
+  });
+  it("offers nothing new on a locked set", () => {
+    assert.equal(stationRowState({ attempts: 1 }, true, 3).canAttempt, false);
+    assert.equal(stationRowState({ attempts: 1 }, true, 3).canReviewLast, true);
+  });
+});
+
+describe("rowStatusLabel", () => {
+  it("says only what is known when the limit is unknown", () => {
+    assert.equal(rowStatusLabel("unknown", 3, null), "3 attempts made");
+    assert.equal(rowStatusLabel("unknown", 1, null), "1 attempt made");
+  });
+  it("shows the count against a known limit", () => {
+    assert.equal(rowStatusLabel("counting", 1, 3), "1/3 attempts");
+    assert.equal(rowStatusLabel("not_attempted", 0, null), "Not attempted");
+  });
+});
+
+describe("canStartSession", () => {
+  it("never offers the hero start for a retired exam", () => {
+    assert.equal(canStartSession({ examOffered: false, attempted: false, locked: false }), false);
+  });
+  it("offers it for a fresh, unlocked set on an offered exam only", () => {
+    assert.equal(canStartSession({ examOffered: true, attempted: false, locked: false }), true);
+    assert.equal(canStartSession({ examOffered: true, attempted: true, locked: false }), false);
+    assert.equal(canStartSession({ examOffered: true, attempted: false, locked: true }), false);
   });
 });

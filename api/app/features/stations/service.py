@@ -184,6 +184,7 @@ class RunnableStation:
 
     version_id: uuid.UUID
     owner_kind: str
+    exam_id: uuid.UUID
     exam_code: str
     title: str
     content: dict[str, Any]
@@ -229,6 +230,7 @@ async def runnable_station(
     return RunnableStation(
         version_id=version.id,
         owner_kind=station.owner_kind,
+        exam_id=station.exam_id,
         exam_code=await _exam_code(session, station),
         title=station.title,
         content=content,

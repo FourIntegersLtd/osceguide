@@ -549,3 +549,77 @@ async def test_reopening_a_station_after_access_ended_is_refused(
     again = await client.post("/api/v1/attempts", json=body, headers=bearer(token))
     assert again.status_code == 403
     assert again.json()["code"] == "not_entitled"
+
+
+async def test_a_station_of_another_exam_is_not_runnable_on_this_exams_grant(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Holding exam A must not let a learner sit exam B's published station by naming A.
+
+    A clean account, a grant for `sca`, a published `plab` station: entitlement was checked against
+    the claimed exam and the station's own exam was never compared, so this started (201) and filed
+    the attempt under the wrong exam.
+    """
+    from sqlalchemy import func, select
+
+    from app.features.attempts.models import Attempt
+    from app.features.identity import repository as identity_repo
+    from app.features.stations import repository as stations_repo
+
+    token = await make_actor("crossexam@example.com")
+    user = await identity_repo.user_by_email(db_session, "crossexam@example.com")
+    other = await ensure_exam(db_session, "plab")
+    assert user is not None
+    user_id = user.id
+    await entitle(db_session, user_id, "sca")
+    station = await stations_repo.create_station(db_session, None, exam_id=other.id, title="PLAB only")
+    version = await stations_repo.add_version(
+        db_session, None, station_id=station.id, version=1, content={"station_name": "PLAB only"}
+    )
+    await stations_repo.set_version_status(db_session, None, version.id, status="published", at=NOW, by=None)
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/v1/attempts",
+        json={"kind": "practice", "exam_code": "sca", "station_version_id": str(version.id)},
+        headers=bearer(token),
+    )
+
+    assert (response.status_code, response.json()["code"]) == (409, "station_exam_mismatch")
+    started = await db_session.scalar(
+        select(func.count()).select_from(Attempt).where(Attempt.user_id == user_id)
+    )
+    assert started == 0
+
+
+async def test_start_attempt_refuses_a_cross_exam_station_for_every_caller(
+    make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The gate lives in `start_attempt`, so sets, peer practice and any later caller get it too."""
+    from app.features.attempts import errors as attempt_errors
+    from app.features.attempts import service as attempts_service
+    from app.features.identity import repository as identity_repo
+    from app.features.stations import repository as stations_repo
+
+    await make_actor("svc-cross@example.com")
+    user = await identity_repo.user_by_email(db_session, "svc-cross@example.com")
+    other = await ensure_exam(db_session, "plab")
+    assert user is not None
+    user_id = user.id
+    await entitle(db_session, user_id, "sca")
+    station = await stations_repo.create_station(db_session, None, exam_id=other.id, title="PLAB only")
+    version = await stations_repo.add_version(
+        db_session, None, station_id=station.id, version=1, content={"station_name": "PLAB only"}
+    )
+    await stations_repo.set_version_status(db_session, None, version.id, status="published", at=NOW, by=None)
+    await db_session.flush()
+
+    with pytest.raises(attempt_errors.StationExamMismatch):
+        await attempts_service.start_attempt(
+            db_session,
+            user_id=user_id,
+            kind="practice",
+            exam_code="sca",
+            now=NOW,
+            station_version_id=version.id,
+        )

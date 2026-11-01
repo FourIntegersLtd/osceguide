@@ -24,7 +24,7 @@ export function MockRules({
   exam: Exam | null;
   onMicReadyChange: (ready: boolean) => void;
 }) {
-  const attemptLimit = exam?.station_attempt_limit ?? 3;
+  const attemptLimit = exam?.station_attempt_limit ?? null;
 
   const rules = mockRules(attemptLimit);
 

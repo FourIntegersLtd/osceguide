@@ -51,6 +51,7 @@ async def create_set(
     """
     exam = await resolve_exam(session, exam_code)
     await attempts.require_entitlement(session, user_id=owner_user_id, exam_id=exam.id, now=now)
+    await _ensure_usable_versions(session, exam.id, station_version_ids)
     await _ensure_within_trial(session, owner_user_id, exam.id, station_version_ids, now=now)
     station_set = await repository.create_set(session, owner_user_id, exam_id=exam.id, name=name)
     entries = await repository.add_entries(session, station_set.id, station_version_ids=station_version_ids)
@@ -65,6 +66,23 @@ async def allowance(
     return SetAllowance(
         free_stations_left=await _free_stations_left(session, owner_user_id, exam.id, now=now)
     )
+
+
+async def _ensure_usable_versions(
+    session: AsyncSession, exam_id: uuid.UUID, station_version_ids: list[uuid.UUID]
+) -> None:
+    """Refuse a version a set for this exam may not hold: unknown, unpublished, another exam's or an org's.
+
+    Entitlement is checked against the set's exam, so a station filed under a different exam must
+    never get in, or holding one exam would let somebody sit another's stations.
+    """
+    if not station_version_ids:
+        return
+    summaries = await stations_reads.summaries_by_version_id(session, None, station_version_ids)
+    for version_id in station_version_ids:
+        summary = summaries.get(version_id)
+        if summary is None or summary.status != "published" or summary.exam_id != exam_id:
+            raise errors.StationVersionNotUsableError()
 
 
 async def _free_stations_left(
@@ -158,12 +176,7 @@ async def replace_entries(
     if station_set.locked:
         raise errors.SetLockedError()
 
-    if station_version_ids:
-        summaries = await stations_reads.summaries_by_version_id(session, None, station_version_ids)
-        for version_id in station_version_ids:
-            summary = summaries.get(version_id)
-            if summary is None or summary.status != "published" or summary.exam_id != station_set.exam_id:
-                raise errors.StationVersionNotUsableError()
+    await _ensure_usable_versions(session, station_set.exam_id, station_version_ids)
     await _ensure_within_trial(session, owner_user_id, station_set.exam_id, station_version_ids, now=now)
 
     existing_entries = await repository.entries_for(session, set_id)
@@ -296,6 +309,9 @@ async def start_entry_attempt(
         except (AttemptNotFinished, AttemptNotReady) as exc:
             raise errors.NothingToDebriefError() from exc
     else:
+        # start_attempt -> _ensure_runnable already covers published and org visibility; this call is
+        # here for the exam match against the set, which a stored or re-filed entry can break.
+        await _ensure_usable_versions(session, station_set.exam_id, [entry.station_version_id])
         attempt = await attempts.start_attempt(
             session,
             user_id=owner_user_id,

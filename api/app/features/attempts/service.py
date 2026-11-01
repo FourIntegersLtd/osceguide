@@ -47,12 +47,17 @@ async def start_attempt(
     the worker bootstrap uses, so a draft station, or one belonging to another organisation, is
     refused when the attempt is created rather than once a candidate is already in the LiveKit room.
     """
+    runnable = None
     if station_version_id is not None:
-        await _ensure_runnable(session, org_id=org_id, station_version_id=station_version_id)
+        runnable = await _ensure_runnable(session, org_id=org_id, station_version_id=station_version_id)
     try:
         exam = await resolve_exam(session, exam_code, org_id=org_id)
     except CatalogUnknownExam as exc:
         raise errors.UnknownExamError(str(exc)) from exc
+    # Against the exam resolved above, not the raw code: an org may resolve its own exam of that code.
+    # Before entitlement, so the refusal never depends on what the caller holds.
+    if runnable is not None and runnable.exam_id != exam.id:
+        raise errors.StationExamMismatch()
 
     await entitlements.require(
         session,
@@ -98,15 +103,17 @@ async def start_attempt(
 
 async def _ensure_runnable(
     session: AsyncSession, *, org_id: uuid.UUID | None, station_version_id: uuid.UUID
-) -> None:
+) -> stations.RunnableStation:
     """Refuse a station this caller cannot run, before the attempt exists.
 
     `runnable_station` raises `station_not_published` for a draft itself; a station that does not
     exist and one belonging to another organisation both come back as `None` and both answer
     `station_not_found` — telling them apart would let this route enumerate another tenant's library.
     """
-    if await stations.runnable_station(session, org_id, station_version_id) is None:
+    runnable = await stations.runnable_station(session, org_id, station_version_id)
+    if runnable is None:
         raise errors.StationNotFound()
+    return runnable
 
 
 async def require_entitlement(

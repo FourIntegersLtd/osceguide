@@ -49,6 +49,7 @@ async def list_sets(
         errors.UnknownExamError,
         errors.NotEntitled,
         errors.TrialStationLimitError,
+        errors.StationVersionNotUsableError,
         Unauthenticated,
     ),
     dependencies=[Depends(per_user(USER_WRITE))],
@@ -191,6 +192,7 @@ async def list_flagged_stations(
         errors.EntryNotFound,
         errors.AttemptLimitReachedError,
         errors.SetLockedError,
+        errors.StationVersionNotUsableError,
     ),
     dependencies=[Depends(per_user(AI_SPEND))],
 )

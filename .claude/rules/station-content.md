@@ -16,6 +16,12 @@ Owner: `content-owner`. Proof: `verify-content`.
   last version deletes the station: a screen must not assume the station survives a delete.
 - Stations are filed under an exam that has an owner (ADR 0017); audiences for anything social:
   ADR 0014. Station sets (mocks) have entry flags; sets are edited by revision (stale edits refused).
+- **Every path that adds to or starts from a set entry re-validates the version against the set's
+  exam** (`_ensure_usable_versions`: exists, published, same `exam_id`). Create, replace and
+  `start_entry_attempt` each check; checking only on write left stored cross-exam entries sittable
+  under the wrong grant, and a `PATCH` of a station's `exam_id` reopened it (`test_a_set_cannot_be_built_from_another_exams_station`,
+  `test_a_stored_entry_whose_station_is_now_another_exams_cannot_be_attempted`). A debrief starts no
+  station and is deliberately unguarded.
 - **A learner builds a set but never changes or deletes it**: `PATCH`/`DELETE /me/station-sets/{id}` are
   `PlatformAdmin` (a learner gets `forbidden`, 403); create, run, debrief and flag stay the learner's.
 - A set entry's `station_title` is null until the entry has been sat (`attempts > 0`): screens show

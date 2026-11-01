@@ -38,6 +38,9 @@ export function describeRefusal(cause: unknown, fallback: string, surface?: Surf
   if (hasCode(cause, "station_not_published")) {
     return "This station is not available to practise right now. It may have been withdrawn or not finished yet.";
   }
+  if (hasCode(cause, "station_exam_mismatch")) {
+    return "This station is no longer part of this exam. Go back to your session and choose another.";
+  }
   if (isPlatformError(cause)) return cause.message;
   return fallback;
 }

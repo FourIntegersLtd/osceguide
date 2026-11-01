@@ -45,6 +45,7 @@ router = APIRouter(tags=["attempts"])
         errors.UnknownExamError,
         errors.StationNotFound,
         errors.StationNotPublishedError,
+        errors.StationExamMismatch,
     ),
     dependencies=[Depends(per_user(AI_SPEND))],
 )

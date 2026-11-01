@@ -59,7 +59,9 @@ function CombineStationsForm({ workspace, examCode }: { workspace: MockWorkspace
   // count already, so this is a filter over what `workspace` loaded rather
   // than a round trip.
   const incompleteIds = useMemo(() => {
-    const limit = examByCode(workspace, examCode)?.station_attempt_limit ?? 3;
+    // The limit is the exam's own (`station_attempt_limit`, required on every exam the api sends).
+    // An exam missing from the list has no limit we know, so nothing is offered rather than guessed.
+    const limit = examByCode(workspace, examCode)?.station_attempt_limit ?? null;
     const examSets = workspace.sets.filter((set) => set.exam_code === examCode);
     return incompleteVersionIds(examSets, limit);
   }, [workspace, examCode]);

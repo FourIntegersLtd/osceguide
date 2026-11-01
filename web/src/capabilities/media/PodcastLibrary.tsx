@@ -20,6 +20,7 @@ import { Prose } from "@/capabilities/media/Prose";
 import { podcastEpisodePath } from "@/capabilities/media/studyPaths";
 import { groupPodcasts, podcastOrder } from "@/capabilities/media/catalogue";
 import type { Episode } from "@/capabilities/media/PodcastPlayer";
+import { emptyLibraryDescription, NO_EPISODES_COPY } from "@/capabilities/media/support/emptyCopy";
 import { B2CGroupedRowLink, B2CGroupedSection } from "@/foundation/ui/B2CGroupedList";
 
 function resolveSelected(
@@ -71,11 +72,7 @@ function PodcastLibraryBody({
       <B2CEmptyState
         icon={LuHeadphones}
         title="No episodes yet"
-        description={
-          allItemsCount > 0 && examCode
-            ? `Nothing published for ${examCode.toUpperCase()} yet. Upgrade for full access.`
-            : "Episodes appear here as they are published."
-        }
+        description={emptyLibraryDescription(allItemsCount > 0 ? examCode : null, NO_EPISODES_COPY)}
       />
     );
   }

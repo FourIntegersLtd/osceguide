@@ -17,7 +17,24 @@ from app.features.stations.errors import StationNotFound, StationNotPublishedErr
 # exist or belongs to another organisation. The two are one refusal on
 # purpose: "no such station" and "not yours" must not be distinguishable,
 # or the route becomes a way to enumerate another tenant's library.
-__all__ = ["NotEntitled", "NotEntitledToBegin", "StationNotFound", "StationNotPublishedError"]
+__all__ = [
+    "NotEntitled",
+    "NotEntitledToBegin",
+    "StationExamMismatch",
+    "StationNotFound",
+    "StationNotPublishedError",
+]
+
+
+class StationExamMismatch(Conflict):
+    """The station belongs to a different exam than the one the attempt was started for.
+
+    Entitlement is checked against the attempt's exam, so a station filed under another exam must
+    never run on it: holding exam A would otherwise let somebody sit exam B's stations.
+    """
+
+    code = "station_exam_mismatch"
+    default_message = "This station belongs to a different exam"
 
 
 class NotEntitledToBegin(NotEntitled):

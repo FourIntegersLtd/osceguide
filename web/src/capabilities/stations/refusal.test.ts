@@ -27,6 +27,10 @@ describe("describeRefusal", () => {
     assert.match(text, /not available/);
   });
 
+  it("tells a learner a station from another exam is no longer part of this one", () => {
+    assert.match(describeStartFailure(refusal(409, "station_exam_mismatch")), /no longer part of this exam/);
+  });
+
   it("falls back to the server's message, then to a generic one", () => {
     assert.equal(describeStartFailure(refusal(500, "internal_error")), "server wording");
     assert.equal(describeStartFailure(undefined), "We could not start this station. Please try again.");

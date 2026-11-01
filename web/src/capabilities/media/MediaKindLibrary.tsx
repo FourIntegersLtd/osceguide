@@ -16,6 +16,7 @@ import { B2CHero } from "@/foundation/ui/B2CHero";
 import { StudySearchBox } from "@/capabilities/media/StudySearchBox";
 import { useClientPagedCatalogue } from "@/capabilities/media/useClientPagedCatalogue";
 import { useStudySearch, type StudySearch } from "@/capabilities/media/useStudySearch";
+import { emptyLibraryDescription, NO_EPISODES_COPY, NO_SLIDES_COPY } from "@/capabilities/media/support/emptyCopy";
 
 /** The kinds that live in the portal: articles are the public /blogs pages. */
 type PortalKind = Exclude<MediaKind, "blog">;
@@ -33,13 +34,13 @@ const PAGE_COPY: Record<
     title: "Slides",
     subtitle: "Video presentations by topic.",
     emptyTitle: "No slides available",
-    emptyDescription: "Check back later for new content.",
+    emptyDescription: NO_SLIDES_COPY,
   },
   podcast: {
     title: "Podcast",
     subtitle: "Listen to episodes between stations.",
     emptyTitle: "No episodes yet",
-    emptyDescription: "Episodes appear here as they are published.",
+    emptyDescription: NO_EPISODES_COPY,
   },
 };
 
@@ -142,11 +143,7 @@ function EmptyKind({ kind }: { kind: PortalKind }) {
     <B2CEmptyState
       icon={MEDIA_KIND_ICON[kind]}
       title={copy.emptyTitle}
-      description={
-        examCode
-          ? `Nothing published for ${examCode.toUpperCase()} yet. Upgrade for full access.`
-          : copy.emptyDescription
-      }
+      description={emptyLibraryDescription(examCode, copy.emptyDescription)}
     />
   );
 }

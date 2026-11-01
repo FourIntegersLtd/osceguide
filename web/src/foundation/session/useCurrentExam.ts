@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { platformRequest } from "@/foundation/platform-client";
 import type { components } from "@/foundation/platform-client";
 import { resolveCurrentExam } from "./examCode";
-import { heldFromDashboard, NO_EXAMS, type HeldExams } from "@/foundation/session/examsAfterLoad";
+import { NO_EXAMS } from "@/foundation/session/examsAfterLoad";
+import { createExamStore } from "@/foundation/session/examStore";
 import { useSession } from "@/foundation/session/SessionProvider";
 
 type Dashboard = components["schemas"]["Dashboard"];
@@ -16,7 +17,7 @@ export type ExamSettings = components["schemas"]["ExamSettings"];
  * (`app/core/exam_settings.py`), so a screen reading this before the real
  * settings land behaves exactly as an exam with `{}` stored would.
  */
-export const DEFAULT_EXAM_SETTINGS: ExamSettings = {
+const DEFAULT_EXAM_SETTINGS: ExamSettings = {
   date_label: "Exam date",
   help_modes: ["navigate"],
   peer_waiting_email: false,
@@ -25,32 +26,8 @@ export const DEFAULT_EXAM_SETTINGS: ExamSettings = {
   station_subtypes: [],
 };
 
-/** How long one answer is shared: long enough to cover one page load's mounts, short enough that a later screen reads fresh. */
-const SHARE_FOR_MS = 10_000;
-
-/** The one `/me/dashboard` request every caller on the page is waiting on, per person. */
-let sharedLoad: { userId: string; startedAt: number; request: Promise<Dashboard> } | null = null;
-
-/**
- * Ask for `/me/dashboard` once for everybody mounting at the same time.
- *
- * About 28 screens and nav items use this hook. Without sharing, one dashboard
- * load would send about a dozen identical requests. A
- * failed request is not shared, so the next caller asks again.
- */
-function loadDashboardOnce(userId: string): Promise<Dashboard> {
-  const now = Date.now();
-  if (sharedLoad && sharedLoad.userId === userId && now - sharedLoad.startedAt < SHARE_FOR_MS) {
-    return sharedLoad.request;
-  }
-  const request = platformRequest<Dashboard>("/api/v1/me/dashboard");
-  const thisLoad = { userId, startedAt: now, request };
-  sharedLoad = thisLoad;
-  request.catch(() => {
-    if (sharedLoad === thisLoad) sharedLoad = null;
-  });
-  return request;
-}
+// The api names the person from the session token; the user id only scopes the shared answer.
+const examStore = createExamStore(() => platformRequest<Dashboard>("/api/v1/me/dashboard"));
 
 export interface CurrentExam {
   /** Every exam this person may open, most-entitled first. */
@@ -89,46 +66,19 @@ export function useCurrentExam(): CurrentExam {
   const { session, status } = useSession();
   const userId = session?.user.id ?? null;
 
-  const [held, setHeld] = useState<HeldExams>(NO_EXAMS);
-  const { codes, serverCurrent, dashboardExam } = held;
-  const [error, setError] = useState<Error | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-  // "Try again" must ask the api again: within SHARE_FOR_MS it would otherwise be handed the answer
-  // it is retrying (a 200 naming no exam is shared like any other).
-  const reload = useCallback(() => {
-    sharedLoad = null;
-    setReloadKey((n) => n + 1);
-  }, []);
-  const [loading, setLoading] = useState(true);
+  const snapshot = useSyncExternalStore(examStore.subscribe, examStore.getSnapshot, examStore.getServerSnapshot);
 
   useEffect(() => {
-    if (status !== "authenticated" || !userId) {
-      setHeld(NO_EXAMS);
-      setError(null);
-      setLoading(status === "loading");
-      return;
-    }
-    let live = true;
-    setLoading(true);
-    loadDashboardOnce(userId)
-      .then((dashboard) => {
-        if (!live) return;
-        setHeld(heldFromDashboard(dashboard));
-        setError(null);
-      })
-      .catch((cause) => {
-        // Keep what was known and say so, rather than emptying the
-        // exam-filtered navigation.
-        if (!live) return;
-        setError(cause instanceof Error ? cause : new Error(String(cause)));
-      })
-      .finally(() => {
-        if (live) setLoading(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [status, userId, reloadKey]);
+    if (status === "authenticated" && userId) examStore.start(userId);
+    else examStore.clear();
+  }, [status, userId]);
+
+  // Another person's answer (or none yet) is never shown: until the store is on this user, wait.
+  const mine = userId !== null && snapshot.userId === userId;
+  const { codes, serverCurrent, dashboardExam } = mine ? snapshot.held : NO_EXAMS;
+  const error = mine ? snapshot.error : null;
+  const loading = status === "loading" || (userId !== null && (!mine || snapshot.loading));
+  const reload = examStore.reload;
 
   const code = resolveCurrentExam({ serverCurrent, codes });
 

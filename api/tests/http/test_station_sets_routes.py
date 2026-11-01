@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
@@ -555,3 +555,84 @@ async def test_someone_elses_entry_cannot_be_flagged(
     )
     assert unknown.status_code == 404
     assert unknown.json()["code"] == "set_entry_not_found"
+
+
+async def _create_with(client: AsyncClient, token: str, version_id: uuid.UUID):  # type: ignore[no-untyped-def]
+    return await client.post(
+        "/api/v1/me/station-sets",
+        json={"name": "W", "exam_code": "sca", "station_version_ids": [str(version_id)]},
+        headers=bearer(token),
+    )
+
+
+async def _version_of(db_session: AsyncSession, exam_code: str, *, status: str) -> uuid.UUID:
+    from app.features.stations.models import Station, StationVersion
+
+    exam = await ensure_exam(db_session, exam_code)
+    assert exam is not None
+    station = Station(owner_kind="platform", org_id=None, exam_id=exam.id, title="Other")
+    db_session.add(station)
+    await db_session.flush()
+    version = StationVersion(station_id=station.id, org_id=None, version=1, content={"x": 1}, status=status)
+    db_session.add(version)
+    await db_session.flush()
+    return version.id
+
+
+async def test_a_set_cannot_be_built_from_another_exams_station(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Holding SCA must not let you sit a published MISRA station through an SCA set."""
+    token = await a_learner(client, db_session, make_actor, "s-cross@example.com")
+    other = await _version_of(db_session, "misra", status="published")
+    response = await _create_with(client, token, other)
+    assert response.status_code == 409
+    assert response.json()["code"] == "station_version_not_usable"
+
+
+async def test_a_set_cannot_be_built_from_a_draft_station(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    token = await a_learner(client, db_session, make_actor, "s-draft@example.com")
+    draft = await _version_of(db_session, "sca", status="draft")
+    response = await _create_with(client, token, draft)
+    assert response.status_code == 409
+    assert response.json()["code"] == "station_version_not_usable"
+
+
+async def test_a_set_cannot_be_built_from_an_unknown_station(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    token = await a_learner(client, db_session, make_actor, "s-unknown@example.com")
+    response = await _create_with(client, token, uuid.uuid4())
+    assert response.status_code == 409
+    assert response.json()["code"] == "station_version_not_usable"
+
+
+async def test_a_stored_entry_whose_station_is_now_another_exams_cannot_be_attempted(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The write path refuses a cross-exam entry, but rows saved before that, or a station later
+    re-filed under another exam, still sit in the set. Starting one must refuse too, or the SCA
+    entitlement the learner holds opens a MISRA station."""
+    from app.features.stations.models import Station, StationVersion
+
+    token = await a_learner(client, db_session, make_actor, "s-stored@example.com")
+    version = await a_station_version(db_session)
+    created = (await _create_with(client, token, version)).json()
+    misra = await ensure_exam(db_session, "misra")
+    assert misra is not None
+    await db_session.execute(
+        update(Station)
+        .where(Station.id.in_(select(StationVersion.station_id).where(StationVersion.id == version)))
+        .values(exam_id=misra.id)
+    )
+    await db_session.flush()
+
+    response = await client.post(
+        f"/api/v1/me/station-sets/{created['id']}/entries/{created['entries'][0]['id']}/attempts",
+        headers=bearer(token),
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "station_version_not_usable"

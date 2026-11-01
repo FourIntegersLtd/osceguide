@@ -41,7 +41,11 @@ check("system Chrome present", existsSync(CHROME), `install Chrome or set VERIFY
 check("docker postgres :5433", Boolean(listener(5433)), "cd ../api && make db-up");
 
 const health = await status(`${API}/health`);
-check(`platform-api ${API}/health -> ${health}`, health === 200, "cd ../api && make start");
+check(
+  `platform-api ${API}/health -> ${health === 0 ? "no answer" : health}`,
+  health === 200,
+  `nothing healthy at ${API} (from VERIFY_API_URL, default http://127.0.0.1:8002). Start it with "cd ../api && make start", or if it runs on another port set VERIFY_API_URL to it`,
+);
 
 // The first request compiles /login, which takes ~15s on webpack dev.
 const login = await status(`${WEB}/login`);

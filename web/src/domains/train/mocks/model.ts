@@ -15,6 +15,54 @@ import { plural } from "@/foundation/format";
  * a file of pure functions rather than fields.
  */
 
+export type StationRowState = {
+  /** What the row's badge says: "unknown" = attempts made but the exam's limit is not loaded. */
+  status: "completed" | "counting" | "unknown" | "not_attempted";
+  canAttempt: boolean;
+  /** Reviewing the last attempt is read-only, so it is safe whatever the limit. */
+  canReviewLast: boolean;
+};
+
+/**
+ * One station row's state. A null limit means the set's exam is draft or retired (`/api/v1/exams`
+ * lists published exams only, and the limit is required on each): the api refuses every start with
+ * `unknown_exam`, whatever the attempt count. So nothing is offered, and we cannot say "Completed".
+ * Review stays available: past attempts remain readable on a retired exam.
+ */
+export function stationRowState(
+  entry: Pick<SetEntry, "attempts">,
+  locked: boolean,
+  attemptLimit: number | null,
+): StationRowState {
+  const attempted = entry.attempts > 0;
+  const completed = attemptLimit !== null && entry.attempts >= attemptLimit;
+  const known = attemptLimit !== null;
+  const canAttempt = !locked && !completed && known;
+  let status: StationRowState["status"] = "counting";
+  if (completed) status = "completed";
+  else if (!attempted) status = "not_attempted";
+  else if (!known) status = "unknown";
+  return { status, canAttempt, canReviewLast: completed || (attempted && (locked || !known)) };
+}
+
+/** Whether the set's hero may offer "Start session": its exam must still be offered. */
+export function canStartSession(input: { examOffered: boolean; attempted: boolean; locked: boolean }): boolean {
+  return input.examOffered && !input.attempted && !input.locked;
+}
+
+export const EXAM_NOT_OFFERED = {
+  title: "This session can no longer be run",
+  description:
+    "The exam this session belongs to is no longer offered, so new attempts cannot be started. Anything you have already sat stays available to review.",
+} as const;
+
+/** The attempts cell for a row that has been attempted and is not completed. */
+export function rowStatusLabel(status: StationRowState["status"], attempts: number, attemptLimit: number | null): string {
+  if (status === "not_attempted") return "Not attempted";
+  if (status === "unknown" || attemptLimit === null) return `${plural(attempts, "attempt")} made`;
+  return `${attempts}/${attemptLimit} attempts`;
+}
+
 /** Two positive integers is all a station's clock is: reading, then talking. */
 export interface StationTimings {
   readingSeconds: number;
@@ -97,8 +145,10 @@ export function attemptedVersionIds(sets: readonly StationSet[]): Set<string> {
  */
 export function incompleteVersionIds(
   sets: readonly StationSet[],
-  attemptLimit: number,
+  attemptLimit: number | null,
 ): string[] {
+  // No known limit means no way to say a station is unfinished; never guess one.
+  if (attemptLimit === null) return [];
   const ids = new Set<string>();
   for (const set of sets) {
     for (const entry of set.entries ?? []) {
@@ -309,13 +359,14 @@ export const BEFORE_YOU_START: readonly string[] = [
  * pages never drift. The clock is the station runner's: reading time first, then the
  * consultation from Start simulation or the end of reading time, never from Start session.
  */
-export function mockRules(attemptLimit: number): string[] {
-  const attempts = attemptLimit === 1 ? "once" : `up to ${attemptLimit} times`;
+export function mockRules(attemptLimit: number | null): string[] {
+  // An unknown limit is left unsaid rather than guessed.
+  const attempts = attemptLimit === null ? null : attemptLimit === 1 ? "once" : `up to ${attemptLimit} times`;
   return [
     `You talk to an AI patient out loud. ${BEFORE_YOU_START[0]}. ${BEFORE_YOU_START[1]}.`,
     "Each station follows the same format. About halfway through, a prompt tells you to move from history taking to management.",
     `${BEFORE_YOU_START[2]}. If something goes wrong, flag the station and message support.`,
-    `You can attempt each station ${attempts}. Each station opens with reading time, and the consultation starts when you press Start simulation or reading time runs out.`,
+    `${attempts === null ? "" : `You can attempt each station ${attempts}. `}Each station opens with reading time, and the consultation starts when you press Start simulation or reading time runs out.`,
   ];
 }
 

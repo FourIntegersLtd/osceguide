@@ -11,6 +11,7 @@ import { useCurrentExam } from "@/foundation/session";
 import { SlidesWorkspace } from "@/capabilities/media/SlidesWorkspace";
 import { slidesDeckPath } from "@/capabilities/media/studyPaths";
 import type { StudySearch } from "@/capabilities/media/useStudySearch";
+import { emptyLibraryDescription, NO_SLIDES_COPY } from "@/capabilities/media/support/emptyCopy";
 
 function resolveSelected(decks: MediaItem[], deckParam: string | null): MediaItem | null {
   if (decks.length === 0) return null;
@@ -72,11 +73,7 @@ function SlidesLibraryInner({
       <B2CEmptyState
         icon={HiOutlinePhoto}
         title="No slides available"
-        description={
-          examCode
-            ? `Nothing published for ${examCode.toUpperCase()} yet. Upgrade for full access.`
-            : "Check back later for new content."
-        }
+        description={emptyLibraryDescription(examCode, NO_SLIDES_COPY)}
       />
     );
   }

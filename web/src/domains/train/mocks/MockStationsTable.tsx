@@ -8,7 +8,7 @@ import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listMyAttempts } from "@/capabilities/attempt-runner";
 import type { SetEntry, StationSet } from "@/domains/train/api";
-import { attemptsWithTranscript } from "@/domains/train/mocks/model";
+import { attemptsWithTranscript, rowStatusLabel, stationRowState } from "@/domains/train/mocks/model";
 
 const { b2cIconButton } = productTokens;
 
@@ -35,7 +35,7 @@ export function MockStationsTable({
 }: {
   set: StationSet;
   rows: StationRow[];
-  attemptLimit: number;
+  attemptLimit: number | null;
 }) {
   const { hrefFor } = useSurface();
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -50,8 +50,7 @@ export function MockStationsTable({
       <ul className="-mx-5 divide-y divide-osce-border-light border-t border-osce-border-light">
         {rows.map((row, index) => {
           const { entry } = row;
-          const completed = entry.attempts >= attemptLimit;
-          const canAttempt = !set.locked && !completed;
+          const { status, canAttempt, canReviewLast } = stationRowState(entry, set.locked, attemptLimit);
           const expanded = Boolean(expandedRows[entry.id]);
           const attemptHref = `${stationHref(entry.id)}?action=attempt`;
           const reviewHref = `${stationHref(entry.id)}?action=review&tab=management`;
@@ -70,20 +69,18 @@ export function MockStationsTable({
                   </Link>
                 </div>
                 <div className="w-[120px] shrink-0">
-                  {completed ? (
+                  {status === "completed" ? (
                     <Badge tone="success" dot>
                       Completed
                     </Badge>
-                  ) : entry.attempts > 0 ? (
-                    <span className="text-osce-meta tabular-nums text-b2c-text-muted">
-                      {entry.attempts}/{attemptLimit} attempts
-                    </span>
                   ) : (
-                    <span className="text-osce-meta text-b2c-text-muted">Not attempted</span>
+                    <span className="text-osce-meta tabular-nums text-b2c-text-muted">
+                      {rowStatusLabel(status, entry.attempts, attemptLimit)}
+                    </span>
                   )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {completed || (set.locked && entry.attempts > 0) ? (
+                  {canReviewLast ? (
                     <ButtonLink href={reviewHref} variant="secondary" size="sm">
                       Review last attempt
                     </ButtonLink>
