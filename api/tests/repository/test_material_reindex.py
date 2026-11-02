@@ -66,6 +66,8 @@ async def published_station(
         db_session, None, version.id, status="published", at=NOW, by=author.id
     )
     await stations_repo.set_current_version(db_session, None, station.id, version_id=version.id)
+    # An unapproved station is not in the library, so it is not in the tutor's material either.
+    await stations_repo.set_station_approved(db_session, None, station.id, approved=True)
     await db_session.flush()
     return version.id
 
