@@ -37400,9 +37400,8 @@
                 }
               }
             },
-            "description": "media_not_editable, media_being_produced",
+            "description": "media_being_produced",
             "x-codes": [
-              "media_not_editable",
               "media_being_produced"
             ]
           },
