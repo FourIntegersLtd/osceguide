@@ -89,6 +89,7 @@ async def browse_library(
         # approved it, same bypass as the plan window above: an unreviewed station still has to
         # be found and fixed by somebody.
         require_approved=not all_exams,
+        apply_date_floor=not all_exams,
     )
     version_ids = [
         station.current_version_id for station in stations if station.current_version_id is not None
@@ -140,7 +141,9 @@ async def read_library_station(
 
     Scoped to the exams the caller may open, same as `browse_library`; `all_exams` is the staff pass.
     """
-    found = await repository_library.library_station(session, station_id, require_approved=not all_exams)
+    found = await repository_library.library_station(
+        session, station_id, require_approved=not all_exams, apply_date_floor=not all_exams
+    )
     if found is None:
         # One code for "no such station", "not published", and "some
         # institution's own": which of them it was is somebody else's tenant.

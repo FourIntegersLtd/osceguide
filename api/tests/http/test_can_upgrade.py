@@ -1,6 +1,6 @@
-"""`service_station_limit.can_upgrade`: whether a bigger plan than the one someone holds is on
-sale for their exam, worked out through real checkouts (webhook deliveries), the same way a
-customer's access is ever created.
+"""`service_station_limit.can_upgrade`: whether "Upgrade to Pro" is offered, which is only to
+someone with no paid access for their exam, worked out through real checkouts (webhook
+deliveries), the same way a customer's access is ever created.
 """
 
 from __future__ import annotations
@@ -55,10 +55,10 @@ async def test_a_person_with_no_paid_access_can_always_upgrade(
     assert result is True
 
 
-async def test_a_smaller_plan_holder_can_upgrade_to_a_bigger_one_on_sale(
+async def test_a_one_month_subscriber_is_not_offered_an_upgrade(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Holding the 1-month (53) plan while the 3-month (78) plan is on sale."""
+    """Holding the 1-month plan while a bigger one is on sale: still no button."""
     exam = await ensure_exam(db_session, "sca")
     await billing_repo.create_plan(
         db_session,
@@ -87,7 +87,7 @@ async def test_a_smaller_plan_holder_can_upgrade_to_a_bigger_one_on_sale(
         db_session, user_id=user.id, exam_id=exam.id, exam_code="sca", now=NOW
     )
 
-    assert result is True
+    assert result is False
 
 
 async def test_the_biggest_plan_holder_cannot_upgrade(client: AsyncClient, db_session: AsyncSession) -> None:

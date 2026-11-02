@@ -66,26 +66,14 @@ async def station_limit_for(
 async def can_upgrade(
     session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID, exam_code: str, now: datetime
 ) -> bool:
-    """Whether a bigger plan than the one this person holds is on sale for the exam.
+    """Whether to offer "Upgrade to Pro" for the exam: only to someone with no paid access at all.
 
-    Someone with no live paid access (a live grant whose source is not the free trial, a purchase
-    or an org grant alike) always can, because there is nothing yet to compare against; someone
-    whose current access already has no limit cannot, because nothing is bigger than "everything".
+    Anyone holding a live grant that is not the free trial (a purchase of any length, an org grant)
+    is never offered it, so a one-month subscriber is not pitched a plan they already have. Someone
+    on the trial, or with nothing, is.
     """
     all_grants = await entitlements.list_for_user(session, user_id, now=now)
     has_paid_access = any(
         grant.live and grant.exam_code == exam_code and grant.source != "trial" for grant in all_grants
     )
-    if not has_paid_access:
-        return True
-    limit = await station_limit_for(session, user_id=user_id, exam_id=exam_id, exam_code=exam_code, now=now)
-    if limit is None:
-        return False
-    plans = await repository.all_plans(session)
-    return any(
-        plan.exam_code == exam_code
-        and plan.active
-        and not domain.is_referral_plan(plan.code)
-        and (plan.station_limit is None or plan.station_limit > limit)
-        for plan in plans
-    )
+    return not has_paid_access

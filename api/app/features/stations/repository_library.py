@@ -49,6 +49,7 @@ async def library_page(
     version_ids: Sequence[uuid.UUID] | None = None,
     station_ids: Sequence[uuid.UUID] | None = None,
     require_approved: bool = True,
+    apply_date_floor: bool = True,
 ) -> tuple[list[Station], str | None]:
     """A page of the published library, narrowed by exam, by title, by current version and,
     when a plan limits the library, by which stations the limit allows.
@@ -57,10 +58,12 @@ async def library_page(
     page can only ever match the rows that page contained. `require_approved` is the editor's
     sign-off gate on top of `status == 'published'`: turned off only for the staff console
     (`all_exams`), which has to find and review a published station nobody else may see yet.
+    `apply_date_floor` hides stations first published before the old site's start date; staff
+    turn it off too, as the old site let admins see everything.
     """
-    stmt = select(Station).where(
-        Station.owner_kind == "platform", Station.status == "published", _first_published_at_floor()
-    )
+    stmt = select(Station).where(Station.owner_kind == "platform", Station.status == "published")
+    if apply_date_floor:
+        stmt = stmt.where(_first_published_at_floor())
     if require_approved:
         stmt = stmt.where(Station.approved.is_(True))
     if exam_id is not None:
@@ -114,7 +117,11 @@ async def first_station_ids(session: AsyncSession, *, exam_id: uuid.UUID, limit:
 
 
 async def library_station(
-    session: AsyncSession, station_id: uuid.UUID, *, require_approved: bool = True
+    session: AsyncSession,
+    station_id: uuid.UUID,
+    *,
+    require_approved: bool = True,
+    apply_date_floor: bool = True,
 ) -> tuple[Station, StationVersion] | None:
     """One published library station with the version it currently points at.
 
@@ -132,9 +139,10 @@ async def library_station(
             Station.id == station_id,
             Station.owner_kind == "platform",
             Station.status == "published",
-            _first_published_at_floor(),
         )
     )
+    if apply_date_floor:
+        stmt = stmt.where(_first_published_at_floor())
     if require_approved:
         stmt = stmt.where(Station.approved.is_(True))
     pair = (await session.execute(stmt)).first()

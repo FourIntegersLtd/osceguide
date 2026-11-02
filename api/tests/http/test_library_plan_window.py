@@ -270,3 +270,17 @@ async def test_an_org_grant_user_sees_every_station(client: AsyncClient, db_sess
     rows = (await client.get("/api/v1/stations?exam_code=sca", headers=bearer(token))).json()["items"]
 
     assert len(rows) == 5
+
+
+async def test_a_platform_admin_sees_the_too_old_station(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    make_actor,  # type: ignore[no-untyped-def]
+) -> None:
+    """Staff see the whole catalogue: the date floor hides nothing from a platform admin."""
+    await _five_stations_and_one_too_old(db_session)
+    token = await make_actor("floor-admin@osceguide.com", platform_admin=True)
+
+    rows = (await client.get("/api/v1/stations?exam_code=sca", headers=bearer(token))).json()["items"]
+
+    assert "Too old" in {row["title"] for row in rows}
