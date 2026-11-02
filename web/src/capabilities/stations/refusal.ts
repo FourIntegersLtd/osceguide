@@ -44,6 +44,9 @@ export function describeRefusal(cause: unknown, fallback: string, surface?: Surf
   if (hasCode(cause, "station_not_in_plan")) {
     return "This station is not included in your plan. Upgrade to unlock it.";
   }
+  if (hasCode(cause, "station_not_approvable")) {
+    return "Only a published station can be approved. Publish it first.";
+  }
   if (isPlatformError(cause)) return cause.message;
   return fallback;
 }
