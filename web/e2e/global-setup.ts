@@ -54,6 +54,8 @@ async function ensureLibrary(platform: string): Promise<string[]> {
         body: { title, exam_code: "sca", template_version_id: templateVersionId, content: { title, ...LIBRARY_CONTENT } },
       });
       await call(platform, `/api/v1/platform/stations/${created.id}/versions/1/publish`, { method: "POST" });
+      // The library shows approved stations only, so an editor's sign-off follows the publish.
+      await call(platform, `/api/v1/platform/stations/${created.id}/approve`, { method: "POST" });
     }
     have = await ids();
   }
