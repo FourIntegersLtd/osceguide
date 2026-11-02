@@ -17,9 +17,10 @@ import { listExams } from "@/capabilities/stations";
 import {
   createPlatformPlan,
   listPlatformPlans,
-  setPlatformPlanActive,
+  updatePlatformPlan,
   type PlatformPlan,
 } from "@/domains/platform/support/api";
+import { FREE_TRIAL_STATIONS } from "@/foundation/config/copyNumbers";
 
 const pounds = (pence: number) => `£${(pence / 100).toFixed(2)}`;
 
@@ -36,12 +37,13 @@ export function PlansPanel() {
   const [error, setError] = useState<string | null>(null);
   // Retiring stops new sales, so it asks first; putting a plan back on sale does not.
   const [retiring, setRetiring] = useState<PlatformPlan | null>(null);
+  const [settingStations, setSettingStations] = useState<PlatformPlan | null>(null);
 
   const toggle = async (plan: PlatformPlan) => {
     setBusyCode(plan.code);
     setError(null);
     try {
-      await setPlatformPlanActive(plan.code, !plan.active);
+      await updatePlatformPlan(plan.code, { active: !plan.active });
       toast.success(
         plan.active ? `${plan.code} is off sale` : `${plan.code} is on sale`,
       );
@@ -51,6 +53,25 @@ export function PlansPanel() {
     } finally {
       setBusyCode(null);
       setRetiring(null);
+    }
+  };
+
+  const saveStationLimit = async (plan: PlatformPlan, value: number | null) => {
+    setBusyCode(plan.code);
+    setError(null);
+    try {
+      await updatePlatformPlan(plan.code, { station_limit: value });
+      toast.success(
+        value === null
+          ? `${plan.code} now unlocks every station`
+          : `${plan.code} now unlocks ${value} stations`,
+      );
+      plans.reload();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusyCode(null);
+      setSettingStations(null);
     }
   };
 
@@ -104,22 +125,42 @@ export function PlansPanel() {
                 ),
               },
               {
+                header: "Stations",
+                key: "station_limit",
+                render: (plan) => (
+                  <span className="text-ink">
+                    {plan.station_limit ?? "No limit"}
+                  </span>
+                ),
+              },
+              {
                 header: "",
                 key: "stripe_price_id",
                 render: (plan) => (
-                  <Button
-                    themeType="b2b"
-                    size="sm"
-                    variant="secondary"
-                    disabled={busyCode !== null}
-                    onClick={() => (plan.active ? setRetiring(plan) : toggle(plan))}
-                  >
-                    {busyCode === plan.code
-                      ? "Saving…"
-                      : plan.active
-                        ? "Retire"
-                        : "Put on sale"}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      themeType="b2b"
+                      size="sm"
+                      variant="secondary"
+                      disabled={busyCode !== null}
+                      onClick={() => setSettingStations(plan)}
+                    >
+                      Set stations
+                    </Button>
+                    <Button
+                      themeType="b2b"
+                      size="sm"
+                      variant="secondary"
+                      disabled={busyCode !== null}
+                      onClick={() => (plan.active ? setRetiring(plan) : toggle(plan))}
+                    >
+                      {busyCode === plan.code
+                        ? "Saving…"
+                        : plan.active
+                          ? "Retire"
+                          : "Put on sale"}
+                    </Button>
+                  </div>
                 ),
               },
             ]}
@@ -152,7 +193,69 @@ export function PlansPanel() {
           }}
         />
       ) : null}
+      {settingStations ? (
+        <StationLimitModal
+          plan={settingStations}
+          busy={busyCode === settingStations.code}
+          onClose={() => setSettingStations(null)}
+          onSave={(value) => saveStationLimit(settingStations, value)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function StationLimitModal({
+  plan,
+  busy,
+  onClose,
+  onSave,
+}: {
+  plan: PlatformPlan;
+  busy: boolean;
+  onClose: () => void;
+  onSave: (value: number | null) => void;
+}) {
+  const [value, setValue] = useState(plan.station_limit?.toString() ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  const valid = value === "" || (/^[0-9]+$/.test(value) && Number(value) >= 1 && Number(value) <= 10000);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!valid) return;
+    setError(null);
+    try {
+      onSave(value === "" ? null : Number(value));
+    } catch (cause) {
+      setError(errorMessage(cause));
+    }
+  };
+
+  return (
+    <Modal onClose={onClose} title={`Stations for ${plan.code}`} width="min(28rem, 96vw)">
+      <form onSubmit={submit} className="flex flex-col gap-3 p-4 lg:p-6">
+        {error ? <Alert tone="danger">{error}</Alert> : null}
+        <Input
+          label="Stations this plan unlocks"
+          type="number"
+          min="1"
+          max="10000"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          disabled={busy}
+          hint={`Include the ${FREE_TRIAL_STATIONS} free trial stations. Leave empty for no limit.`}
+        />
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={busy || !valid}>
+            {busy ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -169,15 +272,20 @@ function NewPlanModal({
   const [code, setCode] = useState("");
   const [price, setPrice] = useState("");
   const [days, setDays] = useState("30");
+  const [stationLimit, setStationLimit] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const amountPence = Math.round(Number(price) * 100);
+  const validStationLimit =
+    stationLimit === "" ||
+    (/^[0-9]+$/.test(stationLimit) && Number(stationLimit) >= 1 && Number(stationLimit) <= 10000);
   const valid =
     examCode !== "" &&
     /^[a-z0-9][a-z0-9_]{1,22}$/.test(code) &&
     amountPence >= 100 &&
-    Number(days) >= 1;
+    Number(days) >= 1 &&
+    validStationLimit;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -190,6 +298,7 @@ function NewPlanModal({
           code,
           amount_pence: amountPence,
           duration_days: Number(days),
+          station_limit: stationLimit === "" ? null : Number(stationLimit),
         }),
       );
     } catch (cause) {
@@ -260,6 +369,16 @@ function NewPlanModal({
           disabled={busy}
           hint="A short internal name using lowercase letters, numbers and underscores, such as sca_one_month. It cannot be reused."
           autoComplete="off"
+        />
+        <Input
+          label="Stations this plan unlocks"
+          type="number"
+          min="1"
+          max="10000"
+          value={stationLimit}
+          onChange={(event) => setStationLimit(event.target.value)}
+          disabled={busy}
+          hint={`Include the ${FREE_TRIAL_STATIONS} free trial stations. Leave empty for no limit.`}
         />
         <div className="flex justify-end gap-2 pt-1">
           <Button

@@ -74,6 +74,27 @@ async def read_station(session: AsyncSession, org_id: uuid.UUID | None, station_
     return station
 
 
+async def set_station_approved(
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, *, approved: bool
+) -> StationRead:
+    """An editor's sign-off on a station, on top of its publish status.
+
+    Mirrors legacy b2c's `approved` flag: only a `published` station may be approved, since a
+    draft or archived one has no reader to protect yet. Revoking carries no such precondition —
+    an editor must always be able to pull a station back out of sight, published or not, for
+    instance while a flagged problem is being fixed.
+    """
+    station = await read_station(session, org_id, station_id)
+    if approved and station.status != "published":
+        raise errors.StationNotApprovableError()
+    await repository.set_station_approved(session, org_id, station_id, approved=approved)
+    station = await read_station(session, org_id, station_id)
+    versions = await repository.versions_for_station(session, org_id, station_id)
+    latest = versions[-1] if versions else None
+    exam = await _exam_code(session, station)
+    return await _station_read(session, station, exam, latest, full_content=True)
+
+
 async def station_exists(session: AsyncSession, station_id: uuid.UUID) -> bool:
     """Whether any station at all carries this id, whoever owns it.
 
@@ -165,6 +186,7 @@ async def _station_read(
         content=content,
         current_version_id=station.current_version_id,
         template_version_id=version.template_version_id if version else None,
+        approved=station.approved,
     )
 
 
@@ -182,6 +204,7 @@ async def _candidate_projection(
 class RunnableStation:
     """A station resolved for an attempt to run against."""
 
+    station_id: uuid.UUID
     version_id: uuid.UUID
     owner_kind: str
     exam_id: uuid.UUID
@@ -228,6 +251,7 @@ async def runnable_station(
     )
     candidate_sections = domain_audience.sections_for(sections, content, "candidate") if sections else []
     return RunnableStation(
+        station_id=station.id,
         version_id=version.id,
         owner_kind=station.owner_kind,
         exam_id=station.exam_id,

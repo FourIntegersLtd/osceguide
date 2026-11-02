@@ -4,7 +4,7 @@ profiles. Each carries the `code` a client branches on.
 
 from __future__ import annotations
 
-from app.core.errors import Conflict, InvalidInput, NotFound, Unavailable
+from app.core.errors import Conflict, Forbidden, InvalidInput, NotFound, Unavailable
 
 
 class StationNotFound(NotFound):
@@ -12,6 +12,17 @@ class StationNotFound(NotFound):
 
     code = "station_not_found"
     default_message = "No such station"
+
+
+class StationNotInPlan(Forbidden):
+    """A platform library station outside the window this person's paid plan unlocks.
+
+    Hidden from the library rather than locked: this is raised only when something tries to
+    read or start the station directly, by a known id, past the list that already left it out.
+    """
+
+    code = "station_not_in_plan"
+    default_message = "This station is not included in your plan. Upgrade to unlock it."
 
 
 class VersionNotFound(NotFound):
@@ -40,6 +51,14 @@ class StationEmptyError(Conflict):
 
     code = "station_empty"
     default_message = "This station has no content yet. Write it before publishing."
+
+
+class StationNotApprovableError(Conflict):
+    """A station was asked to be approved while it is not `published` — a draft or archived
+    station has no reader to protect yet, so the editor's sign-off has nothing to act on."""
+
+    code = "station_not_approvable"
+    default_message = "Only a published station can be approved"
 
 
 class FactCheckRunning(Conflict):

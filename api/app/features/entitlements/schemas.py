@@ -107,9 +107,15 @@ class TrialLimits(BaseModel):
 
 
 class MyEntitlements(Page[EntitlementRead]):
-    """A person's grants, with the limits of the free trial they fall back on."""
+    """A person's grants, with the limits of the free trial they fall back on.
+
+    `can_upgrade` tells a screen whether to offer a bigger plan: true when a bigger one is
+    on sale for the person's current exam, or when they hold no paid access yet to compare
+    against.
+    """
 
     trial: TrialLimits
+    can_upgrade: bool
 
 
 class GrantEntitlement(BaseModel):

@@ -8,6 +8,7 @@ import {
   HiOutlineMicrophone,
 } from "react-icons/hi2";
 import {
+  Alert,
   AsyncBoundary,
   B2CPanelCard,
   B2CPanelCardBody,
@@ -15,6 +16,7 @@ import {
   B2CPanelCardHeaderIcon,
   B2CSegmentedTabs,
   Badge,
+  Button,
   ButtonLink,
 } from "@/foundation/ui";
 import { b2cBodyText, b2cBodyTextMuted, b2cPageTitle } from "@/foundation/ui/productTokens";
@@ -26,8 +28,10 @@ import { listExams, readLibraryStation } from "@/capabilities/stations/api";
 // audience scoping. Two jobs built this at once and this is the faithful one.
 import { StationComments } from "@/capabilities/community";
 import { StationNotFound } from "@/capabilities/stations/StationNotFound";
+import { StationNotInPlanGate } from "@/capabilities/stations/StationNotInPlanGate";
 import { libraryHref, practiseHref } from "@/capabilities/stations/routes";
 import { useRecordView } from "@/capabilities/account/useRecordView";
+import { hasCode } from "@/foundation/platform-client/errors";
 
 type DetailTab = "brief" | "discussion";
 
@@ -83,7 +87,21 @@ export function StationDetail({ stationId }: { stationId: string }) {
        */}
       {station.data === null && !station.loading && !station.error ? <StationNotFound /> : null}
 
-      <AsyncBoundary state={station}>
+      <AsyncBoundary
+        state={station}
+        failure={(error, retry) =>
+          hasCode(error, "station_not_in_plan") ? (
+            <StationNotInPlanGate />
+          ) : (
+            <Alert tone="danger" title="That did not load">
+              <p>{error.message || "Something went wrong."}</p>
+              <Button variant="secondary" size="sm" className="mt-3" onClick={retry}>
+                Try again
+              </Button>
+            </Alert>
+          )
+        }
+      >
         {(found) => (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

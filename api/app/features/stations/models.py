@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -115,6 +116,11 @@ class Station(Base, UUIDPrimaryKey, Timestamps):
     current_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("station_versions.id", ondelete="SET NULL", use_alter=True)
     )
+    # An editor's sign-off, separate from `status`: a published station is schedulable, but a
+    # normal reader of the library must not see it until a human has reviewed it. Mirrors legacy
+    # b2c's `approved` flag and its platform-admin bypass. Defaults false; the migration that adds
+    # this column backfills every row already `published` to true, so nothing live goes dark.
+    approved: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
 
 
 class StationVersion(Base, UUIDPrimaryKey, Timestamps):

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from app.core.errors import Conflict, Forbidden, InvalidInput, NotFound, Unavailable
 from app.features.entitlements.errors import NotEntitled
-from app.features.stations.errors import StationNotFound, StationNotPublishedError
+from app.features.stations.errors import StationNotFound, StationNotInPlan, StationNotPublishedError
 
 # Re-exported so the router can document the refusal without reaching into
 # another slice. Deliberately the same class, not a copy: the code is the
@@ -22,6 +22,7 @@ __all__ = [
     "NotEntitledToBegin",
     "StationExamMismatch",
     "StationNotFound",
+    "StationNotInPlan",
     "StationNotPublishedError",
 ]
 

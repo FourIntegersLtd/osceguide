@@ -315,6 +315,27 @@ async def attempts_counted_by_trial(
     ]
 
 
+async def station_version_ids_for_user_exam(
+    session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID
+) -> set[uuid.UUID]:
+    """Every station version this person has an attempt on for this exam, debriefs included.
+
+    Version ids, not station ids: this slice does not import the stations slice's `models`
+    (`tests/guards/test_slices_call_services_only.py`), so the caller resolves each version to
+    its station through the stations slice's own service or repository.
+    """
+    stmt = (
+        select(Attempt.station_version_id)
+        .where(
+            Attempt.user_id == user_id,
+            Attempt.exam_id == exam_id,
+            Attempt.station_version_id.is_not(None),
+        )
+        .distinct()
+    )
+    return {row for row in (await session.execute(stmt)).scalars() if row is not None}
+
+
 async def evaluated_for_user(
     session: AsyncSession, user_id: uuid.UUID, *, exam_id: uuid.UUID | None = None, limit: int
 ) -> list[Attempt]:

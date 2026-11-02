@@ -4,6 +4,7 @@ export type { StationLibraryScope } from "@/capabilities/stations/api";
 export { StationDetail } from "@/capabilities/stations/StationDetail";
 export { StationConsultation } from "@/capabilities/stations/StationConsultation";
 export { StationNotFound } from "@/capabilities/stations/StationNotFound";
+export { StationNotInPlanGate } from "@/capabilities/stations/StationNotInPlanGate";
 export { libraryHref, practiseHref, stationHref } from "@/capabilities/stations/routes";
 export { describeRefusal } from "@/capabilities/stations/refusal";
 export { stationsCapability } from "@/capabilities/stations/capability";

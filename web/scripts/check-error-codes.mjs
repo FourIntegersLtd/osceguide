@@ -43,7 +43,8 @@ const GENERIC_GROUPS = [
   [
     "input rejected: the server's sentence names the field or file and the fix",
     [
-      "content_too_long", "contract_end_in_past", "draft_exists", "empty_content", "empty_query",
+      "content_too_long", "contract_end_in_past", "draft_exists", "empty_content",
+      "empty_plan_update", "empty_query",
       "exam_code_taken", "invalid_attempt_state", "invalid_audience", "invalid_author_filter",
       "invalid_avatar_file", "invalid_bucket", "invalid_cv_file", "invalid_date_range",
       "invalid_email_change_token", "invalid_exam_code", "invalid_exam_settings", "invalid_input",
@@ -101,7 +102,7 @@ const KNOWN_GAPS = allowList(
 
 const GENERIC = allowList(
   Object.fromEntries(GENERIC_GROUPS.flatMap(([reason, list]) => list.map((c) => [c, reason]))),
-  170, // lower only
+  171, // lower only
 );
 
 const codes = spec().components.schemas.ErrorResponse.properties.code.enum;

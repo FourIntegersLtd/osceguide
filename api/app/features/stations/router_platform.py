@@ -232,13 +232,41 @@ async def archive_platform_station_version(
     )
 
 
+# An editor's sign-off, on top of `status`: a published station still does not reach a normal
+# reader of the library until this is set. Mirrors legacy b2c's `approved` flag.
+@router.post(
+    "/platform/stations/{station_id}/approve",
+    response_model=schemas.StationRead,
+    responses=error_responses(*_AUTH, errors.StationNotFound, errors.StationNotApprovableError),
+)
+async def approve_platform_station(
+    station_id: uuid.UUID, admin: PlatformAdmin, session: Session
+) -> schemas.StationRead:
+    return await service.set_station_approved(session, None, station_id, approved=True)
+
+
+# Pull a station back out of the library without touching whether it is published — for
+# instance while a reported problem on an already-approved station is being fixed.
+@router.post(
+    "/platform/stations/{station_id}/revoke-approval",
+    response_model=schemas.StationRead,
+    responses=error_responses(*_AUTH, errors.StationNotFound),
+)
+async def revoke_platform_station_approval(
+    station_id: uuid.UUID, admin: PlatformAdmin, session: Session
+) -> schemas.StationRead:
+    return await service.set_station_approved(session, None, station_id, approved=False)
+
+
 # --- one station, named by id ------------------------------------------------
 
 
 @router.get(
     "/stations/{station_id}",
     response_model=schemas.LibraryStationRead,
-    responses=error_responses(Unauthenticated, errors.StationNotFound, errors.NotEntitled),
+    responses=error_responses(
+        Unauthenticated, errors.StationNotFound, errors.NotEntitled, errors.StationNotInPlan
+    ),
 )
 async def read_library_station(
     station_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep

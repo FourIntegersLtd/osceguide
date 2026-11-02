@@ -15,6 +15,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.core.auth import Membership
+from tests.http.test_stations_routes import a_browser
 from tests.support.catalog import create_exam
 from tests.support.tokens import bearer
 
@@ -194,6 +195,105 @@ async def test_archiving_the_current_version_puts_the_previous_one_back_in_the_l
     assert [(listed["title"], listed["version"]) for listed in library.json()["items"]] == [
         ("COPD exacerbation", 1)
     ]
+
+
+async def test_a_freshly_published_station_is_hidden_until_an_editor_approves_it(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """Mirrors legacy b2c's `approved` flag: a published station is not yet in the library for
+    a normal reader, only for the staff console curating it (`all_exams`)."""
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_published_library_station(client, admin)
+    station_id = station_path.rsplit("/", 1)[-1]
+    browser = await a_browser(db_session, make_actor, "reader@example.com")
+
+    hidden = await client.get("/api/v1/stations", headers=bearer(browser))
+    assert hidden.json()["items"] == []
+
+    read_as_reader = await client.get(f"/api/v1/stations/{station_id}", headers=bearer(browser))
+    assert read_as_reader.status_code == 404
+    assert read_as_reader.json()["code"] == "station_not_found"
+
+    staff_view = await client.get("/api/v1/stations", headers=bearer(admin))
+    assert [s["title"] for s in staff_view.json()["items"]] == ["COPD exacerbation"]
+
+
+async def test_approving_a_published_station_opens_it_to_every_reader(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_published_library_station(client, admin)
+    browser = await a_browser(db_session, make_actor, "reader2@example.com")
+
+    approved = await client.post(f"{station_path}/approve", headers=bearer(admin))
+    assert approved.status_code == 200, approved.text
+    assert approved.json()["approved"] is True
+
+    now_visible = await client.get("/api/v1/stations", headers=bearer(browser))
+    assert [s["title"] for s in now_visible.json()["items"]] == ["COPD exacerbation"]
+
+
+async def test_approving_a_station_that_is_not_published_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """A draft has no reader to protect yet, so there is nothing for the sign-off to act on."""
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    created = await client.post(
+        "/api/v1/platform/stations",
+        json={"title": "Still drafting", "exam_code": "sca", "content": CONTENT},
+        headers=bearer(admin),
+    )
+    station_path = f"/api/v1/platform/stations/{created.json()['id']}"
+
+    refused = await client.post(f"{station_path}/approve", headers=bearer(admin))
+
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["code"] == "station_not_approvable"
+
+
+async def test_revoking_approval_pulls_a_published_station_back_out_of_the_library(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """Revoking touches only approval, never `status`: the version stays published, ready to be
+    approved again once whatever was flagged is fixed."""
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_published_library_station(client, admin)
+    await client.post(f"{station_path}/approve", headers=bearer(admin))
+    browser = await a_browser(db_session, make_actor, "reader3@example.com")
+    assert (await client.get("/api/v1/stations", headers=bearer(browser))).json()["items"] != []
+
+    revoked = await client.post(f"{station_path}/revoke-approval", headers=bearer(admin))
+    assert revoked.status_code == 200, revoked.text
+    assert revoked.json()["approved"] is False
+    assert revoked.json()["status"] == "published"
+
+    hidden_again = await client.get("/api/v1/stations", headers=bearer(browser))
+    assert hidden_again.json()["items"] == []
+
+    staff_still_sees_it = await client.get("/api/v1/stations", headers=bearer(admin))
+    assert [s["title"] for s in staff_still_sees_it.json()["items"]] == ["COPD exacerbation"]
+
+
+async def test_an_org_admin_cannot_approve_a_platform_station(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_published_library_station(client, admin)
+    org_id = await an_org(client, make_actor, slug="guys")
+
+    response = await client.post(
+        f"{station_path}/approve", headers=bearer(await org_admin(make_actor, org_id, slug="guys"))
+    )
+
+    assert response.status_code == 403
+
+
+async def test_approving_an_unknown_station_is_not_found(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    response = await client.post(f"/api/v1/platform/stations/{uuid.uuid4()}/approve", headers=bearer(admin))
+    assert response.status_code == 404
+    assert response.json()["code"] == "station_not_found"
 
 
 async def test_an_org_admin_cannot_write_the_library(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

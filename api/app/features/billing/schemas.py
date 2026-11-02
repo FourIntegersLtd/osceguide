@@ -32,6 +32,9 @@ class PlatformPlanRead(BaseModel):
     active: bool
     stripe_price_id: str
     referral_amount_pence: int | None = None
+    # How many library stations this plan unlocks, already counting the 3 free-trial
+    # stations. None means every station is unlocked.
+    station_limit: int | None = None
     created_at: datetime
 
 
@@ -46,12 +49,21 @@ class CreatePlan(BaseModel):
     # Stripe's own floor for GBP is 30p; nothing real is priced under a pound.
     amount_pence: int = Field(ge=100, le=1_000_000)
     duration_days: int = Field(ge=1, le=730)
+    # How many library stations this plan unlocks, counting the 3 free-trial stations.
+    # Left out (or None) means no limit: every station is unlocked.
+    station_limit: int | None = Field(default=None, ge=1, le=10000)
 
 
-class SetPlanActive(BaseModel):
-    """Put a plan, and its referral twin, on sale or take them off it."""
+class UpdatePlan(BaseModel):
+    """A staff change to a plan: take it on or off sale, and/or set how many stations it unlocks.
 
-    active: bool
+    Leaving `station_limit` out of the request body means "do not change it"; sending it
+    explicitly as `null` means "no limit". The handler tells the two apart with
+    `"station_limit" in body.model_fields_set`, not by checking for `None`.
+    """
+
+    active: bool | None = None
+    station_limit: int | None = Field(default=None, ge=1, le=10000)
 
 
 class WebhookResult(BaseModel):

@@ -205,16 +205,17 @@ async def create_platform_plan(
 @router.patch(
     "/platform/billing/plans/{plan_code}",
     response_model=schemas.PlatformPlanRead,
-    responses=error_responses(Forbidden, errors.PlanNotFound, errors.UnknownExamError),
+    responses=error_responses(
+        Forbidden, errors.PlanNotFound, errors.UnknownExamError, errors.EmptyPlanUpdate
+    ),
 )
-async def set_platform_plan_active(
+# Takes a plan on or off sale, and/or sets how many stations it unlocks.
+async def update_platform_plan(
     plan_code: str,
-    body: schemas.SetPlanActive,
+    body: schemas.UpdatePlan,
     admin: PlatformAdmin,
     session: Session,
     clock: ClockDep,
 ) -> schemas.PlatformPlanRead:
-    """Put a plan and its referral twin on sale, or retire them. Payments under way still grant."""
-    return await service_plans.set_plan_active(
-        session, plan_code, active=body.active, actor=admin, now=clock.now()
-    )
+    """Change a plan and its referral twin: on sale or retired, and/or their station limit."""
+    return await service_plans.update_plan(session, plan_code, body, actor=admin, now=clock.now())

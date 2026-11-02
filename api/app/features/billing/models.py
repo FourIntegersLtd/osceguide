@@ -28,7 +28,10 @@ from app.core.db import Base, Timestamps, UUIDPrimaryKey
 class Plan(Base, UUIDPrimaryKey, Timestamps):
     """What a Stripe price buys. A row rather than a table keyed by pence, so changing a price,
     taking payment in another currency, or honouring a Stripe coupon does not break the
-    purchase after the card has been charged."""
+    purchase after the card has been charged.
+
+    Price, exam and duration never change once a plan is written; only `active` and
+    `station_limit` can, both from the staff console."""
 
     __tablename__ = "plans"
 
@@ -41,6 +44,9 @@ class Plan(Base, UUIDPrimaryKey, Timestamps):
     currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'gbp'"))
     duration_days: Mapped[int] = mapped_column(Integer, nullable=False)
     active: Mapped[bool] = mapped_column(nullable=False, server_default=text("true"))
+    # How many library stations this plan unlocks, already including the 3 free-trial
+    # stations. NULL means every station is unlocked (today's behaviour).
+    station_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class StripeEvent(Base, UUIDPrimaryKey):

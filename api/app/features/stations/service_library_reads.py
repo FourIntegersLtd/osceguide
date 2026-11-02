@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog import service as catalog
 from app.features.entitlements import service_access
-from app.features.stations import errors, repository_library
+from app.features.stations import errors, repository_library, service_plan_window
 from app.features.stations.schemas import LibraryStationRead
 from app.features.stations.service_reads import summaries_by_version_id
 
@@ -43,6 +43,7 @@ async def browse_library(
     that organisation's circuit, whatever the staff member holds as a consumer.
     """
     exam_id = None
+    resolved_exam_code = exam_code
     if exam_code is not None:
         exam_id = (await catalog.resolve_exam(session, exam_code)).id
         if (
@@ -59,10 +60,35 @@ async def browse_library(
             # Nothing they may open, so nothing to browse. An empty page rather than
             # a refusal: a brand-new account with no exam chosen has no library yet.
             return [], None
+        resolved_exam_code = access.current
         exam_id = (await catalog.resolve_exam(session, access.current)).id
 
+    # A plan's station limit only ever narrows a signed-in consumer's own browse of their own
+    # exam; staff curating the whole catalogue (`all_exams`) are never capped by it.
+    plan_station_ids: set[uuid.UUID] | None = None
+    if (
+        user_id is not None
+        and now is not None
+        and not all_exams
+        and exam_id is not None
+        and resolved_exam_code
+    ):
+        plan_station_ids = await service_plan_window.allowed_station_ids(
+            session, user_id=user_id, exam_id=exam_id, exam_code=resolved_exam_code, now=now
+        )
+
     stations, next_cursor = await repository_library.library_page(
-        session, limit=limit, cursor=cursor, exam_id=exam_id, search=search, version_ids=version_ids
+        session,
+        limit=limit,
+        cursor=cursor,
+        exam_id=exam_id,
+        search=search,
+        version_ids=version_ids,
+        station_ids=list(plan_station_ids) if plan_station_ids is not None else None,
+        # Staff curating the whole catalogue must see a published station before an editor has
+        # approved it, same bypass as the plan window above: an unreviewed station still has to
+        # be found and fixed by somebody.
+        require_approved=not all_exams,
     )
     version_ids = [
         station.current_version_id for station in stations if station.current_version_id is not None
@@ -114,7 +140,7 @@ async def read_library_station(
 
     Scoped to the exams the caller may open, same as `browse_library`; `all_exams` is the staff pass.
     """
-    found = await repository_library.library_station(session, station_id)
+    found = await repository_library.library_station(session, station_id, require_approved=not all_exams)
     if found is None:
         # One code for "no such station", "not published", and "some
         # institution's own": which of them it was is somebody else's tenant.
@@ -125,6 +151,14 @@ async def read_library_station(
         access = await service_access.exam_access_for(session, user_id, now=now)
         if code not in access.codes:
             raise errors.NotEntitled(details={"reason": "no_entitlement"})
+        await service_plan_window.ensure_station_in_plan(
+            session,
+            user_id=user_id,
+            station_id=station.id,
+            owner_kind=station.owner_kind,
+            exam_id=station.exam_id,
+            now=now,
+        )
     return LibraryStationRead(
         id=station.id,
         title=station.title,

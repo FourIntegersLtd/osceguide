@@ -46,6 +46,7 @@ router = APIRouter(tags=["attempts"])
         errors.StationNotFound,
         errors.StationNotPublishedError,
         errors.StationExamMismatch,
+        errors.StationNotInPlan,
     ),
     dependencies=[Depends(per_user(AI_SPEND))],
 )

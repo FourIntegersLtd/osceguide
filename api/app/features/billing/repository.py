@@ -41,6 +41,13 @@ async def set_plans_active(session: AsyncSession, codes: Collection[str], *, act
     await session.execute(update(Plan).where(Plan.code.in_(list(codes))).values(active=active))
 
 
+async def set_plans_station_limit(
+    session: AsyncSession, codes: Collection[str], *, station_limit: int | None
+) -> None:
+    """Set how many library stations these plans unlock. `None` clears the limit."""
+    await session.execute(update(Plan).where(Plan.code.in_(list(codes))).values(station_limit=station_limit))
+
+
 async def create_plan(
     session: AsyncSession,
     *,
@@ -50,6 +57,7 @@ async def create_plan(
     duration_days: int,
     exam_code: str,
     currency: str = "gbp",
+    station_limit: int | None = None,
 ) -> Plan:
     """Insert a new plan row for a Stripe price. Staff pricing and seeding; no customer path."""
     plan = Plan(
@@ -59,6 +67,7 @@ async def create_plan(
         duration_days=duration_days,
         exam_code=exam_code,
         currency=currency,
+        station_limit=station_limit,
     )
     session.add(plan)
     await session.flush()

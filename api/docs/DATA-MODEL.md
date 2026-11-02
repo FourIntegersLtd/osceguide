@@ -551,6 +551,7 @@ points at one column rather than a union of sources.
 | `title` | `varchar(300) not null` | |
 | `status` | `varchar(32) not null default 'draft'` | `draft` \| `published` \| `archived` |
 | `current_version_id` | `uuid null` → `station_versions.id` SET NULL (`use_alter`) | set once a version is published; attempts bind to the version, never here |
+| `approved` | `boolean not null default false` | an editor's sign-off, independent of `status`: a platform-library station must be both `published` and `approved` before a normal reader's browse or read of the library returns it (staff bypass this, same as the plan window); mirrors legacy b2c's `approved` flag. Not enforced on an org's own station — only the platform-library reads check it |
 
 CHECK `ck_stations_owner_matches_org`: `platform` ⇒ `org_id IS NULL`, `org` ⇒
 `org_id IS NOT NULL`. Indexes `(org_id, exam_id)` and `(exam_id, owner_kind)`.
@@ -1225,6 +1226,7 @@ breaks the purchase *after* the card has been charged.
 | `currency` | `varchar(3) not null default 'gbp'` | |
 | `duration_days` | `int not null` | `DEFAULT_PLAN_DAYS = {one_month: 30, three_month: 90, six_month: 180}` |
 | `active` | `bool not null default true` | |
+| `station_limit` | `int null` | how many library stations this plan unlocks, already counting the 3 free-trial stations; `null` means every station. Staff-editable from `/staff/billing`, unlike every other column here |
 
 ### `stripe_events`
 

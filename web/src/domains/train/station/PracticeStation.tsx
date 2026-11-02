@@ -1,12 +1,18 @@
 "use client";
 
 import { useCallback } from "react";
-import { AsyncBoundary } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { useCurrentExam } from "@/foundation/session";
 import { createAttempt } from "@/capabilities/attempt-runner";
-import { listExams, readLibraryStation, StationNotFound } from "@/capabilities/stations";
+import { hasCode } from "@/foundation/platform-client/errors";
+import {
+  listExams,
+  readLibraryStation,
+  StationNotFound,
+  StationNotInPlanGate,
+} from "@/capabilities/stations";
 import { StationScreen } from "@/capabilities/station-runner/StationScreen";
 import type { StationStep } from "@/capabilities/station-runner/StationChrome";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
@@ -61,7 +67,21 @@ export function PracticeStation({
   }, [examCode, versionId]);
 
   return (
-    <AsyncBoundary state={context}>
+    <AsyncBoundary
+      state={context}
+      failure={(error, retry) =>
+        hasCode(error, "station_not_in_plan") ? (
+          <StationNotInPlanGate />
+        ) : (
+          <Alert tone="danger" title="That did not load">
+            <p>{error.message || "Something went wrong."}</p>
+            <Button variant="secondary" size="sm" className="mt-3" onClick={retry}>
+              Try again
+            </Button>
+          </Alert>
+        )
+      }
+    >
       {({ station, exam }) =>
         station === null ? (
           // The link named a station this person cannot read. The runner is not

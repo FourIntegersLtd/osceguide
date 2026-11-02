@@ -13,7 +13,17 @@ from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin
-from app.features.entitlements import domain, errors, schemas, service, service_org, service_practice_access
+from app.features.billing import service_station_limit
+from app.features.catalog import service as catalog
+from app.features.entitlements import (
+    domain,
+    errors,
+    schemas,
+    service,
+    service_access,
+    service_org,
+    service_practice_access,
+)
 
 router = APIRouter(tags=["entitlements"])
 
@@ -28,7 +38,15 @@ async def list_my_entitlements(
 ) -> schemas.MyEntitlements:
     """Expired grants are included with `live` computed, because "your access
     ended on the 3rd" is a more useful answer than an empty list."""
-    entitlements = await service.list_for_user(session, principal.user_id, now=clock.now())
+    now = clock.now()
+    entitlements = await service.list_for_user(session, principal.user_id, now=now)
+    access = await service_access.exam_access_for(session, principal.user_id, now=now)
+    can_upgrade = True
+    if access.current is not None:
+        exam_row = await catalog.resolve_exam(session, access.current)
+        can_upgrade = await service_station_limit.can_upgrade(
+            session, user_id=principal.user_id, exam_id=exam_row.id, exam_code=access.current, now=now
+        )
     return schemas.MyEntitlements(
         items=entitlements,
         next_cursor=None,
@@ -37,6 +55,7 @@ async def list_my_entitlements(
             days=domain.TRIAL_DAYS,
             attempts_per_station=domain.TRIAL_ATTEMPTS_PER_STATION,
         ),
+        can_upgrade=can_upgrade,
     )
 
 

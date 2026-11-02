@@ -17,16 +17,6 @@ export function paidAccess<T extends Entitlement>(entitlements: readonly T[]): T
   return entitlements.filter((entitlement) => entitlement.live && entitlement.source !== "trial");
 }
 
-/** Whether `paidAccess` covers this exam; with no exam chosen yet, any exam. */
-export function holdsPaidAccess(
-  entitlements: readonly Entitlement[],
-  examCode: string | null,
-): boolean {
-  return paidAccess(entitlements).some(
-    (entitlement) => examCode === null || entitlement.exam_code === examCode,
-  );
-}
-
 /**
  * When the live access ends: the latest end among live grants, or null when none is live or any is
  * open-ended (open-ended outlasts every date).
@@ -82,7 +72,7 @@ export function currentPlanView(
       title: "Full access",
       meta: `Started ${formatLongDate(started)}, ${end ? `ends ${formatLongDate(end)}` : "no end date"}`,
       active: true,
-      upgrade: true,
+      upgrade: entitlements.can_upgrade,
     };
   }
   const [given] = paid;

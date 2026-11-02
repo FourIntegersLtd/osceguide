@@ -169,3 +169,60 @@ async def test_a_plan_goes_back_on_sale_only_while_its_exam_can_be_granted(
     missing = await client.patch(f"{PLANS}/nope_1m", json={"active": True}, headers=bearer(root))
     assert (legacy.status_code, legacy.json()["code"]) == (404, "unknown_exam")
     assert missing.json()["code"] == "plan_not_found"
+
+
+async def test_a_plan_is_created_with_a_station_limit_that_carries_to_its_twin(
+    client: AsyncClient, make_actor, db_session: AsyncSession, stripe: FakeCheckoutSessions
+) -> None:  # type: ignore[no-untyped-def]
+    """`station_limit` on the create body lands on the plan and its referral twin alike."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await ensure_exam(db_session, "sca")
+
+    created = await client.post(PLANS, json={**NEW_PLAN, "station_limit": 53}, headers=bearer(root))
+
+    assert created.status_code == 201, created.text
+    assert created.json()["station_limit"] == 53
+    twin = await billing_repo.any_plan_by_code(db_session, "sca_2m_referral")
+    assert twin is not None and twin.station_limit == 53
+
+
+async def test_staff_sets_and_clears_a_plans_station_limit_without_touching_active(
+    client: AsyncClient, make_actor, db_session: AsyncSession, stripe: FakeCheckoutSessions
+) -> None:  # type: ignore[no-untyped-def]
+    """PATCH `station_limit` alone changes the limit on both rows and leaves `active` as it was."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await ensure_exam(db_session, "sca")
+    assert (await client.post(PLANS, json=NEW_PLAN, headers=bearer(root))).status_code == 201
+
+    raised = await client.patch(f"{PLANS}/sca_2m", json={"station_limit": 78}, headers=bearer(root))
+    assert raised.status_code == 200, raised.text
+    assert raised.json()["station_limit"] == 78
+    assert raised.json()["active"] is True
+    twin = await billing_repo.any_plan_by_code(db_session, "sca_2m_referral")
+    assert twin is not None and twin.station_limit == 78
+
+    cleared = await client.patch(f"{PLANS}/sca_2m", json={"station_limit": None}, headers=bearer(root))
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["station_limit"] is None
+
+    active_only = await client.patch(f"{PLANS}/sca_2m", json={"active": False}, headers=bearer(root))
+    assert active_only.status_code == 200, active_only.text
+    assert active_only.json()["active"] is False
+    assert active_only.json()["station_limit"] is None  # untouched by the active-only PATCH
+
+    empty = await client.patch(f"{PLANS}/sca_2m", json={}, headers=bearer(root))
+    assert (empty.status_code, empty.json()["code"]) == (422, "empty_plan_update")
+
+
+async def test_a_non_admin_cannot_update_a_plan(
+    client: AsyncClient, make_actor, db_session: AsyncSession, stripe: FakeCheckoutSessions
+) -> None:  # type: ignore[no-untyped-def]
+    """Only a platform admin may PATCH a plan."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    customer = await make_actor("someone-else@example.com")
+    await ensure_exam(db_session, "sca")
+    assert (await client.post(PLANS, json=NEW_PLAN, headers=bearer(root))).status_code == 201
+
+    refused = await client.patch(f"{PLANS}/sca_2m", json={"active": False}, headers=bearer(customer))
+
+    assert refused.status_code == 403

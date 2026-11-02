@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { currentPlanView, holdsPaidAccess, paidAccess, latestLiveEnd } from "@/capabilities/account/access";
+import { currentPlanView, paidAccess, latestLiveEnd } from "@/capabilities/account/access";
 import type { MyEntitlements } from "@/capabilities/account/api";
 
 type Entitlement = MyEntitlements["items"][number];
@@ -58,7 +58,12 @@ test("the end of access is the latest live end, by date, and open-ended wins", (
 
 const TRIAL_LIMITS = { stations: 3, days: 7, attempts_per_station: 2 };
 const NOW = new Date("2026-10-11T12:00:00Z");
-const mine = (items: Entitlement[]): MyEntitlements => ({ items, trial: TRIAL_LIMITS, next_cursor: null });
+const mine = (items: Entitlement[]): MyEntitlements => ({
+  items,
+  trial: TRIAL_LIMITS,
+  next_cursor: null,
+  can_upgrade: true,
+});
 test("current plan: no access reads Free with the trial's station allowance", () => {
   assert.deepEqual(currentPlanView(mine([]), NOW), {
     kind: "free",

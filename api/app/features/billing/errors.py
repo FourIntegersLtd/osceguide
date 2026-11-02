@@ -9,6 +9,13 @@ from app.core.errors import AppError, Conflict, InvalidInput, NotFound, Unavaila
 from app.features.growth.errors import ReferralNotFound as ReferralNotFound
 
 
+class EmptyPlanUpdate(InvalidInput):
+    """A plan PATCH set neither `active` nor `station_limit`, so there is nothing to change."""
+
+    code = "empty_plan_update"
+    default_message = "Set at least one of active or station_limit"
+
+
 class UnknownPlanError(NotFound):
     """A charged payment with nothing to grant.
 

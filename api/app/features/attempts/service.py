@@ -19,6 +19,7 @@ from app.features.catalog.service import resolve_exam
 from app.features.entitlements import service as entitlements
 from app.features.identity import service as identity
 from app.features.stations import service as stations
+from app.features.stations import service_plan_window
 from app.features.stations import service_reads as stations_reads
 
 # The consumer kinds a reload reopens: one person, one station, nothing scheduled around them.
@@ -68,6 +69,15 @@ async def start_attempt(
             session, user_id=user_id, exam_id=exam.id, station_version_id=station_version_id
         ),
     )
+    if runnable is not None:
+        await service_plan_window.ensure_station_in_plan(
+            session,
+            user_id=user_id,
+            station_id=runnable.station_id,
+            owner_kind=runnable.owner_kind,
+            exam_id=runnable.exam_id,
+            now=now,
+        )
 
     # Reopening a station (a reload, a second tab) resumes the attempt it already opened rather
     # than leaving that one orphaned and restarting the reading clock. Checked after the

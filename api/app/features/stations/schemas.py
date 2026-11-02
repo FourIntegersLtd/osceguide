@@ -42,6 +42,10 @@ class StationRead(BaseModel):
     content: dict[str, Any] | None = None
     current_version_id: uuid.UUID | None = None
     template_version_id: uuid.UUID | None = None
+    # An editor's sign-off, separate from `status`: a platform-library station only reaches a
+    # normal reader once this is true. Always true for an org's own station, which the gate does
+    # not apply to.
+    approved: bool = True
 
 
 class LibraryStationRead(BaseModel):

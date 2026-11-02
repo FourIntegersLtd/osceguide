@@ -26,6 +26,7 @@ export type PlatformPayment = S["PlatformPaymentRead"];
 export type StripeEvent = S["StripeEventRead"];
 export type PlatformPlan = S["PlatformPlanRead"];
 export type CreatePlanInput = S["CreatePlan"];
+export type UpdatePlanInput = S["UpdatePlan"];
 export type PlatformAuditEntry = S["PlatformAuditRead"];
 export type OrgAtRisk = S["OrgAtRisk"];
 export type Job = S["JobRead"];
@@ -221,11 +222,14 @@ export function createPlatformPlan(body: CreatePlanInput): Promise<PlatformPlan>
   return platformRequest<PlatformPlan>(`${PLATFORM}/billing/plans`, { method: "POST", body });
 }
 
-/** Put a plan (and its referral twin) on sale, or retire it. */
-export function setPlatformPlanActive(code: string, active: boolean): Promise<PlatformPlan> {
+/** Put a plan (and its referral twin) on sale, retire it, or change how many stations it unlocks. */
+export function updatePlatformPlan(
+  code: string,
+  body: { active?: boolean; station_limit?: number | null },
+): Promise<PlatformPlan> {
   return platformRequest<PlatformPlan>(`${PLATFORM}/billing/plans/${encodeURIComponent(code)}`, {
     method: "PATCH",
-    body: { active },
+    body,
   });
 }
 

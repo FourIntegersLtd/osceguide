@@ -9,7 +9,6 @@ import { b2cIconButton, b2cNavUpgradeButton } from "@/foundation/ui/productToken
 import { PERSONAL_WORKSPACE, workspaceBasePath } from "@/foundation/routing";
 import { isPlatformAdmin, useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
-import { holdsPaidAccess } from "@/capabilities/account/access";
 import { listEntitlements } from "@/capabilities/account/api";
 import { useAsync } from "@/foundation/hooks";
 
@@ -31,21 +30,20 @@ export function WorkspaceNavFooter({
   const { session, signOut } = useSession();
   const [signingOut, setSigningOut] = useState(false);
   const { hrefFor } = useSurface();
-  const { code, error: examError, reload: reloadExams } = useCurrentExam();
+  const { error: examError, reload: reloadExams } = useCurrentExam();
   const userId = session?.user.id ?? null;
   // Not a gate, so a failed read hides the button rather than an error.
   const entitlements = useAsync(
-    async (signal) => (consumer && userId ? (await listEntitlements(signal)).items : null),
+    async (signal) => (consumer && userId ? await listEntitlements(signal) : null),
     [consumer, userId],
   );
 
   const examLoadFailed = consumer && examError !== null;
   const name = session?.user.name || session?.user.email || "Account";
   const email = session?.user.name ? session.user.email : null;
-  // Holding an exam is not evidence of payment: it can be the exam the account was
-  // opened for, or a trial or an org's grant. Only a paid entitlement counts.
-  const showUpgrade =
-    consumer && entitlements.data !== null && !holdsPaidAccess(entitlements.data, code);
+  // The backend already knows whether a bigger plan is on sale for this person's exam, so the
+  // button offers an upgrade only when one exists, not merely whenever they have not paid yet.
+  const showUpgrade = consumer && entitlements.data !== null && entitlements.data.can_upgrade;
 
   const upgrade = showUpgrade ? (
     <Link

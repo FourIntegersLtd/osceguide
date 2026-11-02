@@ -41,6 +41,9 @@ export function describeRefusal(cause: unknown, fallback: string, surface?: Surf
   if (hasCode(cause, "station_exam_mismatch")) {
     return "This station is no longer part of this exam. Go back to your session and choose another.";
   }
+  if (hasCode(cause, "station_not_in_plan")) {
+    return "This station is not included in your plan. Upgrade to unlock it.";
+  }
   if (isPlatformError(cause)) return cause.message;
   return fallback;
 }

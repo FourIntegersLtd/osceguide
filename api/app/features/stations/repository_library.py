@@ -12,13 +12,31 @@ import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import visible_to
 from app.core.pagination import keyset_page
 from app.core.search import contains_text
+from app.features.stations import domain
 from app.features.stations.models import Station, StationVersion
+
+
+def _first_published_at_floor() -> ColumnElement[bool]:
+    """A correlated subquery for a station's earliest version `published_at`, compared against
+    the date the old site started showing library stations.
+
+    Pulled out once because four queries in this module apply the same floor to the same
+    platform-library rows; a station that has never had a version published (so the subquery
+    reads NULL) never passes it.
+    """
+    first_published_at = (
+        select(func.min(StationVersion.published_at))
+        .where(StationVersion.station_id == Station.id)
+        .correlate(Station)
+        .scalar_subquery()
+    )
+    return first_published_at >= domain.LIBRARY_FIRST_PUBLISHED_FLOOR
 
 
 async def library_page(
@@ -29,13 +47,22 @@ async def library_page(
     exam_id: uuid.UUID | None = None,
     search: str | None = None,
     version_ids: Sequence[uuid.UUID] | None = None,
+    station_ids: Sequence[uuid.UUID] | None = None,
+    require_approved: bool = True,
 ) -> tuple[list[Station], str | None]:
-    """A page of the published library, narrowed by exam, by title and by current version.
+    """A page of the published library, narrowed by exam, by title, by current version and,
+    when a plan limits the library, by which stations the limit allows.
 
     `search` belongs in SQL rather than in whoever asked: applying a filter to an already-fetched
-    page can only ever match the rows that page contained.
+    page can only ever match the rows that page contained. `require_approved` is the editor's
+    sign-off gate on top of `status == 'published'`: turned off only for the staff console
+    (`all_exams`), which has to find and review a published station nobody else may see yet.
     """
-    stmt = select(Station).where(Station.owner_kind == "platform", Station.status == "published")
+    stmt = select(Station).where(
+        Station.owner_kind == "platform", Station.status == "published", _first_published_at_floor()
+    )
+    if require_approved:
+        stmt = stmt.where(Station.approved.is_(True))
     if exam_id is not None:
         stmt = stmt.where(Station.exam_id == exam_id)
     if search and search.strip():
@@ -44,6 +71,10 @@ async def library_page(
         stmt = stmt.where(contains_text(Station.title, search))
     if version_ids:
         stmt = stmt.where(Station.current_version_id.in_(list(version_ids)))
+    if station_ids is not None:
+        # Passed only when a plan limits the library: an empty collection here means the plan
+        # allows nothing yet, not "no filter", so it must still narrow the query to nothing.
+        stmt = stmt.where(Station.id.in_(list(station_ids)))
     return await keyset_page(
         session,
         stmt,
@@ -55,8 +86,35 @@ async def library_page(
     )
 
 
+async def first_station_ids(session: AsyncSession, *, exam_id: uuid.UUID, limit: int) -> list[uuid.UUID]:
+    """The ids of the first `limit` published platform-library stations of an exam past the
+    date floor, oldest first by when each was first published.
+
+    This is what a limited plan's window is built from: the earliest `limit` stations, plus
+    (separately, by the caller) whatever the person has already attempted.
+    """
+    first_published_at = (
+        select(func.min(StationVersion.published_at))
+        .where(StationVersion.station_id == Station.id)
+        .correlate(Station)
+        .scalar_subquery()
+    )
+    stmt = (
+        select(Station.id)
+        .where(
+            Station.owner_kind == "platform",
+            Station.status == "published",
+            Station.exam_id == exam_id,
+            _first_published_at_floor(),
+        )
+        .order_by(first_published_at.asc(), Station.id.asc())
+        .limit(limit)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
 async def library_station(
-    session: AsyncSession, station_id: uuid.UUID
+    session: AsyncSession, station_id: uuid.UUID, *, require_approved: bool = True
 ) -> tuple[Station, StationVersion] | None:
     """One published library station with the version it currently points at.
 
@@ -64,7 +122,8 @@ async def library_station(
     an archived-never-published row, and any organisation's own station are all
     absent from the library, and this returns None for each rather than saying
     which. A station id is something a stranger may guess at, and the library
-    answers only for the library's own.
+    answers only for the library's own. `require_approved` is the editor's
+    sign-off gate, off only for staff (see `library_page`).
     """
     stmt = (
         select(Station, StationVersion)
@@ -73,8 +132,11 @@ async def library_station(
             Station.id == station_id,
             Station.owner_kind == "platform",
             Station.status == "published",
+            _first_published_at_floor(),
         )
     )
+    if require_approved:
+        stmt = stmt.where(Station.approved.is_(True))
     pair = (await session.execute(stmt)).first()
     return (pair[0], pair[1]) if pair else None
 
@@ -101,14 +163,16 @@ async def versions_with_stations(
 
 
 async def published_library_versions(
-    session: AsyncSession, *, exam_id: uuid.UUID | None = None
+    session: AsyncSession, *, exam_id: uuid.UUID | None = None, require_approved: bool = True
 ) -> list[tuple[StationVersion, Station]]:
     """Every current, published platform-library version, with its station.
 
     The whole library at once rather than a page, because the only caller is a
     re-index that has to see all of it: a paged walk of a table being written
     to can miss a row or read one twice, and either leaves the index quietly
-    wrong about material nobody will check.
+    wrong about material nobody will check. `require_approved` is the editor's sign-off gate
+    (see `library_page`); every current caller is picking or indexing material for a reader
+    rather than for staff, so it stays on.
     """
     stmt = (
         select(StationVersion, Station)
@@ -118,8 +182,11 @@ async def published_library_versions(
             Station.status == "published",
             StationVersion.status == "published",
             StationVersion.id == Station.current_version_id,
+            _first_published_at_floor(),
         )
     )
+    if require_approved:
+        stmt = stmt.where(Station.approved.is_(True))
     if exam_id is not None:
         stmt = stmt.where(Station.exam_id == exam_id)
     return [(version, station) for version, station in (await session.execute(stmt)).all()]
@@ -128,10 +195,13 @@ async def published_library_versions(
 async def published_counts_by_exam(
     session: AsyncSession, exam_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, int]:
-    """How many published library stations each of these exams has, in one grouped query.
+    """How many published, approved library stations each of these exams has, in one grouped query.
 
     An exam with none is absent from the answer rather than present with zero; the caller
-    reads it with a default.
+    reads it with a default. Filtered by approval like the rest of the library: both of its
+    current callers (the institution import catalogue and the public pricing page) are a count
+    someone outside the platform is about to rely on, not a staff worklist, so an unapproved
+    station must not be counted in either.
     """
     if not exam_ids:
         return {}
@@ -140,7 +210,9 @@ async def published_counts_by_exam(
         .where(
             Station.owner_kind == "platform",
             Station.status == "published",
+            Station.approved.is_(True),
             Station.exam_id.in_(list(exam_ids)),
+            _first_published_at_floor(),
         )
         .group_by(Station.exam_id)
     )

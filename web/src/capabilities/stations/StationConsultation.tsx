@@ -3,13 +3,15 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AsyncBoundary } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { AttemptRunner, createAttempt, usePracticeTimers } from "@/capabilities/attempt-runner";
 import { listExams, readLibraryStation } from "@/capabilities/stations/api";
 import { StationNotFound } from "@/capabilities/stations/StationNotFound";
+import { StationNotInPlanGate } from "@/capabilities/stations/StationNotInPlanGate";
 import { stationHref } from "@/capabilities/stations/routes";
+import { hasCode } from "@/foundation/platform-client/errors";
 
 /**
  * Practising one station from the library.
@@ -62,7 +64,21 @@ export function StationConsultation({ stationId }: { stationId: string }) {
           boundary renders nothing for it. */}
       {station.data === null && !station.loading && !station.error ? <StationNotFound /> : null}
 
-      <AsyncBoundary state={station}>
+      <AsyncBoundary
+        state={station}
+        failure={(error, retry) =>
+          hasCode(error, "station_not_in_plan") ? (
+            <StationNotInPlanGate />
+          ) : (
+            <Alert tone="danger" title="That did not load">
+              <p>{error.message || "Something went wrong."}</p>
+              <Button variant="secondary" size="sm" className="mt-3" onClick={retry}>
+                Try again
+              </Button>
+            </Alert>
+          )
+        }
+      >
         {(found) => (
           <>
             <Link

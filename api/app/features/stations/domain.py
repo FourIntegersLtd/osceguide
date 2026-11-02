@@ -12,6 +12,7 @@ stations.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from app.core.lifecycle import (
     AlreadyPublished,
@@ -33,6 +34,7 @@ from app.core.lifecycle import (
 __all__ = [
     "AlreadyPublished",
     "DraftExists",
+    "LIBRARY_FIRST_PUBLISHED_FLOOR",
     "LifecycleError",
     "NotArchivable",
     "NotDeletable",
@@ -52,6 +54,11 @@ __all__ = [
     "publish",
     "seed_version",
 ]
+
+# The old site (b2c-api) never showed a platform station first published before this date. The
+# consumer library hides them too, so the date a station entered the library stays the same
+# across both sites.
+LIBRARY_FIRST_PUBLISHED_FLOOR = datetime(2025, 2, 1, tzinfo=UTC)
 
 
 class TemplateNotPublished(LifecycleError):

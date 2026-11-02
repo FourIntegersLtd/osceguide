@@ -1,8 +1,10 @@
 """Staff pricing: what the platform sells, created and retired from the console.
 
-A plan never changes once written: its price id is on every payment that bought it. A new price
-is a new plan with a new code, and the old one is taken off sale. Each plan is written with its
-10%-off referral twin (`domain.referral_plan_code`), and the two go on and off sale together.
+A plan's price, exam and duration never change once written: its price id is on every payment
+that bought it. A new price is a new plan with a new code, and the old one is taken off sale.
+Only `active` and `station_limit` can change on an existing plan, both from the staff console.
+Each plan is written with its 10%-off referral twin (`domain.referral_plan_code`), and the two
+go on and off sale, and change their station limit, together.
 """
 
 from __future__ import annotations
@@ -17,7 +19,7 @@ from app.core.ports import CheckoutSessions, CheckoutUnavailable
 from app.core.settings import SettingsDep
 from app.features.billing import domain, errors, repository
 from app.features.billing.models import Plan
-from app.features.billing.schemas import CreatePlan, PlatformPlanRead
+from app.features.billing.schemas import CreatePlan, PlatformPlanRead, UpdatePlan
 from app.features.catalog import service as catalog
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.tenancy import service_audit
@@ -93,6 +95,7 @@ async def create_plan(
             amount_pence=body.amount_pence,
             duration_days=body.duration_days,
             exam_code=exam.code,
+            station_limit=body.station_limit,
         )
         await repository.create_plan(
             session,
@@ -101,6 +104,7 @@ async def create_plan(
             amount_pence=twin_amount,
             duration_days=body.duration_days,
             exam_code=exam.code,
+            station_limit=body.station_limit,
         )
     except IntegrityError as exc:
         # Two staff creating the same code at once: the check above passed for both.
@@ -117,36 +121,52 @@ async def create_plan(
     return _read(plan, twin_amount)
 
 
-async def set_plan_active(
-    session: AsyncSession, code: str, *, active: bool, actor: Principal, now: datetime
+async def update_plan(
+    session: AsyncSession, code: str, body: UpdatePlan, *, actor: Principal, now: datetime
 ) -> PlatformPlanRead:
-    """Put a plan and its referral twin on sale or take them off it.
+    """Put a plan and its referral twin on sale or take them off it, and/or change how many
+    library stations they unlock.
 
     Retiring stops new checkouts only: a payment already under way is still granted, because the
-    webhook resolves prices across every plan (`service.handle_event`).
+    webhook resolves prices across every plan (`service.handle_event`). Leaving `station_limit`
+    out of the request body leaves it unchanged; sending it as `null` clears it to "no limit".
     """
+    if body.active is None and "station_limit" not in body.model_fields_set:
+        raise errors.EmptyPlanUpdate()
     plan = await repository.any_plan_by_code(session, code)
     if plan is None or domain.is_referral_plan(code):
         raise errors.PlanNotFound()
-    if active:
-        # Only what settlement can grant goes back on sale: a legacy row with no exam, or one
-        # whose exam is no longer published, would charge a card and grant nothing.
-        try:
-            await catalog.resolve_exam(session, plan.exam_code)
-        except CatalogUnknownExam as exc:
-            raise errors.UnknownExamError(
-                f"{exc} A plan goes back on sale only for a published platform exam."
-            ) from exc
     twin_code = domain.referral_plan_code(code)
-    await repository.set_plans_active(session, [code, twin_code], active=active)
-    await service_audit.record(
-        session,
-        actor=actor,
-        action="billing.plan_put_on_sale" if active else "billing.plan_retired",
-        target_type="plan",
-        target_id=code,
-        at=now,
-    )
+    if body.active is not None:
+        if body.active:
+            # Only what settlement can grant goes back on sale: a legacy row with no exam, or one
+            # whose exam is no longer published, would charge a card and grant nothing.
+            try:
+                await catalog.resolve_exam(session, plan.exam_code)
+            except CatalogUnknownExam as exc:
+                raise errors.UnknownExamError(
+                    f"{exc} A plan goes back on sale only for a published platform exam."
+                ) from exc
+        await repository.set_plans_active(session, [code, twin_code], active=body.active)
+        await service_audit.record(
+            session,
+            actor=actor,
+            action="billing.plan_put_on_sale" if body.active else "billing.plan_retired",
+            target_type="plan",
+            target_id=code,
+            at=now,
+        )
+    if "station_limit" in body.model_fields_set:
+        await repository.set_plans_station_limit(session, [code, twin_code], station_limit=body.station_limit)
+        await service_audit.record(
+            session,
+            actor=actor,
+            action="billing.plan_station_limit_set",
+            target_type="plan",
+            target_id=code,
+            summary=f"station_limit={body.station_limit}",
+            at=now,
+        )
     await session.refresh(plan)
     twin = await repository.any_plan_by_code(session, twin_code)
     return _read(plan, twin.amount_pence if twin else None)
@@ -163,5 +183,6 @@ def _read(plan: Plan, referral_amount_pence: int | None) -> PlatformPlanRead:
         active=plan.active,
         stripe_price_id=plan.stripe_price_id,
         referral_amount_pence=referral_amount_pence,
+        station_limit=plan.station_limit,
         created_at=plan.created_at,
     )

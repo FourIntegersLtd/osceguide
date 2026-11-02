@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,15 +17,27 @@ async def publish_library_station(
     """The exam (made if need be) with one published library station; returns the version id."""
     exam = await ensure_exam(db_session, exam_code)
     assert exam is not None
-    station = Station(owner_kind="platform", org_id=None, exam_id=exam.id, title=title, status="published")
+    station = Station(
+        owner_kind="platform",
+        org_id=None,
+        exam_id=exam.id,
+        title=title,
+        status="published",
+        # An editor's approval, on top of status: this helper models a station already live in
+        # the library.
+        approved=True,
+    )
     db_session.add(station)
     await db_session.flush()
+    # A real publish sets `published_at`; this writes the row directly, so it must set it too,
+    # or the library's date floor would hide every station this helper creates.
     version = StationVersion(
         station_id=station.id,
         org_id=None,
         version=1,
         content={"patient_information": {"persona": "anxious"}},
         status="published",
+        published_at=datetime.now(UTC),
     )
     db_session.add(version)
     await db_session.flush()

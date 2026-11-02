@@ -244,3 +244,62 @@ async def test_b2c_never_doctor_accounts_are_flagged_and_matched_as_patient(db_s
         db_session, practised.id, bystander.id
     )
     assert (doctor, patient) == (bystander.id, practised.id)
+
+
+async def test_the_approved_backfill_grandfathers_only_already_published_stations(
+    db_session: AsyncSession,
+) -> None:
+    """The migration that added `stations.approved` ran this against every pre-existing row, so
+    whatever was already live stayed visible; a draft or archived station is left unapproved,
+    same as a station that becomes published after this shipped."""
+    from app.features.stations.models import Station
+    from tests.support.catalog import ensure_exam
+
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    stations = {
+        "published": Station(
+            owner_kind="platform", org_id=None, exam_id=exam.id, title="Live", status="published"
+        ),
+        "draft": Station(owner_kind="platform", org_id=None, exam_id=exam.id, title="Draft", status="draft"),
+        "archived": Station(
+            owner_kind="platform", org_id=None, exam_id=exam.id, title="Old", status="archived"
+        ),
+    }
+    db_session.add_all(stations.values())
+    await db_session.flush()
+    # Freshly inserted rows already default to false (the column's server default); the
+    # migration's job is to flip the published one, which this proves by running its own SQL.
+    assert {key: station.approved for key, station in stations.items()} == {
+        "published": False,
+        "draft": False,
+        "archived": False,
+    }
+
+    await db_session.execute(text(migration("7b2f6a1d4e9c").BACKFILL_SQL))
+
+    stored = dict(
+        (
+            await db_session.execute(
+                select(Station.title, Station.approved).where(
+                    Station.id.in_([station.id for station in stations.values()])
+                )
+            )
+        ).all()
+    )
+    assert stored == {"Live": True, "Draft": False, "Old": False}
+
+
+async def test_a_new_station_defaults_to_unapproved(db_session: AsyncSession) -> None:
+    """Grandfathering is a one-time migration concern, not the model's default: a row created
+    today, even a published one, starts out unapproved until an editor signs off on it."""
+    from app.features.stations.models import Station
+    from tests.support.catalog import ensure_exam
+
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    station = Station(owner_kind="platform", org_id=None, exam_id=exam.id, title="New", status="published")
+    db_session.add(station)
+    await db_session.flush()
+
+    assert station.approved is False

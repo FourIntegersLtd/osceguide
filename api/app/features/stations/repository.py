@@ -112,6 +112,16 @@ async def set_station_title(
     )
 
 
+async def set_station_approved(
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, *, approved: bool
+) -> None:
+    """Flip an editor's sign-off on a station. Separate from `status`: this never touches whether
+    the station is published, only whether a normal reader of the library may see it."""
+    await session.execute(
+        update(Station).where(owned_by(Station, org_id), Station.id == station_id).values(approved=approved)
+    )
+
+
 async def set_version_content(
     session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID, *, content: dict[str, Any]
 ) -> None:

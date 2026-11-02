@@ -589,6 +589,7 @@
 <div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
 <li data-code="station_not_published"><b>A station that has been withdrawn, or was never finished.</b> You read: <span class="says">"This station is not available to practise right now. It may have been withdrawn or not finished yet."</span></li>
 <li data-code="station_not_found"><b>A link to a station that does not exist</b> in the library or the person's organisation. You read: <span class="says">"No such station."</span></li>
+<li data-code="station_not_in_plan"><b>Opening or starting a library station outside your plan's window</b>, for example a saved or shared link to one. You read: <span class="says">"This station is not included in your plan. Upgrade to unlock it."</span></li>
 <li data-code="station_exam_mismatch"><b>Starting a station that belongs to a different exam</b> from the one the session was opened for, for example a hand-edited link. Nothing starts. You read: <span class="says">"This station is no longer part of this exam. Go back to your session and choose another."</span></li>
 <li data-code="attempt_limit_reached"><b>Every try at a station in a practice list is used.</b> You read: <span class="says">"You have used every attempt at this station."</span></li>
 </ul></div>
@@ -854,6 +855,7 @@
 <li data-code="not_editable"><b>Changing a published version in place.</b> You read: <span class="says">"Published content cannot be edited; create a new version."</span></li>
 <li data-code="already_published"><b>Publishing a version that is already live.</b> You read: <span class="says">"That version is already published."</span></li>
 <li data-code="station_empty"><b>Publishing a draft with nothing written in it.</b> You read: <span class="says">"This station has no content yet. Write it before publishing."</span></li>
+<li data-code="station_not_approvable"><b>Approving a station that is not published yet</b>, for example a draft or a withdrawn one. You read: <span class="says">"Only a published station can be approved."</span></li>
 <li data-code="template_not_published"><b>Building a station on a template that is still a draft.</b> You read: <span class="says">"A station can only be built on a published template version."</span></li>
 <li data-code="not_deletable"><b>Deleting a version that has been published.</b> You read: <span class="says">"Only a draft can be deleted."</span></li>
 <li data-code="not_archivable"><b>Archiving a draft.</b> A draft is deleted instead: <span class="says">"Only a published version can be archived."</span></li>
@@ -1086,6 +1088,7 @@
 <div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
 <li data-code="plan_code_taken"><b>A new plan with a code already used.</b> You read: <span class="says">"A plan already has that code."</span></li>
 <li data-code="plan_not_found"><b>Changing a plan that does not exist.</b> You read: <span class="says">"No such plan."</span></li>
+<li data-code="empty_plan_update"><b>Changing a plan but sending nothing to change.</b> You read: <span class="says">"Nothing was sent to change."</span></li>
 <li data-code="price_creation_failed"><b>The card provider could not create the price.</b> No plan is saved: <span class="says">"Stripe could not create that price. Try again in a moment."</span></li>
 <li data-code="payment_already_refunded"><b>Refunding a payment already refunded, withdrawn or disputed.</b> You read: <span class="says">"That payment has already been refunded, withdrawn or disputed, so it was not refunded again."</span></li>
 <li data-code="not_a_stripe_payment"><b>Refunding a bank transfer through the card provider.</b> You read: <span class="says">"That payment did not go through Stripe, so there is nothing to refund there."</span></li>

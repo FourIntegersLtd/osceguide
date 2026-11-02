@@ -3778,6 +3778,19 @@
             "minLength": 1,
             "title": "Exam Code",
             "type": "string"
+          },
+          "station_limit": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Limit"
           }
         },
         "required": [
@@ -5563,6 +5576,7 @@
               "draft_exists",
               "email_taken",
               "empty_content",
+              "empty_plan_update",
               "empty_query",
               "entitlement_not_found",
               "evidence_changed",
@@ -5757,6 +5771,7 @@
               "station_has_no_template",
               "station_import_not_found",
               "station_not_found",
+              "station_not_in_plan",
               "station_not_on_circuit",
               "station_not_published",
               "station_template_not_found",
@@ -8961,8 +8976,12 @@
         "type": "object"
       },
       "MyEntitlements": {
-        "description": "A person's grants, with the limits of the free trial they fall back on.",
+        "description": "A person's grants, with the limits of the free trial they fall back on.\n\n`can_upgrade` tells a screen whether to offer a bigger plan: true when a bigger one is\non sale for the person's current exam, or when they hold no paid access yet to compare\nagainst.",
         "properties": {
+          "can_upgrade": {
+            "title": "Can Upgrade",
+            "type": "boolean"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/EntitlementRead"
@@ -8987,7 +9006,8 @@
         },
         "required": [
           "items",
-          "trial"
+          "trial",
+          "can_upgrade"
         ],
         "title": "MyEntitlements",
         "type": "object"
@@ -12910,6 +12930,17 @@
               }
             ],
             "title": "Referral Amount Pence"
+          },
+          "station_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Limit"
           },
           "stripe_price_id": {
             "title": "Stripe Price Id",
@@ -16889,20 +16920,6 @@
           "trainee_ids"
         ],
         "title": "SetGroupMembers",
-        "type": "object"
-      },
-      "SetPlanActive": {
-        "description": "Put a plan, and its referral twin, on sale or take them off it.",
-        "properties": {
-          "active": {
-            "title": "Active",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "active"
-        ],
-        "title": "SetPlanActive",
         "type": "object"
       },
       "SetPlatformAdmin": {
@@ -20983,6 +21000,37 @@
         "title": "UpdatePilotConfig",
         "type": "object"
       },
+      "UpdatePlan": {
+        "description": "A staff change to a plan: take it on or off sale, and/or set how many stations it unlocks.\n\nLeaving `station_limit` out of the request body means \"do not change it\"; sending it\nexplicitly as `null` means \"no limit\". The handler tells the two apart with\n`\"station_limit\" in body.model_fields_set`, not by checking for `None`.",
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "station_limit": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Limit"
+          }
+        },
+        "title": "UpdatePlan",
+        "type": "object"
+      },
       "UpdatePlatformUser": {
         "properties": {
           "custom_reading_seconds": {
@@ -22857,9 +22905,10 @@
                 }
               }
             },
-            "description": "not_entitled",
+            "description": "not_entitled, station_not_in_plan",
             "x-codes": [
-              "not_entitled"
+              "not_entitled",
+              "station_not_in_plan"
             ]
           },
           "404": {
@@ -57725,8 +57774,8 @@
     },
     "/api/v1/platform/billing/plans/{plan_code}": {
       "patch": {
-        "description": "Put a plan and its referral twin on sale, or retire them. Payments under way still grant.",
-        "operationId": "billing_set_platform_plan_active",
+        "description": "Change a plan and its referral twin: on sale or retired, and/or their station limit.",
+        "operationId": "billing_update_platform_plan",
         "parameters": [
           {
             "in": "path",
@@ -57742,7 +57791,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetPlanActive"
+                "$ref": "#/components/schemas/UpdatePlan"
               }
             }
           },
@@ -57797,11 +57846,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "empty_plan_update",
+            "x-codes": [
+              "empty_plan_update"
+            ]
           }
         },
         "security": [
@@ -57809,7 +57861,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Set Platform Plan Active",
+        "summary": "Update Platform Plan",
         "tags": [
           "billing"
         ],
@@ -69435,9 +69487,10 @@
                 }
               }
             },
-            "description": "not_entitled",
+            "description": "not_entitled, station_not_in_plan",
             "x-codes": [
-              "not_entitled"
+              "not_entitled",
+              "station_not_in_plan"
             ]
           },
           "404": {

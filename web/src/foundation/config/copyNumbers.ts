@@ -13,3 +13,5 @@ export const ACCOUNT_REOPEN_DAYS = 30;
 export const OTHER_DEVICES_SIGN_OUT_MINUTES = 15;
 /** The support reply time the site promises. */
 export const SUPPORT_REPLY_HOURS = 12;
+/** The free trial's station allowance, quoted in the staff console's help text for a plan's station limit. The backend's own trial limit (`TrialLimits.stations`) is the source of truth at runtime; this is copy, not a rule. */
+export const FREE_TRIAL_STATIONS = 3;

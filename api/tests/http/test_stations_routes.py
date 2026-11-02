@@ -464,6 +464,9 @@ async def a_library_station(
     in `test_platform_stations_routes.py`; this stays because the library tests
     below care about what is *in* the library, not how it got there.
     """
+    from datetime import datetime
+
+    from app.features.stations.domain import LIBRARY_FIRST_PUBLISHED_FLOOR
     from app.features.stations.models import Station, StationVersion
 
     exam = await ensure_exam(db_session, exam_code)
@@ -474,15 +477,22 @@ async def a_library_station(
         exam_id=exam.id,
         title=title,
         status="published" if published else "draft",
+        # An editor's approval, on top of status: this helper models a station already live in
+        # the library, so it is approved whenever it is published, same as the migration
+        # backfilled every already-published row.
+        approved=published,
     )
     db_session.add(station)
     await db_session.flush()
+    # A real publish sets `published_at`; this helper writes the row directly, so it must
+    # set it too, or the library's date floor would hide every station this test creates.
     version = StationVersion(
         station_id=station.id,
         org_id=None,
         version=1,
         content=CONTENT,
         status="published" if published else "draft",
+        published_at=datetime.now(LIBRARY_FIRST_PUBLISHED_FLOOR.tzinfo) if published else None,
     )
     db_session.add(version)
     await db_session.flush()

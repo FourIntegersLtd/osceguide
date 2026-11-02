@@ -108,6 +108,29 @@ async def published_library_version_ids(
     ]
 
 
+async def allowed_published_library_version_ids(
+    session: AsyncSession, *, exam_id: uuid.UUID, user_id: uuid.UUID, now: datetime
+) -> list[uuid.UUID]:
+    """Version ids of every published platform-library station this person's plan allows.
+
+    What `peer_practice` and `station_sets` pick a station from, instead of `published_library_version_ids`,
+    so a limited plan is respected wherever a station is handed to someone rather than browsed by them.
+    """
+    from app.features.catalog.service import exam_code_by_id  # import cycle
+    from app.features.stations import repository_library, service_plan_window
+
+    exam_code = await exam_code_by_id(session, exam_id)
+    pairs = await repository_library.published_library_versions(session, exam_id=exam_id)
+    if exam_code is None:
+        return [version.id for version, _ in pairs]
+    allowed_station_ids = await service_plan_window.allowed_station_ids(
+        session, user_id=user_id, exam_id=exam_id, exam_code=exam_code, now=now
+    )
+    if allowed_station_ids is None:
+        return [version.id for version, _ in pairs]
+    return [version.id for version, station in pairs if station.id in allowed_station_ids]
+
+
 @dataclass(frozen=True)
 class VersionMaterial:
     """One station version's document, for a caller that already holds the id.
