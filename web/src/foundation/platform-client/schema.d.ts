@@ -25777,7 +25777,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description media_not_editable, media_being_produced */
+            /** @description media_being_produced */
             409: {
                 headers: {
                     [name: string]: unknown;
