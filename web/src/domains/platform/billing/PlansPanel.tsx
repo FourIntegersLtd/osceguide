@@ -14,6 +14,7 @@ import {
 import Table from "@/foundation/table/Table";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { listExams } from "@/capabilities/stations";
+import { validationFields } from "@/foundation/platform-client/errors";
 import {
   createPlatformPlan,
   listPlatformPlans,
@@ -68,7 +69,9 @@ export function PlansPanel() {
       );
       plans.reload();
     } catch (cause) {
-      setError(errorMessage(cause));
+      // A refused body names the field and the reason; show them, not just "not valid".
+      const reasons = Object.entries(validationFields(cause)).map(([field, reason]) => `${field}: ${reason}`);
+      setError(reasons.length > 0 ? reasons.join(". ") : errorMessage(cause));
     } finally {
       setBusyCode(null);
       setSettingStations(null);
