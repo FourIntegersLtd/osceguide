@@ -48,3 +48,21 @@ async def require_exam_access(
     access = await exam_access_for(session, user_id, now=now)
     if exam_code not in access.codes:
         raise NotEntitled(details={"reason": "no_entitlement"})
+
+
+async def can_upgrade_for(
+    session: AsyncSession, user_id: uuid.UUID, *, access: ExamAccess, now: datetime
+) -> bool:
+    """Whether a bigger plan than the one this person holds is on sale for their current exam.
+
+    True when no exam is current: there is nothing yet to compare a plan against.
+    """
+    # one direction at import: billing reads entitlements, so this reaches back only when called
+    from app.features.billing import service_station_limit
+
+    if access.current is None:
+        return True
+    exam_row = await catalog.resolve_exam(session, access.current)
+    return await service_station_limit.can_upgrade(
+        session, user_id=user_id, exam_id=exam_row.id, exam_code=access.current, now=now
+    )

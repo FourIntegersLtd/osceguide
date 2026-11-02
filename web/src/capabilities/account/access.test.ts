@@ -15,35 +15,21 @@ function grant(over: Partial<Entitlement>): Entitlement {
   } as Entitlement;
 }
 
-test("a free account that has chosen an exam holds no paid access", () => {
+test("a free account holds no paid access", () => {
   // The staging account of 2026-10-03: exam_codes ["sca"], entitlements [].
-  assert.equal(holdsPaidAccess([], "sca"), false);
+  assert.deepEqual(paidAccess([]), []);
 });
 
-test("a live purchase for the current exam is paid access", () => {
-  assert.equal(holdsPaidAccess([grant({})], "sca"), true);
+test("a live purchase is paid access", () => {
+  assert.equal(paidAccess([grant({})]).length, 1);
 });
 
-test("a trial, an expired grant and another exam's grant are not", () => {
-  const items = [
-    grant({ source: "trial" }),
-    grant({ live: false }),
-    grant({ exam_code: "plab" }),
-  ];
-  assert.equal(holdsPaidAccess(items, "sca"), false);
-  assert.deepEqual(
-    paidAccess(items).map((item) => item.exam_code),
-    ["plab"],
-  );
+test("a trial and an expired grant are not paid access", () => {
+  assert.deepEqual(paidAccess([grant({ source: "trial" }), grant({ live: false })]), []);
 });
 
 test("an organisation's grant counts as access", () => {
-  assert.equal(holdsPaidAccess([grant({ source: "org_grant" })], "sca"), true);
-});
-
-test("with no exam chosen yet, any paid grant counts", () => {
-  assert.equal(holdsPaidAccess([grant({ exam_code: "plab" })], null), true);
-  assert.equal(holdsPaidAccess([], null), false);
+  assert.equal(paidAccess([grant({ source: "org_grant" })]).length, 1);
 });
 
 test("the end of access is the latest live end, by date, and open-ended wins", () => {

@@ -73,6 +73,7 @@ make guards                                    # tests/guards only, fast
 
 Area traps (drafts, entitlements, rubric versions, results, deploys, seeding, e2e) live in
 `.claude/rules/<area>.md`, loaded when you touch those paths.
+- A published library station is invisible to a normal reader until `stations.approved` is true (staff via `all_exams` bypass it; `published_counts_by_exam` never does). A test helper that writes `Station(status="published")` directly must set `approved=True`: the column has only a server default, so the row reads back false. Approve/revoke: `POST /platform/stations/{id}/approve|revoke-approval`; list the backlog with `scripts/report_unapproved_stations.py`.
 
 ## Owners
 

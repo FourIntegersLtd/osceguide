@@ -13,8 +13,6 @@ from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin
-from app.features.billing import service_station_limit
-from app.features.catalog import service as catalog
 from app.features.entitlements import (
     domain,
     errors,
@@ -41,12 +39,7 @@ async def list_my_entitlements(
     now = clock.now()
     entitlements = await service.list_for_user(session, principal.user_id, now=now)
     access = await service_access.exam_access_for(session, principal.user_id, now=now)
-    can_upgrade = True
-    if access.current is not None:
-        exam_row = await catalog.resolve_exam(session, access.current)
-        can_upgrade = await service_station_limit.can_upgrade(
-            session, user_id=principal.user_id, exam_id=exam_row.id, exam_code=access.current, now=now
-        )
+    can_upgrade = await service_access.can_upgrade_for(session, principal.user_id, access=access, now=now)
     return schemas.MyEntitlements(
         items=entitlements,
         next_cursor=None,
