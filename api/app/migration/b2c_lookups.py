@@ -35,6 +35,12 @@ class StepReport:
         """Record one record that could not be loaded, and why."""
         self.problems.append(message)
 
+    def merge(self, other: StepReport) -> None:
+        """Fold another report's counts, problems and notes into this one."""
+        self.counts.update(other.counts)
+        self.problems.extend(other.problems)
+        self.notes.extend(other.notes)
+
     def summary(self) -> str:
         """One human-readable line: the legacy notes, then every non-zero counter."""
         parts = [*self.notes, *(f"{label} {amount}" for label, amount in sorted(self.counts.items()))]

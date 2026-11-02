@@ -21,6 +21,7 @@ from app.migration import (
     b2c_firestore,
     b2c_inventory,
     b2c_lookups,
+    link_templates,
     load_b2c_attempts,
     load_b2c_billing,
     load_b2c_misc,
@@ -164,6 +165,18 @@ async def _debriefs(session: AsyncSession, run: Run) -> StepReport:
     )
 
 
+async def _mocks(session: AsyncSession, run: Run) -> StepReport:
+    """The `mocks` step: builds station sets, then hangs each already-copied attempt on its slot."""
+    mocks = run.read("mocks")
+    lookups = await b2c_lookups.build(session)
+    report = await load_b2c_mocks.load_mocks(session, mocks, lookups)
+    docs = run.matching(run.read("attempts"), b2c_inventory.TRANSCRIPT_COLLECTIONS)
+    deleted = b2c_firestore.deleted_user_ids(run.db)
+    transcripts = [document for document in docs if str(document.get("user_id") or "") not in deleted]
+    report.merge(await load_b2c_mocks.link_attempts_to_sessions(session, mocks, transcripts, lookups))
+    return report
+
+
 async def _with_lookups(
     session: AsyncSession, run: Run, step: str, handler: Callable[..., Awaitable[StepReport]]
 ) -> StepReport:
@@ -195,11 +208,12 @@ async def _peer_practice(session: AsyncSession, run: Run) -> StepReport:
 HANDLERS: dict[str, Callable[[AsyncSession, Run], Awaitable[StepReport]]] = {
     "users": _users,
     "stations": _stations,
+    "templates": lambda session, run: link_templates.bind_unbound_versions(session),
     "media": _media,
     "community": _community,
     "marketplace": _marketplace,
     "attempts": _attempts,
-    "mocks": lambda session, run: _with_lookups(session, run, "mocks", load_b2c_mocks.load_mocks),
+    "mocks": _mocks,
     "live_coverage": _live_coverage,
     "debriefs": _debriefs,
     "partners": _partners,

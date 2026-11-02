@@ -54,6 +54,7 @@ PARTNER_REPORTER_COLLECTION = "partner_reporters"
 COPIED: dict[str, dict[str, str]] = {
     "users": {collection_name: exam for exam, collection_name in B2C_USER_COLLECTIONS.items()},
     "stations": {collection_name: exam for exam, collection_name in B2C_STATION_COLLECTIONS.items()},
+    "templates": {},  # no Firestore collection: binds already-imported stations to their template
     "media": {
         collection_name: exam
         for collection_map in (
