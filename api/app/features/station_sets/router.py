@@ -49,6 +49,7 @@ async def list_sets(
         errors.UnknownExamError,
         errors.NotEntitled,
         errors.TrialStationLimitError,
+        errors.StationNotInPlan,
         errors.StationVersionNotUsableError,
         Unauthenticated,
     ),
@@ -104,6 +105,7 @@ async def read_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Sess
         errors.StationVersionNotUsableError,
         errors.EntryHasAttemptsError,
         errors.TrialStationLimitError,
+        errors.StationNotInPlan,
     ),
 )
 async def update_set(

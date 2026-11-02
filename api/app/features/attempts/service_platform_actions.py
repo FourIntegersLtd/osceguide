@@ -20,6 +20,7 @@ from app.features.attempts import domain, errors, jobs, repository, service_plat
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas_platform import PlatformAttemptDetail, RescoreResult
+from app.features.attempts.service_render import render_definition
 from app.features.health import service_jobs
 from app.features.tenancy import service_audit
 
@@ -64,8 +65,16 @@ async def rescore(
     attempt = await _require(session, attempt_id)
     if domain.Status(attempt.status) not in jobs.MARKABLE:
         raise errors.InvalidAttemptState(f"An attempt that is {attempt.status} has nothing to mark.")
+    if not attempt.definition:
+        # A migrated legacy attempt never had a rubric frozen on it. Freeze one from its station now,
+        # so the transcript can be marked; the station's current version stands in for the old one.
+        try:
+            await render_definition(session, attempt, now=now)
+        except errors.AttemptNotReady as exc:
+            raise errors.InvalidAttemptState(f"This attempt cannot be marked: {exc}") from exc
+        await session.refresh(attempt)
     if not jobs.can_mark(attempt):
-        # A migrated legacy attempt has no frozen rubric. Queueing it would fail it and free its slot.
+        # No station, or a station with no rubric. Queueing it would fail it and free its slot.
         raise errors.InvalidAttemptState("This attempt has no rubric frozen on it, so it cannot be marked.")
     _, frozen = jobs.policy_for(attempt)
     version = policy_version or frozen

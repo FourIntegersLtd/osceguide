@@ -6,7 +6,7 @@ import {
   PlatformFilterSearch,
   PlatformFilterSelect,
 } from "@/foundation/ui";
-import type { DirectoryFilters as Filters, ExamDirectorySummary } from "@/domains/platform/api";
+import type { DirectoryFilters as Filters } from "@/domains/platform/api";
 import { ACCESS_FILTERS, USER_STATUSES, planLabel } from "@/domains/platform/users/vocabulary";
 
 /**
@@ -15,14 +15,12 @@ import { ACCESS_FILTERS, USER_STATUSES, planLabel } from "@/domains/platform/use
  * The search box submits on Enter, as the old console's did.
  */
 export function DirectoryFilters({
-  exams,
   plans,
   filters,
   term,
   onTerm,
   onChange,
 }: {
-  exams: ExamDirectorySummary[];
   plans: string[];
   filters: Filters;
   term: string;
@@ -37,19 +35,6 @@ export function DirectoryFilters({
       }}
     >
       <PlatformFilterBar>
-        <PlatformFilterSelect
-          aria-label="Exam"
-          value={filters.examCode ?? ""}
-          onChange={(value) => onChange({ ...filters, examCode: value || null })}
-        >
-          <option value="">All exams</option>
-          {exams.map((exam) => (
-            <option key={exam.code} value={exam.code}>
-              {exam.name || exam.code.toUpperCase()}
-            </option>
-          ))}
-        </PlatformFilterSelect>
-        <PlatformFilterDivider />
         <PlatformFilterSelect
           aria-label="Access"
           value={filters.access ?? ""}

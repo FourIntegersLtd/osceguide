@@ -149,7 +149,8 @@ function MockSetupForm({
       {org ? null : (
         <StationCompletionProgressBar
           subscriptionExpired={access.subscriptionExpired}
-          completedCount={attempted.size}
+          // The server counts stations actually sat; the sessions list also holds ones never started.
+          completedCount={allowance.data?.stations_sat ?? attempted.size}
           totalCount={stations.length}
           hasPaid={access.hasPaid}
           freeLimit={workspace.trial.stations}

@@ -8,6 +8,7 @@ either, because the other grant may already be covering the whole library.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime
 
@@ -16,6 +17,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.billing import domain, repository
 from app.features.billing.models import Plan
 from app.features.entitlements import service as entitlements
+
+logger = logging.getLogger(__name__)
+
+
+def _strictest_limit(plans: list[Plan], exam_code: str) -> int | None:
+    """The smallest station limit among the exam's active plans; `None` when none of them is capped.
+
+    What a live purchase that matches no plan is held to, so an unlinked purchase can never again
+    quietly unlock the whole library.
+    """
+    limits = [
+        plan.station_limit
+        for plan in plans
+        if plan.exam_code == exam_code and plan.active and plan.station_limit is not None
+    ]
+    return min(limits) if limits else None
 
 
 async def station_limit_for(
@@ -48,16 +65,17 @@ async def station_limit_for(
             continue
         plan = plans_by_id.get(payment.plan_id)
         if plan is None:
-            # A live purchase grant with no matching plan row: nothing to read a limit from, so
-            # the safe answer is "no limit" rather than silently ignoring this grant.
-            return None
+            # A live purchase grant whose plan row is gone: fail closed, not open.
+            logger.warning("purchase of a missing plan for user %s, exam %s", user_id, exam_code)
+            return _strictest_limit(list(plans_by_id.values()), exam_code)
         base_code = plan.code.removesuffix(domain.REFERRAL_PLAN_SUFFIX)
         base_plan = plans_by_code.get(base_code, plan)
         matched_plans.append(base_plan)
 
     if not matched_plans:
-        # Every live purchase grant matched no payment/plan row at all.
-        return None
+        # Every live purchase grant matched no payment/plan row at all: fail closed, not open.
+        logger.warning("live purchase with no linked plan for user %s, exam %s", user_id, exam_code)
+        return _strictest_limit(list(plans_by_id.values()), exam_code)
     if any(plan.station_limit is None for plan in matched_plans):
         return None
     return max(plan.station_limit for plan in matched_plans if plan.station_limit is not None)

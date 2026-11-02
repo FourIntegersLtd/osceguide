@@ -120,6 +120,7 @@ class TestTheLoad:
         station = await db_session.get(Station, version.station_id)
         assert station is not None
         assert station.owner_kind == "platform"
+        assert station.approved is True
         assert station.org_id is None
         assert station.current_version_id == version.id
 

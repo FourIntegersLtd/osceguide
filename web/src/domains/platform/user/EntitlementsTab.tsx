@@ -22,8 +22,22 @@ import {
   type PlatformEntitlement,
 } from "@/domains/platform/support/api";
 import { InlineAction } from "@/domains/platform/user/InlineAction";
-import { humanise } from "@/foundation/format";
 import { asContractDate, formatDay } from "@/domains/platform/support";
+import {
+  accessSummary,
+  accessUntil,
+  coveredByAnother,
+  grantState,
+  sourceLabel,
+  type GrantState,
+} from "@/domains/platform/user/grantStatus";
+
+const STATE_BADGE: Record<GrantState, { tone: "success" | "neutral" | "warning"; label: (grant: PlatformEntitlement) => string }> = {
+  live: { tone: "success", label: () => "Live" },
+  queued: { tone: "warning", label: (grant) => `Starts ${formatDay(grant.starts_at)}` },
+  ended: { tone: "neutral", label: () => "Ended" },
+  revoked: { tone: "neutral", label: () => "Revoked" },
+};
 
 /**
  * Every grant this person has held, and the three things support may do.
@@ -49,13 +63,15 @@ export function EntitlementsTab({
     <DetailLayout
       main={
         <AsyncBoundary state={state}>
-          {(page) => (
+          {(page) => {
+            const now = new Date();
+            return (
             <Table<PlatformEntitlement>
               rows={page.items}
               themeType="b2b"
               idField="id"
               title="Access"
-              description="Everything this person has been given access to, current or ended, oldest first."
+              description={`${accessSummary(page.items, now)}. Every grant they have held is listed below, oldest first. They have access while any one of them is live.`}
               empty={{ title: "No grants", description: "Only the free trial, if any of it is left." }}
               columns={[
                 {
@@ -65,12 +81,11 @@ export function EntitlementsTab({
                   render: (grant) => (
                     <div className="min-w-0">
                       <p className="font-medium text-ink">
-                        {grant.exam_code} · {humanise(grant.source)}
+                        {grant.exam_code} · {sourceLabel(grant)}
                       </p>
-                      <p className="text-osce-meta text-ink-subtle">
+                      <p className="text-osce-meta text-ink-subtle" title={grant.source_ref ?? undefined}>
                         {formatDay(grant.starts_at)} → {grant.ends_at ? formatDay(grant.ends_at) : "open-ended"}
                         {grant.revoked_at ? ` · revoked ${formatDay(grant.revoked_at)}` : ""}
-                        {grant.source_ref ? ` · ${grant.source_ref}` : ""}
                       </p>
                     </div>
                   ),
@@ -78,11 +93,19 @@ export function EntitlementsTab({
                 {
                   header: "Status",
                   key: "live",
-                  render: (grant) => (
-                    <Badge dot tone={grant.live ? "success" : "neutral"}>
-                      {grant.live ? "Live" : grant.revoked_at ? "Revoked" : "Not live"}
-                    </Badge>
-                  ),
+                  render: (grant) => {
+                    const state = grantState(grant, now);
+                    return (
+                      <div className="flex flex-col items-start gap-1">
+                        <Badge dot tone={STATE_BADGE[state].tone}>
+                          {STATE_BADGE[state].label(grant)}
+                        </Badge>
+                        {coveredByAnother(grant, page.items, now) ? (
+                          <span className="text-osce-meta text-ink-subtle">Another grant covers this</span>
+                        ) : null}
+                      </div>
+                    );
+                  },
                 },
                 {
                   header: "Actions",
@@ -91,13 +114,15 @@ export function EntitlementsTab({
                 },
               ]}
             />
-          )}
+            );
+          }}
         </AsyncBoundary>
       }
       rail={
         <GrantPanel
           userId={userId}
           examCode={examCode}
+          existing={state.data?.items ?? []}
           onGranted={state.reload}
         />
       }
@@ -161,10 +186,12 @@ function EntitlementActions({
 function GrantPanel({
   userId,
   examCode,
+  existing,
   onGranted,
 }: {
   userId: string;
   examCode?: string | null;
+  existing: PlatformEntitlement[];
   onGranted: () => void;
 }) {
   const toast = useToast();
@@ -177,6 +204,8 @@ function GrantPanel({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const heldUntil = code ? accessUntil(existing, code, new Date()) : undefined;
 
   const submit = useCallback(
     async (event: React.FormEvent) => {
@@ -229,6 +258,13 @@ function GrantPanel({
             </option>
           ))}
         </Select>
+        {heldUntil !== undefined ? (
+          <Alert tone="warning">
+            {heldUntil === null
+              ? "They already have open-ended access to this exam. A new grant changes nothing today."
+              : `They already have access to this exam until ${formatDay(heldUntil.toISOString())}. A grant ending before then changes nothing today.`}
+          </Alert>
+        ) : null}
         <Input
           type="date"
           label="Access ends"

@@ -9,8 +9,10 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.attempts.models import Attempt
 from app.features.billing import repository as billing_repo
 from app.features.entitlements import repository as entitlements_repo
 from app.features.identity import repository as identity_repo
@@ -133,11 +135,11 @@ async def test_a_limit_of_two_shows_exactly_the_first_two(
     assert {row["title"] for row in rows} == {"Station 1", "Station 2"}
 
 
-async def test_an_attempted_station_stays_visible_once_the_limit_tightens(
+async def test_a_sat_station_counts_toward_the_limit_and_stays_open(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Lowering a plan's limit after someone has already attempted a later station does not
-    hide the work they have already done; only a station never reached is now out of bounds."""
+    """The limit is a total. Someone who has sat Station 5 with a limit of 2 keeps Station 5 and
+    gets one more, the earliest unsat (Station 1). A created-but-never-started attempt costs nothing."""
     exam_id, station_ids = await _five_stations_and_one_too_old(db_session)
     _ = exam_id
     token = await _browser_with_limit(client, db_session, "attempted@example.com", station_limit=5)
@@ -157,8 +159,14 @@ async def test_an_attempted_station_stays_visible_once_the_limit_tightens(
 
     await billing_repo.set_plans_station_limit(db_session, ["sca_attempted"], station_limit=2)
 
+    unstarted = (await client.get("/api/v1/stations?exam_code=sca", headers=bearer(token))).json()["items"]
+    assert {row["title"] for row in unstarted} == {"Station 1", "Station 2"}
+
+    await db_session.execute(
+        update(Attempt).where(Attempt.id == uuid.UUID(started.json()["id"])).values(started_at=FIXED_NOW)
+    )
     after = (await client.get("/api/v1/stations?exam_code=sca", headers=bearer(token))).json()["items"]
-    assert {row["title"] for row in after} == {"Station 1", "Station 2", "Station 5"}
+    assert {row["title"] for row in after} == {"Station 1", "Station 5"}
 
     blocked = await client.get(f"/api/v1/stations/{station_ids[3]}", headers=bearer(token))
     assert blocked.status_code == 403, blocked.text
@@ -284,3 +292,85 @@ async def test_a_platform_admin_sees_the_too_old_station(
     rows = (await client.get("/api/v1/stations?exam_code=sca", headers=bearer(token))).json()["items"]
 
     assert "Too old" in {row["title"] for row in rows}
+
+
+async def _sit(client: AsyncClient, db_session: AsyncSession, token: str, version_id: str) -> None:
+    """Start a practice attempt on a station and mark it started, as a real sitting would."""
+    created = await client.post(
+        "/api/v1/attempts",
+        json={"kind": "practice", "exam_code": "sca", "station_version_id": version_id},
+        headers=bearer(token),
+    )
+    assert created.status_code == 201, created.text
+    await db_session.execute(
+        update(Attempt).where(Attempt.id == uuid.UUID(created.json()["id"])).values(started_at=FIXED_NOW)
+    )
+
+
+async def _titles(client: AsyncClient, token: str) -> dict[str, str]:
+    """Library title -> version id, as this person sees it."""
+    rows = (await client.get("/api/v1/stations?exam_code=sca", headers=bearer(token))).json()["items"]
+    return {row["title"]: row["version_id"] for row in rows}
+
+
+async def test_stations_sat_count_toward_the_limit_and_the_rest_are_the_earliest_unsat(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Limit 3, two sat (Stations 4 and 5): they stay, plus exactly one new, the earliest (Station 1)."""
+    await _five_stations_and_one_too_old(db_session)
+    token = await _browser_with_limit(client, db_session, "total@example.com", station_limit=5)
+    versions = await _titles(client, token)
+    await _sit(client, db_session, token, versions["Station 4"])
+    await _sit(client, db_session, token, versions["Station 5"])
+    await billing_repo.set_plans_station_limit(db_session, ["sca_total"], station_limit=3)
+
+    assert set(await _titles(client, token)) == {"Station 1", "Station 4", "Station 5"}
+
+
+async def test_at_the_limit_only_the_sat_stations_remain(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Limit 2 with Stations 3, 4 and 5 sat: nothing new is handed out, the three sat stay open."""
+    await _five_stations_and_one_too_old(db_session)
+    token = await _browser_with_limit(client, db_session, "spent@example.com", station_limit=5)
+    versions = await _titles(client, token)
+    for title in ("Station 3", "Station 4", "Station 5"):
+        await _sit(client, db_session, token, versions[title])
+    await billing_repo.set_plans_station_limit(db_session, ["sca_spent"], station_limit=2)
+
+    assert set(await _titles(client, token)) == {"Station 3", "Station 4", "Station 5"}
+
+
+async def test_a_session_cannot_hold_a_station_outside_the_plan(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The API refuses a session with a station past the plan, not just the picker."""
+    await _five_stations_and_one_too_old(db_session)
+    token = await _browser_with_limit(client, db_session, "session@example.com", station_limit=5)
+    versions = await _titles(client, token)
+    await billing_repo.set_plans_station_limit(db_session, ["sca_session"], station_limit=2)
+
+    def body(title: str) -> dict[str, object]:
+        """A one-station session request."""
+        return {"name": "Mine", "exam_code": "sca", "station_version_ids": [versions[title]]}
+
+    refused = await client.post("/api/v1/me/station-sets", json=body("Station 5"), headers=bearer(token))
+    assert refused.status_code == 403, refused.text
+    assert refused.json()["code"] == "station_not_in_plan"
+    allowed = await client.post("/api/v1/me/station-sets", json=body("Station 1"), headers=bearer(token))
+    assert allowed.status_code == 201, allowed.text
+
+
+async def test_the_allowance_reports_stations_sat_and_the_plan_limit(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Limit 5, two sat: the progress bar's numbers are 2 of 5, from the server."""
+    await _five_stations_and_one_too_old(db_session)
+    token = await _browser_with_limit(client, db_session, "bar@example.com", station_limit=5)
+    versions = await _titles(client, token)
+    await _sit(client, db_session, token, versions["Station 2"])
+    await _sit(client, db_session, token, versions["Station 3"])
+
+    allowance = await client.get("/api/v1/me/station-sets/allowance?exam_code=sca", headers=bearer(token))
+
+    assert allowance.json() == {"free_stations_left": None, "stations_sat": 2, "plan_limit": 5}

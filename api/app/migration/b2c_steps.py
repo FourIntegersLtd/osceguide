@@ -24,6 +24,7 @@ from app.migration import (
     load_b2c_attempts,
     load_b2c_billing,
     load_b2c_misc,
+    load_b2c_mocks,
 )
 from app.migration import load_b2c_attempt_extras as extras
 from app.migration.b2c_lookups import StepReport
@@ -198,6 +199,7 @@ HANDLERS: dict[str, Callable[[AsyncSession, Run], Awaitable[StepReport]]] = {
     "community": _community,
     "marketplace": _marketplace,
     "attempts": _attempts,
+    "mocks": lambda session, run: _with_lookups(session, run, "mocks", load_b2c_mocks.load_mocks),
     "live_coverage": _live_coverage,
     "debriefs": _debriefs,
     "partners": _partners,

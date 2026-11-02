@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 # Oracle: `osce_assessment.compat.legacy_app_types`. The last place this mapping
@@ -30,6 +30,10 @@ LEGACY_PRODUCT_TO_EXAM = {
 # Firestore `plan_type` -> the suffix of the platform plan code (`<exam>_<suffix>`, e.g. `sca_1m`).
 # Shared by the user-document import and the `*_payments` import so they cannot drift.
 PLAN_SUFFIX_BY_LEGACY_PLAN_TYPE = {"one_month": "1m", "three_month": "3m", "six_month": "6m"}
+
+
+# How long each legacy plan_type lasted, to date a grant whose start or end is missing.
+LEGACY_PLAN_DAYS = {"one_month": 30, "three_month": 90, "six_month": 180}
 
 
 def platform_plan_code(exam_code: str, plan_type: str) -> str | None:
@@ -358,13 +362,23 @@ def entitlements_for(record: dict[str, Any]) -> list[MergedEntitlement]:
         return []
 
     exam_code = exam_for_product(record.get("app_type"))
+    starts_at = parse_timestamp(record.get("plan_start_date"))
+    ends_at = parse_timestamp(record.get("plan_end_date"))
+    length = timedelta(days=LEGACY_PLAN_DAYS.get(str(record.get("plan_type") or "").strip(), 0))
+    # A missing date is worked out from the other and the plan's length, never left open-ended
+    # (no end date would read as lifetime access) or defaulted to the import day.
+    if length:
+        if ends_at is None and starts_at is not None:
+            ends_at = starts_at + length
+        elif starts_at is None and ends_at is not None:
+            starts_at = ends_at - length
     return [
         MergedEntitlement(
             email=email,
             exam_code=exam_code,
             source="purchase",
-            starts_at=parse_timestamp(record.get("plan_start_date")),
-            ends_at=parse_timestamp(record.get("plan_end_date")),
+            starts_at=starts_at,
+            ends_at=ends_at,
         )
     ]
 

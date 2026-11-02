@@ -315,10 +315,14 @@ async def attempts_counted_by_trial(
     ]
 
 
-async def station_version_ids_for_user_exam(
+async def used_station_version_ids(
     session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID
 ) -> set[uuid.UUID]:
-    """Every station version this person has an attempt on for this exam, debriefs included.
+    """Every station version this person has actually sat for this exam.
+
+    "Sat" means the attempt started (a created-but-never-started attempt costs nothing) and is not
+    a debrief (that is a second look at a station already sat). All time, so the free trial and
+    anything before the plan began count; legacy-imported attempts count too.
 
     Version ids, not station ids: this slice does not import the stations slice's `models`
     (`tests/guards/test_slices_call_services_only.py`), so the caller resolves each version to
@@ -330,6 +334,8 @@ async def station_version_ids_for_user_exam(
             Attempt.user_id == user_id,
             Attempt.exam_id == exam_id,
             Attempt.station_version_id.is_not(None),
+            Attempt.started_at.is_not(None),
+            Attempt.kind != str(Kind.DEBRIEF),
         )
         .distinct()
     )

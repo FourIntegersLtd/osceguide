@@ -131,6 +131,54 @@ async def allowed_published_library_version_ids(
     return [version.id for version, station in pairs if station.id in allowed_station_ids]
 
 
+async def plan_usage(
+    session: AsyncSession, *, exam_id: uuid.UUID, user_id: uuid.UUID, now: datetime
+) -> tuple[int, int | None]:
+    """(stations sat, plan limit or None) for this person and exam; see `service_plan_window.plan_usage`."""
+    from app.features.catalog.service import exam_code_by_id  # import cycle
+    from app.features.stations import service_plan_window
+
+    exam_code = await exam_code_by_id(session, exam_id)
+    if exam_code is None:
+        return 0, None
+    return await service_plan_window.plan_usage(
+        session, user_id=user_id, exam_id=exam_id, exam_code=exam_code, now=now
+    )
+
+
+async def versions_outside_plan(
+    session: AsyncSession,
+    *,
+    exam_id: uuid.UUID,
+    user_id: uuid.UUID,
+    now: datetime,
+    version_ids: list[uuid.UUID],
+) -> list[uuid.UUID]:
+    """Which of these versions belong to a platform-library station the person's plan does not unlock.
+
+    Empty when no limit applies to them, so only a capped plan ever refuses anything. Lets a caller
+    that takes version ids from a client (a practice session) enforce the same window the library
+    list and attempt start already apply.
+    """
+    from app.features.catalog.service import exam_code_by_id  # import cycle
+    from app.features.stations import repository_library, service_plan_window
+
+    exam_code = await exam_code_by_id(session, exam_id)
+    if exam_code is None or not version_ids:
+        return []
+    allowed_station_ids = await service_plan_window.allowed_station_ids(
+        session, user_id=user_id, exam_id=exam_id, exam_code=exam_code, now=now
+    )
+    if allowed_station_ids is None:
+        return []
+    pairs = await repository_library.versions_with_stations(session, None, list(version_ids))
+    return [
+        version.id
+        for version, station in pairs
+        if station.owner_kind == "platform" and station.id not in allowed_station_ids
+    ]
+
+
 @dataclass(frozen=True)
 class VersionMaterial:
     """One station version's document, for a caller that already holds the id.

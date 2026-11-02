@@ -145,6 +145,9 @@ async def load_users(
                 custom_simulation_seconds=merged.custom_simulation_seconds,
                 consumer_role=merged.consumer_role,
                 last_login_at=merged.last_login_at,
+                # The free trial counts from here. Left empty, the first sign-in on this app would
+                # start a fresh trial and a lapsed subscriber would fall into it.
+                activated_at=merged.created_at,
             )
             session.add(user)
             await session.flush()
@@ -158,6 +161,9 @@ async def load_users(
             user = existing
             if merged.is_platform_admin and not user.is_platform_admin:
                 user.is_platform_admin = True
+            if user.activated_at is None:
+                # Not signed in on this app yet (sign-in sets it), so the legacy sign-up date stands.
+                user.activated_at = merged.created_at
             _apply_profile(user, merged, creating=False)
             report.users_matched += 1
 
@@ -185,7 +191,7 @@ async def load_users(
             continue
 
         already = await session.scalar(
-            select(Entitlement.id).where(
+            select(Entitlement).where(
                 Entitlement.user_id == user_id,
                 Entitlement.exam_id == exam_id,
                 Entitlement.source_ref == LEGACY_SOURCE_REF,
@@ -193,6 +199,16 @@ async def load_users(
         )
         if already is not None:
             report.entitlements_existing += 1
+            # A renewal made in the old app after the first import: take the later end date. Never
+            # shorten, never reopen a revoked grant, never close an open-ended one (a person decided that).
+            if (
+                grant.ends_at is not None
+                and already.ends_at is not None
+                and already.revoked_at is None
+                and grant.ends_at > already.ends_at
+            ):
+                already.ends_at = grant.ends_at
+                report.entitlements_extended += 1
             continue
 
         session.add(

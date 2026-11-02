@@ -122,7 +122,7 @@ export function StationDetail({
   const [confirming, setConfirming] = useState<"archive" | "delete" | null>(null);
   /** The step on screen; null until the review has loaded and says where to open. */
   const [step, setStep] = useState<StationStepId | null>(null);
-  /** A fresh draft opens on the Draft step: it starts as a copy, so the reader edits it first. */
+  /** A fresh draft opens on the Draft step: it starts as a copy, so the reader edits it first. A published version opens there too, to be read. */
   const openOnDraft = useRef(false);
   const [askingBack, setAskingBack] = useState(false);
 
@@ -144,7 +144,9 @@ export function StationDetail({
     const src = (working?.content ?? station.content ?? {}) as Record<string, unknown>;
     setEditContent({ ...src });
     setRuledFacts(null);
-    setStep(openOnDraft.current ? "draft" : null);
+    // A published or archived version has no work left to do, so open on its details (read only)
+    // rather than on Publish, which hid the patient and management information from admins.
+    setStep(openOnDraft.current || !isDraft ? "draft" : null);
     openOnDraft.current = false;
   }, [station.id, version]);
 

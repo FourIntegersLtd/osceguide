@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.billing.models import Payment, Plan
 from app.features.growth.models import Referral
+from app.migration.link_payments import link_legacy_payments
 from app.migration.report import LoadReport
 from app.migration.users import MergedLegacyPayment, MergedReferral
 
@@ -74,6 +75,10 @@ async def load_legacy_payments(
         )
         report.payments_created += 1
     await session.flush()
+    # Tie each payment to the grant it bought, or no station limit or refund can find it.
+    link_report = await link_legacy_payments(session, user_ids=set(user_ids.values()))
+    for line in link_report.unresolved:
+        report.problem(line)
     return report
 
 

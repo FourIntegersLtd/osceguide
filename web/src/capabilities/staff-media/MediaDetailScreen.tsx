@@ -228,17 +228,16 @@ export function MediaDetailScreen({
 
   const contentForm = () => {
     if (!isMediaKind(kind)) return null;
-    // The server replaces a published item's content rather than editing it in place,
-    // so its form is read only; title, summary and exam still save.
-    if (load.data?.status === "published") {
+    // A published item is edited live: a save changes what learners read at once. A spoken
+    // kind keeps its old recording until staff voice it again, so say so.
+    if (load.data?.status === "published" && kind !== "blog") {
       return (
         <div className="flex flex-col gap-3">
-          <p className="text-osce-meta text-ink-subtle">
-            Published items can&apos;t be edited. The title, summary and exam can still change.
-          </p>
-          <fieldset disabled className="contents">
-            {editableForm(kind)}
-          </fieldset>
+          <Alert tone="info">
+            This is live. Saving changes what learners read. The recording is not remade; voice it
+            again to match.
+          </Alert>
+          {editableForm(kind)}
         </div>
       );
     }
@@ -473,11 +472,9 @@ export function MediaDetailScreen({
                 <HiOutlineLockOpen className="h-4 w-4" aria-hidden />
               </AuthoringIconAction>
             ) : null}
-            {isDraft ? (
-              <AuthoringIconAction variant="ghost" label="Edit as JSON" onClick={() => setJsonOpen(true)}>
-                <HiOutlineCodeBracket className="h-4 w-4" aria-hidden />
-              </AuthoringIconAction>
-            ) : null}
+            <AuthoringIconAction variant="ghost" label="Edit as JSON" onClick={() => setJsonOpen(true)}>
+              <HiOutlineCodeBracket className="h-4 w-4" aria-hidden />
+            </AuthoringIconAction>
             {isDraft ? (
               <AuthoringIconAction
                 variant="danger"
@@ -688,7 +685,17 @@ export function MediaDetailScreen({
             </Panel>
           ) : null}
           {current === "script" ? (
-            <Panel title="Script">
+            <Panel title="Podcast script">
+              {kind === "summary" ? (
+                <div className="mb-3 flex flex-wrap items-center gap-3">
+                  <p className="text-osce-meta text-ink-subtle">
+                    This is the spoken script. The written summary is on the Draft step.
+                  </p>
+                  <Button size="sm" variant="ghost" onClick={() => setStep("draft")}>
+                    Edit the written summary
+                  </Button>
+                </div>
+              ) : null}
               <ScriptStep
                 kind={kind}
                 content={content}

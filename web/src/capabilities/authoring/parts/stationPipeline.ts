@@ -94,7 +94,7 @@ export function stationNext(
     return {
       id: "new-version",
       step: "publish",
-      line: "Published and live. Start a new draft version to change it.",
+      line: "Published and live. Its details are below, read only. Start a new draft version to change it.",
     };
   }
   if (state.unsaved) {

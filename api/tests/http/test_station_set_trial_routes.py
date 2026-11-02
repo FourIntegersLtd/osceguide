@@ -49,7 +49,7 @@ async def test_a_trial_learner_cannot_build_a_session_bigger_than_their_free_sta
 
     allowance = await client.get("/api/v1/me/station-sets/allowance?exam_code=sca", headers=bearer(token))
     assert allowance.status_code == 200, allowance.text
-    assert allowance.json() == {"free_stations_left": 3}
+    assert allowance.json() == {"free_stations_left": 3, "stations_sat": 0, "plan_limit": None}
 
     built = await client.post("/api/v1/me/station-sets", json=body(versions[:3]), headers=bearer(token))
     assert built.status_code == 201, built.text
@@ -73,7 +73,7 @@ async def test_a_trial_learner_cannot_edit_a_session_past_their_free_stations(
     await sit_first_entry(client, token, created)
 
     allowance = await client.get("/api/v1/me/station-sets/allowance?exam_code=sca", headers=bearer(token))
-    assert allowance.json() == {"free_stations_left": 2}
+    assert allowance.json() == {"free_stations_left": 2, "stations_sat": 1, "plan_limit": None}
 
     kept = await client.patch(
         f"/api/v1/me/station-sets/{created['id']}", json=body(versions[:3]), headers=bearer(token)
@@ -93,7 +93,7 @@ async def test_a_paid_learner_has_no_cap(client: AsyncClient, db_session: AsyncS
     versions = await stations(db_session, 5)
 
     allowance = await client.get("/api/v1/me/station-sets/allowance?exam_code=sca", headers=bearer(token))
-    assert allowance.json() == {"free_stations_left": None}
+    assert allowance.json() == {"free_stations_left": None, "stations_sat": 0, "plan_limit": None}
 
     built = await client.post("/api/v1/me/station-sets", json=body(versions), headers=bearer(token))
     assert built.status_code == 201, built.text

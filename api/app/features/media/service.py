@@ -25,7 +25,6 @@ _TUTOR_MATERIAL_QUEUE = "material"
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.UnknownMediaKind: errors.UnknownMediaKindError,
-    domain.NotEditable: errors.NotEditableError,
     domain.AlreadyPublished: errors.AlreadyPublishedError,
     domain.NotPublished: errors.NotPublishedError,
     domain.UnusableTitle: errors.UnusableTitleError,
@@ -82,9 +81,10 @@ async def update(
     edited_by: uuid.UUID,
     index: VectorIndex,
 ) -> MediaRead:
-    """Replaces the given fields, leaving the others as they were. A published item takes new
-    details (title, summary, exam) but refuses new content; content equal to what is stored is
-    no change, since the editor sends the whole form.
+    """Replaces the given fields, leaving the others as they were. A published item is edited live:
+    new content reaches learners at once, and a voiced recording is not remade (the Voice step then
+    shows it is behind). Content equal to what is stored is no change, since the editor sends the
+    whole form. Only a running production job blocks an edit.
 
     An empty `exam_code` files the item under any exam. An edit that moves what a checked script
     was written from (a summary's title is part of that) starts the script check again, so the
@@ -94,13 +94,6 @@ async def update(
     # must not count as a content edit on a published item.
     if content is not None and content == dict(item.content or {}):
         content = None
-    # Catalogue details (title, summary, exam) may change at any status: they do not touch
-    # what was checked and voiced. Content may only change on a draft.
-    if content is not None:
-        try:
-            domain.ensure_editable(status=item.status)
-        except domain.NotEditable as exc:
-            raise_mapped(exc, _REFUSALS)
     published = domain.is_public(status=item.status)
 
     values: dict[str, Any] = {}
@@ -122,15 +115,24 @@ async def update(
         values["exam_id"] = (await resolve_exam(session, code)).id if code else None
     if values:
         await repository.update_item(session, item_id, **values)
-    # A published item's script is fixed, so only its findability moves; a draft is not indexed.
-    if published:
-        title_now = values.get("title", item.title)
-        summary_now = values.get("summary", item.summary)
-        if (title_now, summary_now) != (item.title, item.summary):
-            await _reindex(session, item, title=title_now, summary=summary_now, index=index)
-    elif content is not None or title is not None:
+    # A published item is findable, so a changed title, summary or body is reindexed (the tutor
+    # reads the item itself); a draft is not indexed.
+    if published and (
+        content is not None
+        or (values.get("title", item.title), values.get("summary", item.summary))
+        != (item.title, item.summary)
+    ):
+        await _reindex(
+            session,
+            item,
+            title=values.get("title", item.title),
+            summary=values.get("summary", item.summary),
+            index=index,
+        )
+    if content is not None or title is not None:
         from app.features.media_production import service as production
 
+        # Re-writes only the script lines the edit touched; nothing is voiced.
         await production.rewrite_script_if_out_of_date(session, item_id, requested_by=edited_by)
     return await service_reads.read_one(session, await _require(session, item_id), with_review=True)
 

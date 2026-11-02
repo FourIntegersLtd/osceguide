@@ -19,22 +19,35 @@ from app.features.billing import service_station_limit
 from app.features.stations import errors, repository_library
 
 
-async def _attempted_station_ids(
+async def _used_station_ids(
     session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID
 ) -> set[uuid.UUID]:
-    """The library stations behind every version this person has attempted for the exam.
+    """The library stations behind every version this person has sat for the exam.
 
-    `attempted_station_version_ids` hands back version ids, because the attempts slice does not
+    `used_station_version_ids` hands back version ids, because the attempts slice does not
     import the stations slice's `models`; this resolves each version to its station with the
     stations slice's own repository instead of reaching into attempts' storage.
     """
-    version_ids = await attempts_reads.attempted_station_version_ids(
-        session, user_id=user_id, exam_id=exam_id
-    )
+    version_ids = await attempts_reads.used_station_version_ids(session, user_id=user_id, exam_id=exam_id)
     if not version_ids:
         return set()
     pairs = await repository_library.versions_with_stations(session, None, list(version_ids))
-    return {station.id for _version, station in pairs}
+    return {station.id for _version, station in pairs if station.owner_kind == "platform"}
+
+
+async def plan_usage(
+    session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID, exam_code: str, now: datetime
+) -> tuple[int, int | None]:
+    """How many library stations this person has sat for the exam, and their plan's total limit.
+
+    The limit is `None` when no cap applies. The numbers the setup screen's progress bar reads, so
+    "sat of limit" comes from the same rule that decides which stations are open.
+    """
+    limit = await service_station_limit.station_limit_for(
+        session, user_id=user_id, exam_id=exam_id, exam_code=exam_code, now=now
+    )
+    used_ids = await _used_station_ids(session, user_id=user_id, exam_id=exam_id)
+    return len(used_ids), limit
 
 
 async def allowed_station_ids(
@@ -43,17 +56,20 @@ async def allowed_station_ids(
     """The platform-library stations this person may see and start for the exam.
 
     `None` means no limit applies: every published, in-window station is allowed. Otherwise the
-    set is the first `limit` stations by publish order, plus every station already attempted, so
-    nobody loses a station mid-practice because the window moved past it.
+    plan's limit is the person's total: every station already sat stays open (to retry), and the
+    earliest stations not yet sat are added until the total reaches the limit. Someone who has sat
+    40 of 53 can start 13 more; someone at or past the limit can only revisit what they sat.
     """
     limit = await service_station_limit.station_limit_for(
         session, user_id=user_id, exam_id=exam_id, exam_code=exam_code, now=now
     )
     if limit is None:
         return None
-    first_ids = await repository_library.first_station_ids(session, exam_id=exam_id, limit=limit)
-    attempted_ids = await _attempted_station_ids(session, user_id=user_id, exam_id=exam_id)
-    return set(first_ids) | attempted_ids
+    used_ids = await _used_station_ids(session, user_id=user_id, exam_id=exam_id)
+    new_ids = await repository_library.first_station_ids(
+        session, exam_id=exam_id, limit=limit - len(used_ids), exclude_ids=used_ids
+    )
+    return used_ids | set(new_ids)
 
 
 async def ensure_station_in_plan(

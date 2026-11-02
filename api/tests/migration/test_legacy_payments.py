@@ -16,6 +16,7 @@ from app.migration.load_legacy_b2c import load_legacy_payments
 from app.migration.users import (
     LEGACY_PRODUCT_TO_EXAM,
     PLAN_SUFFIX_BY_LEGACY_PLAN_TYPE,
+    entitlements_for,
     legacy_payment_for,
     merge_users,
 )
@@ -58,7 +59,7 @@ def paid_record(app_type: str, plan_type: str | None, doc_id: str = "fs-1") -> d
 
 
 async def import_payment(db: AsyncSession, record: dict):
-    _, _, email_ids = await loader.load_users(db, merge_users([record]))
+    _, _, email_ids = await loader.load_users(db, merge_users([record]), entitlements_for(record))
     payment = legacy_payment_for(record)
     assert payment is not None
     return await load_legacy_payments(db, [payment], user_ids=email_ids), payment, email_ids
@@ -99,7 +100,8 @@ async def test_unknown_plan_type_is_imported_without_a_plan_and_reported(db_sess
 
     row = await stored(db_session, "pi_fs-1")
     assert (row.plan_id, row.amount_total_pence) == (None, 0)
-    assert len(report.problems) == 1
+    # One line from the plan lookup, one from the linker: linked to its grant, but no plan fits.
+    assert len(report.problems) == 2
     assert "'lifetime'" in report.problems[0]
 
 

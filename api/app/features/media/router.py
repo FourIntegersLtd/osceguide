@@ -206,7 +206,7 @@ async def create(body: schemas.CreateMedia, admin: PlatformAdmin, session: Sessi
 @router.patch(
     "/media/{item_id}",
     response_model=schemas.MediaRead,
-    responses=error_responses(Forbidden, errors.ItemNotFound, errors.NotEditableError, errors.BeingProduced),
+    responses=error_responses(Forbidden, errors.ItemNotFound, errors.BeingProduced),
 )
 async def update(
     item_id: uuid.UUID, body: schemas.UpdateMedia, admin: PlatformAdmin, session: Session, index: Index

@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from app.features.attempts.domain import SCORING_FAILED
 from app.migration.users import UnknownLegacyProduct, exam_for_product, parse_timestamp
 
 # What b2c's existing feedback was actually produced by.
@@ -125,7 +126,9 @@ def attempt_from_transcript(
             payload=feedback,
         )
     else:
-        status, failed_reason, result = "interaction_complete", None, None
+        # Never marked in the legacy app. "Marking failed" stops the feedback page waiting for a
+        # mark that is not coming, and leaves the transcript there for staff to mark on request.
+        status, failed_reason, result = "interaction_complete", SCORING_FAILED, None
 
     return MigratedAttempt(
         legacy_ids={

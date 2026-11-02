@@ -15,6 +15,9 @@ from app.features.entitlements.errors import NotEntitled
 # progress can answer, and both belong to `attempts`, which does the deleting.
 __all__ = ["AttemptInProgress", "NotEntitled", "UserNotFound"]
 
+# Re-exported so this slice's router can declare it: a set may be refused a station outside the plan.
+from app.features.stations.errors import StationNotInPlan as StationNotInPlan  # noqa: E402
+
 
 class SetNotFound(NotFound):
     """A practice set that does not exist, or does not belong to the caller."""

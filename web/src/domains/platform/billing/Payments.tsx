@@ -10,7 +10,7 @@ import {
   type PlatformPayment,
 } from "@/domains/platform/support/api";
 import { formatMoney } from "@/foundation/format";
-import { formatMoment } from "@/domains/platform/support";
+import { formatDay, formatMoment } from "@/domains/platform/support";
 import { InlineAction } from "@/domains/platform/user/InlineAction";
 
 const PAYMENTS_PAGE_LIMIT = 25;
@@ -57,6 +57,11 @@ export function Payments({
 const isGranted = (payment: PlatformPayment) =>
   payment.entitlement_id !== null && !payment.access_revoked;
 
+/** A purchase bought while access ran on starts when that access ends, not on the day it was paid. */
+const startsLater = (payment: PlatformPayment) =>
+  payment.plan_starts_at !== null &&
+  new Date(payment.plan_starts_at).getTime() - new Date(payment.paid_at).getTime() > 24 * 60 * 60 * 1000;
+
 function paymentColumns(onChanged: () => void): Column<PlatformPayment>[] {
   return [
     {
@@ -73,6 +78,12 @@ function paymentColumns(onChanged: () => void): Column<PlatformPayment>[] {
             {formatMoment(payment.paid_at)} · {payment.receipt_id ?? "no receipt"} ·{" "}
             {payment.stripe_payment_intent_id}
           </p>
+          {payment.plan_starts_at && payment.plan_ends_at ? (
+            <p className="text-osce-meta text-ink-subtle">
+              Access {formatDay(payment.plan_starts_at)} → {formatDay(payment.plan_ends_at)}
+              {startsLater(payment) ? ", after the access they already had" : ""}
+            </p>
+          ) : null}
         </div>
       ),
     },

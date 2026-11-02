@@ -137,6 +137,10 @@ async def load_attempts(
                     )
                 )
                 report.results_created += 1
+                if attempt.status != migrated.status:
+                    # A mark found on a later run lifts an attempt first imported as unmarked.
+                    attempt.status = migrated.status
+                    attempt.failed_reason = migrated.failed_reason
 
     await session.flush()
     return report

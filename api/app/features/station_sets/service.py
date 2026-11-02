@@ -51,7 +51,7 @@ async def create_set(
     """
     exam = await resolve_exam(session, exam_code)
     await attempts.require_entitlement(session, user_id=owner_user_id, exam_id=exam.id, now=now)
-    await _ensure_usable_versions(session, exam.id, station_version_ids)
+    await _ensure_usable_versions(session, exam.id, station_version_ids, user_id=owner_user_id, now=now)
     await _ensure_within_trial(session, owner_user_id, exam.id, station_version_ids, now=now)
     station_set = await repository.create_set(session, owner_user_id, exam_id=exam.id, name=name)
     entries = await repository.add_entries(session, station_set.id, station_version_ids=station_version_ids)
@@ -63,15 +63,26 @@ async def allowance(
 ) -> SetAllowance:
     """How many new stations a session for this exam may hold, so the setup screen caps its picker."""
     exam = await resolve_exam(session, exam_code)
+    stations_sat, plan_limit = await stations_reads.plan_usage(
+        session, exam_id=exam.id, user_id=owner_user_id, now=now
+    )
     return SetAllowance(
-        free_stations_left=await _free_stations_left(session, owner_user_id, exam.id, now=now)
+        free_stations_left=await _free_stations_left(session, owner_user_id, exam.id, now=now),
+        stations_sat=stations_sat,
+        plan_limit=plan_limit,
     )
 
 
 async def _ensure_usable_versions(
-    session: AsyncSession, exam_id: uuid.UUID, station_version_ids: list[uuid.UUID]
+    session: AsyncSession,
+    exam_id: uuid.UUID,
+    station_version_ids: list[uuid.UUID],
+    *,
+    user_id: uuid.UUID,
+    now: datetime,
 ) -> None:
-    """Refuse a version a set for this exam may not hold: unknown, unpublished, another exam's or an org's.
+    """Refuse a version a set for this exam may not hold: unknown, unpublished, another exam's or an org's,
+    or a library station outside what this person's plan unlocks (`StationNotInPlan`).
 
     Entitlement is checked against the set's exam, so a station filed under a different exam must
     never get in, or holding one exam would let somebody sit another's stations.
@@ -83,6 +94,10 @@ async def _ensure_usable_versions(
         summary = summaries.get(version_id)
         if summary is None or summary.status != "published" or summary.exam_id != exam_id:
             raise errors.StationVersionNotUsableError()
+    if await stations_reads.versions_outside_plan(
+        session, exam_id=exam_id, user_id=user_id, now=now, version_ids=station_version_ids
+    ):
+        raise errors.StationNotInPlan()
 
 
 async def _free_stations_left(
@@ -176,7 +191,9 @@ async def replace_entries(
     if station_set.locked:
         raise errors.SetLockedError()
 
-    await _ensure_usable_versions(session, station_set.exam_id, station_version_ids)
+    await _ensure_usable_versions(
+        session, station_set.exam_id, station_version_ids, user_id=owner_user_id, now=now
+    )
     await _ensure_within_trial(session, owner_user_id, station_set.exam_id, station_version_ids, now=now)
 
     existing_entries = await repository.entries_for(session, set_id)
@@ -311,7 +328,9 @@ async def start_entry_attempt(
     else:
         # start_attempt -> _ensure_runnable already covers published and org visibility; this call is
         # here for the exam match against the set, which a stored or re-filed entry can break.
-        await _ensure_usable_versions(session, station_set.exam_id, [entry.station_version_id])
+        await _ensure_usable_versions(
+            session, station_set.exam_id, [entry.station_version_id], user_id=owner_user_id, now=now
+        )
         attempt = await attempts.start_attempt(
             session,
             user_id=owner_user_id,

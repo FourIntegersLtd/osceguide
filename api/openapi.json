@@ -16873,7 +16873,7 @@
         "type": "object"
       },
       "SetAllowance": {
-        "description": "How many new stations a session for this exam may hold: null when access is paid for.",
+        "description": "How many new stations a session for this exam may hold: null when access is paid for.\n\n`stations_sat` and `plan_limit` are the progress bar's numbers: distinct stations this person\nhas sat, and the plan's total (null when nothing caps it).",
         "properties": {
           "free_stations_left": {
             "anyOf": [
@@ -16885,10 +16885,27 @@
               }
             ],
             "title": "Free Stations Left"
+          },
+          "plan_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Limit"
+          },
+          "stations_sat": {
+            "title": "Stations Sat",
+            "type": "integer"
           }
         },
         "required": [
-          "free_stations_left"
+          "free_stations_left",
+          "stations_sat",
+          "plan_limit"
         ],
         "title": "SetAllowance",
         "type": "object"
@@ -35657,10 +35674,11 @@
                 }
               }
             },
-            "description": "not_entitled, trial_station_limit",
+            "description": "not_entitled, trial_station_limit, station_not_in_plan",
             "x-codes": [
               "not_entitled",
-              "trial_station_limit"
+              "trial_station_limit",
+              "station_not_in_plan"
             ]
           },
           "404": {
@@ -36030,10 +36048,11 @@
                 }
               }
             },
-            "description": "forbidden, trial_station_limit",
+            "description": "forbidden, trial_station_limit, station_not_in_plan",
             "x-codes": [
               "forbidden",
-              "trial_station_limit"
+              "trial_station_limit",
+              "station_not_in_plan"
             ]
           },
           "404": {

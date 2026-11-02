@@ -116,6 +116,10 @@ def main() -> None:
     parser.add_argument(
         "--audit", action="store_true", help="list every Firestore collection and its fate, then exit"
     )
+    parser.add_argument(
+        "--database-url-env",
+        help="point at a Railway database, e.g. RAILWAY_PROXY under `railway run -s <postgres> -e <env>`",
+    )
     parser.add_argument("--only", default="", help=f"comma-separated subset of: {', '.join(STEPS)}")
     parser.add_argument(
         "--skip-bad-records", action="store_true", help="keep a step's good rows when some fail"
@@ -128,6 +132,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if args.database_url_env:
+        from railway_db import use_database_env
+
+        use_database_env(args.database_url_env)
     if args.audit:
         raise SystemExit(1 if audit(b2c_firestore.client()) else 0)
     only = [s.strip() for s in args.only.split(",") if s.strip()]

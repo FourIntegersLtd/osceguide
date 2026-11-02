@@ -6,6 +6,7 @@ import {
   AsyncBoundary,
   B2CHero,
   B2CPageHeader,
+  B2CSegmentedTabs,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { plural } from "@/foundation/format";
@@ -32,12 +33,12 @@ const NONE: Filters = {
 };
 
 /**
- * The account directory: everyone, grouped by exam, with the retiring B2C
+ * The account directory: everyone, one tab per exam, with the retiring B2C
  * admin's columns and filters.
  *
  * That console had a page per exam because each exam was its own database.
- * Here an account is one row whatever it holds, so the exams are groups on
- * one screen, each paging on its own, and the counts across the top come
+ * Here an account is one row whatever it holds, so each exam is a tab over
+ * one table, paging on its own, and the counts across the top come
  * from one summary call rather than from having loaded everybody.
  */
 export function Users() {
@@ -70,7 +71,6 @@ export function Users() {
               {counts.paid} paid · {counts.trial} on trial
             </B2CHero>
             <DirectoryFilters
-              exams={counts.exams}
               plans={plans.data ?? []}
               filters={filters}
               term={term}
@@ -90,6 +90,11 @@ export function Users() {
   );
 }
 
+/** The tab for accounts with no exam set; no exam code can collide with it. */
+const UNASSIGNED_TAB = "__unassigned";
+/** The tab across every exam, so a search can find someone whatever they are on. */
+const ALL_TAB = "__all";
+
 function Groups({
   summary,
   filters,
@@ -101,31 +106,45 @@ function Groups({
   hrefFor: (path: string) => string;
   onClear: () => void;
 }) {
-  if (filters.examCode) {
-    const exam = summary.exams.find((entry) => entry.code === filters.examCode);
-    return (
-      <UserGroup
-        title={
-          exam
-            ? groupTitle(exam.code, exam.name, exam.users)
-            : filters.examCode.toUpperCase()
-        }
-        filters={filters}
-        hrefFor={hrefFor}
-        totalCount={directoryListingTotal(summary, filters)}
-        onClear={onClear}
-      />
-    );
-  }
-  // Busiest exam first, and the exams nobody is on yet as one line rather
-  // than a run of empty cards above the people who are actually here.
+  // Busiest exam first. Exams nobody is on yet are one line under the tabs
+  // rather than a run of empty tabs.
   const populated = summary.exams
     .filter((exam) => exam.users > 0)
     .sort((a, b) => b.users - a.users);
   const empty = summary.exams.filter((exam) => exam.users === 0);
+  const tabs = [
+    { id: ALL_TAB, label: `All accounts · ${summary.total}` },
+    ...populated.map((exam) => ({
+      id: exam.code,
+      label: `${exam.name || exam.code.toUpperCase()} · ${exam.users}`,
+    })),
+    { id: UNASSIGNED_TAB, label: `No exam set · ${summary.unassigned}` },
+  ];
+  const firstTab = ALL_TAB;
+  const [chosen, setChosen] = useState<string>(firstTab);
+  // The chosen tab can vanish when the summary reloads; fall back to the first.
+  const active = tabs.some((tab) => tab.id === chosen) ? chosen : firstTab;
+  const exam = populated.find((entry) => entry.code === active);
+
   return (
     <>
-      {populated.map((exam) => (
+      <B2CSegmentedTabs
+        aria-label="Exam"
+        items={tabs}
+        value={active}
+        onChange={setChosen}
+      />
+      {active === ALL_TAB ? (
+        <UserGroup
+          key={ALL_TAB}
+          title={`All accounts · ${summary.total}`}
+          description={`${summary.paid} paid · ${summary.trial} on trial`}
+          filters={{ ...filters, examCode: null }}
+          hrefFor={hrefFor}
+          totalCount={directoryListingTotal(summary, { ...filters, examCode: null })}
+          onClear={onClear}
+        />
+      ) : exam ? (
         <UserGroup
           key={exam.code}
           title={groupTitle(exam.code, exam.name, exam.users)}
@@ -138,23 +157,25 @@ function Groups({
           })}
           onClear={onClear}
         />
-      ))}
-      <UserGroup
-        title={`No exam set on the account · ${summary.unassigned}`}
-        description={`${summary.unassigned_paid} paid · ${summary.unassigned_trial} on trial. Staff accounts appear here too.`}
-        filters={{ ...filters, examCode: null, unassigned: true }}
-        hrefFor={hrefFor}
-        totalCount={directoryListingTotal(summary, {
-          ...filters,
-          examCode: null,
-          unassigned: true,
-        })}
-        onClear={onClear}
-      />
+      ) : (
+        <UserGroup
+          key={UNASSIGNED_TAB}
+          title={`No exam set on the account · ${summary.unassigned}`}
+          description={`${summary.unassigned_paid} paid · ${summary.unassigned_trial} on trial. Staff accounts appear here too.`}
+          filters={{ ...filters, examCode: null, unassigned: true }}
+          hrefFor={hrefFor}
+          totalCount={directoryListingTotal(summary, {
+            ...filters,
+            examCode: null,
+            unassigned: true,
+          })}
+          onClear={onClear}
+        />
+      )}
       {empty.length > 0 ? (
         <p className="px-1 text-osce-meta text-ink-subtle">
           Nobody yet on{" "}
-          {empty.map((exam) => exam.name || exam.code.toUpperCase()).join(", ")}
+          {empty.map((entry) => entry.name || entry.code.toUpperCase()).join(", ")}
           .
         </p>
       ) : null}

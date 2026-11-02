@@ -54,7 +54,7 @@ def _newest_first(documents: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
 def feedback_index(
     feedbacks: Sequence[dict[str, Any]],
 ) -> tuple[dict[tuple[str, str], dict], dict[tuple, dict]]:
-    """Feedback documents indexed two ways: by (exam, attempt id) when present, else by `practice_key`."""
+    """Feedback indexed by (exam, attempt id), or by `practice_key` when it carries no attempt id."""
     by_attempt: dict[tuple[str, str], dict[str, Any]] = {}
     by_key: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     for doc in _newest_first(feedbacks):
@@ -64,6 +64,8 @@ def feedback_index(
         attempt_id = str(doc.get("attempt_id") or "")
         if attempt_id:
             by_attempt.setdefault((str(doc.get("app_type") or ""), attempt_id), feedback_fields)
+        # Every feedback is also findable by (user, mock, station): some name an attempt id that
+        # no transcript has (a placeholder such as "attempt-789"), and would otherwise be lost.
         by_key.setdefault(practice_key(doc), feedback_fields)
     return by_attempt, by_key
 
@@ -80,13 +82,29 @@ def migrate_transcripts(
     so the run's totals still add up.
     """
     by_attempt, by_key = feedback_index(feedbacks)
+    transcript_attempt_ids = {
+        (str(raw.get("app_type") or ""), str(raw.get("attempt_id") or "")) for raw in transcripts
+    }
     used: set[int] = set()
     transformed_pairs: list[tuple[MigratedAttempt, dict[str, Any]]] = []
     for raw in transcripts:
         app_type = str(raw.get("app_type") or "")
-        feedback = by_attempt.get((app_type, str(raw.get("attempt_id") or ""))) or by_key.get(
-            practice_key(raw)
-        )
+        feedback = by_attempt.get((app_type, str(raw.get("attempt_id") or "")))
+        if feedback is None:
+            fallback = by_key.get(practice_key(raw))
+            # A feedback that names another transcript's attempt belongs to that one alone. Each
+            # old feedback marks one attempt: the newest transcript takes it, siblings get none.
+            names_another = (
+                fallback is not None
+                and (
+                    app_type,
+                    str(fallback.get("attempt_id") or ""),
+                )
+                in transcript_attempt_ids
+            )
+            feedback = (
+                fallback if fallback is not None and not names_another and id(fallback) not in used else None
+            )
         try:
             migrated = attempt_from_transcript(raw, app_type=app_type, feedback=feedback)
         except UnknownLegacyProduct as exc:

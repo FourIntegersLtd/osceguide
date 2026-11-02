@@ -31,10 +31,6 @@ class UnknownMediaKind(ValueError):
     """Raised when a string does not name one of the four media kinds."""
 
 
-class NotEditable(Exception):
-    """Raised when someone tries to change a published item's content in place, rather than replacing it."""
-
-
 class AlreadyPublished(Exception):
     """Raised when someone tries to publish an item that is already published."""
 
@@ -79,12 +75,6 @@ def is_public(*, status: str) -> bool:
 def is_editable(*, status: str) -> bool:
     """Whether an item in this status may be changed in place: only a draft may."""
     return status == "draft"
-
-
-def ensure_editable(*, status: str) -> None:
-    """Refuses to change a published item's content in place; it must be replaced instead."""
-    if not is_editable(status=status):
-        raise NotEditable("A published item's content is replaced, not edited in place.")
 
 
 def ensure_deletable(*, status: str) -> None:

@@ -452,6 +452,16 @@ def _review(
     content["review"] = review
 
 
+def mark_checked(kind: str, title: str, content: dict[str, Any]) -> None:
+    """Records on `content` a script check with nothing flagged and nothing changed.
+
+    For items checked by hand before checks were kept. What is stored matches the content as it
+    stands, so the item does not read as changed since voicing.
+    """
+    source = script_source(kind, title, content) if kind != "slide_deck" else None
+    _review(kind, content, [], [], source=source)
+
+
 def talk_words(content: dict[str, Any]) -> int:
     """How many words a deck's whole talk is."""
     return sum(len(plain_speech(line).split()) for line in spoken_lines("slide_deck", content))

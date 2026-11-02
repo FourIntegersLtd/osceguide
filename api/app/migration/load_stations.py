@@ -78,6 +78,9 @@ async def load_stations(
 
         station_row = Station(
             owner_kind="platform",
+            # Legacy library stations were live to learners; the column defaults to false.
+            # CASC stays unapproved until the owner reviews it.
+            approved=station.exam_code != "casc",
             org_id=None,
             exam_id=exam_id,
             title=station.title,

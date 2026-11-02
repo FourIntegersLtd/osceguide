@@ -61,9 +61,15 @@ class SetRead(BaseModel):
 
 
 class SetAllowance(BaseModel):
-    """How many new stations a session for this exam may hold: null when access is paid for."""
+    """How many new stations a session for this exam may hold: null when access is paid for.
+
+    `stations_sat` and `plan_limit` are the progress bar's numbers: distinct stations this person
+    has sat, and the plan's total (null when nothing caps it).
+    """
 
     free_stations_left: int | None
+    stations_sat: int
+    plan_limit: int | None
 
 
 class CreateSet(BaseModel):

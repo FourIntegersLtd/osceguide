@@ -20,7 +20,7 @@ of those, with the same publish-and-read logic copied into each.
 - A slug is derived from the title, unique, and truncated at a **word boundary**
   so a shortened URL still reads as words. A title with nothing usable in it is
   an error rather than a blank URL somebody has to guess.
-- Only a draft is editable; published material is replaced, not edited in place.
+- A draft or published item is editable; a published edit goes live at once and does not remake a recording. A running production job blocks edits.
 - A draft is **404 to everyone but an admin** — its existence is not public either.
 - Indexing happens on publish, not on write, so a draft nobody can read does not
   surface in search.

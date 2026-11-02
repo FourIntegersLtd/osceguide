@@ -14845,10 +14845,17 @@ export interface components {
         /**
          * SetAllowance
          * @description How many new stations a session for this exam may hold: null when access is paid for.
+         *
+         *     `stations_sat` and `plan_limit` are the progress bar's numbers: distinct stations this person
+         *     has sat, and the plan's total (null when nothing caps it).
          */
         SetAllowance: {
             /** Free Stations Left */
             free_stations_left: number | null;
+            /** Plan Limit */
+            plan_limit: number | null;
+            /** Stations Sat */
+            stations_sat: number;
         };
         /** SetAutoAdvance */
         SetAutoAdvance: {
@@ -24763,7 +24770,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description not_entitled, trial_station_limit */
+            /** @description not_entitled, trial_station_limit, station_not_in_plan */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -25006,7 +25013,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description forbidden, trial_station_limit */
+            /** @description forbidden, trial_station_limit, station_not_in_plan */
             403: {
                 headers: {
                     [name: string]: unknown;

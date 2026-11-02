@@ -27,10 +27,9 @@ def test_a_draft_is_not_readable_by_everyone() -> None:
     assert domain.is_public(status="published")
 
 
-def test_only_a_draft_may_change_content() -> None:
-    domain.ensure_editable(status="draft")
-    with pytest.raises(domain.NotEditable):
-        domain.ensure_editable(status="published")
+def test_only_a_draft_may_be_produced_from_a_brief() -> None:
+    assert domain.is_editable(status="draft")
+    assert not domain.is_editable(status="published")
 
 
 def test_publishing_a_draft_is_allowed() -> None:

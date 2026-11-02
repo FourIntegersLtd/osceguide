@@ -64,7 +64,10 @@ def stream_b2c_user_documents(
     *,
     products: Iterable[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Stream user documents from the four consumer collections (read-only)."""
+    """Stream user documents from the four consumer collections (read-only).
+
+    Seed rows and deleted accounts are left out: neither is a person to import.
+    """
     selected = list(products) if products is not None else list(B2C_USER_COLLECTIONS)
     unknown = [product for product in selected if product not in B2C_USER_COLLECTIONS]
     if unknown:
@@ -76,6 +79,9 @@ def stream_b2c_user_documents(
         collection = B2C_USER_COLLECTIONS[app_type]
         for snapshot in db.collection(collection).stream():
             document_data = snapshot.to_dict() or {}
+            is_demo = b2c_firestore.is_seed(b2c_firestore.serialize(document_data))
+            if is_demo or document_data.get("is_deleted") is True:
+                continue
             documents.append(_doc_to_dict(snapshot.id, document_data, app_type=app_type))
     return documents
 

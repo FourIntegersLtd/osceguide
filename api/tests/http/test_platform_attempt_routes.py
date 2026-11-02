@@ -8,13 +8,16 @@ editing rows — and asserts the console can tell it from the others.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import null, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import repository
+from app.features.attempts import repository, service_platform_actions
 from app.features.attempts.jobs import SCORING_TASK
+from app.features.attempts.models import Attempt
 from app.features.identity import repository as identity_repo
 from tests.contract.test_worker_routes import DEFINITION, NOW, transcript, worker_headers
 from tests.support.catalog import ensure_exam
@@ -194,6 +197,33 @@ async def mark_jobs_failed(db_session: AsyncSession, attempt_id: uuid.UUID) -> N
         ),
         {"id": str(attempt_id), "task": SCORING_TASK},
     )
+
+
+async def test_a_migrated_attempt_without_a_frozen_rubric_is_frozen_then_marked(
+    client: AsyncClient, make_actor, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    _, attempt_id = await a_person_with_an_attempt(db_session, "legacy@example.com")
+
+    async def freeze_from_station(session: AsyncSession, attempt: Attempt, *, now: datetime) -> dict:
+        """Stand in for the station render: freeze the standard definition."""
+        await repository.freeze_definition(session, attempt.id, definition=DEFINITION, at=now)
+        return DEFINITION
+
+    monkeypatch.setattr(service_platform_actions, "render_definition", freeze_from_station)
+    await bootstrap(client, attempt_id)
+    await deliver(client, attempt_id)
+    await mark_jobs_failed(db_session, attempt_id)
+    # A migrated attempt never had its rubric frozen on it.
+    await db_session.execute(update(Attempt).where(Attempt.id == attempt_id).values(definition=null()))
+
+    response = await client.post(
+        f"/api/v1/platform/attempts/{attempt_id}/rescore", json={}, headers=bearer(root)
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["queued"] is True
+    assert await scoring_jobs(db_session, attempt_id) == ["failed", "todo"]
 
 
 async def test_a_failed_marking_can_be_queued_again_and_twice_is_once(

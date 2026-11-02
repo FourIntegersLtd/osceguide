@@ -138,7 +138,9 @@ export function factsStep(facts: Facts | null, unchecked = "Not checked"): RailS
       ? unchecked
       : open > 0
         ? `${open} to resolve`
-        : `${facts.claims.length} claims checked${facts.checked_by ? " by hand" : ""}`,
+        : facts.claims.length === 0 && facts.checked_by
+          ? "Checked by hand"
+          : `${facts.claims.length} claims checked${facts.checked_by ? " by hand" : ""}`,
   };
 }
 

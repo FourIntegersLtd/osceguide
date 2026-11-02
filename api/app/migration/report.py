@@ -14,6 +14,7 @@ class LoadReport:
     legacy_passwords_backfilled: int = 0
     entitlements_created: int = 0
     entitlements_existing: int = 0
+    entitlements_extended: int = 0
     attempts_created: int = 0
     attempts_existing: int = 0
     messages_created: int = 0
@@ -57,6 +58,7 @@ class LoadReport:
             legacy_passwords_backfilled=self.legacy_passwords_backfilled + other.legacy_passwords_backfilled,
             entitlements_created=self.entitlements_created + other.entitlements_created,
             entitlements_existing=self.entitlements_existing + other.entitlements_existing,
+            entitlements_extended=self.entitlements_extended + other.entitlements_extended,
             attempts_created=self.attempts_created + other.attempts_created,
             attempts_existing=self.attempts_existing + other.attempts_existing,
             messages_created=self.messages_created + other.messages_created,
@@ -89,7 +91,7 @@ class LoadReport:
             f"users {self.users_created} created / {self.users_matched} matched; "
             f"legacy passwords backfilled {self.legacy_passwords_backfilled}; "
             f"entitlements {self.entitlements_created} created / "
-            f"{self.entitlements_existing} already there; "
+            f"{self.entitlements_existing} already there ({self.entitlements_extended} extended); "
             f"attempts {self.attempts_created} created / {self.attempts_existing} already there; "
             f"messages {self.messages_created}; results {self.results_created}; "
             f"stations {self.stations_created} created / {self.stations_existing} already there; "

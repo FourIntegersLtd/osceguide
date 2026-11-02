@@ -42,6 +42,7 @@ PAYMENT_COLLECTIONS = _per_exam("sca_payments", "payments")
 REFERRAL_COLLECTIONS = _per_exam("referrals", "referrals")
 CONTACT_MESSAGE_COLLECTIONS = _per_exam("messages", "messages")
 FEATURE_REQUEST_COLLECTIONS = _per_exam("features", "features")
+MOCK_COLLECTIONS = _per_exam("mocks", "mocks")
 CV_COLLECTIONS = {"ortho": "ortho_cvs"}
 HUMAN_PRACTICE_SESSION_COLLECTIONS = _per_exam("sca_human_practice_sessions", "human_practice_sessions")
 HUMAN_PRACTICE_FEEDBACK_COLLECTIONS = _per_exam("sca_human_practice_feedback", "human_practice_feedback")
@@ -81,6 +82,8 @@ COPIED: dict[str, dict[str, str]] = {
         for collection_map in (TRANSCRIPT_COLLECTIONS, FEEDBACK_COLLECTIONS)
         for exam, collection_name in collection_map.items()
     },
+    # A mock is a user's named bundle of stations: a station set here ("My sessions").
+    "mocks": {collection_name: exam for exam, collection_name in MOCK_COLLECTIONS.items()},
     "live_coverage": {LIVE_COVERAGE_COLLECTION: ""},
     "debriefs": {collection_name: exam for exam, collection_name in DEBRIEF_COLLECTIONS.items()},
     "payments": {collection_name: exam for exam, collection_name in PAYMENT_COLLECTIONS.items()},
@@ -115,13 +118,6 @@ SKIPPED: dict[str, str] = {
     **{
         collection_name: "a transient matchmaking queue (entries expire in minutes)"
         for collection_name in _per_exam("sca_human_practice_queue", "human_practice_queue").values()
-    },
-    # A mock is a user's named bundle of stations. The attempts inside it are
-    # copied; the bundle itself has no platform equivalent that is not a
-    # station set, and making every user's mock a set is a product decision.
-    **{
-        collection_name: f"{_NO_TABLE}; its attempts are copied"
-        for collection_name in _per_exam("mocks", "mocks").values()
     },
 }
 

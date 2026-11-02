@@ -25,6 +25,7 @@ from app.features.billing.models import Payment, Plan
 from app.features.growth.models import PartnerArrival, PartnerReporter, Referral
 from app.migration.b2c_lookups import Lookups, StepReport
 from app.migration.legacy_ids import legacy_row_id
+from app.migration.link_payments import link_legacy_payments
 from app.migration.users import (
     PLAN_SUFFIX_BY_LEGACY_PLAN_TYPE,
     UnknownLegacyProduct,
@@ -121,6 +122,10 @@ async def load_payments(
             receipts.add(receipt)
         report.count("payments created")
     await session.flush()
+    # Tie each payment to the grant it bought, or no station limit or refund can find it.
+    link_report = await link_legacy_payments(session)
+    for line in link_report.unresolved:
+        report.problem(line)
     return report
 
 

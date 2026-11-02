@@ -174,16 +174,16 @@ async def evaluated_for_user(
     return [_ref(attempt, has_result=True) for attempt in attempts]
 
 
-async def attempted_station_version_ids(
+async def used_station_version_ids(
     session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID
 ) -> set[uuid.UUID]:
-    """Every station version this person has an attempt on for this exam.
+    """Every station version this person has sat for this exam (started, not a debrief).
 
-    What a limited library plan exempts: a station already attempted never drops out of view
-    just because the plan's window moved past it. Version ids, not station ids — the caller
-    (outside this slice) resolves each to its station.
+    What a limited library plan counts against its total: a station already sat never drops out of
+    view, and each one uses up a place. Version ids, not station ids; the caller (outside this
+    slice) resolves each to its station.
     """
-    return await repository.station_version_ids_for_user_exam(session, user_id=user_id, exam_id=exam_id)
+    return await repository.used_station_version_ids(session, user_id=user_id, exam_id=exam_id)
 
 
 def _ref(attempt: Attempt, *, has_result: bool = False) -> AttemptRef:

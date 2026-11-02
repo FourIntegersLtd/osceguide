@@ -9,7 +9,7 @@ rather than stations.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from typing import Any
 
 from sqlalchemy import ColumnElement, func, select
@@ -89,13 +89,17 @@ async def library_page(
     )
 
 
-async def first_station_ids(session: AsyncSession, *, exam_id: uuid.UUID, limit: int) -> list[uuid.UUID]:
-    """The ids of the first `limit` published platform-library stations of an exam past the
-    date floor, oldest first by when each was first published.
+async def first_station_ids(
+    session: AsyncSession, *, exam_id: uuid.UUID, limit: int, exclude_ids: Collection[uuid.UUID] = ()
+) -> list[uuid.UUID]:
+    """The ids of the first `limit` approved, published platform-library stations of an exam past
+    the date floor, oldest first by when each was first published, skipping `exclude_ids`.
 
-    This is what a limited plan's window is built from: the earliest `limit` stations, plus
-    (separately, by the caller) whatever the person has already attempted.
+    This is what a limited plan's window is built from: the earliest stations the person has not
+    yet sat, enough to bring their total up to the plan's limit.
     """
+    if limit <= 0:
+        return []
     first_published_at = (
         select(func.min(StationVersion.published_at))
         .where(StationVersion.station_id == Station.id)
@@ -107,7 +111,9 @@ async def first_station_ids(session: AsyncSession, *, exam_id: uuid.UUID, limit:
         .where(
             Station.owner_kind == "platform",
             Station.status == "published",
+            Station.approved.is_(True),
             Station.exam_id == exam_id,
+            Station.id.not_in(list(exclude_ids)),
             _first_published_at_floor(),
         )
         .order_by(first_published_at.asc(), Station.id.asc())
