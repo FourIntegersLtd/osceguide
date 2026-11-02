@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { HiOutlineCloudArrowUp, HiOutlinePlusCircle } from "react-icons/hi2";
 import { useSurface } from "@/capabilities";
+import { isPlatformAdmin, useSession } from "@/foundation/session";
 import {
   matchesStatusFilter,
   parseStatusFilter,
@@ -23,6 +24,7 @@ import { useAsync, useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import {
   archiveStationVersion,
   listStations,
+  setStationApproval,
   listStationTemplates,
   STATION_PAGE_LIMIT,
   type StationTemplate,
@@ -44,6 +46,7 @@ import { StationUsedBy } from "@/capabilities/authoring/sections/StationUsedBy";
  */
 export function StationsSection() {
   const scope = useAuthoringScope();
+  const { session } = useSession();
   const router = useRouter();
   const { hrefFor } = useSurface();
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
@@ -189,6 +192,14 @@ export function StationsSection() {
           search={query}
           busy={action.busy}
           onOpen={(station) => goTo({ status, station: station.id })}
+          onToggleApproval={
+            scope.kind === "platform" && isPlatformAdmin(session)
+              ? (station) =>
+                  void action.run(`approval:${station.id}`, () =>
+                    setStationApproval(scope, station.id, !station.approved),
+                  )
+              : undefined
+          }
           onArchive={(station) =>
             setArchiveConfirm({
               id: station.id,

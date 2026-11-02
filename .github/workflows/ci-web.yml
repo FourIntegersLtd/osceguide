@@ -136,8 +136,6 @@ jobs:
           poetry run python scripts/bootstrap_admin.py --email "$ADMIN_EMAIL" --name "Walkthrough" --password "$ADMIN_PASSWORD"
           # Published as the platform admin, so after it exists.
           poetry run python scripts/seed_station_templates.py --apply
-          # The library shows approved stations only; an editor approves in real life, so the seeded ones are approved here.
-          psql "$DATABASE_URL" -c "update stations set approved = true where status = 'published'"
           psql "$DATABASE_URL" -c "update users set must_change_password = false where email = '$ADMIN_EMAIL'"
 
       - name: Start the api on :8002

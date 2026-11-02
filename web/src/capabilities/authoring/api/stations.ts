@@ -156,6 +156,21 @@ export function archiveStationVersion(
   });
 }
 
+/**
+ * An editor's sign-off on a published station: approved stations reach the library, the rest stay
+ * out of it. Staff only, so only the platform scope has the routes.
+ */
+export function setStationApproval(
+  scope: AuthoringScope,
+  station: string,
+  approved: boolean,
+): Promise<Station> {
+  if (approved) {
+    return platformRequest(`${scope.base}/stations/${pathId(station)}/approve`, { method: "POST" });
+  }
+  return platformRequest(`${scope.base}/stations/${pathId(station)}/revoke-approval`, { method: "POST" });
+}
+
 export function publishStationVersion(
   scope: AuthoringScope,
   station: string,

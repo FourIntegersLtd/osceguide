@@ -40,6 +40,7 @@ export {
   deleteStationVersion,
   archiveStationVersion,
   publishStationVersion,
+  setStationApproval,
   editStationBrief,
   uploadStationPhotos,
   removeStationPhoto,

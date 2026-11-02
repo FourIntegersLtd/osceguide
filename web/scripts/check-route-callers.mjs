@@ -81,10 +81,8 @@ const ROUTE_ALLOW = allowList(
     "/api/v1/me/tutor-memory": "the Memory tab left Settings (owner decision 2026-10); the api keeps the routes and erasure still clears the memory",
     "/api/v1/me/tutor-memory/notes/{}": "the Memory tab left Settings (owner decision 2026-10); the api keeps the routes",
     "/api/v1/platform/generate/summary": "driven by staff scripts and the media pipeline, no screen",
-    "/api/v1/platform/stations/{}/approve": "no caller yet: staff approve button not built, use the API",
-    "/api/v1/platform/stations/{}/revoke-approval": "no caller yet: staff approve button not built, use the API",
   },
-  37, // lower only (35 + the two station approval routes, until the staff console gets a button)
+  35, // lower only (33 + the two tutor-memory routes parked when the Memory tab was removed)
 );
 
 // ---- collect the paths the source spells ----------------------------------------------------

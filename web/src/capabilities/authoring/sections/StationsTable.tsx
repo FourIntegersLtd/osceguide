@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { READER_EMPTY_TEXT } from "@/capabilities/authoring/parts/CannotAuthor";
-import { HiOutlineArchiveBox, HiOutlineChevronRight } from "react-icons/hi2";
+import { HiOutlineArchiveBox, HiOutlineCheckBadge, HiOutlineChevronRight, HiOutlineXCircle } from "react-icons/hi2";
 import Table, { type TableMore } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import type { Station } from "@/capabilities/authoring/api";
@@ -24,18 +24,18 @@ function stationCreatedAtLabel(station: Station): string {
   return date.toLocaleString("en-GB");
 }
 
-function LegacyApprovalPill({ station }: { station: Station }) {
-  const approved = station.content?.approved;
-  if (typeof approved !== "boolean") return null;
+/** Whether an editor has signed a published station into the library. A draft has nothing to approve. */
+function ApprovalPill({ station }: { station: Station }) {
+  if (station.status !== "published") return null;
   return (
     <span
       className={cn(
         "rounded-full px-3 py-1 font-medium",
         b2cTableCellText,
-        approved ? "bg-osce-success-bg text-osce-success-text" : "bg-osce-warning-bg text-osce-warning-text",
+        station.approved ? "bg-osce-success-bg text-osce-success-text" : "bg-osce-warning-bg text-osce-warning-text",
       )}
     >
-      {approved ? "Approved" : "Pending"}
+      {station.approved ? "Approved" : "Awaiting approval"}
     </span>
   );
 }
@@ -47,6 +47,7 @@ export function StationsTable({
   busy,
   onOpen,
   onArchive,
+  onToggleApproval,
 }: {
   stations: Station[];
   /** The "Load more" footer: the section's cursor pages. */
@@ -55,6 +56,8 @@ export function StationsTable({
   busy: string | null;
   onOpen: (station: Station) => void;
   onArchive: (station: Station) => void;
+  /** Staff only: approve a published station into the library, or take it back out. */
+  onToggleApproval?: (station: Station) => void;
 }) {
   const canAuthor = useCanAuthor();
   const columns = useMemo(
@@ -88,7 +91,7 @@ export function StationsTable({
         render: (station: Station) => (
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={station.status} />
-            <LegacyApprovalPill station={station} />
+            <ApprovalPill station={station} />
           </div>
         ),
       },
@@ -108,8 +111,26 @@ export function StationsTable({
         render: (station: Station) => {
           const archiveBusy = busy === `archive:${station.id}`;
           const canArchive = station.status === "published";
+          const approvalBusy = busy === `approval:${station.id}`;
           return (
             <AuthoringRowActions>
+              {onToggleApproval && canArchive ? (
+                <AuthoringIconAction
+                  write
+                  variant="ghost"
+                  label={station.approved ? "Withdraw approval" : "Approve"}
+                  busy={approvalBusy}
+                  busyLabel={station.approved ? "Withdrawing…" : "Approving…"}
+                  disabled={busy !== null}
+                  onClick={() => onToggleApproval(station)}
+                >
+                  {station.approved ? (
+                    <HiOutlineXCircle className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <HiOutlineCheckBadge className="h-4 w-4" aria-hidden />
+                  )}
+                </AuthoringIconAction>
+              ) : null}
               {canArchive ? (
                 <AuthoringIconAction
                   write
@@ -131,7 +152,7 @@ export function StationsTable({
         },
       },
     ],
-    [busy, onArchive, onOpen],
+    [busy, onArchive, onOpen, onToggleApproval],
   );
 
   return (
