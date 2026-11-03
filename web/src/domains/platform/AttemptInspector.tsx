@@ -36,7 +36,11 @@ import {
   attemptStatusTone,
   diagnoseAttempt,
   formatMoment,
+  isImportedFromOldSite,
   jobStatusTone,
+  markedUnderLabel,
+  OLD_SITE_COPY,
+  stationLoadedLabel,
 } from "@/domains/platform/support";
 
 /**
@@ -98,7 +102,11 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
                       idField="id"
                       title="Marking runs"
                       description="Each time this attempt was sent for marking, newest first."
-                      empty={{ title: "It was never sent for marking" }}
+                      empty={{
+                        title: isImportedFromOldSite(attempt)
+                          ? OLD_SITE_COPY.noMarkingRun
+                          : "It was never sent for marking",
+                      }}
                       columns={[
                         {
                           header: "Run",
@@ -172,9 +180,7 @@ function attemptFacts(
       : []),
     {
       label: "Station loaded",
-      value: attempt.has_definition
-        ? formatMoment(attempt.definition_frozen_at)
-        : "Never. The AI patient did not load the station",
+      value: stationLoadedLabel(attempt),
     },
     { label: "Lines of conversation received", value: String(attempt.chunk_count) },
     {
@@ -185,9 +191,7 @@ function attemptFacts(
     },
     {
       label: "Marked under",
-      value: attempt.result_policy_versions.length
-        ? attempt.result_policy_versions.join(", ")
-        : "Nothing yet",
+      value: markedUnderLabel(attempt),
     },
     { label: "Started", value: formatMoment(attempt.started_at) },
     { label: "Finished", value: formatMoment(attempt.completed_at) },
@@ -243,7 +247,11 @@ function Actions({
           label="Mark it again"
           requireReason={false}
           reasonLabel="Marking version (optional)"
-          description="Safe to press more than once: marking that is already waiting is not repeated, and an existing result is kept. To mark it again alongside the old result, enter a different marking version."
+          description={
+            isImportedFromOldSite(attempt)
+              ? OLD_SITE_COPY.rescoreWarning
+              : "Safe to press more than once: marking that is already waiting is not repeated, and an existing result is kept. To mark it again alongside the old result, enter a different marking version."
+          }
           onConfirm={async (version) => {
             const result = await rescoreAttempt(attempt.id, version || null);
             toast.success(

@@ -321,6 +321,43 @@ export function diagnoseAttempt(attempt: AttemptDiagnosisInput, now: number = Da
   return null;
 }
 
+/** The marking tag the old site's copied feedback carries (api `LEGACY_POLICY_VERSION`). */
+const OLD_SITE_MARKING_VERSION = "legacy-b2c";
+
+/**
+ * True for an attempt that was sat and marked on the old B2C site and copied across.
+ * The platform never ran it: no station was frozen by the AI patient and no marking job
+ * was queued, so those two absences are normal for it and not a fault.
+ */
+export function isImportedFromOldSite(attempt: {
+  result_policy_versions: readonly string[];
+}): boolean {
+  return attempt.result_policy_versions.includes(OLD_SITE_MARKING_VERSION);
+}
+
+/** What the attempt page says where an imported attempt would otherwise look broken. */
+export const OLD_SITE_COPY = {
+  stationLoaded: "Not recorded. This session took place on the old site",
+  markedUnder: "The old site (copied across, not marked here)",
+  noMarkingRun: "Marked on the old site, so there is no marking run here",
+  rescoreWarning:
+    "This attempt was marked on the old site and copied across. Marking it here adds a second result from this platform's marking beside the copied one. The copied result is kept.",
+} as const;
+
+/** The "Station loaded" line of the attempt page. */
+export function stationLoadedLabel(attempt: { has_definition: boolean; definition_frozen_at?: string | null; result_policy_versions: readonly string[] }): string {
+  if (attempt.has_definition) return formatMoment(attempt.definition_frozen_at);
+  return isImportedFromOldSite(attempt)
+    ? OLD_SITE_COPY.stationLoaded
+    : "Never. The AI patient did not load the station";
+}
+
+/** The "Marked under" line of the attempt page. */
+export function markedUnderLabel(attempt: { result_policy_versions: readonly string[] }): string {
+  if (isImportedFromOldSite(attempt)) return OLD_SITE_COPY.markedUnder;
+  return attempt.result_policy_versions.length ? attempt.result_policy_versions.join(", ") : "Nothing yet";
+}
+
 export const AT_RISK_LABELS: Record<string, string> = {
   suspended: "Suspended",
   contract_lapsed: "Contract lapsed",
