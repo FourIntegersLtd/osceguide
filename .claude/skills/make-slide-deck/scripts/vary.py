@@ -13,7 +13,7 @@ from pathlib import Path
 from pipe import R, W, live_decks
 
 PUBLISHED = R / "published"
-PREFIX = "https://osceguide.s3.eu-west-2.amazonaws.com/teaching_videos/v2/pictures/"
+PREFIX = "https://osceguide-platform.s3.eu-west-2.amazonaws.com/teaching_videos/sca/pictures/"
 
 POOLS = [
     "telephone_handset phone_call_centre phone_candlestick phone_cordless_modem phone_cordless_panasonic"

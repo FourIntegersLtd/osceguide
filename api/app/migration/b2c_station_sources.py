@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.migration import b2c_firestore
+from app.migration import b2c_firestore, bucket_moves
 
 B2C_STATION_COLLECTIONS: dict[str, str] = {
     "sca": "stations",
@@ -72,7 +72,7 @@ def stream_b2c_station_documents(
     for app_type in selected:
         collection = B2C_STATION_COLLECTIONS[app_type]
         for snapshot in db.collection(collection).stream():
-            document_data = snapshot.to_dict() or {}
+            document_data = bucket_moves.rewrite_value(snapshot.to_dict() or {})
             documents.append(_doc_to_dict(snapshot.id, document_data, app_type=app_type))
     return documents
 

@@ -18,7 +18,7 @@ from lint import lint, narration
 
 LAYOUTS = ("text_image_right", "text_image_left")  # list slides with a picture
 DEFAULT_LAYOUT = LAYOUTS[0]
-PIC = "https://osceguide.s3.eu-west-2.amazonaws.com/teaching_videos/v2/pictures/{}.jpg"
+PIC = "https://osceguide-platform.s3.eu-west-2.amazonaws.com/teaching_videos/sca/pictures/{}.jpg"
 k = sys.argv[1]
 st, item = call("GET", f"/media/by-id/{mid(k)}")
 

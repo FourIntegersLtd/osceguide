@@ -51,7 +51,7 @@ def fake_s3(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     deleted: list[str] = []
 
     def upload(settings, handle, key):  # type: ignore[no-untyped-def]
-        return f"https://test-bucket.s3.eu-west-2.amazonaws.com/{key}"
+        return f"https://osceguide-platform.s3.eu-west-2.amazonaws.com/{key}"
 
     def delete(settings, url):  # type: ignore[no-untyped-def]
         deleted.append(url)
@@ -138,7 +138,7 @@ async def test_a_photo_lands_where_its_media_block_reads_it(client: AsyncClient,
     assert response.json()["failed"] == []
     photos = response.json()["version"]["content"]["doctor_information"]["photos"]
     assert len(photos) == 1
-    assert photos[0].startswith("https://test-bucket.s3.eu-west-2.amazonaws.com/stations/")
+    assert photos[0].startswith("https://osceguide-platform.s3.eu-west-2.amazonaws.com/station_images/sca/")
 
 
 async def test_a_b2c_section_without_photos_takes_them_under_the_block_id(
@@ -239,7 +239,7 @@ async def test_a_photo_that_is_not_on_this_station_is_refused(
 
     response = await client.post(
         remove_url(station),
-        json={"photo_url": "https://test-bucket.s3.eu-west-2.amazonaws.com/stations/elsewhere.png"},
+        json={"photo_url": "https://osceguide-platform.s3.eu-west-2.amazonaws.com/stations/elsewhere.png"},
         headers=bearer(token),
     )
 

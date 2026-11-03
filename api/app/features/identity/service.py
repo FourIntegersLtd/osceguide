@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import bucket_layout
 from app.core.auth import Membership, Principal
 from app.core.memberships import MembershipLookup
 from app.core.settings import Settings
@@ -189,7 +190,7 @@ async def upload_avatar(
 
     from app.features.media_production import service as media_production
 
-    key = f"avatars/{user_id}/{uuid.uuid4()}{ext}"
+    key = f"{bucket_layout.AVATARS}{user_id}/{uuid.uuid4()}{ext}"
     url = media_production.upload_image(settings, io.BytesIO(content), key)
 
     previous = await repository.user_by_id(session, user_id)

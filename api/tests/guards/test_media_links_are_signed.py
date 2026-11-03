@@ -16,6 +16,7 @@ BUILDS_STORED_LINKS = {
     "app/features/media_production/s3.py",
     "app/features/media_production/slide_av.py",
     "app/features/media_production/slide_pictures.py",
+    "app/migration/bucket_moves.py",  # writes the platform bucket's host into a link it moves
 }
 
 

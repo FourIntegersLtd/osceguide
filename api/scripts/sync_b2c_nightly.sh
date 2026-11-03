@@ -31,6 +31,12 @@ done
 log="$HOME/Library/Logs/osce-legacy-sync.log"
 {
   echo "=== $(date '+%Y-%m-%d %H:%M:%S') sync $environment $mode"
+  # Files first: copy whatever the old site added to its bucket into the platform bucket, so every
+  # link the sync writes below already resolves. Skipped on a dry run.
+  if [ "$mode" = "--no-dry-run" ]; then
+    railway run -s "$service" -e "$environment" \
+      poetry run python scripts/copy_to_platform_bucket.py --live 2>&1 | grep -v "FutureWarning\|warnings.warn"
+  fi
   railway run -s "$service" -e "$environment" \
     poetry run python scripts/sync_b2c.py --database-url-env RAILWAY_PROXY "$mode" ${extra[@]+"${extra[@]}"} 2>&1 \
     | grep -v "FutureWarning\|warnings.warn"

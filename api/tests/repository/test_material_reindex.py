@@ -337,7 +337,7 @@ async def test_a_media_items_signed_links_never_reach_the_index(
     author = await identity_repo.create_user(
         db_session, email=f"l{uuid.uuid4().hex[:8]}@example.com", name="L", password_hash=None
     )
-    link = "https://osceguide.s3.eu-west-2.amazonaws.com/teaching_videos/v2/sca/angina_1.mp4"
+    link = "https://osceguide.s3.eu-west-2.amazonaws.com/teaching_videos/sca/angina_1.mp4"
     item = await media.create(
         db_session,
         kind="summary",

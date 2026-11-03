@@ -3,7 +3,7 @@
 
 Run from api/ under Poetry. Dry run unless --apply.
 
-    s3         uploads each manifest image to yahayakenny/commons/<station>/<file> (publicly
+    s3         uploads each manifest image to station_images/ortho/<station>/<file> (publicly
                readable) and records its `s3_url` in the manifest. An existing key is never overwritten.
     firestore  ortho_stations/<id>: `commons_images` gets every image with its credit; CC0 and
                public-domain URLs also join `additional_image_urls` (the legacy site shows those
@@ -92,7 +92,7 @@ def cmd_s3(args: argparse.Namespace) -> None:
     uploaded = 0
     try:
         for m in manifest:
-            key = "yahayakenny/commons/" + m["local_path"].removeprefix("commons/")
+            key = "station_images/ortho/" + m["local_path"].removeprefix("commons/")
             try:
                 client.head_object(Bucket=bucket, Key=key)
             except ClientError as exc:

@@ -87,9 +87,9 @@ def _already_finished(exc: Exception) -> bool:
 
 
 def _require_bucket(settings: Settings) -> None:
-    """Raise unless an S3 bucket is configured to record into."""
-    if not settings.aws_s3_bucket:
-        raise VoiceUnavailable("No S3 bucket is configured, so there is nowhere to record to")
+    """Raise unless storage credentials are configured to record with."""
+    if not (settings.aws_access_key_id and settings.aws_secret_access_key):
+        raise VoiceUnavailable("No S3 credentials are configured, so there is nowhere to record to")
 
 
 def _livekit_api() -> Any:

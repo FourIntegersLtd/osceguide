@@ -46,7 +46,7 @@ const management = [
   { Icon: HiOutlineHeart, title: "Holistic Care Planning", body: "Address both clinical and psychosocial aspects of patient care" },
 ];
 
-const SCA_DEMO_VIDEO_SRC = "https://osceguide.s3.eu-west-2.amazonaws.com/Four+Integers+Ltd/osceguide-sca.mp4";
+const SCA_DEMO_VIDEO_SRC = "https://d1wmb89lczbkpf.cloudfront.net/marketing/osceguide-sca.mp4";
 
 const ScaLandingPage = () => (
   <SiteShell exam="sca">

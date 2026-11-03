@@ -18,6 +18,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from app.migration import bucket_moves
+
 
 def configure_credentials_from_env() -> None:
     """Same credential sources as b2c-api: a key path, or the key JSON itself."""
@@ -70,9 +72,10 @@ def client() -> Any:
 
 def serialize(value: Any) -> Any:
     """JSON-safe copy of a Firestore value. NUL characters are dropped: Postgres
-    text and JSONB both refuse them, and a few legacy model outputs carry one."""
+    text and JSONB both refuse them, and a few legacy model outputs carry one.
+    A link to a bucket file that has moved comes back pointing at its new place."""
     if isinstance(value, str):
-        return value.replace("\x00", "")
+        return bucket_moves.rewrite_links(value.replace("\x00", ""))
     if hasattr(value, "isoformat"):
         try:
             return value.isoformat()

@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 import httpx
 from PIL import Image
 
+from app.core import bucket_layout
 from app.core.settings import Settings
 from app.features.media_production.errors import AvUnavailable
 from app.features.media_production.podcast_tts import ffmpeg_binary
@@ -59,7 +60,7 @@ SCENE_TAIL = 0.35
 CAPTION_CHARACTERS = 72
 # ElevenLabs allows three requests at once.
 VOICE_WORKERS = 3
-S3_FOLDER = "teaching_videos/v2"
+S3_FOLDER = bucket_layout.DECKS.rstrip("/")  # a deck lands in teaching_videos/<exam>/
 
 
 @dataclass

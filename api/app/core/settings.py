@@ -18,6 +18,8 @@ from fastapi import Depends
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from app.core import bucket_layout
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -243,7 +245,6 @@ class Settings(BaseSettings):
     aws_region: str = ""
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
-    aws_s3_bucket: str = ""
     media_av_font_dir: str = ""
 
     # --- Background jobs ---
@@ -288,6 +289,11 @@ class Settings(BaseSettings):
     # reports it so anyone can see what staging or production is running, and
     # the promote workflow refuses a commit staging is not running.
     git_commit_sha: str = Field(default="", validation_alias="RAILWAY_GIT_COMMIT_SHA")
+
+    @property
+    def aws_s3_bucket(self) -> str:
+        """The platform's file bucket. Fixed in code (`core.bucket_layout`), never an environment setting."""
+        return bucket_layout.BUCKET
 
     @property
     def is_deployed(self) -> bool:

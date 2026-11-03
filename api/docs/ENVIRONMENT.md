@@ -62,7 +62,7 @@ least 32 characters.
 | `RAILWAY_GIT_COMMIT_SHA` | — | Set by Railway on every deploy, never by hand. `/health` reports it as `commit`, so anyone can see what staging or production runs; the promote workflow refuses a commit staging is not running. |
 | `SENTRY_DSN` | — | Error reporting, off unless set. Traces are sampled at 5% because an API the console polls would otherwise bill for its own heartbeat, and the request body is never sent — it holds passwords, legacy tokens and transcripts. |
 | `CARTESIA_API_KEY` | — | TTS for slide and podcast production. Jobs raise `av_unavailable` without it. |
-| `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_S3_BUCKET` | — | Where produced audio and video are stored. Jobs raise `av_unavailable` without a bucket. |
+| `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | — | Access to the file bucket. The bucket itself is fixed in code (`core.bucket_layout.BUCKET`), not a setting. Jobs raise `av_unavailable` without credentials. |
 | `MEDIA_AV_FONT_DIR` | — | Optional extra font directory for slide video. Empty uses the bundled fonts. |
 | `ENGAGEMENT_EMAIL_ENABLED` | false | Gates `identity.jobs.send_engagement_emails`, the daily "come try a station" nudge to a signed-up person who never ran a practice station (ported from legacy `b2c-api`'s `InactiveUserEngagementService`). Off by default so a freshly migrated environment cannot fire it on real inboxes until the owner switches it on deliberately. |
 

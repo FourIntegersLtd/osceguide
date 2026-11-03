@@ -87,7 +87,7 @@ click. Every step saves the working copy and `review.run` (`steps`, `open`, `tok
 `heartbeat_at`) and publishes `media.updated` or `station.updated`; Produce on a run whose
 heartbeat is 15 minutes old takes it over from the saved copy. A station's working copy is its
 version's content plus `review` and `status`; while it is `producing` the version cannot be edited
-or checked. Searched pictures are stored under `teaching_videos/v2/pictures/` in the bucket;
+or checked. Searched pictures are stored under `teaching_videos/sca/pictures/` in the bucket;
 bundled ones are saved as `images/<name>`.
 
 ## Jobs
@@ -115,13 +115,14 @@ Run `make worker` beside `make start`. **ffmpeg** must be on `PATH` for slide vi
 Every upload goes through `s3.upload_args(key)`: a real `ContentType` for known extensions
 (inline, so a browser plays it) and `attachment` / `octet-stream` for anything else. Stored links are
 the raw `https://<bucket>.s3.<region>.amazonaws.com/<key>`; `service_storage.sign_urls(value, prefixes=...)` turns
-each link under the caller's folders into a two-hour signed link on read (media: `teaching_videos/`, `podcasts/`;
-a station: only its own `stations/<id>/`, because authors write that content; every host spelling of
+each link under the caller's folders into a two-hour signed link on read (media: `teaching_videos/<exam>/`, `podcasts/<exam>/`;
+a station: its own older `stations/<id>/` folder and the `station_images/<exam>/` folders, where new uploads land, because authors write that content; every host spelling of
 our bucket is matched, keys decode with `unquote_plus`), and withholds the link (empty string, logged once)
 when signing is impossible, and the client is pinned to the regional
 endpoint so the signed host matches the stored one and the web's `media-src`. Signing is local, so
-it works while the bucket is still public. `Four Integers Ltd/` and `teaching_videos/v2/pictures/`
-stay public. `tests/guards/test_media_links_are_signed.py` fails when a new file builds a bucket link.
+it works with the bucket fully private (`osceguide-platform`; `core.bucket_layout` names every folder).
+Deck pictures are signed like the decks. A link on the old `osceguide` bucket is never signed here;
+`scripts/move_bucket_links.py` rewrites it. `tests/guards/test_media_links_are_signed.py` fails when a new file builds a bucket link.
 
 ## Local setup
 

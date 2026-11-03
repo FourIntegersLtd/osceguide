@@ -19,6 +19,8 @@ from collections.abc import Mapping
 from pathlib import PurePosixPath
 from typing import Any
 
+from app.core import bucket_layout
+
 MAX_BYTES = 10 * 1024 * 1024
 ALLOWED_SUFFIXES = frozenset({".png", ".jpg", ".jpeg"})
 
@@ -32,10 +34,13 @@ JPEG_MAGIC = b"\xff\xd8\xff"
 # Enough of the file to recognise either signature (PNG's is the longer, at 8).
 SNIFF_BYTES = len(PNG_MAGIC)
 
-# The key a station's images live under. One folder per station, and a fresh
-# name per file: keying on `{username}/{original name}` let two authors
-# uploading `xray.png` silently overwrite one another.
-KEY_PREFIX = "stations"
+# Where an upload lands: `station_images/<exam>/<fresh name>`. A fresh name per file: keying on
+# `{username}/{original name}` let two authors uploading `xray.png` silently overwrite one another.
+IMAGES_PREFIX = bucket_layout.STATION_IMAGES
+
+# Before images were filed by exam, each upload went in a folder of its own station. Those photos stay
+# where they are, so a station still signs its own folder.
+KEY_PREFIX = bucket_layout.STATIONS.rstrip("/")
 
 
 class InvalidPhoto(Exception):
@@ -75,15 +80,19 @@ def ensure_real_image(header: bytes) -> None:
 
 
 def key_prefixes(station_id: uuid.UUID) -> tuple[str, ...]:
-    """The only folder a station's read may sign links from: its own. Another station's photo, or any
-    other file in the bucket, written into this station's content is not this station's to hand out."""
-    return (f"{KEY_PREFIX}/{station_id}/",)
+    """The folders a station's read may sign links from: the per-exam image folders, and its own older
+    folder. Another station's old photo, or any other file in the bucket, written into this station's
+    content is not this station's to hand out."""
+    return (
+        f"{KEY_PREFIX}/{station_id}/",
+        IMAGES_PREFIX,
+    )
 
 
-def object_key(*, station_id: uuid.UUID, filename: str) -> str:
-    """Where this upload lands in the bucket: one folder per station, a fresh name per file."""
+def object_key(*, exam_code: str, filename: str) -> str:
+    """Where this upload lands in the bucket: the exam's image folder, a fresh name per file."""
     suffix = PurePosixPath(filename.lower()).suffix
-    return f"{KEY_PREFIX}/{station_id}/{uuid.uuid4().hex}{suffix}"
+    return f"{bucket_layout.exam_folder(IMAGES_PREFIX, exam_code)}/{uuid.uuid4().hex}{suffix}"
 
 
 # The block type whose value is a list of media items: a URL, or `{url, kind, caption, alt}`.

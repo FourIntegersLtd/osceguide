@@ -18,7 +18,7 @@ for i, sl in enumerate(m.SLIDES, 1):
         "refs": [],
         "position": i,
         "id": f"slide_{i:04d}",
-        "image_urls": [f"https://osceguide.s3.eu-west-2.amazonaws.com/teaching_videos/v2/pictures/{img}.jpg"],
+        "image_urls": [f"https://osceguide-platform.s3.eu-west-2.amazonaws.com/teaching_videos/sca/pictures/{img}.jpg"],
     })
 deck = {"title": m.TITLE, "topic": m.TITLE, "specialty": m.SPECIALTY, "app_type": "sca",
         "about": m.ABOUT, "slides": slides, "references": [], "slides_count": len(slides)}

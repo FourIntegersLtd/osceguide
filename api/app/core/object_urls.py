@@ -8,10 +8,9 @@ off (`strip_signatures`) so an expiring link is never what gets stored.
 Everything here is pure: it parses and rewrites text and never touches the network. Signing itself
 is the caller's job (`media_production.service_storage`), passed in as `sign_key`.
 
-Three rules a link must pass before it is signed, because the text being rewritten is partly written
-by authors: it must be on our bucket (in any spelling of the host S3 has used), under a folder the
-surface it is read through is allowed to hand out, and not under a public folder. Anything else comes
-back exactly as it was.
+Two rules a link must pass before it is signed, because the text being rewritten is partly written
+by authors: it must be on our bucket (in any spelling of the host S3 has used) and under a folder the
+surface it is read through is allowed to hand out. Anything else comes back exactly as it was.
 
 A key is read from a link with `unquote_plus`: every key this code writes is made of `a-z0-9_-./`
 (see `slide_av`, `podcast_tts`, `domain_photos`), so a `+` or `%20` in a stored link can only be a
@@ -24,10 +23,6 @@ import re
 from collections.abc import Callable
 from typing import Any
 from urllib.parse import unquote_plus
-
-# Folders whose files are public on purpose (the landing-page videos, the stock slide pictures). A URL
-# under one is returned unchanged: it is what the bucket's allow-list leaves open.
-PUBLIC_PREFIXES = ("Four Integers Ltd/", "teaching_videos/v2/pictures/")
 
 _KEY_CHARACTERS = r"""[^\s"'<>)\]?]+"""
 _QUERY_CHARACTERS = r"""[^\s"'<>)\]]*"""
@@ -72,13 +67,10 @@ def object_key(encoded_path: str) -> str:
 def gated_key(encoded_key: str, allowed_prefixes: tuple[str, ...]) -> str | None:
     """The key a link's path names when it may be signed here, else None.
 
-    None for a public folder's file (it needs no signature) and for a key outside `allowed_prefixes`
-    (the surface reading it has no business handing that file out).
+    None for a key outside `allowed_prefixes` (the surface reading it has no business handing that file out).
     """
     key = object_key(encoded_key)
-    if key.startswith(PUBLIC_PREFIXES) or not key.startswith(allowed_prefixes):
-        return None
-    return key
+    return key if key.startswith(allowed_prefixes) else None
 
 
 def map_strings(value: Any, change: Callable[[str], str]) -> Any:

@@ -70,8 +70,9 @@ export function contentSecurityPolicyValue(nonce: string, options: { isDev: bool
     ["img-src", "'self' data: blob: https:"],
     ["font-src", "'self' data:"],
     ["connect-src", "'self' https: wss:"],
-    // The public site's demo videos (`LandingDemoVideo`) are served from S3.
-    ["media-src", "'self' blob: data: https://osceguide.s3.eu-west-2.amazonaws.com"],
+    // The public site's demo videos come from CloudFront; signed study videos come from the platform
+    // bucket's own host. The old bucket stays listed until its last link is rewritten.
+    ["media-src", "'self' blob: data: https://d1wmb89lczbkpf.cloudfront.net https://osceguide-platform.s3.eu-west-2.amazonaws.com https://osceguide.s3.eu-west-2.amazonaws.com"],
     ["worker-src", "'self' blob:"],
     ["object-src", "'none'"],
     ["base-uri", "'self'"],

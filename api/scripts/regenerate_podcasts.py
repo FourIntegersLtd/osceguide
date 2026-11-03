@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -47,12 +48,14 @@ from app.features.media_production.podcast_tts import (  # noqa: E402
     produce_summary_podcast,
 )
 
-V4_MARK = "/podcasts/v4/"
+# The 2025 audio sat loose in `podcasts/`; the current audio sits in an exam folder
+# (`podcasts/sca/`, once `podcasts/v4/`).
+CURRENT_AUDIO = re.compile(r"/podcasts/[a-z0-9]+/")
 
 
 def _is_v4(url: object) -> bool:
-    """Whether a stored audio URL already points at v4 audio."""
-    return isinstance(url, str) and V4_MARK in url
+    """Whether a stored audio URL already points at the current audio, not the 2025 files."""
+    return isinstance(url, str) and CURRENT_AUDIO.search(url) is not None
 
 
 async def _run(args: argparse.Namespace) -> int:

@@ -10,7 +10,7 @@ import httpx
 from app.features.media_production.slide_av import picture_file
 from app.features.media_production.slide_pictures import Candidate, commons_search
 
-BUCKET = "https://osceguide.s3.eu-west-2.amazonaws.com/teaching_videos/v2/pictures/"
+BUCKET = "https://osceguide.s3.eu-west-2.amazonaws.com/teaching_videos/sca/pictures/"
 
 
 def _page(index: int, title: str, licence: str, width: int = 2000) -> dict[str, Any]:

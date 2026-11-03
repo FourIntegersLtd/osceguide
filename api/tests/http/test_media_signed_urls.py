@@ -17,10 +17,10 @@ from tests.support.tokens import bearer
 pytestmark = pytest.mark.db
 
 ORIGIN = "https://osceguide.s3.eu-west-2.amazonaws.com"
-DECK = f"{ORIGIN}/teaching_videos/v2/sca/a_topic_0b5f1c4e-9d3a-4c7e-8a55-3f1d2e6b7a90.mp4"
-PODCAST = f"{ORIGIN}/podcasts/v4/episodes/0b5f1c4e.mp3"
-PICTURE = f"{ORIGIN}/teaching_videos/v2/pictures/aspirin.jpg"
-MARKETING = f"{ORIGIN}/Four+Integers+Ltd/osceguide-sca.mp4"
+DECK = f"{ORIGIN}/teaching_videos/sca/a_topic_0b5f1c4e-9d3a-4c7e-8a55-3f1d2e6b7a90.mp4"
+PODCAST = f"{ORIGIN}/podcasts/sca/episodes/0b5f1c4e.mp3"
+PICTURE = f"{ORIGIN}/teaching_videos/sca/pictures/aspirin.jpg"
+MARKETING = f"{ORIGIN}/marketing/osceguide-sca.mp4"
 STATION_PHOTO = f"{ORIGIN}/stations/0b5f1c4e-9d3a-4c7e-8a55-3f1d2e6b7a90/own.png"
 CONTENT = {
     "station_photo": STATION_PHOTO,
@@ -89,7 +89,7 @@ async def test_entitled_reader_gets_signed_links_and_locked_readers_get_none(
 
     assert "X-Amz-Signature=" in entitled["final_video_url"] and entitled["final_video_url"].startswith(DECK)
     assert "X-Amz-Signature=" in entitled["podcast_url"]
-    assert entitled["slides"][0]["image_urls"][0] == PICTURE  # a public folder stays plain
+    assert entitled["slides"][0]["image_urls"][0].startswith(PICTURE + "?")  # pictures are signed too
     assert entitled["slides"][0]["image_urls"][1].startswith(DECK + "?")
     assert entitled["hero"] == MARKETING
     assert entitled["station_photo"] == STATION_PHOTO  # not study media: never signed here

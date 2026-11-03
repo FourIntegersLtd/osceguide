@@ -10,15 +10,15 @@ from __future__ import annotations
 
 from typing import Any, BinaryIO
 
-from app.core import object_urls
+from app.core import bucket_layout, object_urls
 from app.core.logging import get_logger
 from app.core.settings import Settings, get_settings
 from app.features.media_production import s3
 
 
 def is_configured(settings: Settings) -> bool:
-    """Whether anything can be stored at all. No bucket, no uploads."""
-    return bool(settings.aws_s3_bucket)
+    """Whether anything can be stored at all. No storage credentials, no uploads."""
+    return bool(settings.aws_access_key_id and settings.aws_secret_access_key)
 
 
 def put_object(settings: Settings, handle: BinaryIO, key: str) -> str:
@@ -55,7 +55,10 @@ MEDIA_URL_TTL_SECONDS = 7200
 
 # The folders a study-media read (decks, podcasts, summaries) may hand out. A media body is written
 # by staff, but a key outside these is never ours to sign for a learner.
-MEDIA_KEY_PREFIXES = ("teaching_videos/", "podcasts/")
+MEDIA_KEY_PREFIXES = (
+    bucket_layout.DECKS,
+    bucket_layout.PODCASTS,
+)
 
 _log = get_logger(__name__)
 _warned_unsignable = False
@@ -73,24 +76,19 @@ def sign_urls(value: Any, *, prefixes: tuple[str, ...]) -> Any:
     """The value with each of our bucket's links under `prefixes` swapped for a signed, expiring one.
 
     For anything a learner or an author is shown. A link outside the bucket, outside `prefixes`, or
-    under a public folder (`core.object_urls.PUBLIC_PREFIXES`) comes back unchanged. With no bucket
-    configured the value is returned as it is. Signing is local arithmetic, so it works while the
-    bucket is still public.
+    comes back unchanged. With no storage credentials (local development) the value is returned
+    as it is. Signing is local arithmetic: no request is made to the bucket.
 
-    When signing cannot be done (no credentials, or the signer fails) the link is replaced by an
+    When signing cannot be done (the signer fails) the link is replaced by an
     empty string, never left raw: once the bucket is private a raw link is dead anyway, and before
     then it would be the permanent link this exists to hide. The page still loads, minus that file.
     """
     settings = get_settings()
     if not is_configured(settings):
         return value
-    can_sign = bool(settings.aws_access_key_id and settings.aws_secret_access_key)
 
     def sign_key(key: str) -> str:
         """One key's signed link, or an empty string when signing is impossible."""
-        if not can_sign:
-            _warn_once_unsignable("no AWS credentials")
-            return ""
         try:
             return readable_url(settings, key, expires_in=MEDIA_URL_TTL_SECONDS)
         except Exception as error:  # noqa: BLE001 - botocore raises many types; a page must never 500 over a link

@@ -13,6 +13,7 @@ import httpx
 from moviepy.config import FFMPEG_BINARY
 from pydub import AudioSegment
 
+from app.core import bucket_layout
 from app.core.settings import Settings
 from app.features.media_production.errors import AvUnavailable
 from app.features.media_production.podcast_script import generate_script, split_script
@@ -51,8 +52,8 @@ def _require_av_settings(settings: Settings) -> None:
         raise AvUnavailable("ElevenLabs API key is not configured")
     if not settings.openai_api_key.strip() and not settings.anthropic_api_key.strip():
         raise AvUnavailable()
-    if not settings.aws_s3_bucket.strip():
-        raise AvUnavailable("S3 bucket is not configured")
+    if not (settings.aws_access_key_id and settings.aws_secret_access_key):
+        raise AvUnavailable("S3 credentials are not configured")
 
 
 def _sentences(line: str, limit: int) -> list[str]:
@@ -133,6 +134,11 @@ def synthesize_podcast_mp3(settings: Settings, script: str, work_dir: Path, base
     return mp3
 
 
+def podcast_folder(exam_code: str | None) -> str:
+    """An exam's podcast folder, `podcasts/<exam>`; `podcasts/general` for no exam."""
+    return bucket_layout.exam_folder(bucket_layout.PODCASTS, exam_code)
+
+
 def produce_summary_podcast(
     settings: Settings,
     *,
@@ -140,6 +146,7 @@ def produce_summary_podcast(
     content: dict[str, Any],
     work_dir: Path,
     media_id: str,
+    exam_code: str | None = None,
     regenerate_script: bool = False,
 ) -> dict[str, Any]:
     """Scripts and voices a summary item as a Ben-and-Michelle podcast, uploads the mp3, and
@@ -155,7 +162,7 @@ def produce_summary_podcast(
         script = generate_script(settings, formatted)
     safe = re.sub(r"[^a-z0-9]+", "_", title.lower()).strip("_") or media_id
     mp3 = synthesize_podcast_mp3(settings, script, work_dir, safe)
-    url = upload_file(settings, mp3, f"podcasts/v4/{safe}.mp3")
+    url = upload_file(settings, mp3, f"{podcast_folder(exam_code)}/{safe}.mp3")
     return {**content, "script": script, "podcast_url": url, "status": "completed"}
 
 
@@ -166,6 +173,7 @@ def produce_podcast_episode_audio(
     content: dict[str, Any],
     work_dir: Path,
     media_id: str,
+    exam_code: str | None = None,
     regenerate_script: bool = False,
 ) -> dict[str, Any]:
     """Scripts and voices a standalone podcast episode, uploads the mp3, and returns the
@@ -178,5 +186,5 @@ def produce_podcast_episode_audio(
         script = generate_script(settings, str(content.get("body_md") or title))
     safe = re.sub(r"[^a-z0-9]+", "_", title.lower()).strip("_") or media_id
     mp3 = synthesize_podcast_mp3(settings, script, work_dir, safe)
-    url = upload_file(settings, mp3, f"podcasts/v4/episodes/{media_id}.mp3")
+    url = upload_file(settings, mp3, f"{podcast_folder(exam_code)}/episodes/{media_id}.mp3")
     return {**content, "script": script, "audio_url": url, "status": "completed"}

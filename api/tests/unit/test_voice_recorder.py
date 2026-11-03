@@ -50,7 +50,8 @@ def fake_livekit(monkeypatch: pytest.MonkeyPatch) -> FakeLiveKit:
             "livekit_url": "wss://example.livekit.cloud",
             "livekit_api_key": "key",
             "livekit_api_secret": "secret",
-            "aws_s3_bucket": "recordings",
+            "aws_access_key_id": "key",
+            "aws_secret_access_key": "secret",
         }
     )
     monkeypatch.setattr(recorder, "get_settings", lambda: settings)

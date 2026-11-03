@@ -54,7 +54,7 @@ convention: do not commit downloaded images without the user's say-so).
    `ATTRIBUTION.md`. Publish `report.html` as an artifact if the user wants to share it.
 8. **Publish** (only when the user asks; additive, idempotent, dry run unless `--apply`). From `api/`,
    with `P=../.claude/skills/commons-images/scripts/publish_images.py`:
-   - `poetry run python $P s3 --apply`: uploads to `yahayakenny/commons/<station>/<file>`, sets `s3_url`.
+   - `poetry run python $P s3 --apply`: uploads to `station_images/ortho/<station>/<file>`, sets `s3_url`.
    - `GRPC_DNS_RESOLVER=native FIREBASE_SERVICE_ACCOUNT_KEY_PATH="$PWD/../service-key" PYTHONPATH=. poetry run python $P firestore --apply`:
      every image with its credit goes to `commons_images`; only CC0 / public-domain URLs join
      `additional_image_urls`, because the legacy site renders those bare, with no credit.

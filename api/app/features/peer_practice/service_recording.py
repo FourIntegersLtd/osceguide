@@ -17,6 +17,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import bucket_layout
 from app.core.logging import get_logger
 from app.core.ports import RoomRecorder
 from app.core.settings import Settings, get_settings
@@ -30,7 +31,7 @@ log = get_logger(__name__)
 
 def recording_key(session_id: uuid.UUID, exam_code: str) -> str:
     """Where a session's audio lives. LiveKit writes Ogg for an audio-only egress."""
-    return f"peer_practice/{exam_code}/{session_id}/consultation.ogg"
+    return bucket_layout.peer_practice_recording_key(exam_code, session_id)
 
 
 def is_configured(settings: Settings | None = None) -> bool:

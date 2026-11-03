@@ -103,7 +103,7 @@ safeguarding, substance misuse, ethics), and prefer high-impact exam topics.
 
 ## Pictures
 
-Names resolve to `https://osceguide.s3.eu-west-2.amazonaws.com/teaching_videos/v2/pictures/<name>.jpg`.
+Names resolve to `https://osceguide-platform.s3.eu-west-2.amazonaws.com/teaching_videos/sca/pictures/<name>.jpg`.
 Existing ones: `ls api/app/features/media_production/assets/slides/images/`. For a new one:
 
 ```bash

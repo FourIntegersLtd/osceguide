@@ -34,7 +34,7 @@ from tests.support.tokens import bearer
 pytestmark = pytest.mark.db
 
 ORIGIN = "https://osceguide.s3.eu-west-2.amazonaws.com"
-PODCAST = f"{ORIGIN}/podcasts/v4/episodes/0b5f1c4e.mp3"
+PODCAST = f"{ORIGIN}/podcasts/sca/episodes/0b5f1c4e.mp3"
 
 
 @pytest.fixture(autouse=True)

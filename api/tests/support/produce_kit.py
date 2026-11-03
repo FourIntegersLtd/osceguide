@@ -24,7 +24,7 @@ PICTURE = Candidate(
     author="Jo Bloggs",
     licence="CC BY-SA 4.0",
 )
-BUCKET = "https://bucket.example/teaching_videos/v2/pictures/"
+BUCKET = "https://bucket.example/teaching_videos/sca/pictures/"
 STORED = f"{BUCKET}patch.jpg"
 
 

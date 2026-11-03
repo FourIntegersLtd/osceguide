@@ -23,7 +23,7 @@ from app.core.errors import raise_mapped
 from app.core.settings import Settings
 from app.features.media_production import service_storage as storage
 from app.features.stations import domain, domain_photos, errors, repository, repository_templates
-from app.features.stations.models import StationVersion
+from app.features.stations.models import Station, StationVersion
 from app.features.stations.refusals import REFUSALS as _REFUSALS
 from app.features.stations.schemas import StationVersionRead
 from app.features.stations.service_versions import _version, _version_read
@@ -47,6 +47,13 @@ async def _editable_version(
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     return station_version
+
+
+async def _exam_code(session: AsyncSession, station: Station) -> str:
+    """The exam code a station's exam id resolves to, or empty when it no longer does."""
+    from app.features.catalog.service import exam_code_by_id  # import cycle
+
+    return await exam_code_by_id(session, station.exam_id) or ""
 
 
 async def _template_sections(session: AsyncSession, station_version: StationVersion) -> list[object]:
@@ -79,6 +86,8 @@ async def add_photos(
     if section_id is None:
         raise errors.NotAMediaBlockError()
 
+    station = await repository.station_by_id(session, org_id, station_id)
+    exam_code = await _exam_code(session, station) if station else ""
     content = dict(station_version.content or {})
     failed: list[dict[str, str]] = []
     for filename, size, handle in files:
@@ -92,7 +101,7 @@ async def add_photos(
         except domain_photos.InvalidPhoto as exc:
             failed.append({"filename": filename, "error": str(exc)})
             continue
-        key = domain_photos.object_key(station_id=station_id, filename=filename)
+        key = domain_photos.object_key(exam_code=exam_code, filename=filename)
         url = storage.put_object(settings, handle, key)
         content = domain_photos.with_media(content, section_id=section_id, block_id=block_id, url=url)
 

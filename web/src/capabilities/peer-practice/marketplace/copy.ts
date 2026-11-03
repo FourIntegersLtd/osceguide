@@ -58,5 +58,5 @@ export function openSlotLine(slot: Pick<Slot, "status" | "is_mine">, past: boole
 
 /** The clip that shows how the marketplace works; the landing page plays the same file. */
 export const MARKETPLACE_VIDEO_SRC =
-  "https://osceguide.s3.eu-west-2.amazonaws.com/Four+Integers+Ltd/osceguide-marketplace-how-it-works.mp4";
+  "https://d1wmb89lczbkpf.cloudfront.net/marketing/osceguide-marketplace-how-it-works.mp4";
 export const MARKETPLACE_VIDEO_TITLE = "How the OSCE Guide marketplace works";

@@ -20,6 +20,7 @@ from urllib.parse import urlparse
 import httpx
 from PIL import Image, ImageDraw, ImageFont
 
+from app.core import bucket_layout
 from app.core.settings import Settings
 from app.features.media_production.s3 import object_exists, s3_client, upload_args
 from app.features.media_production.slide_scenes import ASSETS
@@ -27,7 +28,8 @@ from app.features.media_production.slide_scenes import ASSETS
 logger = logging.getLogger(__name__)
 
 # Under the folder finished videos are served from, so a learner's browser can read it too.
-PICTURE_FOLDER = "teaching_videos/v2/pictures"
+# Every deck is an SCA deck today; a second exam's pictures get their own `teaching_videos/<exam>/pictures`.
+PICTURE_FOLDER = bucket_layout.DECK_PICTURES
 COMMONS = "https://commons.wikimedia.org/w/api.php"
 # Wikimedia asks every client to say who it is.
 USER_AGENT = "osceguide-slides/1.0 (https://osceguide.com)"

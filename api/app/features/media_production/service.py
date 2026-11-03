@@ -371,6 +371,7 @@ async def run_summary_podcast_job(
 
     item = await production_item(session, media_id)
     settings = get_settings()
+    exam_code = await catalog.exam_code_by_id(session, item.exam_id) if item.exam_id else None
     try:
         content = await asyncio.to_thread(
             produce_summary_podcast,
@@ -379,6 +380,7 @@ async def run_summary_podcast_job(
             content=item.content,
             work_dir=work_dir(str(media_id)),
             media_id=str(media_id),
+            exam_code=exam_code,
         )
         await replace_content(session, media_id, content)
     except Exception:  # noqa: BLE001 - any render failure is recorded on the item as failed
@@ -426,6 +428,7 @@ async def run_podcast_audio_job(
 
     item = await production_item(session, media_id)
     settings = get_settings()
+    exam_code = await catalog.exam_code_by_id(session, item.exam_id) if item.exam_id else None
     try:
         content = await asyncio.to_thread(
             produce_podcast_episode_audio,
@@ -434,6 +437,7 @@ async def run_podcast_audio_job(
             content=item.content,
             work_dir=work_dir(str(media_id)),
             media_id=str(media_id),
+            exam_code=exam_code,
         )
         await replace_content(session, media_id, content)
     except Exception:  # noqa: BLE001 - any render failure is recorded on the item as failed
