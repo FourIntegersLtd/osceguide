@@ -33194,6 +33194,19 @@
               "account_suspended"
             ]
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_entitled",
+            "x-codes": [
+              "not_entitled"
+            ]
+          },
           "404": {
             "content": {
               "application/json": {
@@ -33497,6 +33510,19 @@
             "x-codes": [
               "unauthenticated",
               "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_entitled",
+            "x-codes": [
+              "not_entitled"
             ]
           },
           "404": {
@@ -34268,6 +34294,19 @@
             "x-codes": [
               "unauthenticated",
               "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_entitled",
+            "x-codes": [
+              "not_entitled"
             ]
           },
           "404": {

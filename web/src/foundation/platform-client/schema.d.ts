@@ -23228,6 +23228,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description not_entitled */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description peer_session_not_found */
             404: {
                 headers: {
@@ -23416,6 +23425,15 @@ export interface operations {
             };
             /** @description unauthenticated, account_suspended */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_entitled */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -23897,6 +23915,15 @@ export interface operations {
             };
             /** @description unauthenticated, account_suspended */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_entitled */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
