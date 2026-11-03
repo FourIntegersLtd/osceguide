@@ -64,6 +64,15 @@ class UserRef:
         return self.activated_at or self.created_at
 
 
+def _readable_avatar(stored_url: str | None) -> str | None:
+    """The profile photo as a signed, expiring link: the bucket is private."""
+    if not stored_url:
+        return None
+    from app.features.media_production import service_storage
+
+    return service_storage.sign_urls(stored_url, prefixes=(bucket_layout.AVATARS,))
+
+
 async def _announce_registration(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
     """Link a person rostered by email before they had an account."""
     # Imported here: `roster` imports this slice's invitations, which import this module.
@@ -89,7 +98,7 @@ def user_read(user: User, memberships: list[Membership]) -> UserRead:
         ai_training_consent=user.ai_training_consent,
         colleague_waiting_email=user.colleague_waiting_email,
         replay_onboarding=user.replay_onboarding,
-        avatar_url=user.avatar_url,
+        avatar_url=_readable_avatar(user.avatar_url),
         memberships=[
             MembershipRead(
                 org_id=membership.org_id,

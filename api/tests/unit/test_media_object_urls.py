@@ -244,3 +244,15 @@ def test_a_stations_folder_ends_at_its_slash(configured: None) -> None:
 
     assert "X-Amz-Signature=" in signed[0]
     assert signed[1:] == lookalikes
+
+
+def test_a_profile_photo_is_shown_signed_and_stored_plain(configured: None) -> None:
+    from app.features.identity import service as identity
+
+    stored = f"{ORIGIN}/avatars/11111111-1111-1111-1111-111111111111/0b5f1c4e.png"
+
+    shown = identity._readable_avatar(stored)
+
+    assert shown is not None and shown.split("?")[0] == stored and "X-Amz-Signature=" in shown
+    assert identity._readable_avatar(None) is None
+    assert service_storage.strip_urls(shown) == stored
