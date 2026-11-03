@@ -6140,37 +6140,6 @@
         "title": "ExtendClock",
         "type": "object"
       },
-      "ExtendEntitlement": {
-        "description": "Move the end date. `None` makes the grant open-ended.",
-        "properties": {
-          "ends_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ends At"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          }
-        },
-        "title": "ExtendEntitlement",
-        "type": "object"
-      },
       "FailAttemptRequest": {
         "properties": {
           "reason": {
@@ -10516,11 +10485,11 @@
         "title": "Page[PlatformAuditRead]",
         "type": "object"
       },
-      "Page_PlatformEntitlementRead_": {
+      "Page_PlatformExamAccessRead_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/PlatformEntitlementRead"
+              "$ref": "#/components/schemas/PlatformExamAccessRead"
             },
             "title": "Items",
             "type": "array"
@@ -10540,7 +10509,7 @@
         "required": [
           "items"
         ],
-        "title": "Page[PlatformEntitlementRead]",
+        "title": "Page[PlatformExamAccessRead]",
         "type": "object"
       },
       "Page_PlatformPaymentRead_": {
@@ -11870,6 +11839,100 @@
         "title": "PlanRead",
         "type": "object"
       },
+      "PlatformAccessGrantRead": {
+        "description": "One grant behind an exam's access, with the plan it was bought as (None when not a purchase).",
+        "properties": {
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "entitlement_id": {
+            "format": "uuid",
+            "title": "Entitlement Id",
+            "type": "string"
+          },
+          "live": {
+            "title": "Live",
+            "type": "boolean"
+          },
+          "payment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Id"
+          },
+          "payment_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Reference"
+          },
+          "plan_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Code"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entitlement_id",
+          "source",
+          "plan_code",
+          "payment_id",
+          "payment_reference",
+          "starts_at",
+          "ends_at",
+          "revoked_at",
+          "live"
+        ],
+        "title": "PlatformAccessGrantRead",
+        "type": "object"
+      },
       "PlatformAdminInviteRead": {
         "properties": {
           "invited": {
@@ -12598,39 +12661,48 @@
         "title": "PlatformEntitlementRead",
         "type": "object"
       },
-      "PlatformGrantEntitlement": {
-        "description": "A platform admin granting access outright \u2014 a refund made good, a\nsponsor's seat, a support gesture. `note` is why, and goes in the audit row.",
+      "PlatformExamAccessRead": {
+        "description": "What one exam lets this person do, and why: the library cap, the stations sat against it and\nthe grant that decides it.",
         "properties": {
-          "ends_at": {
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "grants": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformAccessGrantRead"
+            },
+            "title": "Grants",
+            "type": "array"
+          },
+          "limit_reason": {
+            "title": "Limit Reason",
+            "type": "string"
+          },
+          "station_limit": {
             "anyOf": [
               {
-                "format": "date-time",
-                "type": "string"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Ends At"
+            "title": "Station Limit"
           },
-          "exam_code": {
-            "maxLength": 32,
-            "minLength": 1,
-            "title": "Exam Code",
-            "type": "string"
-          },
-          "note": {
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Note",
-            "type": "string"
+          "stations_sat": {
+            "title": "Stations Sat",
+            "type": "integer"
           }
         },
         "required": [
           "exam_code",
-          "note"
+          "station_limit",
+          "stations_sat",
+          "limit_reason",
+          "grants"
         ],
-        "title": "PlatformGrantEntitlement",
+        "title": "PlatformExamAccessRead",
         "type": "object"
       },
       "PlatformHealth": {
@@ -14126,6 +14198,20 @@
             "maxLength": 32,
             "minLength": 1,
             "title": "Plan Code",
+            "type": "string"
+          },
+          "send_receipt": {
+            "default": false,
+            "title": "Send Receipt",
+            "type": "boolean"
+          },
+          "start": {
+            "default": "after_current",
+            "enum": [
+              "now",
+              "after_current"
+            ],
+            "title": "Start",
             "type": "string"
           },
           "stripe_payment_intent_id": {
@@ -58217,99 +58303,6 @@
         "x-capability": "platform_admin"
       }
     },
-    "/api/v1/platform/entitlements/{entitlement_id}": {
-      "patch": {
-        "description": "Move the end date. A renewal is this rather than a second row.",
-        "operationId": "entitlements_extend_entitlement_for_support",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "entitlement_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Entitlement Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExtendEntitlement"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlatformEntitlementRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "description": "unauthenticated, account_suspended",
-            "x-codes": [
-              "unauthenticated",
-              "account_suspended"
-            ]
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden",
-            "x-codes": [
-              "forbidden"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "entitlement_not_found",
-            "x-codes": [
-              "entitlement_not_found"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Extend Entitlement For Support",
-        "tags": [
-          "entitlements"
-        ],
-        "x-capability": "platform_admin"
-      }
-    },
     "/api/v1/platform/entitlements/{entitlement_id}/revoke": {
       "post": {
         "description": "Withdraw a grant; the row stays so the history holds.",
@@ -67851,6 +67844,89 @@
         "x-capability": "platform_admin"
       }
     },
+    "/api/v1/platform/users/{user_id}/billing-access": {
+      "get": {
+        "description": "Per exam: the station limit, stations sat, why (`plan:<code>`, `unlimited:<source>` or\n`no_access`) and the grants behind it.",
+        "operationId": "billing_read_user_access_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_PlatformExamAccessRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found",
+            "x-codes": [
+              "user_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read User Access For Support",
+        "tags": [
+          "billing"
+        ],
+        "x-capability": "platform_admin"
+      }
+    },
     "/api/v1/platform/users/{user_id}/billing-events": {
       "get": {
         "description": "Every webhook delivery that named this person's address, applied or\nrefused. A refused one with a `failure` is the \"paid but no access\" case.",
@@ -67930,181 +68006,6 @@
         "summary": "List User Billing Events For Support",
         "tags": [
           "billing"
-        ],
-        "x-capability": "platform_admin"
-      }
-    },
-    "/api/v1/platform/users/{user_id}/entitlements": {
-      "get": {
-        "description": "Every grant this person has held \u2014 purchase, institution, trial, admin \u2014 with `live`\ncomputed now and revoked ones kept.",
-        "operationId": "entitlements_list_user_entitlements_for_support",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "User Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Page_PlatformEntitlementRead_"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "description": "unauthenticated, account_suspended",
-            "x-codes": [
-              "unauthenticated",
-              "account_suspended"
-            ]
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden",
-            "x-codes": [
-              "forbidden"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "user_not_found",
-            "x-codes": [
-              "user_not_found"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "List User Entitlements For Support",
-        "tags": [
-          "entitlements"
-        ],
-        "x-capability": "platform_admin"
-      },
-      "post": {
-        "description": "Grant access outright, source `admin`, with the reason in the audit log. Not for a\npurchase that failed to apply: replay that instead.",
-        "operationId": "entitlements_grant_entitlement_for_support",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "User Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PlatformGrantEntitlement"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlatformEntitlementRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "description": "unauthenticated, account_suspended",
-            "x-codes": [
-              "unauthenticated",
-              "account_suspended"
-            ]
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden",
-            "x-codes": [
-              "forbidden"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "user_not_found, unknown_exam",
-            "x-codes": [
-              "user_not_found",
-              "unknown_exam"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Grant Entitlement For Support",
-        "tags": [
-          "entitlements"
         ],
         "x-capability": "platform_admin"
       }

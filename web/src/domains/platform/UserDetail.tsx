@@ -20,26 +20,24 @@ import { SendMessageModal } from "@/domains/platform/user/SendMessageModal";
 import { AccountTab } from "@/domains/platform/user/AccountTab";
 import { AttemptsTab } from "@/domains/platform/user/AttemptsTab";
 import { BillingTab } from "@/domains/platform/user/BillingTab";
-import { EntitlementsTab } from "@/domains/platform/user/EntitlementsTab";
 import { HistoryTab } from "@/domains/platform/user/HistoryTab";
 import { ProfileTab } from "@/domains/platform/user/ProfileTab";
 import { StationsTab } from "@/domains/platform/user/StationsTab";
 
-type Tab = "profile" | "stations" | "attempts" | "entitlements" | "billing" | "account" | "history";
+type Tab = "profile" | "stations" | "attempts" | "billing" | "account" | "history";
 
 /**
  * The support view of one account — the retiring B2C admin's user detail.
  *
  * Profile is who they are; Account is what they paid for, where they belong
- * and the two switches. Stations, Attempts, Entitlements, Billing and History
+ * and the two switches. Stations, Attempts, Access and billing, and History
  * answer the tickets support actually gets, and carry the levers.
  */
 const USER_TABS: B2CSegmentedTabItem<Tab>[] = [
   { id: "profile", label: "Profile" },
   { id: "stations", label: "Stations" },
   { id: "attempts", label: "Attempts" },
-  { id: "entitlements", label: "Access" },
-  { id: "billing", label: "Billing" },
+  { id: "billing", label: "Access and billing" },
   { id: "account", label: "Account" },
   { id: "history", label: "History" },
 ];
@@ -118,10 +116,7 @@ export function UserDetail({ userId }: { userId: string }) {
               ) : null}
               {tab === "stations" ? <StationsTab userId={current.id} /> : null}
               {tab === "attempts" ? <AttemptsTab userId={current.id} /> : null}
-              {tab === "entitlements" ? (
-                <EntitlementsTab userId={current.id} examCode={current.exam_code} />
-              ) : null}
-              {tab === "billing" ? <BillingTab userId={current.id} /> : null}
+              {tab === "billing" ? <BillingTab userId={current.id} email={current.email} /> : null}
               {tab === "account" ? (
                 <AccountTab user={current} facts={facts.data} onChanged={changed} onOpenTab={setTab} />
               ) : null}

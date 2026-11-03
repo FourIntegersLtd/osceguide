@@ -305,9 +305,22 @@ async def payment_by_intent(session: AsyncSession, intent_id: str) -> Payment | 
 
 
 async def payer_user_ids(session: AsyncSession) -> set[uuid.UUID]:
-    """Everyone with at least one payment. Unbounded on purpose: it is the
-    directory's "paid" facet and has to be complete to be a facet at all."""
-    stmt = select(Payment.user_id).distinct()
+    """Everyone with at least one payment above zero pence (a free grant is not a sale).
+    Unbounded on purpose: it is the directory's "paid" facet and has to be complete to be a facet
+    at all."""
+    stmt = select(Payment.user_id).where(Payment.amount_total_pence > 0).distinct()
+    return set((await session.execute(stmt)).scalars())
+
+
+async def paying_user_ids_among(session: AsyncSession, user_ids: Collection[uuid.UUID]) -> set[uuid.UUID]:
+    """Of these people, the ones who have ever paid more than zero pence. Empty for an empty list."""
+    if not user_ids:
+        return set()
+    stmt = (
+        select(Payment.user_id)
+        .where(Payment.user_id.in_(list(user_ids)), Payment.amount_total_pence > 0)
+        .distinct()
+    )
     return set((await session.execute(stmt)).scalars())
 
 
@@ -348,7 +361,10 @@ async def payer_user_ids_among(
     stmt = (
         select(Payment.user_id)
         .where(
-            Payment.user_id.in_(list(user_ids)), Payment.paid_at >= paid_from, Payment.paid_at < paid_before
+            Payment.user_id.in_(list(user_ids)),
+            Payment.paid_at >= paid_from,
+            Payment.paid_at < paid_before,
+            Payment.amount_total_pence > 0,
         )
         .distinct()
     )
@@ -358,7 +374,8 @@ async def payer_user_ids_among(
 async def revenue_breakdown_for_users(
     session: AsyncSession, user_ids: Collection[uuid.UUID], *, paid_from: datetime, paid_before: datetime
 ) -> list[tuple[str | None, int, int]]:
-    """What these people paid in a window, split by the plan they bought.
+    """What these people paid in a window, split by the plan they bought. A free (0 pence) grant
+    is not a sale and is left out.
 
     Each row is `(plan code, payment count, gross revenue pence)`; a payment
     whose plan was since deleted (`plan_id` gone `SET NULL`) groups under a
@@ -375,6 +392,7 @@ async def revenue_breakdown_for_users(
             Payment.user_id.in_(list(user_ids)),
             Payment.paid_at >= paid_from,
             Payment.paid_at < paid_before,
+            Payment.amount_total_pence > 0,
         )
         .group_by(Plan.code)
     )
@@ -403,6 +421,7 @@ async def revenue_over_time_for_users(
             Payment.user_id.in_(list(user_ids)),
             Payment.paid_at >= paid_from,
             Payment.paid_at < paid_before,
+            Payment.amount_total_pence > 0,
         )
         .group_by(period)
         .order_by(period)

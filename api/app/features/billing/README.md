@@ -53,6 +53,8 @@ service and never grants access itself.
 | GET | `/api/v1/me/receipts/{receipt_id}` | bearer | one receipt, every field rendered for display; `receipt_not_found` (404) |
 | GET | `/api/v1/me/receipts/{receipt_id}/document` | bearer | The receipt as HTML, to print or keep |
 | GET | `/api/v1/platform/users/{id}/payments` | platform admin | this person's payments with what each bought; `user_not_found` (404) |
+| GET | `/api/v1/platform/users/{id}/billing-access` | platform admin | per exam: `station_limit`, `stations_sat`, `limit_reason` (`plan:<code>` / `unlimited:<source>` / `no_access`), grants with `plan_code` |
+| POST | `/api/v1/platform/users/{id}/payments` | platform admin | the only way staff give access: a plan-linked purchase. `amount_total_pence` omitted or 0 = free; `send_receipt` (default false) queues the receipt email; `start` `after_current` (default) or `now`; response has `plan_starts_at` / `plan_ends_at` |
 | GET | `/api/v1/platform/users/{id}/billing-events` | platform admin | every webhook delivery naming their address, applied or refused |
 | GET | `/api/v1/platform/billing/events` | platform admin | the ledger, newest first; `?failed_only=true` is the reconcile queue |
 | GET | `/api/v1/platform/billing/plans` | platform admin | every plan priced, on sale or retired, with its referral price |

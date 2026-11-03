@@ -36,6 +36,10 @@ make guards                                    # tests/guards only, fast
 
 ## Traps
 
+- **Access is only given by choosing a plan.** Staff have no route that grants or extends an entitlement
+  outright (`POST /platform/users/{id}/payments` with a plan code is the only way; a blank amount is a free
+  plan). That is what makes a plan's station cap always apply. Revoke stays. A 0 pence payment is not a sale:
+  revenue, the paid facet and partner "paid" counts all require `amount_total_pence > 0`.
 - **After an engine change, refresh the installed copy**: `poetry run pip install --force-reinstall --no-deps
   ../assessment/packages/osce_assessment`. `poetry install` keeps a same-version path copy, so api tests
   import the old engine.

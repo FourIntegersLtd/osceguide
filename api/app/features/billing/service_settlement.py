@@ -48,11 +48,17 @@ async def settle_payment(
     customer_name: str,
     email: str,
     now: datetime,
+    start_now: bool = False,
+    send_receipt: bool = True,
 ) -> Payment:
     """Turn one paid-for plan into access, a payment row and a receipt.
 
     Also used by the platform console for a payment that did not come through Stripe, so it
     takes exactly the same steps as the webhook.
+
+    `start_now` begins the access at `now` and runs it alongside any plan already running, instead
+    of queueing it behind. `send_receipt=False` records the receipt but queues no email; only the
+    console's manual payment turns it off, so a real purchase always emails.
     """
     # A second event for a payment already recorded (Stripe's own retries use one event id, but a
     # different event can carry the same intent) must not stack a second grant.
@@ -68,7 +74,9 @@ async def settle_payment(
     starts_at, ends_at = domain.access_window(
         plan,
         paid_at=now,
-        running_until=max((grant.ends_at for grant in running if grant.ends_at), default=None),
+        running_until=(
+            None if start_now else max((grant.ends_at for grant in running if grant.ends_at), default=None)
+        ),
     )
 
     granted = await entitlements.grant(
@@ -110,6 +118,8 @@ async def settle_payment(
     # Queued on the outbox in this transaction, like every other message, so
     # a webhook that rolls back cannot leave a receipt for a payment that did
     # not happen, and a mail provider being briefly down does not lose it.
+    if not send_receipt:
+        return payment
     await notifications.enqueue_email(
         session,
         recipient=email,

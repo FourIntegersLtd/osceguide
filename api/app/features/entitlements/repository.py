@@ -180,6 +180,7 @@ async def by_id(session: AsyncSession, entitlement_id: uuid.UUID) -> Entitlement
 
 
 async def set_ends_at(session: AsyncSession, entitlement_id: uuid.UUID, *, ends_at: datetime | None) -> None:
+    """Move only a grant's end (used by the lifecycle test world to lapse a grant)."""
     await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(ends_at=ends_at))
 
 

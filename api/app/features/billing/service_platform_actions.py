@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -75,10 +75,16 @@ async def record_manual_payment(
     amount_total_pence: int | None,
     paid_at: datetime | None,
     note: str,
+    send_receipt: bool = False,
+    start: Literal["now", "after_current"] = "after_current",
     actor: Principal,
     now: datetime,
 ) -> PlatformPaymentRead:
     """Record a payment that did not come through Stripe, and grant what it bought.
+
+    This is the only way staff give access. An omitted amount is a free grant (0 pence), still a
+    plan-linked purchase so the plan's station limit applies. The receipt email goes out only when
+    `send_receipt`; `start="now"` runs the new plan alongside the current one.
 
     The same steps a checkout takes, so a sponsor's seat is a real purchase and not an admin
     grant with a story. Idempotent on the reference: recording the same intent twice is a
@@ -99,13 +105,15 @@ async def record_manual_payment(
         plan_row=plan_row,
         intent_id=reference,
         checkout_session_id=None,
-        amount_total=plan_row.amount_pence if amount_total_pence is None else amount_total_pence,
+        amount_total=amount_total_pence or 0,
         amount_tax=0,
         currency=plan_row.currency,
         receipt_url=None,
         customer_name=user.name,
         email=user.email,
         now=paid_at or now,
+        start_now=start == "now",
+        send_receipt=send_receipt,
     )
     await service_audit.record(
         session,

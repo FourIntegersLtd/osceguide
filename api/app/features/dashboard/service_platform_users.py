@@ -113,6 +113,7 @@ async def _enrich(
     """One directory row per account, with the other slices' facts folded in."""
     ids = [support_user.id for support_user in support_users]
     payments = await billing.latest_payment_by_user(session, ids)
+    paying_ids = await billing.paying_ids_among(session, ids)
     counts = await attempts.attempt_counts(session, ids)
     grants = await entitlements.live_grants_by_user(session, ids, now=now)
     signed_in = await accounts.signed_in_user_ids(session, ids, now=now)
@@ -132,7 +133,7 @@ async def _enrich(
                 exam_code=support_user.exam_code,
                 last_login_at=support_user.last_login_at,
                 signed_in=support_user.id in signed_in,
-                has_paid=payment is not None,
+                has_paid=support_user.id in paying_ids,
                 plan_code=payment.plan_code if payment else None,
                 last_paid_at=payment.paid_at if payment else None,
                 access_ends_at=(

@@ -138,21 +138,5 @@ class PlatformEntitlementRead(EntitlementRead):
     granted_by: uuid.UUID | None
 
 
-class PlatformGrantEntitlement(BaseModel):
-    """A platform admin granting access outright — a refund made good, a
-    sponsor's seat, a support gesture. `note` is why, and goes in the audit row."""
-
-    exam_code: str = Field(min_length=1, max_length=32)
-    ends_at: datetime | None = None
-    note: str = Field(min_length=1, max_length=500)
-
-
-class ExtendEntitlement(BaseModel):
-    """Move the end date. `None` makes the grant open-ended."""
-
-    ends_at: datetime | None = None
-    note: str | None = Field(default=None, max_length=500)
-
-
 class RevokeEntitlement(BaseModel):
     reason: str = Field(min_length=1, max_length=500)

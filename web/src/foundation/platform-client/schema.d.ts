@@ -6027,26 +6027,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/platform/entitlements/{entitlement_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Extend Entitlement For Support
-         * @description Move the end date. A renewal is this rather than a second row.
-         */
-        patch: operations["entitlements_extend_entitlement_for_support"];
-        trace?: never;
-    };
     "/api/v1/platform/entitlements/{entitlement_id}/revoke": {
         parameters: {
             query?: never;
@@ -7594,6 +7574,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/users/{user_id}/billing-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read User Access For Support
+         * @description Per exam: the station limit, stations sat, why (`plan:<code>`, `unlimited:<source>` or
+         *     `no_access`) and the grants behind it.
+         */
+        get: operations["billing_read_user_access_for_support"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/users/{user_id}/billing-events": {
         parameters: {
             query?: never;
@@ -7609,32 +7610,6 @@ export interface paths {
         get: operations["billing_list_user_billing_events_for_support"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/users/{user_id}/entitlements": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List User Entitlements For Support
-         * @description Every grant this person has held — purchase, institution, trial, admin — with `live`
-         *     computed now and revoked ones kept.
-         */
-        get: operations["entitlements_list_user_entitlements_for_support"];
-        put?: never;
-        /**
-         * Grant Entitlement For Support
-         * @description Grant access outright, source `admin`, with the reason in the audit log. Not for a
-         *     purchase that failed to apply: replay that instead.
-         */
-        post: operations["entitlements_grant_entitlement_for_support"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10581,16 +10556,6 @@ export interface components {
             /** Seconds */
             seconds: number;
         };
-        /**
-         * ExtendEntitlement
-         * @description Move the end date. `None` makes the grant open-ended.
-         */
-        ExtendEntitlement: {
-            /** Ends At */
-            ends_at?: string | null;
-            /** Note */
-            note?: string | null;
-        };
         /** FailAttemptRequest */
         FailAttemptRequest: {
             /** Reason */
@@ -12322,10 +12287,10 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
-        /** Page[PlatformEntitlementRead] */
-        Page_PlatformEntitlementRead_: {
+        /** Page[PlatformExamAccessRead] */
+        Page_PlatformExamAccessRead_: {
             /** Items */
-            items: components["schemas"]["PlatformEntitlementRead"][];
+            items: components["schemas"]["PlatformExamAccessRead"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -12857,6 +12822,36 @@ export interface components {
              */
             station_count: number;
         };
+        /**
+         * PlatformAccessGrantRead
+         * @description One grant behind an exam's access, with the plan it was bought as (None when not a purchase).
+         */
+        PlatformAccessGrantRead: {
+            /** Ends At */
+            ends_at: string | null;
+            /**
+             * Entitlement Id
+             * Format: uuid
+             */
+            entitlement_id: string;
+            /** Live */
+            live: boolean;
+            /** Payment Id */
+            payment_id: string | null;
+            /** Payment Reference */
+            payment_reference: string | null;
+            /** Plan Code */
+            plan_code: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Source */
+            source: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+        };
         /** PlatformAdminInviteRead */
         PlatformAdminInviteRead: {
             /**
@@ -13114,17 +13109,21 @@ export interface components {
             user_id: string;
         };
         /**
-         * PlatformGrantEntitlement
-         * @description A platform admin granting access outright — a refund made good, a
-         *     sponsor's seat, a support gesture. `note` is why, and goes in the audit row.
+         * PlatformExamAccessRead
+         * @description What one exam lets this person do, and why: the library cap, the stations sat against it and
+         *     the grant that decides it.
          */
-        PlatformGrantEntitlement: {
-            /** Ends At */
-            ends_at?: string | null;
+        PlatformExamAccessRead: {
             /** Exam Code */
             exam_code: string;
-            /** Note */
-            note: string;
+            /** Grants */
+            grants: components["schemas"]["PlatformAccessGrantRead"][];
+            /** Limit Reason */
+            limit_reason: string;
+            /** Station Limit */
+            station_limit: number | null;
+            /** Stations Sat */
+            stations_sat: number;
         };
         /**
          * PlatformHealth
@@ -13743,6 +13742,17 @@ export interface components {
             paid_at?: string | null;
             /** Plan Code */
             plan_code: string;
+            /**
+             * Send Receipt
+             * @default false
+             */
+            send_receipt: boolean;
+            /**
+             * Start
+             * @default after_current
+             * @enum {string}
+             */
+            start: "now" | "after_current";
             /** Stripe Payment Intent Id */
             stripe_payment_intent_id?: string | null;
         };
@@ -37954,66 +37964,6 @@ export interface operations {
             };
         };
     };
-    entitlements_extend_entitlement_for_support: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                entitlement_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExtendEntitlement"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformEntitlementRead"];
-                };
-            };
-            /** @description unauthenticated, account_suspended */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description entitlement_not_found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     entitlements_revoke_entitlement_for_support: {
         parameters: {
             query?: never;
@@ -43733,6 +43683,62 @@ export interface operations {
             };
         };
     };
+    billing_read_user_access_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlatformExamAccessRead_"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description user_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     billing_list_user_billing_events_for_support: {
         parameters: {
             query?: never;
@@ -43770,122 +43776,6 @@ export interface operations {
                 };
             };
             /** @description user_not_found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    entitlements_list_user_entitlements_for_support: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                user_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_PlatformEntitlementRead_"];
-                };
-            };
-            /** @description unauthenticated, account_suspended */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description user_not_found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    entitlements_grant_entitlement_for_support: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                user_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PlatformGrantEntitlement"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformEntitlementRead"];
-                };
-            };
-            /** @description unauthenticated, account_suspended */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description user_not_found, unknown_exam */
             404: {
                 headers: {
                     [name: string]: unknown;

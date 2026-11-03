@@ -170,12 +170,16 @@ async def test_a_payment_that_did_not_come_through_stripe_grants_like_one_that_d
     assert recorded.status_code == 201, recorded.text
     body = recorded.json()
     assert body["plan_code"] == "one_month"
-    assert body["amount_total_pence"] == 2499
+    assert body["amount_total_pence"] == 0, "an omitted amount is a free grant"
     assert body["stripe_payment_intent_id"].startswith("manual:")
     assert body["receipt_id"]
     assert body["entitlement_id"]
-    grants = await client.get(f"/api/v1/platform/users/{user_id}/entitlements", headers=bearer(root))
-    assert [(g["source"], g["live"]) for g in grants.json()["items"]] == [("purchase", True)]
+    access = await client.get(f"/api/v1/platform/users/{user_id}/billing-access", headers=bearer(root))
+    [exam_access] = access.json()["items"]
+    assert [
+        (g["source"], g["live"], g["plan_code"], g["payment_id"], g["payment_reference"])
+        for g in exam_access["grants"]
+    ] == [("purchase", True, "one_month", body["id"], body["stripe_payment_intent_id"])]
 
     explicit = {
         "plan_code": "one_month",
@@ -224,9 +228,10 @@ async def test_a_refund_withdraws_the_access_and_keeps_the_sale(
     )
     assert payment["access_revoked"] is False
     assert refunded.json()["access_revoked"] is True
-    [grant] = (
-        await client.get(f"/api/v1/platform/users/{user.id}/entitlements", headers=bearer(root))
+    [exam_access] = (
+        await client.get(f"/api/v1/platform/users/{user.id}/billing-access", headers=bearer(root))
     ).json()["items"]
+    [grant] = exam_access["grants"]
     assert grant["live"] is False
     assert grant["revoked_at"] is not None
     assert (
@@ -467,3 +472,125 @@ async def test_a_webhook_delivery_locks_its_ledger_row_before_checking_it_was_ap
         event.remove(sync_engine, "before_cursor_execute", record)
 
     assert [s for s in statements if "FROM stripe_events" in s and "FOR UPDATE" in s], statements
+
+
+async def _manual_payment(client, root, user_id, **extra):  # type: ignore[no-untyped-def]
+    """Record one manual payment for the plan `one_month` and return the response."""
+    return await client.post(
+        f"/api/v1/platform/users/{user_id}/payments",
+        json={"plan_code": "one_month", "note": "test", **extra},
+        headers=bearer(root),
+    )
+
+
+async def _receipt_count(db_session: AsyncSession) -> int:
+    """How many payment receipt emails are queued on the outbox."""
+    from sqlalchemy import func, select
+
+    from app.features.notifications.models import OutboundMessage
+
+    return int(
+        await db_session.scalar(
+            select(func.count())
+            .select_from(OutboundMessage)
+            .where(OutboundMessage.template_key == "payment_receipt")
+        )
+        or 0
+    )
+
+
+async def test_a_free_manual_payment_is_a_capped_purchase_and_the_receipt_is_opt_in(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import text
+
+    from app.features.billing import service_station_limit
+    from app.features.catalog import service as catalog
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await a_plan(db_session)
+    await db_session.execute(text("update plans set station_limit = 53 where code = 'one_month'"))
+    await a_customer(db_session, "free@example.com")
+    user = await identity_repo.user_by_email(db_session, "free@example.com")
+    assert user is not None
+    user_id = user.id
+    exam = await catalog.resolve_exam(db_session, "sca", org_id=None)
+    exam_id = exam.id
+
+    silent = await _manual_payment(client, root, user_id)
+    assert silent.status_code == 201, silent.text
+    assert silent.json()["amount_total_pence"] == 0
+    assert silent.json()["plan_starts_at"] and silent.json()["plan_ends_at"]
+    assert await _receipt_count(db_session) == 0
+    limit = await service_station_limit.station_limit_for(
+        db_session, user_id=user_id, exam_id=exam_id, exam_code="sca", now=datetime.now(UTC)
+    )
+    assert limit == 53
+
+    loud = await _manual_payment(client, root, user_id, send_receipt=True)
+    assert loud.status_code == 201, loud.text
+    assert await _receipt_count(db_session) == 1
+
+
+async def test_start_now_runs_alongside_and_after_current_queues_behind(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await a_plan(db_session)
+    await a_customer(db_session, "stack@example.com")
+    user = await identity_repo.user_by_email(db_session, "stack@example.com")
+    assert user is not None
+    user_id = user.id
+    paid_at = datetime.now(UTC)
+
+    first = (await _manual_payment(client, root, user_id)).json()
+    queued = (await _manual_payment(client, root, user_id)).json()
+    assert queued["plan_starts_at"] == first["plan_ends_at"], "after_current waits for the running plan"
+    alongside = (await _manual_payment(client, root, user_id, start="now")).json()
+    assert alongside["plan_starts_at"] < first["plan_ends_at"], "now overlaps the running plan"
+    assert datetime.fromisoformat(alongside["plan_starts_at"]) >= paid_at.replace(microsecond=0)
+
+
+async def test_the_billing_read_gives_the_limit_and_why(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.billing import repository as billing_repository
+    from app.features.entitlements import repository as ent_repository
+    from tests.support.catalog import ensure_exam
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await a_plan(db_session)
+    await billing_repository.create_plan(
+        db_session,
+        code="sca_1m",
+        stripe_price_id="price_sca_1m",
+        amount_pence=2499,
+        duration_days=30,
+        exam_code="sca",
+        station_limit=53,
+    )
+    await a_customer(db_session, "reader@example.com")
+    user = await identity_repo.user_by_email(db_session, "reader@example.com")
+    assert user is not None
+    user_id = user.id
+    exam = await ensure_exam(db_session, "sca")
+    exam_id = exam.id
+
+    bought = await client.post(
+        f"/api/v1/platform/users/{user_id}/payments",
+        json={"plan_code": "sca_1m", "note": "x"},
+        headers=bearer(root),
+    )
+    assert bought.status_code == 201, bought.text
+    capped = await client.get(f"/api/v1/platform/users/{user_id}/billing-access", headers=bearer(root))
+    [row] = capped.json()["items"]
+    assert (row["exam_code"], row["station_limit"], row["stations_sat"]) == ("sca", 53, 0)
+    assert row["limit_reason"] == "plan:sca_1m"
+    assert row["grants"][0]["plan_code"] == "sca_1m"
+
+    await ent_repository.grant(db_session, user_id=user_id, exam_id=exam_id, source="org_grant")
+    await db_session.flush()
+    overlapped = await client.get(f"/api/v1/platform/users/{user_id}/billing-access", headers=bearer(root))
+    [row] = overlapped.json()["items"]
+    assert row["station_limit"] is None
+    assert row["limit_reason"] == "unlimited:org_grant"

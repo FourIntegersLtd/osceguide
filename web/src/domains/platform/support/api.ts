@@ -22,6 +22,8 @@ export type PlatformAttemptDetail = S["PlatformAttemptDetail"];
 export type ScoringJob = S["ScoringJobRead"];
 export type RescoreResult = S["RescoreResult"];
 export type PlatformEntitlement = S["PlatformEntitlementRead"];
+export type PlatformExamAccess = S["PlatformExamAccessRead"];
+export type PlatformAccessGrant = S["PlatformAccessGrantRead"];
 export type PlatformPayment = S["PlatformPaymentRead"];
 export type StripeEvent = S["StripeEventRead"];
 export type PlatformPlan = S["PlatformPlanRead"];
@@ -134,33 +136,12 @@ export function deleteStationProgress(
 
 /* ----------------------------------------------------------- Entitlements */
 
-export function listUserEntitlements(
+/** Per exam: the station limit, stations sat, why, and the grants behind it. */
+export function listUserBillingAccess(
   userId: string,
   signal?: AbortSignal,
-): Promise<Page<PlatformEntitlement>> {
-  return platformRequest<Page<PlatformEntitlement>>(`${user(userId)}/entitlements`, { signal });
-}
-
-/** Grant access outright, source `admin`, with the reason in the audit log. */
-export function grantEntitlement(
-  userId: string,
-  input: { examCode: string; endsAt?: string | null; note: string },
-): Promise<PlatformEntitlement> {
-  return platformRequest<PlatformEntitlement>(`${user(userId)}/entitlements`, {
-    method: "POST",
-    body: { exam_code: input.examCode, ends_at: input.endsAt ?? null, note: input.note },
-  });
-}
-
-/** Move the end date. A renewal is this rather than a second row. */
-export function extendEntitlement(
-  entitlementId: string,
-  input: { endsAt: string | null; note?: string | null },
-): Promise<PlatformEntitlement> {
-  return platformRequest<PlatformEntitlement>(entitlement(entitlementId), {
-    method: "PATCH",
-    body: { ends_at: input.endsAt, note: input.note ?? null },
-  });
+): Promise<Page<PlatformExamAccess>> {
+  return platformRequest<Page<PlatformExamAccess>>(`${user(userId)}/billing-access`, { signal });
 }
 
 export function revokeEntitlement(
@@ -240,14 +221,19 @@ export function replayBillingEvent(eventId: string): Promise<{ status: string }>
   );
 }
 
-/** A payment that did not come through Stripe, recorded so it grants like one that did. */
+/**
+ * Gives access by recording a payment against a plan. A blank amount means free. It does not
+ * come through Stripe, so it is the only way staff add access.
+ */
 export function recordManualPayment(
   userId: string,
   input: {
     planCode: string;
-    reference?: string | null;
+    /** Made once when the person reaches the confirm step; the server refuses a reused one, so a double submit grants once. */
+    reference: string;
     amountPence?: number | null;
-    paidAt?: string | null;
+    sendReceipt: boolean;
+    start: "now" | "after_current";
     note: string;
   },
 ): Promise<PlatformPayment> {
@@ -255,9 +241,10 @@ export function recordManualPayment(
     method: "POST",
     body: {
       plan_code: input.planCode,
-      stripe_payment_intent_id: input.reference || null,
+      stripe_payment_intent_id: input.reference,
       amount_total_pence: input.amountPence ?? null,
-      paid_at: input.paidAt ?? null,
+      send_receipt: input.sendReceipt,
+      start: input.start,
       note: input.note,
     },
   });

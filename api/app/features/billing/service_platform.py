@@ -14,13 +14,19 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.billing import errors, repository
+from app.features.billing import errors, repository, service_station_limit
 from app.features.billing.models import Payment, StripeEvent
-from app.features.billing.schemas import PlatformPaymentRead, StripeEventRead
+from app.features.billing.schemas import (
+    PlatformAccessGrantRead,
+    PlatformExamAccessRead,
+    PlatformPaymentRead,
+    StripeEventRead,
+)
 from app.features.billing.service import _price_id
 from app.features.entitlements import service as entitlements
 from app.features.identity import service as identity
 from app.features.identity.service import UserRef
+from app.features.stations import service_plan_window
 
 
 async def _require_user(session: AsyncSession, user_id: uuid.UUID) -> UserRef:
@@ -51,6 +57,78 @@ async def payments_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[P
         )
         for payment in payments
     ]
+
+
+async def access_for_user(
+    session: AsyncSession, user_id: uuid.UUID, *, now: datetime
+) -> list[PlatformExamAccessRead]:
+    """Per exam this person has ever held a grant for: the station limit that applies now, the
+    stations sat, why, and the grants behind it. Reuses the learner's own limit rule, so staff see
+    exactly what the person sees.
+
+    Exams are grouped by the grants' own exam id, so a retired, draft or institution-owned exam
+    never fails the read; a grant whose exam is gone altogether has no code and is left out.
+    """
+    await _require_user(session, user_id)
+    grants = await entitlements.list_for_user(session, user_id, now=now)
+    plan_codes_by_id = {plan.id: plan.code for plan in await repository.all_plans(session)}
+    plan_code_by_entitlement: dict[uuid.UUID, str] = {}
+    payment_by_entitlement: dict[uuid.UUID, Payment] = {}
+    for payment in await repository.payments_for_user(session, user_id):
+        plan_code = plan_codes_by_id.get(payment.plan_id) if payment.plan_id else None
+        if plan_code is not None and payment.entitlement_id is not None:
+            plan_code_by_entitlement[payment.entitlement_id] = plan_code
+            payment_by_entitlement[payment.entitlement_id] = payment
+    result: list[PlatformExamAccessRead] = []
+    for exam_id in dict.fromkeys(grant.exam_id for grant in grants):
+        exam_grants = [grant for grant in grants if grant.exam_id == exam_id]
+        exam_code = exam_grants[0].exam_code
+        if not exam_code:
+            continue
+        stations_sat, station_limit = await service_plan_window.plan_usage(
+            session, user_id=user_id, exam_id=exam_id, exam_code=exam_code, now=now
+        )
+        other_live = [grant for grant in exam_grants if grant.live and grant.source != "purchase"]
+        _, deciding_plan_code = await service_station_limit.station_limit_and_plan_code(
+            session, user_id=user_id, exam_code=exam_code, now=now, started_only=True
+        )
+        if other_live:
+            reason = f"unlimited:{other_live[0].source}"
+        elif deciding_plan_code is not None:
+            reason = f"plan:{deciding_plan_code}"
+        else:
+            reason = "no_access"
+        result.append(
+            PlatformExamAccessRead(
+                exam_code=exam_code,
+                station_limit=station_limit,
+                stations_sat=stations_sat,
+                limit_reason=reason,
+                grants=[
+                    PlatformAccessGrantRead(
+                        entitlement_id=grant.id,
+                        source=grant.source,
+                        plan_code=plan_code_by_entitlement.get(grant.id),
+                        payment_id=_payment_field(payment_by_entitlement, grant.id, "id"),
+                        payment_reference=_payment_field(
+                            payment_by_entitlement, grant.id, "stripe_payment_intent_id"
+                        ),
+                        starts_at=grant.starts_at,
+                        ends_at=grant.ends_at,
+                        revoked_at=grant.revoked_at,
+                        live=grant.live,
+                    )
+                    for grant in exam_grants
+                ],
+            )
+        )
+    return result
+
+
+def _payment_field(payments: dict[uuid.UUID, Payment], entitlement_id: uuid.UUID, field: str) -> Any:
+    """One field of the payment that bought this grant, or `None` when it was not bought."""
+    payment = payments.get(entitlement_id)
+    return getattr(payment, field) if payment is not None else None
 
 
 async def payment_read(
@@ -134,6 +212,11 @@ class PaymentFact:
 async def payer_ids(session: AsyncSession) -> set[uuid.UUID]:
     """Everyone who has ever paid — the directory's "paid" facet."""
     return await repository.payer_user_ids(session)
+
+
+async def paying_ids_among(session: AsyncSession, user_ids: Collection[uuid.UUID]) -> set[uuid.UUID]:
+    """Of these people, the ones who have really paid (more than 0 pence) at least once."""
+    return await repository.paying_user_ids_among(session, user_ids)
 
 
 async def payer_ids_on_plan(session: AsyncSession, plan_code: str) -> set[uuid.UUID]:

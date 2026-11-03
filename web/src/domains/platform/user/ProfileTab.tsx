@@ -149,7 +149,7 @@ function ProfileForm({
               value={examCode}
               onChange={(e) => setExamCode(e.target.value)}
               disabled={busy}
-              hint="The exam this person is preparing for. What they can use is on the Access tab."
+              hint="The exam this person is preparing for. What they can use is on the Access and billing tab."
             >
               <option value="">No exam chosen</option>
               {page.items.map((exam) => (

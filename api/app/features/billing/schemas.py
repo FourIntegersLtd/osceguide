@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -150,9 +151,14 @@ class RecordManualPayment(BaseModel):
 
     plan_code: str = Field(min_length=1, max_length=32)
     stripe_payment_intent_id: str | None = Field(default=None, min_length=1, max_length=100)
+    # Omitted or 0 is free access: still a plan-linked purchase, so the plan's limit applies.
     amount_total_pence: int | None = Field(default=None, ge=0)
     paid_at: datetime | None = None
     note: str = Field(min_length=1, max_length=500)
+    # The receipt email is queued only when true; a manual payment is silent by default.
+    send_receipt: bool = False
+    # "after_current" queues the plan behind the running one; "now" starts it at once, alongside.
+    start: Literal["now", "after_current"] = "after_current"
 
 
 class RefundRequest(BaseModel):
@@ -218,3 +224,33 @@ class InvoiceRead(BaseModel):
     voided_at: datetime | None
     notes: str | None
     lines: list[InvoiceLineRead]
+
+
+class PlatformAccessGrantRead(BaseModel):
+    """One grant behind an exam's access, with the plan it was bought as (None when not a purchase)."""
+
+    entitlement_id: uuid.UUID
+    source: str
+    plan_code: str | None
+    # The plan-linked payment that bought it, so Refund needs no payment lookup (None otherwise).
+    payment_id: uuid.UUID | None
+    # That payment's reference (`pi_...` from Stripe, otherwise `manual:...`), which decides how a
+    # refund is made.
+    payment_reference: str | None
+    starts_at: datetime
+    ends_at: datetime | None
+    revoked_at: datetime | None
+    live: bool
+
+
+class PlatformExamAccessRead(BaseModel):
+    """What one exam lets this person do, and why: the library cap, the stations sat against it and
+    the grant that decides it."""
+
+    exam_code: str
+    # None means every station is open.
+    station_limit: int | None
+    stations_sat: int
+    # `plan:<code>`, `unlimited:<source of the other live grant>` or `no_access`.
+    limit_reason: str
+    grants: list[PlatformAccessGrantRead]

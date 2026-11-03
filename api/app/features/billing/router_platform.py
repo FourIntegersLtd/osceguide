@@ -42,6 +42,21 @@ async def list_user_payments_for_support(
 
 
 @router.get(
+    "/platform/users/{user_id}/billing-access",
+    response_model=Page[schemas.PlatformExamAccessRead],
+    responses=error_responses(Forbidden, errors.PayerNotFound),
+)
+async def read_user_access_for_support(
+    user_id: uuid.UUID, admin: PlatformAdmin, session: Session, clock: ClockDep
+) -> Page[schemas.PlatformExamAccessRead]:
+    """Per exam: the station limit, stations sat, why (`plan:<code>`, `unlimited:<source>` or
+    `no_access`) and the grants behind it."""
+    _ = admin
+    items = await service_platform.access_for_user(session, user_id, now=clock.now())
+    return Page(items=items, next_cursor=None)
+
+
+@router.get(
     "/platform/users/{user_id}/billing-events",
     response_model=Page[schemas.StripeEventRead],
     responses=error_responses(Forbidden, errors.PayerNotFound),
@@ -124,6 +139,8 @@ async def record_manual_payment(
         amount_total_pence=body.amount_total_pence,
         paid_at=body.paid_at,
         note=body.note,
+        send_receipt=body.send_receipt,
+        start=body.start,
         actor=admin,
         now=clock.now(),
     )

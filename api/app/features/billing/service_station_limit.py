@@ -41,9 +41,27 @@ async def station_limit_for(
     """How many library stations this person's paid plans unlock for the exam. `None` means no
     limit: either they hold no live purchase, or some other live grant (org, SSO tenant, admin,
     trial) overlaps it, which this slice never caps."""
+    limit, _ = await station_limit_and_plan_code(
+        session, user_id=user_id, exam_code=exam_code, now=now, started_only=False
+    )
+    return limit
+
+
+async def station_limit_and_plan_code(
+    session: AsyncSession, *, user_id: uuid.UUID, exam_code: str, now: datetime, started_only: bool
+) -> tuple[int | None, str | None]:
+    """The limit `station_limit_for` gives, and the base plan code of the purchase that set it.
+
+    The code is `None` when no purchase decides (none running, or another live grant overlaps),
+    `"unknown"` when a running purchase matches no plan (the limit then fails closed), and
+    otherwise the plan with the highest limit, or the first uncapped one when any plan is uncapped.
+    `started_only` ignores purchases bought to start later, so a queued plan never names the reason.
+    """
     running = await entitlements.running_purchases(session, user_id, exam_code, now=now)
+    if started_only:
+        running = [grant for grant in running if grant.starts_at <= now]
     if not running:
-        return None
+        return None, None
 
     # A purchase alongside any other live grant for this exam is not capped: the other grant
     # may already unlock everything, and this slice has no way to tell from here.
@@ -54,7 +72,7 @@ async def station_limit_for(
         if grant.live and grant.exam_code == exam_code and grant.source != "purchase"
     ]
     if other_live_grants:
-        return None
+        return None, None
 
     running_ids = {grant.id for grant in running}
     plans_by_id = {plan.id: plan for plan in await repository.all_plans(session)}
@@ -67,7 +85,7 @@ async def station_limit_for(
         if plan is None:
             # A live purchase grant whose plan row is gone: fail closed, not open.
             logger.warning("purchase of a missing plan for user %s, exam %s", user_id, exam_code)
-            return _strictest_limit(list(plans_by_id.values()), exam_code)
+            return _strictest_limit(list(plans_by_id.values()), exam_code), "unknown"
         base_code = plan.code.removesuffix(domain.REFERRAL_PLAN_SUFFIX)
         base_plan = plans_by_code.get(base_code, plan)
         matched_plans.append(base_plan)
@@ -75,10 +93,12 @@ async def station_limit_for(
     if not matched_plans:
         # Every live purchase grant matched no payment/plan row at all: fail closed, not open.
         logger.warning("live purchase with no linked plan for user %s, exam %s", user_id, exam_code)
-        return _strictest_limit(list(plans_by_id.values()), exam_code)
-    if any(plan.station_limit is None for plan in matched_plans):
-        return None
-    return max(plan.station_limit for plan in matched_plans if plan.station_limit is not None)
+        return _strictest_limit(list(plans_by_id.values()), exam_code), "unknown"
+    for plan in matched_plans:
+        if plan.station_limit is None:
+            return None, plan.code
+    deciding = max(matched_plans, key=lambda plan: plan.station_limit or 0)
+    return deciding.station_limit, deciding.code
 
 
 async def can_upgrade(

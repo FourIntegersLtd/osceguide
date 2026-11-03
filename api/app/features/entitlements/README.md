@@ -52,7 +52,8 @@ recomputed on every request and stored nowhere.
 | POST | `/api/v1/orgs/{org_slug}/practice-access/{access_id}/revoke` | org admin | `{item}`; idempotent; another org's or another source's grant is `entitlement_not_found` (404) |
 
 `practice-access` does not replace `/entitlements`: it has no `ends_at`, no cursor paging and no search, which the web's Exam access tab uses, so the tab stays on `/entitlements`. What `practice-access` adds (inviting an address with no account, a bulk CSV grant) has no screen yet.
-| GET | `/api/v1/platform/users/{id}/entitlements` | platform admin | every grant the person has held, with source, `source_ref`, `granted_by` and `live`; `user_not_found` (404) |
+
+Staff cannot grant access here: it is only given by choosing a plan in Billing (`POST /platform/users/{id}/payments`), so a plan's station cap always applies. Revoke stays (`POST /platform/entitlements/{id}/revoke`). `admin` stays a valid source for old rows.
 
 ## Jobs
 `warn_expiring_access` (hourly, `jobs.py`): queues one `entitlement_expiring` email per bought grant ending within 7 days (`service_expiry.py`), once per grant, skipped when other live access outlasts it or the plan was 7 days or shorter. `billing` writes entitlements through this slice's service.

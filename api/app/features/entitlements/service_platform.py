@@ -1,8 +1,8 @@
 """Entitlements as the people who answer support see them, and what they may do.
 
 "I paid and I cannot practise" is answered from here: every grant a person has ever held, live
-or not, with its source and who made it — plus the grant itself, source `admin`, for when the
-answer is "nothing granted it".
+or not, with its source and who made it. Access is only given by choosing a plan in Billing
+(`billing.service_platform_actions.record_manual_payment`); staff here can read and withdraw it.
 
 Every write leaves an audit row with no organisation: a platform act, kept in the same log as
 the org's own so one read tells the whole story.
@@ -19,19 +19,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.features.catalog import service as catalog
-from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.entitlements import domain, errors, repository, service
 from app.features.entitlements.models import Entitlement
 from app.features.entitlements.schemas import PlatformEntitlementRead
-from app.features.identity import service as identity
 from app.features.tenancy import service_audit
-
-
-async def _require_user(session: AsyncSession, user_id: uuid.UUID) -> None:
-    """Refuse before granting or listing anything for an account that does
-    not exist."""
-    if await identity.user_ref_by_id(session, user_id) is None:
-        raise errors.GranteeNotFound()
 
 
 async def _require(session: AsyncSession, entitlement_id: uuid.UUID) -> Entitlement:
@@ -41,96 +32,6 @@ async def _require(session: AsyncSession, entitlement_id: uuid.UUID) -> Entitlem
     if entitlement is None:
         raise errors.EntitlementNotFound("No such entitlement")
     return entitlement
-
-
-async def list_for_user(
-    session: AsyncSession, user_id: uuid.UUID, *, now: datetime
-) -> list[PlatformEntitlementRead]:
-    """Every grant this person has held, newest last, revoked ones included."""
-    await _require_user(session, user_id)
-    return [
-        await _read(session, entitlement, now=now)
-        for entitlement in await repository.for_user(session, user_id)
-    ]
-
-
-async def grant(
-    session: AsyncSession,
-    user_id: uuid.UUID,
-    *,
-    exam_code: str,
-    ends_at: datetime | None,
-    note: str,
-    actor: Principal,
-    now: datetime,
-) -> PlatformEntitlementRead:
-    """Grant access on the platform's own account.
-
-    Idempotent on what was asked: a live `admin` grant for the same exam with the same end
-    already answers the request, so a double-click cannot leave two rows saying the same thing.
-    """
-    await _require_user(session, user_id)
-    try:
-        exam = await catalog.resolve_exam(session, exam_code, org_id=None)
-    except CatalogUnknownExam as exc:
-        raise errors.UnknownExamError(str(exc)) from exc
-    for entitlement in await repository.for_user_and_exam(session, user_id, exam.id):
-        if (
-            entitlement.source == "admin"
-            and entitlement.ends_at == ends_at
-            and service._to_grant(entitlement).live_at(now)
-        ):
-            return await _read(session, entitlement, now=now)
-    created = await service.grant(
-        session,
-        user_id=user_id,
-        exam_code=exam_code,
-        source="admin",
-        source_ref=f"admin:{actor.user_id}",
-        ends_at=ends_at,
-        granted_by=actor.user_id,
-    )
-    await service_audit.record(
-        session,
-        actor=actor,
-        action="entitlement.granted",
-        target_type="entitlement",
-        target_id=str(created.id),
-        summary=f"{exam_code} for user {user_id}: {note}",
-        meta={"user_id": str(user_id), "exam_code": exam_code, "ends_at": _iso(ends_at), "note": note},
-    )
-    return await _read(session, await _require(session, created.id), now=now)
-
-
-async def extend(
-    session: AsyncSession,
-    entitlement_id: uuid.UUID,
-    *,
-    ends_at: datetime | None,
-    note: str | None,
-    actor: Principal,
-    now: datetime,
-) -> PlatformEntitlementRead:
-    """Move a grant's end. A renewal is this, not a second row."""
-    entitlement = await _require(session, entitlement_id)
-    if entitlement.ends_at != ends_at:
-        previous = entitlement.ends_at
-        await repository.set_ends_at(session, entitlement_id, ends_at=ends_at)
-        await service_audit.record(
-            session,
-            actor=actor,
-            action="entitlement.extended",
-            target_type="entitlement",
-            target_id=str(entitlement_id),
-            summary=f"{_iso(previous)} -> {_iso(ends_at)}" + (f": {note}" if note else ""),
-            meta={
-                "user_id": str(entitlement.user_id),
-                "from": _iso(previous),
-                "to": _iso(ends_at),
-                "note": note,
-            },
-        )
-    return await _read(session, await _require(session, entitlement_id), now=now)
 
 
 async def revoke(
@@ -150,11 +51,6 @@ async def revoke(
             meta={"user_id": str(entitlement.user_id), "reason": reason},
         )
     return await _read(session, await _require(session, entitlement_id), now=now)
-
-
-def _iso(moment: datetime | None) -> str | None:
-    """An audit-log-friendly rendering of a possibly-absent instant."""
-    return moment.isoformat() if moment else None
 
 
 async def _read(session: AsyncSession, entitlement: Entitlement, *, now: datetime) -> PlatformEntitlementRead:

@@ -36,7 +36,7 @@ import {
  * the two switches — the console and the account.
  *
  * Paid and access are read from what actually happened — a payment, a live
- * grant — and changed where they are recorded: Billing and Entitlements. A
+ * grant — and changed where they are recorded: the Access and billing tab. A
  * flag with nothing behind it is how "paid" and "has access" came apart in the
  * retiring console.
  */
@@ -49,7 +49,7 @@ export function AccountTab({
   user: PlatformUserDetail;
   facts: DirectoryUser | null;
   onChanged: (user: PlatformUserDetail) => void;
-  onOpenTab: (tab: "billing" | "entitlements") => void;
+  onOpenTab: (tab: "billing") => void;
 }) {
   const toast = useToast();
   const [pending, setPending] = useState<boolean | null>(null);
@@ -118,22 +118,15 @@ export function AccountTab({
             ) : null}
             <Panel
               title="Payment and access"
-              description="What they have paid for and can use. Make changes on the Billing and Access tabs."
+              description="What they have paid for and can use. Make changes on the Access and billing tab."
               actions={
                 <>
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => onOpenTab("entitlements")}
-                  >
-                    Entitlements
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
                     onClick={() => onOpenTab("billing")}
                   >
-                    Billing
+                    Access and billing
                   </Button>
                 </>
               }
