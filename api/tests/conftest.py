@@ -34,6 +34,10 @@ os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_test_secret")
 # all; the S3 client itself is faked at its seam in the tests that use it.
 os.environ.setdefault("AWS_S3_BUCKET", "test-bucket")
 os.environ.setdefault("AWS_REGION", "eu-west-2")
+# Signing a media link is local arithmetic but needs *some* key pair. Set, not `setdefault`, so a
+# test never depends on a developer's real credentials (CI has none) or reaches the real bucket.
+os.environ["AWS_ACCESS_KEY_ID"] = "AKIAFAKEFORTESTS"
+os.environ["AWS_SECRET_ACCESS_KEY"] = "fake-secret-for-tests"
 # A local `.env` OpenAI key would otherwise make `build_material_index` look
 # configured, and the tutor would claim it searched material it never read.
 # The real key is kept aside for `tests/e2e`, whose worker needs it; only its
