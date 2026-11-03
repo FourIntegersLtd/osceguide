@@ -70,7 +70,8 @@ def _readable_avatar(stored_url: str | None) -> str | None:
         return None
     from app.features.media_production import service_storage
 
-    return service_storage.sign_urls(stored_url, prefixes=(bucket_layout.AVATARS,))
+    signed: str = service_storage.sign_urls(stored_url, prefixes=(bucket_layout.AVATARS,))
+    return signed
 
 
 async def _announce_registration(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
