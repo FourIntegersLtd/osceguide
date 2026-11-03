@@ -12827,6 +12827,10 @@ export interface components {
          * @description One grant behind an exam's access, with the plan it was bought as (None when not a purchase).
          */
         PlatformAccessGrantRead: {
+            /** Amount Total Pence */
+            amount_total_pence: number | null;
+            /** Currency */
+            currency: string | null;
             /** Ends At */
             ends_at: string | null;
             /**
@@ -12836,12 +12840,16 @@ export interface components {
             entitlement_id: string;
             /** Live */
             live: boolean;
+            /** Paid At */
+            paid_at: string | null;
             /** Payment Id */
             payment_id: string | null;
             /** Payment Reference */
             payment_reference: string | null;
             /** Plan Code */
             plan_code: string | null;
+            /** Receipt Id */
+            receipt_id: string | null;
             /** Revoked At */
             revoked_at: string | null;
             /** Source */

@@ -237,6 +237,13 @@ class PlatformAccessGrantRead(BaseModel):
     # That payment's reference (`pi_...` from Stripe, otherwise `manual:...`), which decides how a
     # refund is made.
     payment_reference: str | None
+    # What that payment was, so the grant row can show the money without a second list: pence (0 for
+    # a free place), currency, when it was paid and our own receipt number. All None for a grant
+    # that was not bought.
+    amount_total_pence: int | None
+    currency: str | None
+    paid_at: datetime | None
+    receipt_id: str | None
     starts_at: datetime
     ends_at: datetime | None
     revoked_at: datetime | None

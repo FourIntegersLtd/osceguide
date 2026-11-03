@@ -161,6 +161,32 @@ async def test_an_uncapped_plan_has_no_limit_but_still_names_the_plan(
     assert (row["limit_reason"], row["station_limit"]) == ("plan:sca_all", None)
 
 
+async def test_a_bought_grant_carries_its_payment_and_an_unbought_one_carries_none(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await a_sca_plan(db_session, "sca_1m", 30, 40)
+    exam = await ensure_exam(db_session, "sca")
+    user_id = await a_buyer(db_session, "money@example.com")
+    paid = await buy(client, root, user_id, "sca_1m", amount_total_pence=2499)
+    await buy(client, root, user_id, "sca_1m")
+    await ent_repo.grant(db_session, user_id=user_id, exam_id=exam.id, source="trial")
+    await db_session.flush()
+
+    grants = (await access_rows(client, root, user_id))["sca"]["grants"]
+    by_source = {(grant["source"], grant["amount_total_pence"]): grant for grant in grants}
+    assert sorted(by_source, key=str) == [("purchase", 0), ("purchase", 2499), ("trial", None)]
+    bought = by_source[("purchase", 2499)]
+    assert (bought["currency"], bought["receipt_id"], bought["payment_id"]) == (
+        "gbp",
+        paid["receipt_id"],
+        paid["id"],
+    )
+    assert bought["paid_at"] is not None
+    trial = by_source[("trial", None)]
+    assert (trial["currency"], trial["paid_at"], trial["receipt_id"]) == (None, None, None)
+
+
 async def test_a_free_payment_is_not_a_sale_in_revenue_or_the_paid_facet(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]

@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { formatDay } from "@/domains/platform/support/vocabulary";
 import type { PlatformAccessGrant, PlatformExamAccess } from "@/domains/platform/support/api";
-import { GRANT_STATE_LABEL, accessLine, planName, grantState, planDurationLabel, startChoiceLabel } from "@/domains/platform/user/accessCopy";
+import {
+  GRANT_STATE_LABEL,
+  accessLine,
+  giveAccessLabel,
+  grantPaymentLine,
+  grantState,
+  hasPlanToQueueBehind,
+  planDurationLabel,
+  planName,
+} from "@/domains/platform/user/accessCopy";
 
 const plans = new Map([["sca_6m", 180]]);
 const row = (overrides: Partial<PlatformExamAccess>): PlatformExamAccess => ({
@@ -13,12 +23,16 @@ const row = (overrides: Partial<PlatformExamAccess>): PlatformExamAccess => ({
   ...overrides,
 });
 const grant = (overrides: Partial<PlatformAccessGrant>): PlatformAccessGrant => ({
+  amount_total_pence: null,
+  currency: null,
   entitlement_id: "g1",
   ends_at: null,
   live: false,
+  paid_at: null,
   payment_id: null,
   payment_reference: null,
   plan_code: null,
+  receipt_id: null,
   revoked_at: null,
   source: "purchase",
   starts_at: "2026-01-01T00:00:00Z",
@@ -55,9 +69,37 @@ test("a revoked grant reads Revoked, even one that had not started yet", () => {
 test("plan lengths and start choices are in lay words", () => {
   assert.equal(planDurationLabel(30), "1-month plan");
   assert.equal(planDurationLabel(45), "45-day plan");
-  assert.equal(startChoiceLabel("after_current"), "starts when the current plan ends");
 });
 
 test("a plan is named by its exam and length, not its code", () => {
   assert.equal(planName({ exam_code: "sca", duration_days: 180 }), "SCA 6-month plan");
+});
+
+test("a bought grant says what it cost and its receipt, a free place says so, an unbought one says nothing", () => {
+  const paid = grant({
+    amount_total_pence: 2499,
+    currency: "gbp",
+    paid_at: "2026-11-03T07:23:00Z",
+    receipt_id: "RCP-sca-e018fedb",
+  });
+  assert.equal(grantPaymentLine(paid), `£24.99 paid ${formatDay(paid.paid_at)} · receipt RCP-sca-e018fedb`);
+  const free = grant({ amount_total_pence: 0, currency: "gbp", paid_at: "2026-11-03T07:23:00Z" });
+  assert.equal(grantPaymentLine(free), `Free place given ${formatDay(free.paid_at)} · no receipt`);
+  assert.equal(grantPaymentLine(grant({ source: "trial" })), null);
+});
+
+test("when it starts is only asked when a bought plan is running or queued", () => {
+  const now = new Date("2026-06-01T00:00:00Z");
+  assert.equal(hasPlanToQueueBehind(undefined, now), false);
+  assert.equal(hasPlanToQueueBehind(row({ grants: [grant({ live: true })] }), now), true);
+  assert.equal(hasPlanToQueueBehind(row({ grants: [grant({ starts_at: "2026-09-01T00:00:00Z" })] }), now), true);
+  assert.equal(hasPlanToQueueBehind(row({ grants: [grant({ live: true, source: "trial" })] }), now), false);
+  assert.equal(hasPlanToQueueBehind(row({ grants: [grant({ revoked_at: "2026-03-01T00:00:00Z" })] }), now), false);
+});
+
+test("the give-access button names the plan and the price", () => {
+  const plan = { exam_code: "sca", duration_days: 30 };
+  assert.equal(giveAccessLabel(plan, 2499), "Give SCA 1-month plan for £24.99");
+  assert.equal(giveAccessLabel(plan, null), "Give SCA 1-month plan for free");
+  assert.equal(giveAccessLabel(plan, 0), "Give SCA 1-month plan for free");
 });

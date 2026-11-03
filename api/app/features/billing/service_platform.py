@@ -113,6 +113,12 @@ async def access_for_user(
                         payment_reference=_payment_field(
                             payment_by_entitlement, grant.id, "stripe_payment_intent_id"
                         ),
+                        amount_total_pence=_payment_field(
+                            payment_by_entitlement, grant.id, "amount_total_pence"
+                        ),
+                        currency=_payment_field(payment_by_entitlement, grant.id, "currency"),
+                        paid_at=_payment_field(payment_by_entitlement, grant.id, "paid_at"),
+                        receipt_id=_payment_field(payment_by_entitlement, grant.id, "receipt_id"),
                         starts_at=grant.starts_at,
                         ends_at=grant.ends_at,
                         revoked_at=grant.revoked_at,

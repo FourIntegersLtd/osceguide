@@ -1,4 +1,7 @@
 import type { PlatformAccessGrant, PlatformExamAccess, PlatformPlan } from "@/domains/platform/support/api";
+import { formatDay } from "@/domains/platform/support/vocabulary";
+import { formatMoney } from "@/foundation/format";
+import { amountPaidLabel } from "@/domains/platform/support/money";
 
 /** What a grant is to the person today, in the words support uses. */
 export type GrantState = "live" | "starts_later" | "ended" | "revoked";
@@ -56,7 +59,33 @@ export function accessLine(row: PlatformExamAccess, durationDaysByPlan: Map<stri
   return `${exam}: ${plan}. ${row.stations_sat} of ${row.station_limit} stations used, ${left} left.`;
 }
 
-/** The words that sit under "Give access", saying exactly when the plan will start. */
-export function startChoiceLabel(start: "now" | "after_current"): string {
-  return start === "now" ? "starts now" : "starts when the current plan ends";
+/**
+ * What a bought grant cost, said under the grant: "£24.99 paid 3 Nov 2026 · receipt RCP-sca-1".
+ * A free place says so, and a grant that was never bought (staff, organisation, trial) has no line.
+ */
+export function grantPaymentLine(grant: PlatformAccessGrant): string | null {
+  if (grant.amount_total_pence === null || grant.amount_total_pence === undefined) return null;
+  const receipt = grant.receipt_id ? `receipt ${grant.receipt_id}` : "no receipt";
+  if (grant.amount_total_pence === 0) return `Free place given ${formatDay(grant.paid_at)} · ${receipt}`;
+  const money = formatMoney(grant.amount_total_pence, grant.currency ?? "GBP");
+  return `${money} paid ${formatDay(grant.paid_at)} · ${receipt}`;
+}
+
+/**
+ * Whether "when it starts" is a real choice: only when they already hold, or are queued for, a
+ * bought plan on this exam. Otherwise a new plan can only start now, so the question is not asked.
+ */
+export function hasPlanToQueueBehind(row: PlatformExamAccess | undefined, now: Date): boolean {
+  if (!row) return false;
+  return row.grants.some((grant) => {
+    if (grant.source !== "purchase") return false;
+    const state = grantState(grant, now);
+    return state === "live" || state === "starts_later";
+  });
+}
+
+/** The give-access button says exactly what pressing it does: "Give SCA 1-month plan for £24.99". */
+export function giveAccessLabel(plan: Pick<PlatformPlan, "exam_code" | "duration_days">, pence: number | null): string {
+  const price = amountPaidLabel(pence);
+  return `Give ${planName(plan)} ${price === "free" ? "for free" : `for ${price}`}`;
 }

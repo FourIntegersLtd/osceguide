@@ -11842,6 +11842,28 @@
       "PlatformAccessGrantRead": {
         "description": "One grant behind an exam's access, with the plan it was bought as (None when not a purchase).",
         "properties": {
+          "amount_total_pence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Total Pence"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
           "ends_at": {
             "anyOf": [
               {
@@ -11862,6 +11884,18 @@
           "live": {
             "title": "Live",
             "type": "boolean"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
           },
           "payment_id": {
             "anyOf": [
@@ -11897,6 +11931,17 @@
             ],
             "title": "Plan Code"
           },
+          "receipt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Id"
+          },
           "revoked_at": {
             "anyOf": [
               {
@@ -11925,6 +11970,10 @@
           "plan_code",
           "payment_id",
           "payment_reference",
+          "amount_total_pence",
+          "currency",
+          "paid_at",
+          "receipt_id",
           "starts_at",
           "ends_at",
           "revoked_at",
