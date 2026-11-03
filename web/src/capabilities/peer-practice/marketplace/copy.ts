@@ -55,3 +55,8 @@ export function openSlotLine(slot: Pick<Slot, "status" | "is_mine">, past: boole
   if (past) return "Nobody booked this slot";
   return slot.is_mine ? "You're looking for a partner" : "is looking for a practice partner";
 }
+
+/** The clip that shows how the marketplace works; the landing page plays the same file. */
+export const MARKETPLACE_VIDEO_SRC =
+  "https://osceguide.s3.eu-west-2.amazonaws.com/Four+Integers+Ltd/osceguide-marketplace-how-it-works.mp4";
+export const MARKETPLACE_VIDEO_TITLE = "How the OSCE Guide marketplace works";

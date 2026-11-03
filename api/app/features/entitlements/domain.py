@@ -66,6 +66,11 @@ class Decision:
     reason: str | None = None
 
 
+def trial_window_closed(trial: TrialState, *, now: datetime) -> bool:
+    """Whether the fourteen days have run out. The one place that comparison is made."""
+    return trial.trial_started_at < now - timedelta(days=TRIAL_DAYS)
+
+
 def trial_available(trial: TrialState, *, now: datetime) -> bool:
     """The free trial: three stations, each sat up to three times, within fourteen days.
 
@@ -73,7 +78,7 @@ def trial_available(trial: TrialState, *, now: datetime) -> bool:
     completed stations are compared separately rather than summed, and the account age
     comparison is strict, so an account exactly fourteen days old still has its trial.
     """
-    if trial.trial_started_at < now - timedelta(days=TRIAL_DAYS):
+    if trial_window_closed(trial, now=now):
         return False
     if trial.completed_on_this_station is not None:
         # A retry of a station already in the trial: only its own limit applies.
@@ -88,7 +93,7 @@ def trial_stations_left(trial: TrialState, *, now: datetime) -> int:
 
     The two counters are weighed apart in `trial_available`, so the larger of them is what is used.
     """
-    if trial.trial_started_at < now - timedelta(days=TRIAL_DAYS):
+    if trial_window_closed(trial, now=now):
         return 0
     used = max(trial.set_station_count, trial.completed_station_count)
     return max(0, ALLOWED_TRIAL_STATIONS - used)
@@ -111,8 +116,14 @@ def decide(
     if trial is not None:
         if trial_available(trial, now=now):
             return Decision(allowed=True, source="trial")
-        # Somebody who once held a grant is a lapsed subscriber, not a used-up trial.
-        return Decision(allowed=False, reason="expired" if lapsed else "trial_exhausted")
+        # Somebody who once held a grant is a lapsed subscriber, not a used-up trial. Of a trial, the
+        # screen needs to know whether its days ran out or only its stations, so they read differently.
+        if lapsed:
+            return Decision(allowed=False, reason="expired")
+        return Decision(
+            allowed=False,
+            reason="trial_expired" if trial_window_closed(trial, now=now) else "trial_exhausted",
+        )
 
     if lapsed:
         return Decision(allowed=False, reason="expired")

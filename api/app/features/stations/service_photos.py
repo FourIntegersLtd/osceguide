@@ -117,6 +117,7 @@ async def remove_photo(
     """
     _ensure_storage(settings)
     station_version = await _editable_version(session, org_id, station_id, version)
+    url = storage.strip_urls(url)
 
     content = dict(station_version.content or {})
     updated, found = domain_photos.without_media(

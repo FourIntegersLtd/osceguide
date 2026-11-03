@@ -17,6 +17,10 @@ describe("describeRefusal", () => {
     assert.match(describeStartFailure(refusal(403, "not_entitled", { reason: "no_entitlement" })), /do not have access/);
   });
 
+  it("says the free trial has ended when its two weeks are over", () => {
+    assert.match(describeStartFailure(refusal(403, "not_entitled", { reason: "trial_expired" })), /free trial has ended/);
+  });
+
   it("explains a locked session", () => {
     assert.match(describeRefusal(refusal(409, "set_locked"), "x"), /locked because your access has ended/);
   });

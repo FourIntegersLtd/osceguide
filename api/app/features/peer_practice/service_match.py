@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audience import PUBLIC, audience_of
 from app.core.events import publish_after_commit, user_topic
+from app.features.attempts import service as attempts
 from app.features.peer_practice import errors, repository, repository_sessions
 from app.features.peer_practice.models import PracticeSession
 from app.features.peer_practice.schemas import PracticeSessionRead
@@ -67,12 +68,19 @@ async def accept_match(
     session did exist, and saying so is what tells this side why nothing
     happened when they tapped accept. Accepting one already fully accepted is
     not an error: the second caller through just sees the settled state.
+
+    A trial whose window has closed cannot accept (the queue entry may have been made
+    on its last day). If the partner's window closed while they waited, the pairing ends
+    instead of making a room they could not enter, and whoever accepted is queued again.
     """
     practice_session = await _owned_session(session, session_id, user_id=user_id)
     practice_session = await expire_if_due(session, practice_session, now=now)
     if practice_session.status == "ended":
         raise errors.PartnerUnavailableError()
     if practice_session.status == "pending_accept":
+        await attempts.require_entitlement(
+            session, user_id=user_id, exam_id=practice_session.exam_id, now=now, window_only=True
+        )
         column = "doctor_accepted_at" if practice_session.doctor_user_id == user_id else "patient_accepted_at"
         if getattr(practice_session, column) is None:
             await repository_sessions.record_accept(session, session_id, column=column, at=now)
@@ -83,6 +91,25 @@ async def accept_match(
             practice_session.doctor_accepted_at is not None
             and practice_session.patient_accepted_at is not None
         )
+        partner_id = (
+            practice_session.patient_user_id
+            if practice_session.doctor_user_id == user_id
+            else practice_session.doctor_user_id
+        )
+        if both_accepted and not await attempts.window_is_open(
+            session, user_id=partner_id, exam_id=practice_session.exam_id, now=now
+        ):
+            await repository_sessions.end_session(session, session_id, at=now, reason="partner_unavailable")
+            await _requeue_the_still_interested(
+                session, practice_session, exclude_user_id=partner_id, now=now
+            )
+            practice_session = (
+                await repository_sessions.session_by_id(session, session_id) or practice_session
+            )
+            publish_after_commit(
+                session, user_topic(partner_id), SESSION_UPDATED, {"session_id": str(session_id)}
+            )
+            return await _session_read(session, practice_session, viewer_id=user_id)
         if both_accepted:
             await repository_sessions.advance_phase(
                 session, session_id, values={"status": "matched", "accept_expires_at": None}

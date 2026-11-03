@@ -53,13 +53,15 @@ async def offer_slot(
 ) -> PostRead:
     """Offer to practise with somebody, at a time.
 
-    Gated on the same entitlement an attempt is, free trial included: a slot is
+    Gated on the same entitlement an attempt is, free trial included but by its fourteen days alone: a slot is
     an arrangement to sit a station with a real partner, which is the paid
     product rather than an advert for it. Offering one for an exam you do not
     hold would also put it in front of people who do.
     """
     exam = await resolve_exam(session, exam_code)
-    await attempts.require_entitlement(session, user_id=owner_user_id, exam_id=exam.id, now=now)
+    await attempts.require_entitlement(
+        session, user_id=owner_user_id, exam_id=exam.id, now=now, window_only=True
+    )
     ensure_may_address(audience, await audiences_for(session, owner_user_id))
     post = await repository.create_post(
         session,
@@ -97,7 +99,9 @@ async def claim_slot(
         # must not be discoverable by anyone holding its id.
         raise errors.PostNotFound()
 
-    await attempts.require_entitlement(session, user_id=claimer_user_id, exam_id=post.exam_id, now=now)
+    await attempts.require_entitlement(
+        session, user_id=claimer_user_id, exam_id=post.exam_id, now=now, window_only=True
+    )
 
     try:
         domain.ensure_claimable(_post_state(post), claimer_id=str(claimer_user_id), now=now)

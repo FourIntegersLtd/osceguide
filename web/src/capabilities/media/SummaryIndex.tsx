@@ -11,8 +11,9 @@ import { useJumpIndex } from "@/capabilities/media/useJumpIndex";
 import { jumpLinks, type SummaryGroups, type SummaryView } from "@/capabilities/media/summaryGroups";
 
 /**
- * The A to Z / Specialty tabs and the row of jump links. They sit in the page's sticky
- * header beside the search, so they stay in reach while the list scrolls. The links are
+ * The A to Z / Specialty tabs and the row of jump links. They sit in the page's header
+ * beside the search, sticky from md up so they stay in reach while the list scrolls (on a phone
+ * they scroll away, to leave the whole height to the list). The links are
  * in-page anchors rather than URL state, so browsing the index does not fill the back stack.
  *
  * `items` is the whole catalogue, not the rows shown so far, so every letter has a link; a link

@@ -15,7 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Principal
 from app.core.errors import Forbidden, raise_mapped
 from app.core.tenancy import admin_org_ids
-from app.features.stations import domain, errors, repository
+from app.features.media_production import service_storage
+from app.features.stations import domain, domain_photos, errors, repository
 from app.features.stations.models import StationVersion
 from app.features.stations.refusals import REFUSALS as _REFUSALS
 from app.features.stations.schemas import StationVersionRead
@@ -312,7 +313,9 @@ def _version_read(station_version: StationVersion) -> StationVersionRead:
         station_id=station_version.station_id,
         version=station_version.version,
         status=station_version.status,
-        content=dict(station_version.content),
+        content=service_storage.sign_urls(
+            dict(station_version.content), prefixes=domain_photos.key_prefixes(station_version.station_id)
+        ),
         published_at=station_version.published_at,
         archived_at=station_version.archived_at,
     )

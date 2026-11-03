@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ports import VoiceTokens
 from app.core.settings import Settings
+from app.features.attempts import service as attempts
 from app.features.peer_practice import errors, repository_sessions
 from app.features.peer_practice.schemas import RoomGrant
 from app.features.voice import service as voice
@@ -31,11 +33,13 @@ async def voice_grant(
     user_id: uuid.UUID,
     tokens: VoiceTokens,
     settings: Settings,
+    now: datetime,
 ) -> RoomGrant:
     """A token for the room two people were paired into.
 
     The pairing is the permission: both the doctor and the patient join the
-    same room and both may speak, so there is no observer shape here. A
+    same room and both may speak, so there is no observer shape here. Access is asked again
+    here, because a pairing or a booked slot can outlive the trial that paid for it. A
     stranger gets `practice_session_not_found` rather than a refusal, since
     whether a session exists is not something to confirm to somebody not in it.
     """
@@ -51,6 +55,9 @@ async def voice_grant(
     # still decline is not a session yet.
     if practice_session.status == "pending_accept":
         raise errors.NotYetAcceptedError()
+    await attempts.require_entitlement(
+        session, user_id=user_id, exam_id=practice_session.exam_id, now=now, window_only=True
+    )
     granted = voice.grant_for_room(
         room=practice_session.room_name,
         identity=str(user_id),

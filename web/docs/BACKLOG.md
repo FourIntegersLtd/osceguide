@@ -46,6 +46,7 @@ Checked against the code on 2026-09-29.
 | Q-6 | Some `# noqa: BLE001` comments give no reason | `health/service.py`, `rubrics/service.py` and `app/migration/*`: say why the broad catch is right, or narrow it |
 | Q-7 | Two-factor sign-in is switched off | The code was removed rather than left commented out. Whether it returns is a product decision |
 | Q-8 | Peer practice session lengths now come from each exam's settings | Run `seed_platform.py --republish` on staging, then production, so PLAB 2, CASC and the orthopaedics exam get their own lengths. Until then they use the default lengths |
+| T-1 | Free trial is two weeks everywhere | Study media unlocks for 14 days from `users.created_at` (`media/service_search.py`) while the trial counts from `activated_at` (`entitlements/domain.py`), so an invited person loses media days they never saw. Community, CV reading and the assistant's chat are not gated by the trial window at all: decide whether they should be. The marketplace and peer lists (browse) stay open to everyone; only joining is gated |
 | Q-9 | Security report ids (`SEC-0xx`) remain in code comments | Kept on purpose: they point at `api/docs/security/SECURITY-ASSESSMENT-2026-09.md`. Drop them once the report is closed |
 
 ### Rubric templates (Stage 3 leftovers, 2026-09-30)

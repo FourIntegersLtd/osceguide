@@ -79,14 +79,16 @@ async def build_feedback(
             kind="peer",
             exam_code=exam_code,
             now=now,
+            # Judged when the session happened, not when its transcript landed.
+            entitled_at=practice_session.started_at or practice_session.preparation_started_at or now,
             station_version_id=practice_session.station_version_id,
             peer_session_id=practice_session.id,
             room_name=practice_session.room_name,
         )
     except NotEntitled as exc:
-        # The practice already happened. Refusing it after the fact helps
-        # nobody, and charging for it retroactively is not this code's call —
-        # so it is recorded as unmarked and said plainly on the session.
+        # Not entitled even when it was sat (a grant that had ended). The window
+        # is judged at the session's start, so late transcription never lands here;
+        # this is recorded as unmarked and said plainly on the session.
         await _failed(session, session_id, reason=f"not entitled when marking: {exc}")
         return None
 

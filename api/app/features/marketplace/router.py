@@ -166,6 +166,7 @@ async def list_my_sessions(
         errors.SessionNotFound,
         errors.SessionNotOpen,
         errors.TooEarlyToJoinError,
+        errors.NotEntitled,
     ),
     dependencies=[Depends(per_user(USER_WRITE))],
 )

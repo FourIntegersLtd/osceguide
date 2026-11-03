@@ -36,6 +36,9 @@ make guards                                    # tests/guards only, fast
 
 ## Traps
 
+- **Peer practice and the marketplace gate on the trial window only.** Every route that queues, offers,
+  claims, joins or takes a voice token calls `attempts.require_entitlement(..., window_only=True)`; a new peer
+  route must too, or an expired trial can still practise. Peer attempts are not counted toward the 3x3 trial.
 - **Access is only given by choosing a plan.** Staff have no route that grants or extends an entitlement
   outright (`POST /platform/users/{id}/payments` with a plan code is the only way; a blank amount is a free
   plan). That is what makes a plan's station cap always apply. Revoke stays. A 0 pence payment is not a sale:
@@ -78,6 +81,7 @@ make guards                                    # tests/guards only, fast
 Area traps (drafts, entitlements, rubric versions, results, deploys, seeding, e2e) live in
 `.claude/rules/<area>.md`, loaded when you touch those paths.
 - A published library station is invisible to a normal reader until `stations.approved` is true (staff via `all_exams` bypass it; `published_counts_by_exam` never does). A test helper that writes `Station(status="published")` directly must set `approved=True`: the column has only a server default, so the row reads back false. Approve/revoke: `POST /platform/stations/{id}/approve|revoke-approval`; list the backlog with `scripts/report_unapproved_stations.py`.
+- A paid file's bucket link is permanent. Return media or station content to a person only through `media_production.service_storage.sign_urls(value, prefixes=...)` (a station signs only `stations/<its id>/`, media only `teaching_videos/` and `podcasts/`: station content is author-written), and strip signatures on write (`service_storage.strip_urls`). Index text and prompts must not carry URLs (`service_storage.remove_urls` for the assistant prompt); a flat `ReadingBrief.text` is signed like any other station content. HTTP tests in `test_station_signed_urls.py` / `test_media_signed_urls.py` enforce it; the guard lists the files that may build a bucket link. Never store a signed link.
 
 ## Owners
 

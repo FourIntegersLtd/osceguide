@@ -222,7 +222,8 @@ async def test_removing_a_photo_takes_it_out_of_the_bucket_too(
 
     assert response.status_code == 200, response.text
     assert response.json()["content"]["doctor_information"]["photos"] == []
-    assert fake_s3 == [url]
+    assert "X-Amz-Signature=" in url  # the author was shown a signed link and sent it back
+    assert fake_s3 == [url.split("?")[0]]  # the object deleted is the plain stored one
 
 
 async def test_a_photo_that_is_not_on_this_station_is_refused(

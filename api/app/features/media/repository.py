@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.pagination import keyset_page
 from app.core.search import contains_text
 from app.features.media.models import MediaItem
+from app.features.media_production import service_storage
 
 
 async def create(
@@ -28,6 +29,7 @@ async def create(
     author_id: uuid.UUID | None,
 ) -> MediaItem:
     """Inserts a new draft and returns it with its generated id and timestamps."""
+    content = service_storage.strip_urls(content)
     item = MediaItem(
         kind=kind,
         slug=slug,
@@ -68,6 +70,8 @@ async def by_ids(session: AsyncSession, item_ids: list[uuid.UUID]) -> list[Media
 
 async def update_item(session: AsyncSession, item_id: uuid.UUID, **values: Any) -> None:
     """Sets the given columns on one item. The caller decides which columns may be changed."""
+    if "content" in values:
+        values["content"] = service_storage.strip_urls(values["content"])
     await session.execute(update(MediaItem).where(MediaItem.id == item_id).values(**values))
 
 

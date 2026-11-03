@@ -17,6 +17,7 @@ from app.features.catalog import service as catalog
 from app.features.media import domain
 from app.features.media.models import MediaItem
 from app.features.media.schemas import MediaRead
+from app.features.media_production import service_storage
 
 
 async def read_one(
@@ -63,6 +64,9 @@ async def read_many(
         if not with_review:
             content.pop("review", None)
         locked = _locked(item, unlocked_exam_ids)
+        if not locked:
+            # The stored links are permanent; what a reader gets back expires (core/object_urls.py).
+            content = service_storage.sign_urls(content, prefixes=service_storage.MEDIA_KEY_PREFIXES)
         reads.append(
             MediaRead(
                 id=item.id,

@@ -13,12 +13,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity import repository as identity_repo
 from app.features.media import service as media
+from app.features.media_production import service_storage
 from app.features.stations import repository as stations_repo
 from app.features.tutor_memory import service_material
 from tests.support.catalog import ensure_exam
@@ -318,3 +320,38 @@ async def test_a_failing_embedder_says_it_cannot_look_it_up(db_session: AsyncSes
 
     assert answer.result == ss.NOT_CONFIGURED
     assert answer.display is None
+
+
+async def test_a_media_items_signed_links_never_reach_the_index(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A body reads back with working two-hour file links; the tutor must be told the words, not the links."""
+    settings = SimpleNamespace(
+        aws_s3_bucket="osceguide",
+        aws_region="eu-west-2",
+        aws_access_key_id="AKIAFAKE",
+        aws_secret_access_key="fake",  # noqa: S106
+    )
+    monkeypatch.setattr(service_storage, "get_settings", lambda: settings)
+    await ensure_exam(db_session, "sca")
+    author = await identity_repo.create_user(
+        db_session, email=f"l{uuid.uuid4().hex[:8]}@example.com", name="L", password_hash=None
+    )
+    link = "https://osceguide.s3.eu-west-2.amazonaws.com/teaching_videos/v2/sca/angina_1.mp4"
+    item = await media.create(
+        db_session,
+        kind="summary",
+        title="Angina",
+        summary="A short summary.",
+        content={"body": f"Watch ![clip]({link}) for the walk-through.", "final_video_url": link},
+        exam_code="sca",
+        author_id=author.id,
+    )
+    await media.publish(db_session, item.id, index=FakeVectorIndex(), now=NOW)
+    index = FakeMaterialIndex()
+
+    await service_material.reindex_media_item(db_session, item.id, index=index)
+
+    indexed = " ".join(passage.text for passage in index.passages if passage.source_id == str(item.id))
+    assert "walk-through" in indexed
+    assert "amazonaws" not in indexed and "X-Amz" not in indexed

@@ -6,6 +6,7 @@ here and read out by `service_search` unchanged.
 
 from __future__ import annotations
 
+import re
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -274,10 +275,17 @@ async def _published_media(session: AsyncSession) -> list[tuple[MediaRead, str |
         cursor = decode_cursor(next_cursor)
 
 
+_LINK = re.compile(r"https?://\S+")
+
+
 def _content_text(content: object) -> str:
-    """Whatever prose a media item's body holds, flattened."""
+    """Whatever prose a media item's body holds, flattened.
+
+    Links are left out: a body reads back with signed file links, and one in the index would put a
+    working two-hour link in front of the tutor and the assistant for every learner.
+    """
     if isinstance(content, str):
-        return content.strip()
+        return _LINK.sub("", content).strip()
     if isinstance(content, dict):
         return " ".join(_content_text(entry) for entry in content.values()).strip()
     if isinstance(content, list):

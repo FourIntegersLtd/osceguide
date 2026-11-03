@@ -54,10 +54,14 @@ async def read_brief(
         session, attempt_id, requester_id=requester_id, is_admin=is_admin
     )
     candidate_sections = await stations_service.audience_sections(
-        session, material.template_version_id, material.content, ("candidate",)
+        session,
+        material.template_version_id,
+        material.content,
+        ("candidate",),
+        station_id=material.station_id,
     )
     patient_sections = await stations_service.audience_sections(
-        session, material.template_version_id, material.content, ("patient",)
+        session, material.template_version_id, material.content, ("patient",), station_id=material.station_id
     )
 
     return AttemptBriefRead(
@@ -90,7 +94,11 @@ async def read_review(
     # The candidate's own brief again, plus every examiner section — the model
     # answer and the marking guidance — now that the consultation is over.
     sections = await stations_service.audience_sections(
-        session, material.template_version_id, material.content, ("candidate", "examiner")
+        session,
+        material.template_version_id,
+        material.content,
+        ("candidate", "examiner"),
+        station_id=material.station_id,
     )
 
     return AttemptReviewRead(
@@ -229,6 +237,11 @@ async def read_roleplay(
     if not domain.is_reviewable(domain.Status(attempt.status)):
         raise errors.AttemptNotFinished()
     sections = await stations_service.audience_sections(
-        session, material.template_version_id, material.content, ("patient",), include_hidden=True
+        session,
+        material.template_version_id,
+        material.content,
+        ("patient",),
+        station_id=material.station_id,
+        include_hidden=True,
     )
     return PatientRoleplayRead(sections=sections)

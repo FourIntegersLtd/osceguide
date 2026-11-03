@@ -138,11 +138,12 @@ const Modal = ({
           <div className={cn(b2cModalCloseBar, closeBarClassName)}>
             <button
               onClick={onClose}
-              className="text-b2c-text-muted transition-colors duration-200 hover:text-osce-ink-900"
+              className="-m-1 flex h-11 w-11 items-center justify-center text-b2c-text-muted transition-colors duration-200 hover:text-osce-ink-900 md:m-0 md:h-auto md:w-auto"
               aria-label="Close dialog"
               type="button"
             >
-              <IoMdCloseCircle className="text-osce-title" aria-hidden />
+              {/* Larger on a phone (44px tap target, 36px glyph); the desktop size is unchanged. */}
+              <IoMdCloseCircle className="text-4xl md:text-osce-title" aria-hidden />
             </button>
           </div>
         ) : null}

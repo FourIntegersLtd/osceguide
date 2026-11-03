@@ -7,7 +7,7 @@ import { plural } from "@/foundation/format";
  *
  * The one place every refusal is explained: starting a station, building a session, the library,
  * a peer queue. `not_entitled` carries why only in `details.reason` (`trial_exhausted`,
- * `expired`, `no_entitlement`), so a lapsed grant, a used-up trial and no access read differently.
+ * `trial_expired`, `expired`, `no_entitlement`), so a lapsed grant, a used-up trial and no access read differently.
  * Never the server's own message for the coded refusals: `station_not_published` carries the
  * circuit builder's wording, which means nothing to a person who only pressed Start.
  * `fallback` is what an unknown, non-API failure says. `surface` is where the person is: an institution's or employer's
@@ -21,6 +21,9 @@ export function describeRefusal(cause: unknown, fallback: string, surface?: Surf
     const reason = isPlatformError(cause) ? cause.details?.reason : null;
     if (reason === "trial_exhausted") {
       return "Your free practice stations are used up. Ask your organisation for access, or subscribe, to keep practising.";
+    }
+    if (reason === "trial_expired") {
+      return "Your free trial has ended. Ask your organisation for access, or subscribe, to keep practising.";
     }
     if (reason === "expired") {
       return "Your access to this exam has ended. Ask your organisation to renew it, or subscribe, to keep practising.";

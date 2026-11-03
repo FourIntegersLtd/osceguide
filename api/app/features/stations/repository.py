@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ownership import owned_by, owner_kind_for, visible_to
 from app.core.pagination import keyset_page
 from app.core.search import contains_text
+from app.features.media_production import service_storage
 from app.features.stations.models import Station, StationVersion
 
 
@@ -51,7 +52,7 @@ async def add_version(
         station_id=station_id,
         org_id=org_id,
         version=version,
-        content=content,
+        content=service_storage.strip_urls(content),
         template_version_id=template_version_id,
     )
     session.add(station_version)
@@ -129,7 +130,7 @@ async def set_version_content(
     await session.execute(
         update(StationVersion)
         .where(owned_by(StationVersion, org_id), StationVersion.id == version_id)
-        .values(content=content)
+        .values(content=service_storage.strip_urls(content))
     )
 
 

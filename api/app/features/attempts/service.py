@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import replace
 from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from app.features.attempts.service_reads import _attempt_read, _ensure_visible, 
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam
 from app.features.entitlements import service as entitlements
+from app.features.entitlements.errors import NotEntitled
 from app.features.identity import service as identity
 from app.features.stations import service as stations
 from app.features.stations import service_plan_window
@@ -40,8 +42,13 @@ async def start_attempt(
     peer_session_id: uuid.UUID | None = None,
     source_attempt_id: uuid.UUID | None = None,
     room_name: str | None = None,
+    entitled_at: datetime | None = None,
 ) -> AttemptRead:
     """Create an attempt, once access has been established.
+
+    `entitled_at` is the instant access is judged at, `now` when omitted. Marking a peer session that
+    already happened passes when it started, so a transcript that lands after the trial closed is
+    still scored.
 
     The entitlement check happens here rather than in each caller, so every route that can start
     a session goes through the same gate. `station_version_id` is checked against the same resolver
@@ -60,14 +67,14 @@ async def start_attempt(
     if runnable is not None and runnable.exam_id != exam.id:
         raise errors.StationExamMismatch()
 
-    await entitlements.require(
+    # A peer session is time-limited, not counted: marking one asks only whether the trial's days remain.
+    await require_entitlement(
         session,
         user_id=user_id,
         exam_id=exam.id,
-        now=now,
-        trial=await trial_state_for(
-            session, user_id=user_id, exam_id=exam.id, station_version_id=station_version_id
-        ),
+        now=entitled_at or now,
+        station_version_id=station_version_id,
+        window_only=kind == domain.Kind.PEER,
     )
     if runnable is not None:
         await service_plan_window.ensure_station_in_plan(
@@ -133,6 +140,7 @@ async def require_entitlement(
     exam_id: uuid.UUID,
     now: datetime,
     station_version_id: uuid.UUID | None = None,
+    window_only: bool = False,
 ) -> None:
     """The same entitlement gate `POST /attempts` applies, for callers that need the trial counts too.
 
@@ -140,16 +148,30 @@ async def require_entitlement(
     keeps the free trial a single rule: calling `entitlements.require` directly with `trial=None`
     made `decide` skip the trial branch and refuse a brand-new account outright — the bug this closes.
     With `station_version_id`, a trial station already counted is not counted again against itself.
+    With `window_only`, the trial's fourteen days are the whole limit: its station and attempt counts
+    are ignored. That is peer practice, which is time-limited rather than counted.
     """
-    await entitlements.require(
-        session,
-        user_id=user_id,
-        exam_id=exam_id,
-        now=now,
-        trial=await trial_state_for(
-            session, user_id=user_id, exam_id=exam_id, station_version_id=station_version_id
-        ),
+    trial = await trial_state_for(
+        session, user_id=user_id, exam_id=exam_id, station_version_id=station_version_id
     )
+    if window_only and trial is not None:
+        trial = replace(trial, set_station_count=0, completed_station_count=0, completed_on_this_station=None)
+    await entitlements.require(session, user_id=user_id, exam_id=exam_id, now=now, trial=trial)
+
+
+async def window_is_open(
+    session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID, now: datetime
+) -> bool:
+    """Whether `require_entitlement(window_only=True)` would let this person in, without raising.
+
+    For a caller that must act on the answer for someone else (end a pairing, cancel a booking) and
+    so cannot let a refusal abort its own transaction.
+    """
+    try:
+        await require_entitlement(session, user_id=user_id, exam_id=exam_id, now=now, window_only=True)
+    except NotEntitled:
+        return False
+    return True
 
 
 async def ensure_entitled_to_begin(session: AsyncSession, attempt: Attempt, *, now: datetime) -> None:

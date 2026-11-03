@@ -195,3 +195,9 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
   `trial` entitlement for a fresh `@example.com` user; paid: an account with a live purchase.
 - **Preferences save per switch.** Count `PATCH /me` bodies: each switch sends only its own field,
   extra time sends the timers on confirm, then reload and check the switches persisted.
+- **Trial window (peer practice, marketplace).** A trial holds no entitlement row, so age the
+  user instead: `UPDATE users SET created_at = now() - interval '15 days', activated_at = NULL`.
+  Then queue/offer/claim/join/voice-token must answer 403 `not_entitled` with `details.reason`
+  `trial_expired`, while a 3x3-exhausted trial inside 14 days still peers. Proof:
+  `poetry run pytest tests/http/test_entitlements_trial_window.py`. One failing request per test:
+  the 403 rolls back the shared `db_session`.

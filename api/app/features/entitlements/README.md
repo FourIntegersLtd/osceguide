@@ -31,6 +31,11 @@ recomputed on every request and stored nowhere.
   summed, with a strict age comparison. "Older" counts from `users.activated_at` (the
   first sign-in, S-10), so an invited person is not charged days they never saw;
   `created_at` stands in while it is null.
+- A refused trial says why in `details.reason`: `trial_expired` when the fourteen days
+  are over, `trial_exhausted` when the counts are used up inside them. Peer practice and
+  the marketplace are open to a trial for the window alone: they pass `window_only=True`
+  to `attempts.require_entitlement`, which zeroes the counters, and a peer attempt is not
+  counted by `attempts_counted_by_trial`, so a peer session never spends a station.
 - Access that ends mid-attempt (S-11): a consumer attempt not yet begun is
   re-checked when the worker bootstraps it (`attempts.ensure_entitled_to_begin`);
   one already running finishes, its turns and submission unchecked; only a new

@@ -82,7 +82,9 @@ async def record_presence(
 @router.post(
     "/me/practice-sessions/{session_id}/accept",
     response_model=schemas.PracticeSessionRead,
-    responses=error_responses(Unauthenticated, errors.SessionNotFound, errors.PartnerUnavailableError),
+    responses=error_responses(
+        Unauthenticated, errors.SessionNotFound, errors.PartnerUnavailableError, errors.NotEntitled
+    ),
 )
 async def accept_match(
     session_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
@@ -231,6 +233,7 @@ async def end_session(
         errors.SessionAlreadyEnded,
         errors.NotYetAcceptedError,
         errors.VoiceUnavailable,
+        errors.NotEntitled,
     ),
 )
 async def voice_token(
@@ -238,6 +241,7 @@ async def voice_token(
     principal: CurrentPrincipal,
     session: Session,
     settings: SettingsDep,
+    clock: ClockDep,
     tokens: Annotated[VoiceTokens, Depends(service_voice.get_voice_tokens)],
 ) -> schemas.RoomGrant:
     """A way into the room the pair were matched into."""
@@ -247,4 +251,5 @@ async def voice_token(
         user_id=principal.user_id,
         tokens=tokens,
         settings=settings,
+        now=clock.now(),
     )

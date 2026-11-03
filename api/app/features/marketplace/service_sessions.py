@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.attempts import service as attempts
 from app.features.catalog import service as catalog
 from app.features.identity import service as identity
 from app.features.marketplace import domain, errors, repository, service_reads
@@ -63,7 +64,7 @@ async def join_session(
     The first person to join creates the live practice session, which decides who
     plays the doctor and who plays the patient. The second joins that same one.
     Anyone else is told the session does not exist, so an id alone cannot confirm
-    that it does.
+    that it does. Access is checked once more here, by the trial's days alone.
     """
     from app.features.peer_practice.service_lifecycle import create_runtime_for_peer_booking
 
@@ -87,8 +88,21 @@ async def join_session(
         raise errors.TooEarlyToJoinError(str(refusal)) from refusal
     except domain.SessionNotJoinable as refusal:
         raise errors.SessionNotOpen(str(refusal)) from refusal
+    # Asked again at the door: the slot was booked while the trial ran, and may be sat after it.
+    await attempts.require_entitlement(
+        session, user_id=user_id, exam_id=peer_session.exam_id, now=now, window_only=True
+    )
 
-    if peer_session.practice_session_id is None:
+    if peer_session.practice_session_id is None and not await attempts.window_is_open(
+        session, user_id=_partner_id(peer_session, user_id), exam_id=peer_session.exam_id, now=now
+    ):
+        # The other person's trial has closed since booking: no room is made for them to be refused
+        # at, and nobody is left waiting in one. The booking is called off and this person sees that.
+        await repository.mark_peer_cancelled(session, peer_session.id, at=now)
+        cancelled = await repository.peer_session_by_id(session, peer_session_id)
+        assert cancelled is not None
+        peer_session = cancelled
+    elif peer_session.practice_session_id is None:
         practice_session = await create_runtime_for_peer_booking(
             session,
             peer_session_id=peer_session.id,

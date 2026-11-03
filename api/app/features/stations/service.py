@@ -15,10 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import raise_mapped
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam
+from app.features.media_production import service_storage
 from app.features.stations import (
     domain,
     domain_audience,
     domain_content,
+    domain_photos,
     errors,
     repository,
     repository_templates,
@@ -176,6 +178,8 @@ async def _station_read(
     content = dict(version.content) if version else None
     if not full_content and content is not None and version is not None:
         content = await _candidate_projection(session, version, content)
+    if content is not None:
+        content = service_storage.sign_urls(content, prefixes=domain_photos.key_prefixes(station.id))
     return StationRead(
         id=station.id,
         title=station.title,
@@ -194,7 +198,9 @@ async def _candidate_projection(
     session: AsyncSession, version: StationVersion, content: dict[str, Any]
 ) -> dict[str, Any]:
     """A version's content reduced to the candidate audience, by its template when it has one."""
-    sections = await audience_sections(session, version.template_version_id, content, ("candidate",))
+    sections = await audience_sections(
+        session, version.template_version_id, content, ("candidate",), station_id=version.station_id
+    )
     if sections:
         return {block.id: block.value for section in sections for block in section.blocks}
     return domain_content.candidate_content(content) or {}
@@ -306,6 +312,7 @@ async def audience_sections(
     content: dict[str, Any],
     audiences: tuple[str, ...],
     *,
+    station_id: uuid.UUID,
     include_hidden: bool = False,
 ) -> list[AudienceSectionRead]:
     """A station's content, projected to what these audiences may read of it.
@@ -316,6 +323,9 @@ async def audience_sections(
     bound to no template, or a template with no structure, has nothing to
     project and answers with no sections; a caller that still needs to serve
     something falls back to its own legacy reader.
+
+    `station_id` is the station these sections belong to: it is the only folder of the bucket whose
+    links are signed in them (`domain_photos.key_prefixes`).
 
     `audiences` is walked in the order given, each contributing its sections
     in template order — `("candidate", "examiner")` reads as the brief's
@@ -340,7 +350,9 @@ async def audience_sections(
                     label=block.label,
                     type=block.type,
                     role=block.role,
-                    value=block.value,
+                    value=service_storage.sign_urls(
+                        block.value, prefixes=domain_photos.key_prefixes(station_id)
+                    ),
                     fields=[RecordFieldRead(**column) for column in block.fields] if block.fields else None,
                 )
                 for block in section.blocks
@@ -376,6 +388,7 @@ async def staff_sections(
         version.template_version_id,
         dict(version.content or {}),
         _STAFF_AUDIENCES,
+        station_id=version.station_id,
         include_hidden=True,
     )
 
@@ -400,7 +413,9 @@ async def reading_brief(
         return None
     version, station = found
     content = dict(version.content or {})
-    sections = await audience_sections(session, version.template_version_id, content, ("candidate",))
+    sections = await audience_sections(
+        session, version.template_version_id, content, ("candidate",), station_id=station.id
+    )
     text = next(
         (
             value
@@ -409,6 +424,9 @@ async def reading_brief(
         ),
         None,
     )
+    if text is not None:
+        # A flat brief can carry markdown image links; sign this station's own like the sections do.
+        text = service_storage.sign_urls(text, prefixes=domain_photos.key_prefixes(station.id))
     return ReadingBrief(title=station.title, sections=sections, text=text)
 
 

@@ -131,7 +131,12 @@ async def _station_payload(
     elif not is_doctor:
         audiences.append("patient")
     sections = await stations_service.audience_sections(
-        session, mat.template_version_id, mat.content, tuple(audiences), include_hidden=include_hidden
+        session,
+        mat.template_version_id,
+        mat.content,
+        tuple(audiences),
+        station_id=mat.station_id,
+        include_hidden=include_hidden,
     )
     return PracticeStationRead(
         station_id=mat.station_id,

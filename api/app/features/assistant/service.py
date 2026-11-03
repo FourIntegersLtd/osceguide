@@ -67,6 +67,7 @@ async def _station_context_from_db(
     to the generic doctor instructions rather than to caller-supplied text.
     """
     from app.features.catalog import service as catalog
+    from app.features.media_production import service_storage
     from app.features.stations import service_reads as stations
 
     material = await stations.version_material(session, org_id, station_version_id)
@@ -75,7 +76,9 @@ async def _station_context_from_db(
     exam_code = await catalog.exam_code_by_id(session, material.exam_id)
     # The authored document, plus the two fields the prompt names that live on
     # the station row rather than inside its content.
-    return {**material.content, "station_name": material.title, "exam_code": exam_code or ""}
+    # No file links in a prompt: the model needs the words, and the links are permanent addresses.
+    content = service_storage.remove_urls(material.content)
+    return {**content, "station_name": material.title, "exam_code": exam_code or ""}
 
 
 async def start_session(

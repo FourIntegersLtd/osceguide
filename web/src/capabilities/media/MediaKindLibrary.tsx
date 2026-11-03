@@ -112,8 +112,9 @@ function LibraryFrame({
       ) : null}
 
       {sticky ? (
-        // Search, tabs and the jump row stay put while the list scrolls.
-        <div className="sticky top-0 z-20 -mx-1 bg-osce-surface px-1 pb-4">
+        // Search, tabs and the jump row stay put while the list scrolls on wider screens; on a
+        // phone they scroll away, so the list gets the whole height.
+        <div className="-mx-1 bg-osce-surface px-1 pb-4 md:sticky md:top-0 md:z-20">
           <div className="mb-6">{box}</div>
           {showSearchResults ? null : controls}
         </div>

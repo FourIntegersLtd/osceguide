@@ -142,8 +142,14 @@ def test_the_trial_is_only_consulted_when_nothing_is_granted() -> None:
     assert decision.source == "trial"
 
 
-def test_an_exhausted_trial_with_no_grant_is_refused_with_an_upgrade_hint() -> None:
+def test_a_trial_past_its_fourteen_days_is_refused_as_expired() -> None:
     decision = domain.decide([], now=NOW, trial=trial(age_days=30))
+    assert not decision.allowed
+    assert decision.reason == "trial_expired"
+
+
+def test_a_trial_inside_its_days_with_its_stations_used_is_refused_as_exhausted() -> None:
+    decision = domain.decide([], now=NOW, trial=trial(set_stations=3))
     assert not decision.allowed
     assert decision.reason == "trial_exhausted"
 
@@ -157,7 +163,7 @@ def test_a_lapsed_subscriber_past_the_trial_is_told_expired_not_trial_exhausted(
 
 def test_somebody_whose_only_purchase_was_refunded_is_not_told_expired() -> None:
     decision = domain.decide([grant(revoked=True)], now=NOW, trial=trial(age_days=30))
-    assert decision.reason == "trial_exhausted"
+    assert decision.reason == "trial_expired"
     assert domain.decide([grant(revoked=True)], now=NOW).reason == "no_entitlement"
 
 

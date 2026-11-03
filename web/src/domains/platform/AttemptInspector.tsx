@@ -86,74 +86,14 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
 
               <DetailLayout
                 main={
-                  <>
-                    <Panel title="What happened">
-                      <div className="flex flex-col gap-5">
-                        {diagnosis ? (
-                          <Alert tone="warning">{diagnosis.problem}</Alert>
-                        ) : null}
-                        <FactList items={attemptFacts(attempt)} />
-                      </div>
-                    </Panel>
-
-                    <Table<PlatformAttemptDetail["jobs"][number]>
-                      rows={attempt.jobs}
-                      themeType="b2b"
-                      idField="id"
-                      title="Marking runs"
-                      description="Each time this attempt was sent for marking, newest first."
-                      empty={{
-                        title: isImportedFromOldSite(attempt)
-                          ? OLD_SITE_COPY.noMarkingRun
-                          : "It was never sent for marking",
-                      }}
-                      columns={[
-                        {
-                          header: "Run",
-                          key: "id",
-                          priority: "primary",
-                          render: (job) => (
-                            <div className="min-w-0">
-                              <p className="font-medium text-ink">
-                                #{job.id} · {job.policy_version ?? "default policy"}
-                              </p>
-                              <p className="text-osce-meta text-ink-subtle">
-                                {job.attempts} run{job.attempts === 1 ? "" : "s"}
-                                {job.scheduled_at
-                                  ? ` · scheduled ${formatMoment(job.scheduled_at)}`
-                                  : ""}
-                              </p>
-                            </div>
-                          ),
-                        },
-                        {
-                          header: "Status",
-                          key: "status",
-                          render: (job) => (
-                            <Badge tone={jobStatusTone(job.status)} dot>
-                              {job.status}
-                            </Badge>
-                          ),
-                        },
-                      ]}
-                    />
-
-                    {/* What the candidate reads, drawn from the same rubric, so support
-                        can see the feedback a complaint is about rather than infer it. */}
-                    {attempt.result_policy_versions.length > 0 ? (
-                      <Panel
-                        title="Feedback"
-                        description="The marking as the candidate sees it."
-                      >
-                        <AttemptFeedback attemptId={attempt.id} />
-                      </Panel>
-                    ) : null}
-
-                    <TranscriptSection
-                      attemptId={attempt.id}
-                      available={attempt.chunk_count > 0}
-                    />
-                  </>
+                  <Panel title="What happened">
+                    <div className="flex flex-col gap-5">
+                      {diagnosis ? (
+                        <Alert tone="warning">{diagnosis.problem}</Alert>
+                      ) : null}
+                      <FactList items={attemptFacts(attempt)} />
+                    </div>
+                  </Panel>
                 }
                 rail={
                   <Actions
@@ -162,6 +102,65 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
                     onChanged={setFresh}
                   />
                 }
+              />
+
+              {/* Wide content gets the full width; only the facts sit beside the rail. */}
+              <Table<PlatformAttemptDetail["jobs"][number]>
+                rows={attempt.jobs}
+                themeType="b2b"
+                idField="id"
+                title="Marking runs"
+                description="Each time this attempt was sent for marking, newest first."
+                empty={{
+                  title: isImportedFromOldSite(attempt)
+                    ? OLD_SITE_COPY.noMarkingRun
+                    : "It was never sent for marking",
+                }}
+                columns={[
+                  {
+                    header: "Run",
+                    key: "id",
+                    priority: "primary",
+                    render: (job) => (
+                      <div className="min-w-0">
+                        <p className="font-medium text-ink">
+                          #{job.id} · {job.policy_version ?? "default policy"}
+                        </p>
+                        <p className="text-osce-meta text-ink-subtle">
+                          {job.attempts} run{job.attempts === 1 ? "" : "s"}
+                          {job.scheduled_at
+                            ? ` · scheduled ${formatMoment(job.scheduled_at)}`
+                            : ""}
+                        </p>
+                      </div>
+                    ),
+                  },
+                  {
+                    header: "Status",
+                    key: "status",
+                    render: (job) => (
+                      <Badge tone={jobStatusTone(job.status)} dot>
+                        {job.status}
+                      </Badge>
+                    ),
+                  },
+                ]}
+              />
+
+              {/* What the candidate reads, drawn from the same rubric, so support
+                  can see the feedback a complaint is about rather than infer it. */}
+              {attempt.result_policy_versions.length > 0 ? (
+                <Panel
+                  title="Feedback"
+                  description="The marking as the candidate sees it."
+                >
+                  <AttemptFeedback attemptId={attempt.id} />
+                </Panel>
+              ) : null}
+
+              <TranscriptSection
+                attemptId={attempt.id}
+                available={attempt.chunk_count > 0}
               />
             </>
           );

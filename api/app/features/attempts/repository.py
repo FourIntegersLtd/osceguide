@@ -296,13 +296,20 @@ async def progress_by_exam(
 async def attempts_counted_by_trial(
     session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.UUID
 ) -> list[TrialAttempt]:
-    """This person's attempts on one exam that the free trial counts: every kind but a debrief.
+    """This person's attempts on one exam that the free trial counts: all but debriefs and peer sessions.
+
+    A peer session is time-limited rather than counted, so it neither uses up the AI stations nor is blocked
+    by their being used up.
 
     Counted per exam, not per account, so using up one exam's trial leaves another's untouched.
     """
     stmt = select(
         Attempt.id, Attempt.kind, Attempt.status, Attempt.station_version_id, Attempt.started_at
-    ).where(Attempt.user_id == user_id, Attempt.exam_id == exam_id, Attempt.kind != str(Kind.DEBRIEF))
+    ).where(
+        Attempt.user_id == user_id,
+        Attempt.exam_id == exam_id,
+        Attempt.kind.notin_([str(Kind.DEBRIEF), str(Kind.PEER)]),
+    )
     return [
         TrialAttempt(
             attempt_id=attempt_id,

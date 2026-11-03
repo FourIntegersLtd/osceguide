@@ -61,13 +61,13 @@ async def join_queue(
 ) -> QueueStatus:
     """Take a place in the queue, or keep the one you have.
 
-    Practising with another person is paid access, gated the same as
-    `POST /attempts` (free trial included). Joining twice is not refused as
+    Practising with another person is paid access, gated like `POST /attempts` except that the free
+    trial is limited by its fourteen days alone, not by a count of stations. Joining twice is not refused as
     an error — it returns the place already held, whichever room was asked
     for, rather than a second place in a different queue.
     """
     exam = await resolve_exam(session, exam_code)
-    await attempts.require_entitlement(session, user_id=user_id, exam_id=exam.id, now=now)
+    await attempts.require_entitlement(session, user_id=user_id, exam_id=exam.id, now=now, window_only=True)
     ensure_may_address(audience, await audiences_for(session, user_id))
     existing = await repository.live_entry(session, user_id, exam.id)
     if existing is None and not await stations.published_library_version_ids(session, exam_id=exam.id):

@@ -1,11 +1,10 @@
 import type { IconType } from "react-icons";
 import { FiCalendar, FiClock, FiSliders, FiZap } from "react-icons/fi";
+import { MARKETPLACE_VIDEO_SRC, MARKETPLACE_VIDEO_TITLE } from "@/capabilities/peer-practice/marketplace/copy";
 import { LandingDemoVideo } from "@/domains/marketing/LandingDemoVideo";
 import { Eyebrow, IconTile, SectionHead } from "@/foundation/ui";
 import { Section } from "@/domains/marketing/home/Section";
 
-const MARKETPLACE_VIDEO_SRC =
-  "https://osceguide.s3.eu-west-2.amazonaws.com/Four+Integers+Ltd/osceguide-marketplace-how-it-works.mp4";
 
 type PracticeItem = { Icon: IconType; title: string; body: string };
 
@@ -42,7 +41,7 @@ export function HomePractice({
             ))}
           </div>
         </div>
-        <LandingDemoVideo src={MARKETPLACE_VIDEO_SRC} title="How the OSCE Guide marketplace works" className="lg:col-span-3" />
+        <LandingDemoVideo src={MARKETPLACE_VIDEO_SRC} title={MARKETPLACE_VIDEO_TITLE} className="lg:col-span-3" />
       </div>
     </Section>
   );

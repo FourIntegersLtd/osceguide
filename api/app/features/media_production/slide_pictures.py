@@ -21,7 +21,7 @@ import httpx
 from PIL import Image, ImageDraw, ImageFont
 
 from app.core.settings import Settings
-from app.features.media_production.s3 import object_exists, s3_client
+from app.features.media_production.s3 import object_exists, s3_client, upload_args
 from app.features.media_production.slide_scenes import ASSETS
 
 logger = logging.getLogger(__name__)
@@ -109,7 +109,10 @@ def store_picture(settings: Settings, http: httpx.Client, candidate: Candidate) 
     encoded = io.BytesIO(jpeg(Image.open(io.BytesIO(fetched.content))))
     name = f"{hashlib.sha256(candidate.page.encode()).hexdigest()[:20]}.jpg"
     s3_client(settings).upload_fileobj(
-        encoded, settings.aws_s3_bucket, f"{PICTURE_FOLDER}/{name}", ExtraArgs={"ContentType": "image/jpeg"}
+        encoded,
+        settings.aws_s3_bucket,
+        f"{PICTURE_FOLDER}/{name}",
+        ExtraArgs=upload_args(f"{PICTURE_FOLDER}/{name}"),
     )
     return picture_prefix(settings) + name
 
@@ -121,7 +124,7 @@ def store_library_picture(settings: Settings, name: str) -> str:
     if not object_exists(settings, key):
         with (ASSETS / "slides" / "images" / name).open("rb") as picture:
             s3_client(settings).upload_fileobj(
-                picture, settings.aws_s3_bucket, key, ExtraArgs={"ContentType": "image/jpeg"}
+                picture, settings.aws_s3_bucket, key, ExtraArgs=upload_args(key)
             )
     return picture_prefix(settings) + name
 

@@ -26,6 +26,8 @@ poetry run pytest -q \
   tests/unit/test_stations_domain.py tests/unit/test_station_validator.py \
   tests/unit/test_stations_candidate_content.py tests/unit/test_station_sets_domain.py \
   tests/unit/test_generation_normalizers.py tests/unit/test_generation_profile_resolve.py \
+  tests/unit/test_media_object_urls.py tests/http/test_media_signed_urls.py \
+  tests/http/test_station_signed_urls.py tests/repository/test_material_reindex.py \
   tests/unit/test_media_domain.py tests/unit/test_media_trial_access.py \
   tests/unit/test_community_domain.py tests/unit/test_marketplace_domain.py \
   tests/unit/test_cv_domain.py tests/unit/test_public_site_domain.py \
@@ -68,6 +70,7 @@ separately; one combined run was killed once.
 
 ## Traps
 
+- Media links are signed on read and stripped on write. A test of media content must expect `X-Amz-Signature` in a gated link and a plain one under `Four+Integers+Ltd/` and `teaching_videos/v2/pictures/`.
 - **A station's scenario never reaches the browser before an attempt.** The
   org station list strips the patient's material for trainees
   (`stations/domain_content.py`). A screen missing a field is not a reason to widen a read.

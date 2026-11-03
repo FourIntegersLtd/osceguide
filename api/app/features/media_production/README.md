@@ -111,6 +111,18 @@ Run `make worker` beside `make start`. **ffmpeg** must be on `PATH` for slide vi
   retrieve and web-search APIs, for the fact check. Unconfigured means "not checked", never an error.
 - **`core.settings`**: model and AV keys (`OPENAI_API_KEY`, `ELEVENLABS_API_KEY` and voice ids, AWS S3).
 
+## Files in the bucket
+Every upload goes through `s3.upload_args(key)`: a real `ContentType` for known extensions
+(inline, so a browser plays it) and `attachment` / `octet-stream` for anything else. Stored links are
+the raw `https://<bucket>.s3.<region>.amazonaws.com/<key>`; `service_storage.sign_urls(value, prefixes=...)` turns
+each link under the caller's folders into a two-hour signed link on read (media: `teaching_videos/`, `podcasts/`;
+a station: only its own `stations/<id>/`, because authors write that content; every host spelling of
+our bucket is matched, keys decode with `unquote_plus`), and withholds the link (empty string, logged once)
+when signing is impossible, and the client is pinned to the regional
+endpoint so the signed host matches the stored one and the web's `media-src`. Signing is local, so
+it works while the bucket is still public. `Four Integers Ltd/` and `teaching_videos/v2/pictures/`
+stay public. `tests/guards/test_media_links_are_signed.py` fails when a new file builds a bucket link.
+
 ## Local setup
 
 From `api`, copy AV keys from the B2C `.env`:

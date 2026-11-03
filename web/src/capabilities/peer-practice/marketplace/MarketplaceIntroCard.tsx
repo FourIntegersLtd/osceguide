@@ -3,7 +3,11 @@
 import { HiOutlineInformationCircle } from "react-icons/hi2";
 import { Button } from "@/foundation/ui";
 import { B2CHero } from "@/foundation/ui/B2CHero";
-import { INTRO_DESCRIPTION, introTitle } from "@/capabilities/peer-practice/marketplace/copy";
+import { MarketplaceVideo } from "@/capabilities/peer-practice/marketplace/MarketplaceVideo";
+import {
+  INTRO_DESCRIPTION,
+  introTitle,
+} from "@/capabilities/peer-practice/marketplace/copy";
 
 /** What the marketplace is, said once at the top; the exam is named by the backend. */
 export function MarketplaceIntroCard({
@@ -22,6 +26,7 @@ export function MarketplaceIntroCard({
           Learn how it works
         </Button>
       }
+      aside={<MarketplaceVideo className="w-full md:w-80" />}
     >
       {INTRO_DESCRIPTION}
     </B2CHero>

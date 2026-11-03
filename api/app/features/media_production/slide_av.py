@@ -27,7 +27,7 @@ from PIL import Image
 from app.core.settings import Settings
 from app.features.media_production.errors import AvUnavailable
 from app.features.media_production.podcast_tts import ffmpeg_binary
-from app.features.media_production.s3 import s3_client
+from app.features.media_production.s3 import s3_client, upload_args
 from app.features.media_production.slide_narration import (
     is_question,
     narrate_deck,
@@ -421,7 +421,7 @@ def upload_video(settings: Settings, video: Path, payload: dict[str, Any]) -> st
     try:
         with video.open("rb") as handle:
             s3_client(settings).upload_fileobj(
-                handle, settings.aws_s3_bucket, key, ExtraArgs={"ContentType": "video/mp4"}
+                handle, settings.aws_s3_bucket, key, ExtraArgs=upload_args(key)
             )
     except Exception as error:
         raise AvUnavailable(f"Failed to upload video to S3: {error}") from error

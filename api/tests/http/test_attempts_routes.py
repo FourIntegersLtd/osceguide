@@ -280,7 +280,7 @@ async def test_an_old_account_has_no_trial_left(
     )
 
     assert response.status_code == 403, response.text
-    assert response.json()["details"]["reason"] == "trial_exhausted"
+    assert response.json()["details"]["reason"] == "trial_expired"
 
 
 async def test_an_invited_accounts_trial_counts_from_its_first_sign_in(

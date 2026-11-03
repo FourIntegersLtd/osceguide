@@ -100,9 +100,20 @@ which are already public, and a locked deck that reported no specialty would
 disappear from the facet list on the very screen that offers to unlock it. The
 body itself stays gated.
 
+### Links in a body
+A body names its files by the permanent bucket link `media_production` stored. A reader
+who may see the body is handed those links signed (`service_storage.sign_urls`, valid
+two hours, so seeking and a paused video keep working) and only for `teaching_videos/` and
+`podcasts/`; any other bucket link in a body is returned as written. `repository.create` and
+`update_item` strip any signature back off before saving (`service_storage.strip_urls`), so a staff form that posts
+back what it was shown never stores an expiring link. Links under the public folders
+(`core.object_urls.PUBLIC_PREFIXES`) are left alone. Known limitation: there is no refresh, so a tab left open past two hours fails on seek or on
+a new image until it is reloaded. A locked reader gets no body, so
+no link at all.
+
 ## Cross-slice dependencies
 Calls `catalog` to tag an item with an exam, and `entitlements` to decide whose
-body a reader may see. Search sits behind
+body a reader may see, and `media_production` to sign the links in it. Search sits behind
 `core.ports.VectorIndex`; the provider is undecided (Pinecone today, pgvector a
 candidate), so the default implementation indexes nothing and finds nothing
 rather than guessing — M-3.

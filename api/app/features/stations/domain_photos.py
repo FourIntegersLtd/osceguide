@@ -74,6 +74,12 @@ def ensure_real_image(header: bytes) -> None:
         raise InvalidPhoto("That file is not a PNG or JPEG image.")
 
 
+def key_prefixes(station_id: uuid.UUID) -> tuple[str, ...]:
+    """The only folder a station's read may sign links from: its own. Another station's photo, or any
+    other file in the bucket, written into this station's content is not this station's to hand out."""
+    return (f"{KEY_PREFIX}/{station_id}/",)
+
+
 def object_key(*, station_id: uuid.UUID, filename: str) -> str:
     """Where this upload lands in the bucket: one folder per station, a fresh name per file."""
     suffix = PurePosixPath(filename.lower()).suffix
