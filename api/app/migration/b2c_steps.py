@@ -21,6 +21,7 @@ from app.migration import (
     b2c_firestore,
     b2c_inventory,
     b2c_lookups,
+    b2c_sync,
     link_templates,
     load_b2c_attempts,
     load_b2c_billing,
@@ -54,22 +55,45 @@ def _script(name: str) -> ModuleType:
 
 
 class Run:
-    """One `import_b2c_all.py` invocation's shared state: the Firestore client and attempts read so far."""
+    """One importer invocation's shared state: the Firestore client and attempts read so far.
 
-    def __init__(self, db: Any) -> None:
+    `raw_db` is set only by the nightly sync, where `db` returns just the pending documents and
+    `raw_db` is the real client for steps that need the whole picture to join against (every
+    transcript, to resolve a debrief to its attempt).
+    """
+
+    def __init__(self, db: Any, raw_db: Any = None) -> None:
         self.db = db
+        self.raw_db = raw_db
         self.pairs: list[Any] = []  # attempts, for the steps that hang off them
+        self.imported_pairs: list[Any] = []  # the (attempt, transcript) pairs the attempts step wrote
+        self._context: dict[str, list[dict[str, Any]]] = {}
 
-    def read(self, step: str) -> list[dict[str, Any]]:
+    @property
+    def syncing(self) -> bool:
+        """Whether this run copies only pending documents (the nightly sync)."""
+        return self.raw_db is not None
+
+    def _read_from(self, db: Any, step: str) -> list[dict[str, Any]]:
         """Every document from every collection this step owns, seed rows dropped, with progress printed."""
         docs: list[dict[str, Any]] = []
         for collection, exam in b2c_inventory.COPIED[step].items():
-            documents, seeded = b2c_firestore.stream(self.db, collection, app_type=exam or None)
+            documents, seeded = b2c_firestore.stream(db, collection, app_type=exam or None)
             docs.extend(documents)
             if documents or seeded:
                 dropped = f" (+{seeded} demo rows dropped)" if seeded else ""
                 print(f"    read {collection}: {len(documents)}{dropped}")  # noqa: T201
         return docs
+
+    def read(self, step: str) -> list[dict[str, Any]]:
+        """The step's documents: all of them, or only the pending ones when syncing."""
+        return self._read_from(self.db, step)
+
+    def context(self, step: str) -> list[dict[str, Any]]:
+        """The step's documents in full, once, to join against. Not what gets written or recorded."""
+        if step not in self._context:
+            self._context[step] = self._read_from(self.raw_db or self.db, step)
+        return self._context[step]
 
     def matching(self, docs: list[dict], collections: dict[str, str]) -> list[dict]:
         """The subset of `docs` that came from one of `collections` (e.g. only the transcript collections)."""
@@ -130,13 +154,20 @@ async def _marketplace(session: AsyncSession, run: Run) -> StepReport:
 async def _attempts(session: AsyncSession, run: Run) -> StepReport:
     """The `attempts` step: transcripts of deleted accounts are dropped, the rest loaded with feedback."""
     docs = run.read("attempts")
+    if run.syncing:
+        if not docs:
+            return StepReport()
+        docs = b2c_sync.attempt_inputs(docs, run.context("attempts"))
     deleted = b2c_firestore.deleted_user_ids(run.db)
     kept = [document for document in docs if str(document.get("user_id") or "") not in deleted]
     transcripts = run.matching(kept, b2c_inventory.TRANSCRIPT_COLLECTIONS)
     feedbacks = run.matching(kept, b2c_inventory.FEEDBACK_COLLECTIONS)
-    report, run.pairs = await load_b2c_attempts.load(
+    report, pairs = await load_b2c_attempts.load(
         session, transcripts, feedbacks, await b2c_lookups.build(session)
     )
+    run.imported_pairs = pairs
+    # Syncing imported only some transcripts, so later steps rebuild the full picture themselves.
+    run.pairs = [] if run.syncing else pairs
     dropped = run.matching(docs, b2c_inventory.TRANSCRIPT_COLLECTIONS)
     report.count("transcripts of deleted accounts (not copied)", len(dropped) - len(transcripts))
     return report
@@ -145,7 +176,7 @@ async def _attempts(session: AsyncSession, run: Run) -> StepReport:
 async def _needs_attempts(run: Run) -> None:
     """`--only debriefs` without `attempts`: read the transcripts just to resolve keys."""
     if not run.pairs:
-        docs = run.read("attempts")
+        docs = run.context("attempts")
         run.pairs = load_b2c_attempts.migrate_transcripts(
             run.matching(docs, b2c_inventory.TRANSCRIPT_COLLECTIONS), [], StepReport()
         )
@@ -168,12 +199,31 @@ async def _debriefs(session: AsyncSession, run: Run) -> StepReport:
 async def _mocks(session: AsyncSession, run: Run) -> StepReport:
     """The `mocks` step: builds station sets, then hangs each already-copied attempt on its slot."""
     mocks = run.read("mocks")
+    deleted = b2c_firestore.deleted_user_ids(run.db)
+    if run.syncing:
+        if not mocks and not run.imported_pairs:
+            return StepReport()
+        # New transcripts link to mocks copied long ago, and a changed mock re-links its old ones.
+        changed = {str(document["id"]) for document in mocks}
+        transcripts = [raw for _attempt, raw in run.imported_pairs]
+        imported = {(raw["_collection"], raw["id"]) for raw in transcripts}
+        transcripts += [
+            document
+            for document in run.matching(run.context("attempts"), b2c_inventory.TRANSCRIPT_COLLECTIONS)
+            if str(document.get("mock_id") or "") in changed
+            and (document["_collection"], document["id"]) not in imported
+        ]
+        linkable_mocks = run.context("mocks")
+    else:
+        docs = run.matching(run.read("attempts"), b2c_inventory.TRANSCRIPT_COLLECTIONS)
+        transcripts = docs
+        linkable_mocks = mocks
+    transcripts = [document for document in transcripts if str(document.get("user_id") or "") not in deleted]
     lookups = await b2c_lookups.build(session)
     report = await load_b2c_mocks.load_mocks(session, mocks, lookups)
-    docs = run.matching(run.read("attempts"), b2c_inventory.TRANSCRIPT_COLLECTIONS)
-    deleted = b2c_firestore.deleted_user_ids(run.db)
-    transcripts = [document for document in docs if str(document.get("user_id") or "") not in deleted]
-    report.merge(await load_b2c_mocks.link_attempts_to_sessions(session, mocks, transcripts, lookups))
+    report.merge(
+        await load_b2c_mocks.link_attempts_to_sessions(session, linkable_mocks, transcripts, lookups)
+    )
     return report
 
 

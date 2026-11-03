@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Runs the legacy sync every night at 03:00 on this Mac. A Mac that is asleep at 03:00 runs it when it
+  wakes. Install:
+    cp scripts/com.osceguide.legacy-sync.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.osceguide.legacy-sync.plist
+  Remove:
+    launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.osceguide.legacy-sync.plist
+  Test now:
+    launchctl kickstart gui/$(id -u)/com.osceguide.legacy-sync
+  Output: ~/Library/Logs/osce-legacy-sync.log
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.osceguide.legacy-sync</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/yahayakenny/Documents/Projects/osceguide/api/scripts/sync_b2c_nightly.sh</string>
+    <string>production</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+</dict>
+</plist>

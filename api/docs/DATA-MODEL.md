@@ -49,7 +49,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-80 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
+81 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -1700,13 +1700,19 @@ is taken back. Retry backoff: `BASE_RETRY_SECONDS = 30`, capped at
 
 ---
 
-## health — 1 table
+## health — 2 tables
 
 ### `database_size_readings`
 
 **Growth:** fixed. One row per calendar day, so about 400 rows at steady state.
 
 `taken_on date not null unique`, `total_bytes bigint not null` (`pg_database_size` at the reading), `relations jsonb not null default '[]'` (the ten largest public tables by `pg_total_relation_size`, each `{name, total_bytes, rows}`), `alert_level smallint not null default 0` (0 below 60% of `DATABASE_SIZE_BUDGET_MB`, 1 from 60%, 2 from 80%; the stored level is how a crossing is alerted once rather than every run). Owned by `health`. Written by the daily `record_database_size` task, which upserts on `taken_on` and trims rows older than 400 days. Row level security is on and no policy is defined.
+
+### `legacy_sync_records`
+
+**Growth:** unbounded. One row per legacy Firestore document ever copied, about 25,000 today and growing with the old site. **Retention:** deleted by hand with the rest of the legacy copy when the old site is retired (`scripts/sync_b2c.py` is a one-off bridge, so the table goes with it).
+
+`collection varchar(120) not null`, `doc_id varchar(300) not null` (together the primary key), `source_updated_at timestamptz not null` (Firestore's `update_time` for the document when it was last copied). Owned by `health`. Written only by `scripts/sync_b2c.py`, which skips every document whose stored time equals Firestore's and fetches the rest. Row level security is on and no policy is defined.
 
 # Voice routing
 

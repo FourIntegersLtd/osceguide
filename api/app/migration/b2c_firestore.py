@@ -42,11 +42,22 @@ def configure_credentials_from_env() -> None:
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = handle.name
 
 
+_override: Any = None
+
+
+def use_client(replacement: Any) -> None:
+    """Make every later `client()` call return `replacement` (the sync's pending-only wrapper)."""
+    global _override  # noqa: PLW0603
+    _override = replacement
+
+
 def client() -> Any:
     """A Firestore client, credentialed from the environment. Read-only by convention.
 
     The only place this codebase opens Firestore; every source module asks here.
     """
+    if _override is not None:
+        return _override
     try:
         from google.cloud import firestore  # type: ignore[import-untyped]
     except ImportError as exc:
