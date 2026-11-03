@@ -87,6 +87,12 @@ async def run(*, commit: bool, only: list[str], settle_minutes: int, cutoff: dat
             await b2c_sync.create_ledger(session)
             print("note: legacy_sync_records does not exist yet; previewing with an empty ledger")  # noqa: T201
         ledger = await b2c_sync.load_ledger(session)
+        if commit and not ledger and cutoff is None:
+            # An empty ledger offers every old-site document to the loaders: the full re-import this
+            # command exists to avoid. The first real run must say what the last full import covered.
+            raise SystemExit(
+                "Refusing to copy with an empty ledger: pass --baseline-before <time of the last full import>"
+            )
         if cutoff is not None:
             covered = b2c_sync.baseline_rows(raw, ledger, cutoff)
             await b2c_sync.record(session, covered)
