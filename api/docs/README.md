@@ -12,6 +12,7 @@ Read in this order if you are new.
 | 6 | [adr/](adr/) | The decisions someone might otherwise question. |
 | — | [DEPLOY-CHECKLIST.md](DEPLOY-CHECKLIST.md) | Gates before shipping platform-api to staging or production (migrations, voice label, classic Railway isolation). |
 | — | [SUPPORT-RUNBOOK.md](SUPPORT-RUNBOOK.md) | What a platform admin does about the tickets that actually arrive. |
+| — | [LEGACY-SYNC.md](LEGACY-SYNC.md) | Keeping the platform current with the old B2C site: the nightly pending-only sync, how to run it by hand, and its caveats. |
 | — | [../../web/docs/BACKLOG.md](../../web/docs/BACKLOG.md) | All pending work and open questions, for every live repo. |
 | — | [security/](security/) | The 2026-09 security assessment and the penetration test plan. |
 
