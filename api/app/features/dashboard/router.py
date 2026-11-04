@@ -34,6 +34,7 @@ from app.features.dashboard import (
     service_report,
     service_report_csv,
     service_reporting,
+    service_results_index,
     service_streams,
     service_trainee,
 )
@@ -134,6 +135,16 @@ async def read_circuit_console(
     Reading it may advance this circuit if its clock ran out (S-7), like the live board.
     """
     return await service_console.build_console(session, workspace.org_id, circuit_id, now=clock.now())
+
+
+@router.get(
+    "/orgs/{org_slug}/results",
+    response_model=schemas_org.ResultsIndex,
+    responses=error_responses(Forbidden),
+)
+async def read_results_index(workspace: OrgStaff, session: Session) -> schemas_org.ResultsIndex:
+    """Every sitting with candidates by decision stage, newest first: where results work is waiting."""
+    return await service_results_index.build_results_index(session, workspace.org_id)
 
 
 @router.get(

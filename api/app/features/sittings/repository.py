@@ -70,6 +70,7 @@ async def list_sittings(
     limit: int,
     cursor: dict[str, Any] | None = None,
     status: str | None = None,
+    exclude_status: str | None = None,
     mode: str | None = None,
     search: str | None = None,
     programme_id: uuid.UUID | None = None,
@@ -80,6 +81,8 @@ async def list_sittings(
     stmt = select(Sitting).where(Sitting.org_id == org_id)
     if status is not None:
         stmt = stmt.where(Sitting.status == status)
+    if exclude_status is not None:
+        stmt = stmt.where(Sitting.status != exclude_status)
     if mode is not None:
         stmt = stmt.where(Sitting.mode == mode)
     if search and search.strip():

@@ -15043,6 +15043,87 @@
         "title": "ResultTotalsRead",
         "type": "object"
       },
+      "ResultsIndex": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ResultsIndexRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "title": "ResultsIndex",
+        "type": "object"
+      },
+      "ResultsIndexRow": {
+        "description": "One sitting's decision progress. `not_decided` is candidates with no decision yet.",
+        "properties": {
+          "candidates": {
+            "title": "Candidates",
+            "type": "integer"
+          },
+          "draft": {
+            "title": "Draft",
+            "type": "integer"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "not_decided": {
+            "title": "Not Decided",
+            "type": "integer"
+          },
+          "released": {
+            "title": "Released",
+            "type": "integer"
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          },
+          "signed_off": {
+            "title": "Signed Off",
+            "type": "integer"
+          },
+          "sitting_id": {
+            "format": "uuid",
+            "title": "Sitting Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sitting_id",
+          "name",
+          "mode",
+          "status",
+          "scheduled_for",
+          "candidates",
+          "not_decided",
+          "draft",
+          "signed_off",
+          "released"
+        ],
+        "title": "ResultsIndexRow",
+        "type": "object"
+      },
       "RevenueByPlanRow": {
         "description": "One plan's contribution to a partner's acquired revenue.\n\n`plan_type` is `\"unknown\"` for a payment whose plan has since been\ndeleted (`Payment.plan_id` is `SET NULL`), never dropped from the total.",
         "properties": {
@@ -45596,6 +45677,79 @@
           }
         ],
         "summary": "Read Org Reporting",
+        "tags": [
+          "dashboard"
+        ],
+        "x-capability": "org_staff",
+        "x-platform-admin": true
+      }
+    },
+    "/api/v1/orgs/{org_slug}/results": {
+      "get": {
+        "description": "Every sitting with candidates by decision stage, newest first: where results work is waiting.",
+        "operationId": "dashboard_read_results_index",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultsIndex"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Results Index",
         "tags": [
           "dashboard"
         ],

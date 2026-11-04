@@ -220,3 +220,22 @@ class CohortSummary(BaseModel):
     sitting_name: str
     cohort_size: int
     candidates: list[CohortCandidate] = Field(default_factory=list)
+
+
+class ResultsIndexRow(BaseModel):
+    """One sitting's decision progress. `not_decided` is candidates with no decision yet."""
+
+    sitting_id: uuid.UUID
+    name: str
+    mode: str
+    status: str
+    scheduled_for: datetime | None
+    candidates: int
+    not_decided: int
+    draft: int
+    signed_off: int
+    released: int
+
+
+class ResultsIndex(BaseModel):
+    rows: list[ResultsIndexRow] = Field(default_factory=list)

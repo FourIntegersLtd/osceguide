@@ -262,3 +262,11 @@ export function readSlotReviews(
     { signal },
   );
 }
+
+export type ResultsIndex = components["schemas"]["ResultsIndex"];
+export type ResultsIndexRow = components["schemas"]["ResultsIndexRow"];
+
+/** Every sitting with its candidates by decision stage, newest first. */
+export function readResultsIndex(slug: string, signal?: AbortSignal): Promise<ResultsIndex> {
+  return platformRequest<ResultsIndex>(`${orgPath(slug)}/results`, { signal });
+}

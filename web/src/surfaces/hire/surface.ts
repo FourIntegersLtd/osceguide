@@ -1,4 +1,4 @@
-import { LuBriefcase, LuGauge, LuGraduationCap, LuPencilRuler, LuRadio, LuUserCog, LuUsers } from "react-icons/lu";
+import { LuBriefcase, LuClipboardCheck, LuGauge, LuGraduationCap, LuPencilRuler, LuRadio, LuUserCog, LuUsers } from "react-icons/lu";
 import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
 import { ASSESS_SCREEN_NAMES } from "@/surfaces/assess/surface";
 
@@ -21,6 +21,7 @@ function nav({ can, href }: NavContext): NavItem[] {
   const staff: NavItem[] = [
     { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
     { key: "sittings", label: "Assessments", href: href("/sittings"), icon: LuBriefcase },
+    { key: "results", label: "Results", href: href("/results"), icon: LuClipboardCheck },
     { key: "live", label: "Now running", href: href("/live"), icon: LuRadio },
     { key: "trainees", label: "Candidates", href: href("/trainees"), icon: LuUsers },
   ];

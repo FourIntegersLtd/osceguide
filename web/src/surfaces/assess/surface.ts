@@ -1,5 +1,6 @@
 import {
   LuCalendarDays,
+  LuClipboardCheck,
   LuChartNoAxesColumn,
   LuGauge,
   LuBookCopy,
@@ -38,6 +39,7 @@ export function assessNav({ can, href }: NavContext): NavItem[] {
     const staff: [permission: Parameters<NavContext["can"]>[0] | null, item: NavItem][] = [
       [null, { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge }],
       [null, { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays }],
+      [null, { key: "results", label: "Results", href: href("/results"), icon: LuClipboardCheck }],
       [null, { key: "live", label: "Now running", href: href("/live"), icon: LuRadio }],
       [null, { key: "trainees", label: "People", href: href("/trainees"), icon: LuUsers }],
       [null, { key: "reporting", label: "Reporting", href: href("/reporting"), icon: LuChartNoAxesColumn }],
@@ -96,6 +98,7 @@ export const ASSESS_SCREEN_NAMES: readonly ScreenName[] = [
   "team",
   "programmes",
   "reporting",
+  "resultsIndex",
   "myTraining",
   "mySitting",
   "myResult",

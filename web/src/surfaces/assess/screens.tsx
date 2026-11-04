@@ -28,6 +28,7 @@ import {
   OrgDashboard,
   Programmes,
   Reporting,
+  ResultsIndex,
   Results,
   SelfPractice,
   SelfPracticeStation,
@@ -125,6 +126,7 @@ function AssessSlotReview(props: ScreenProps) {
 }
 
 const AssessProgrammes = (props: ScreenProps) => <Programmes orgSlug={slugOf(props)} />;
+const AssessResultsIndex = (props: ScreenProps) => <ResultsIndex orgSlug={slugOf(props)} />;
 const AssessReporting = (props: ScreenProps) => <Reporting orgSlug={slugOf(props)} />;
 
 
@@ -242,6 +244,7 @@ export const assessScreens: ScreenMap = {
   team: AssessTeam,
   programmes: AssessProgrammes,
   reporting: AssessReporting,
+  resultsIndex: AssessResultsIndex,
   myTraining: AssessMyTraining,
   mySitting: AssessMySitting,
   myResult: AssessMyResult,

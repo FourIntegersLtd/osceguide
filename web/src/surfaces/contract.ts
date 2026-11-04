@@ -57,6 +57,7 @@ export type ScreenName =
   | "myPractice"
   // Partner
   | "reporting"
+  | "resultsIndex"
   // Staff console
   | "organizations"
   | "users";
