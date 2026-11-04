@@ -16,7 +16,7 @@ from app.features.catalog import repository
 from app.features.catalog.errors import ProgrammeExists, ProgrammeNotFound
 from app.features.catalog.models import Exam, Programme
 from app.features.catalog.schemas import ProgrammeRead
-from app.features.catalog.service import resolve_exam
+from app.features.catalog.service import bump_catalog, resolve_exam
 
 
 async def add_programme(session: AsyncSession, org_id: uuid.UUID, *, exam_code: str) -> ProgrammeRead:
@@ -25,6 +25,7 @@ async def add_programme(session: AsyncSession, org_id: uuid.UUID, *, exam_code: 
     if await repository.programme_for_exam(session, org_id, exam.id) is not None:
         raise ProgrammeExists()
     programme = await repository.create_programme(session, org_id, exam_id=exam.id)
+    bump_catalog(session)
     return _programme_read(programme, exam)
 
 
@@ -44,6 +45,7 @@ async def set_programme_status(
     if programme is None:
         raise ProgrammeNotFound()
     await repository.set_programme_status(session, org_id, programme_id, status=status)
+    bump_catalog(session)
     refreshed = await repository.programme_by_id(session, org_id, programme_id)
     exam = await repository.exam_by_id(session, refreshed.exam_id)  # type: ignore[union-attr]
     return _programme_read(refreshed, exam)  # type: ignore[arg-type]

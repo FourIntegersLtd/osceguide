@@ -20,7 +20,7 @@ from app.features.stations import domain, domain_photos, errors, repository
 from app.features.stations.models import StationVersion
 from app.features.stations.refusals import REFUSALS as _REFUSALS
 from app.features.stations.schemas import StationVersionRead
-from app.features.stations.service import read_station
+from app.features.stations.service import bump_library, read_station
 from app.features.stations.service_facts import refuse_while_produced
 from app.features.tenancy import service_audit
 from app.features.tutor_memory import jobs as tutor_jobs
@@ -86,6 +86,7 @@ async def edit_version(
     refuse_while_produced(station_version.review)
     if title is not None:
         await repository.set_station_title(session, org_id, station_id, title=title)
+        bump_library(session, await read_station(session, org_id, station_id))
     await repository.set_version_content(session, org_id, station_version.id, content=content)
     if facts is not None:
         await repository.set_version_review(
@@ -121,6 +122,7 @@ async def publish_version(
     # The station points at its newest published version, so a circuit can
     # reference the station and still get a frozen revision.
     await repository.set_current_version(session, org_id, station_id, version_id=station_version.id)
+    bump_library(session, await read_station(session, org_id, station_id))
     await _refresh_tutor_material(session, org_id)
     return _version_read(await _version(session, org_id, station_id, version))
 
@@ -160,7 +162,9 @@ async def archive_version(
     )
     await _repoint_after_archiving(session, org_id, station_id, archived_version_id=station_version.id)
     await _refresh_tutor_material(session, org_id)
-    title = (await read_station(session, org_id, station_id)).title
+    station = await read_station(session, org_id, station_id)
+    bump_library(session, station)
+    title = station.title
     await service_audit.record_for_owner(
         session,
         org_id=org_id,
@@ -337,7 +341,8 @@ async def delete_version(
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     # Read first: the station goes with its last draft, and the row names it.
-    title = (await read_station(session, org_id, station_id)).title
+    station = await read_station(session, org_id, station_id)
+    title = station.title
     await repository.delete_version(session, org_id, station_version.id)
     await service_audit.record_for_owner(
         session,
@@ -353,6 +358,7 @@ async def delete_version(
     # circuit, template or attempt can refer to it; that is the check delete_station relies on.
     if not await repository.versions_for_station(session, org_id, station_id):
         await repository.delete_station(session, org_id, station_id)
+        bump_library(session, station)
 
 
 async def edit_brief(
@@ -379,4 +385,5 @@ async def edit_brief(
     content = dict(station_version.content or {})
     content[BRIEF_KEY] = brief
     await repository.set_version_content(session, org_id, station_version.id, content=content)
+    bump_library(session, await read_station(session, org_id, station_id))
     return _version_read(await _version(session, org_id, station_id, version))

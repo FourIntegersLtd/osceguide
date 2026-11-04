@@ -12,6 +12,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import cache
 from app.core.errors import raise_mapped
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam
@@ -76,6 +77,16 @@ async def read_station(session: AsyncSession, org_id: uuid.UUID | None, station_
     return station
 
 
+def bump_library(session: AsyncSession, station: Station) -> None:
+    """Make cached library pages and first-station orders unreachable once this commits.
+
+    Only a platform station is in the library; an organisation's own never is, so it bumps nothing.
+    """
+    if station.org_id is None:
+        cache.bump_after_commit(session, domain.library_cache_scope(station.exam_id))
+        cache.bump_after_commit(session, domain.library_cache_scope(None))
+
+
 async def set_station_approved(
     session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, *, approved: bool
 ) -> StationRead:
@@ -90,6 +101,7 @@ async def set_station_approved(
     if approved and station.status != "published":
         raise errors.StationNotApprovableError()
     await repository.set_station_approved(session, org_id, station_id, approved=approved)
+    bump_library(session, station)
     station = await read_station(session, org_id, station_id)
     versions = await repository.versions_for_station(session, org_id, station_id)
     latest = versions[-1] if versions else None

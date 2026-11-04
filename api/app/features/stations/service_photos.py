@@ -81,6 +81,10 @@ async def add_photos(
     is told which ones did not make it. A partial success answers 200, with the failures named.
     """
     _ensure_storage(settings)
+    if len(files) > domain_photos.MAX_FILES:
+        raise errors.InvalidPhotoError(
+            f"Too many images. Upload at most {domain_photos.MAX_FILES} at a time."
+        )
     station_version = await _editable_version(session, org_id, station_id, version)
     section_id = domain_photos.media_section(await _template_sections(session, station_version), block_id)
     if section_id is None:

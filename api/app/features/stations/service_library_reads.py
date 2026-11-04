@@ -6,18 +6,25 @@ still browsing, and browsing is not reading the answers.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import uuid
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
+from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import cache
+from app.core.settings import get_settings
 from app.features.catalog import service as catalog
 from app.features.entitlements import service_access
-from app.features.stations import errors, repository_library, service_plan_window
+from app.features.stations import domain, errors, repository_library, service_plan_window
 from app.features.stations.schemas import LibraryStationRead
 from app.features.stations.service_reads import summaries_by_version_id
+
+_PAGE = TypeAdapter(tuple[list[LibraryStationRead], str | None])
 
 
 async def browse_library(
@@ -77,6 +84,50 @@ async def browse_library(
             session, user_id=user_id, exam_id=exam_id, exam_code=resolved_exam_code, now=now
         )
 
+    async def load() -> tuple[list[LibraryStationRead], str | None]:
+        """Read this page of the library from the database."""
+        return await _load_page(
+            session,
+            limit=limit,
+            cursor=cursor,
+            exam_id=exam_id,
+            search=search,
+            version_ids=version_ids,
+            station_ids=list(plan_station_ids) if plan_station_ids is not None else None,
+            all_exams=all_exams,
+        )
+
+    if plan_station_ids is not None:
+        # A plan's window differs per person, so only the shared page is cached.
+        return await load()
+    shape = json.dumps(
+        [search, sorted(str(version_id) for version_id in version_ids or []), cursor, limit, all_exams],
+        sort_keys=True,
+        default=str,
+    )
+    digest = hashlib.sha1(shape.encode(), usedforsecurity=False).hexdigest()
+    scope = domain.library_cache_scope(exam_id)
+    return await cache.get_or_load(
+        f"{scope}:page:{digest}:v{await cache.version(scope)}",
+        get_settings().library_cache_seconds,
+        load,
+        dump=lambda page: _PAGE.dump_json(page).decode(),
+        parse=_PAGE.validate_json,
+    )
+
+
+async def _load_page(
+    session: AsyncSession,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    exam_id: uuid.UUID | None,
+    search: str | None,
+    version_ids: list[uuid.UUID] | None,
+    station_ids: list[uuid.UUID] | None,
+    all_exams: bool,
+) -> tuple[list[LibraryStationRead], str | None]:
+    """One page of the library as rows a route returns, read from the database."""
     stations, next_cursor = await repository_library.library_page(
         session,
         limit=limit,
@@ -84,7 +135,7 @@ async def browse_library(
         exam_id=exam_id,
         search=search,
         version_ids=version_ids,
-        station_ids=list(plan_station_ids) if plan_station_ids is not None else None,
+        station_ids=station_ids,
         # Staff curating the whole catalogue must see a published station before an editor has
         # approved it, same bypass as the plan window above: an unreviewed station still has to
         # be found and fixed by somebody.

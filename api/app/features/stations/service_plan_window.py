@@ -9,14 +9,46 @@ it did before this module existed.
 
 from __future__ import annotations
 
+import json
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import cache
+from app.core.settings import get_settings
 from app.features.attempts import service_reads as attempts_reads
 from app.features.billing import service_station_limit
-from app.features.stations import errors, repository_library
+from app.features.stations import domain, errors, repository_library
+
+# More than any exam's library holds: the cached order is the whole list, cut to size afterwards.
+_WHOLE_LIST = 100_000
+
+
+async def _first_station_ids(
+    session: AsyncSession, *, exam_id: uuid.UUID, limit: int, exclude_ids: Collection[uuid.UUID]
+) -> list[uuid.UUID]:
+    """The first `limit` library stations of an exam in plan order, skipping `exclude_ids`.
+
+    The order is the same for everyone, so the whole ordered list is what is cached (under the
+    exam's library version, bumped by every publish, archive or approval) and the person's own
+    exclusions and limit are applied here, after the cache.
+    """
+    if limit <= 0:
+        return []
+
+    async def load() -> list[uuid.UUID]:
+        return await repository_library.first_station_ids(session, exam_id=exam_id, limit=_WHOLE_LIST)
+
+    ordered = await cache.get_or_load(
+        f"library:first:{exam_id}:v{await cache.version(domain.library_cache_scope(exam_id))}",
+        get_settings().library_cache_seconds,
+        load,
+        dump=lambda ids: json.dumps([str(station_id) for station_id in ids]),
+        parse=lambda raw: [uuid.UUID(station_id) for station_id in json.loads(raw)],
+    )
+    return [station_id for station_id in ordered if station_id not in exclude_ids][:limit]
 
 
 async def _used_station_ids(
@@ -66,7 +98,7 @@ async def allowed_station_ids(
     if limit is None:
         return None
     used_ids = await _used_station_ids(session, user_id=user_id, exam_id=exam_id)
-    new_ids = await repository_library.first_station_ids(
+    new_ids = await _first_station_ids(
         session, exam_id=exam_id, limit=limit - len(used_ids), exclude_ids=used_ids
     )
     return used_ids | set(new_ids)
