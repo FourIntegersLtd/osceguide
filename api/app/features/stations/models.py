@@ -105,6 +105,15 @@ class Station(Base, UUIDPrimaryKey, Timestamps):
         Index("ix_stations_org_status", "org_id", "status"),
         # Backs `version_ids=` on the library: the stations a list of versions belongs to.
         Index("ix_stations_current_version_id", "current_version_id"),
+        # The library page: platform, published, approved, one exam, oldest first (keyset on created_at, id).
+        Index(
+            "ix_stations_library",
+            "exam_id",
+            "created_at",
+            "id",
+            postgresql_where=text("owner_kind = 'platform' AND status = 'published' AND approved"),
+            postgresql_concurrently=True,
+        ),
     )
 
     owner_kind: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -131,7 +140,16 @@ class StationVersion(Base, UUIDPrimaryKey, Timestamps):
     """
 
     __tablename__ = "station_versions"
-    __table_args__ = (UniqueConstraint("station_id", "version", name="uq_station_versions_station_version"),)
+    __table_args__ = (
+        UniqueConstraint("station_id", "version", name="uq_station_versions_station_version"),
+        # The library's correlated min(published_at) per station.
+        Index(
+            "ix_station_versions_station_published",
+            "station_id",
+            "published_at",
+            postgresql_concurrently=True,
+        ),
+    )
 
     station_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("stations.id", ondelete="CASCADE"), nullable=False

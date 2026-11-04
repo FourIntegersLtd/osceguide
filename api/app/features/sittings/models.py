@@ -60,6 +60,11 @@ class Circuit(Base, UUIDPrimaryKey, Timestamps, Revisioned):
             "org_id",
             postgresql_where=text("started_at IS NOT NULL AND ended_at IS NULL"),
         ),
+        Index(
+            "ix_circuits_sitting_id",
+            "sitting_id",
+            postgresql_concurrently=True,
+        ),
     )
 
     sitting_id: Mapped[uuid.UUID] = mapped_column(
@@ -121,6 +126,11 @@ class CircuitTrainee(Base, UUIDPrimaryKey):
     __tablename__ = "circuit_trainees"
     __table_args__ = (
         UniqueConstraint("circuit_id", "trainee_id", name="uq_circuit_trainees_circuit_trainee"),
+        Index(
+            "ix_circuit_trainees_trainee_id",
+            "trainee_id",
+            postgresql_concurrently=True,
+        ),
     )
 
     circuit_id: Mapped[uuid.UUID] = mapped_column(
@@ -147,6 +157,12 @@ class Slot(Base, UUIDPrimaryKey, Timestamps):
         UniqueConstraint("circuit_id", "slot_index", name="uq_slots_circuit_index"),
         Index("ix_slots_org_status", "org_id", "status"),
         Index("ix_slots_trainee", "trainee_id"),
+        Index(
+            "ix_slots_org_circuit",
+            "org_id",
+            "circuit_id",
+            postgresql_concurrently=True,
+        ),
     )
 
     circuit_id: Mapped[uuid.UUID] = mapped_column(

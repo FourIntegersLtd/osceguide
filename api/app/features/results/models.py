@@ -50,6 +50,13 @@ class CandidateResultRevision(Base, UUIDPrimaryKey):
             name="ck_candidate_result_revisions_releaser",
         ),
         Index("ix_candidate_result_revisions_lookup", "org_id", "sitting_id", "trainee_id"),
+        Index(
+            "ix_candidate_result_revisions_org_released",
+            "org_id",
+            "sitting_id",
+            postgresql_where=text("released_at IS NOT NULL"),
+            postgresql_concurrently=True,
+        ),
     )
 
     org_id: Mapped[uuid.UUID] = mapped_column(

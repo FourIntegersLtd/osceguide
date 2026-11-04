@@ -33,6 +33,11 @@ class Entitlement(Base, UUIDPrimaryKey, Timestamps):
             "exam_id",
             postgresql_where=text("revoked_at IS NULL"),
         ),
+        Index(
+            "ix_entitlements_user_id",
+            "user_id",
+            postgresql_concurrently=True,
+        ),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
