@@ -196,8 +196,9 @@ same change as the replicas or the cap.
 
 `terminationGracePeriodSeconds: 900` means an evicted pod keeps serving its
 consultations until they end. With one worker node (since 2026-10-24) and one pod
-per node, `maxUnavailable: 1` lets the old pod leave before its replacement lands,
-so a rollout has a gap for new sessions but never cuts a running one. The worker's
+per node, `maxSurge: 1, maxUnavailable: 0` starts the replacement beside the old pod (the node
+briefly runs two, so keep headroom for one extra pod of each worker), so a rollout
+drops no seats and never cuts a running one. The worker's
 own `drain_timeout` (840s, `LIVEKIT_*_DRAIN_TIMEOUT`) must stay under the grace
 period or the kubelet SIGKILLs mid-session. The longest station
 is 12 min (`osce_assessment/prompts/consultation_pacing.py`), so a pod with a session

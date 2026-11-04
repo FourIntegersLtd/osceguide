@@ -6,14 +6,18 @@ spec:
   replicas: 1
   # Must stay above terminationGracePeriodSeconds plus pod start, or a drain fails the rollout.
   progressDeadlineSeconds: 1200
-  # One worker node since 2026-10-24 (LiveKit Cloud carries the main load), and
-  # one pod per node below, so the old pod must leave before its replacement can
-  # land. The old pod still drains its consultations first (terminationGracePeriod).
+  # Zero-drop rollout: the new pod starts beside the old one and the old pod
+  # leaves only once the new one is Ready, so a rollout never removes a seat.
+  # The old pod still drains its consultations first (terminationGracePeriod).
+  # NODE HEADROOM: for the overlap a node runs two pods of this Deployment
+  # (topologySpreadConstraints maxSkew 1 allows it). Keep the node's spare
+  # CPU/memory above one pod's requests, or the surge pod stays Pending and the
+  # rollout stalls (old pods keep serving; nothing is dropped).
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxUnavailable: 1
-      maxSurge: 0
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: assessment-worker
