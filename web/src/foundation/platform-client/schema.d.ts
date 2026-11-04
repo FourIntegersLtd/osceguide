@@ -4228,6 +4228,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Results Index
+         * @description Every sitting with candidates by decision stage, newest first: where results work is waiting.
+         */
+        get: operations["dashboard_read_results_index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/roster/resolve": {
         parameters: {
             query?: never;
@@ -4726,6 +4746,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/result-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Result Preview */
+        get: operations["results_read_result_preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/result.pdf": {
         parameters: {
             query?: never;
@@ -4754,6 +4791,23 @@ export interface paths {
         put?: never;
         /** Add Circuit */
         post: operations["sittings_add_circuit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/circuits/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Exam Circuits */
+        post: operations["sittings_add_exam_circuits"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8864,6 +8918,16 @@ export interface components {
             template_version_id?: string | null;
         };
         /**
+         * BreakLength
+         * @description A break whose length differs from the circuit's default, named by the station it follows.
+         */
+        BreakLength: {
+            /** After Station */
+            after_station: number;
+            /** Minutes */
+            minutes: number;
+        };
+        /**
          * BulkCreateMemberships
          * @description A team at once, in one request. Capped so one request cannot invite a whole
          *     hospital by accident.
@@ -9351,6 +9415,13 @@ export interface components {
             /** Sitting Name */
             sitting_name: string;
         };
+        /** ConsoleBreakLength */
+        ConsoleBreakLength: {
+            /** After Station */
+            after_station: number;
+            /** Minutes */
+            minutes: number;
+        };
         /** ConsoleCircuit */
         ConsoleCircuit: {
             /** Active Slot Id */
@@ -9503,6 +9574,8 @@ export interface components {
         };
         /** ConsoleTiming */
         ConsoleTiming: {
+            /** Break Lengths */
+            break_lengths?: components["schemas"]["ConsoleBreakLength"][];
             /** Break Minutes */
             break_minutes: number;
             /** Breaks */
@@ -9651,6 +9724,24 @@ export interface components {
              * @default 3
              */
             station_attempt_limit: number;
+        };
+        /**
+         * CreateExamCircuits
+         * @description One exam circuit per candidate, all with the same stations, lead and timing.
+         */
+        CreateExamCircuits: {
+            /** Candidate User Ids */
+            candidate_user_ids: string[];
+            /**
+             * Name Prefix
+             * @default Exam
+             */
+            name_prefix: string;
+            /** Station Version Ids */
+            station_version_ids: string[];
+            /** Supervisor User Id */
+            supervisor_user_id?: string | null;
+            timing?: components["schemas"]["TimingIn"] | null;
         };
         /** CreateGroup */
         CreateGroup: {
@@ -14072,6 +14163,48 @@ export interface components {
             total: number | null;
         };
         /**
+         * ResultsIndex
+         * @description `truncated` is true when older sittings than these rows exist and were left out.
+         */
+        ResultsIndex: {
+            /** Rows */
+            rows?: components["schemas"]["ResultsIndexRow"][];
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
+        };
+        /**
+         * ResultsIndexRow
+         * @description One sitting's decision progress. `not_decided` is candidates with no decision yet.
+         */
+        ResultsIndexRow: {
+            /** Candidates */
+            candidates: number;
+            /** Draft */
+            draft: number;
+            /** Mode */
+            mode: string;
+            /** Name */
+            name: string;
+            /** Not Decided */
+            not_decided: number;
+            /** Released */
+            released: number;
+            /** Scheduled For */
+            scheduled_for: string | null;
+            /** Signed Off */
+            signed_off: number;
+            /**
+             * Sitting Id
+             * Format: uuid
+             */
+            sitting_id: string;
+            /** Status */
+            status: string;
+        };
+        /**
          * RevenueByPlanRow
          * @description One plan's contribution to a partner's acquired revenue.
          *
@@ -15594,6 +15727,8 @@ export interface components {
             template_version_id?: string | null;
             /** Title */
             title: string;
+            /** Used By Count */
+            used_by_count?: number | null;
             /** Version */
             version: number;
         };
@@ -15939,6 +16074,8 @@ export interface components {
         };
         /** TimingIn */
         TimingIn: {
+            /** Break Lengths */
+            break_lengths?: components["schemas"]["BreakLength"][];
             /** Break Minutes */
             break_minutes?: number | null;
             /** Breaks */
@@ -15950,6 +16087,8 @@ export interface components {
         };
         /** TimingRead */
         TimingRead: {
+            /** Break Lengths */
+            break_lengths?: components["schemas"]["BreakLength"][];
             /** Break Minutes */
             break_minutes: number;
             /** Breaks */
@@ -30679,6 +30818,54 @@ export interface operations {
             };
         };
     };
+    dashboard_read_results_index: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultsIndex"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     roster_resolve_roster: {
         parameters: {
             query?: never;
@@ -33095,6 +33282,65 @@ export interface operations {
             };
         };
     };
+    results_read_result_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sitting_id: string;
+                trainee_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraineeResultRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sitting_not_found, trainee_not_found, result_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     results_read_result_pdf: {
         parameters: {
             query?: never;
@@ -33206,6 +33452,77 @@ export interface operations {
                 };
             };
             /** @description sitting_locked, lead_cannot_run, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster, programme_not_active */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sittings_add_exam_circuits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sitting_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateExamCircuits"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CircuitRead"][];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sitting_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sitting_locked, lead_cannot_run, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster, programme_not_active, not_permitted_in_mode */
             409: {
                 headers: {
                     [name: string]: unknown;

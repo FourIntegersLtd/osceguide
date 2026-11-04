@@ -10,6 +10,11 @@ export function usedByLabel(count: number): string {
   return `Used ${count} time${count === 1 ? "" : "s"}: by circuits, attempts, peer sessions and practice sets`;
 }
 
+/** The short form for a list cell. */
+export function usedByCell(count: number | null | undefined): string {
+  return count ? `Used by ${count}` : "Not used";
+}
+
 /**
  * What already names this version, said before somebody archives or deletes it.
  *

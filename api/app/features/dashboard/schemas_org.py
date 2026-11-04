@@ -131,11 +131,17 @@ class ConsoleSlot(BaseModel):
     phase_ends_at: datetime | None = None
 
 
+class ConsoleBreakLength(BaseModel):
+    after_station: int
+    minutes: int
+
+
 class ConsoleTiming(BaseModel):
     reading_minutes: int
     simulation_minutes: int
     break_minutes: int
     breaks: list[int] = Field(default_factory=list)
+    break_lengths: list[ConsoleBreakLength] = Field(default_factory=list)
 
 
 class ConsoleCircuit(BaseModel):
@@ -220,3 +226,25 @@ class CohortSummary(BaseModel):
     sitting_name: str
     cohort_size: int
     candidates: list[CohortCandidate] = Field(default_factory=list)
+
+
+class ResultsIndexRow(BaseModel):
+    """One sitting's decision progress. `not_decided` is candidates with no decision yet."""
+
+    sitting_id: uuid.UUID
+    name: str
+    mode: str
+    status: str
+    scheduled_for: datetime | None
+    candidates: int
+    not_decided: int
+    draft: int
+    signed_off: int
+    released: int
+
+
+class ResultsIndex(BaseModel):
+    """`truncated` is true when older sittings than these rows exist and were left out."""
+
+    rows: list[ResultsIndexRow] = Field(default_factory=list)
+    truncated: bool = False

@@ -11,6 +11,7 @@ import {
   AuthoringRowActions,
 } from "@/capabilities/authoring/parts/AuthoringIconAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
+import { usedByCell } from "@/capabilities/authoring/sections/StationUsedBy";
 import { cn } from "@/foundation/ui/cn";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 
@@ -93,6 +94,14 @@ export function StationsTable({
             <StatusBadge status={station.status} />
             <ApprovalPill station={station} />
           </div>
+        ),
+      },
+      {
+        header: "Used by",
+        key: "used_by_count" as keyof Station,
+        priority: "secondary" as const,
+        render: (station: Station) => (
+          <span className={cn(b2cTableCellText, "text-ink-subtle")}>{usedByCell(station.used_by_count)}</span>
         ),
       },
       {

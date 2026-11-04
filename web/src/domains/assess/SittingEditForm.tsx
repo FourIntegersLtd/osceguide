@@ -5,7 +5,7 @@ import { Alert, AsyncBoundary, Input } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { listProgrammes, updateSitting, type Sitting, type SittingMode } from "@/domains/assess/api";
-import { listCohorts } from "@/domains/assess/roster/api";
+import { readAllCohorts } from "@/domains/assess/roster/api";
 import { CohortField, ModeField, ProgrammeField, ScheduledForField } from "@/domains/assess/SittingFields";
 import {
   fieldDateTime,
@@ -49,7 +49,7 @@ export function SittingEditForm({
   const choices = useAsync(
     async (signal) => ({
       programmes: (await listProgrammes(orgSlug, signal)).items,
-      cohorts: (await listCohorts(orgSlug, signal)).items,
+      cohorts: await readAllCohorts(orgSlug, signal),
     }),
     [orgSlug],
   );

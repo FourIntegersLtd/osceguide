@@ -30,8 +30,8 @@ from app.features.sittings import (
     service_notify,
 )
 from app.features.sittings.models import Circuit, Sitting, Slot
-from app.features.sittings.reads import circuit_read, sitting_read, timing_json
-from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
+from app.features.sittings.reads import circuit_read, sitting_read, timing_input, timing_json
+from app.features.sittings.schemas import CircuitRead, CreateExamCircuits, SittingRead, TimingIn
 from app.features.tenancy import service as tenancy
 
 # One place mapping a domain refusal to its API code — the running rules
@@ -169,10 +169,66 @@ async def add_circuit(
     supervisor_user_id: uuid.UUID | None,
     timing: TimingIn,
 ) -> CircuitRead:
-    """Build a new circuit inside a sitting: check the roster, build its slots, write it."""
+    """Build a new circuit inside a sitting: check the sitting, then build and write the circuit."""
+    sitting = await _open_sitting(session, org_id, sitting_id)
+    return await _create_circuit(
+        session,
+        org_id,
+        sitting,
+        name=name,
+        trainee_ids=trainee_ids,
+        station_version_ids=station_version_ids,
+        supervisor_user_id=supervisor_user_id,
+        timing=timing,
+    )
+
+
+async def add_exam_circuits(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, body: CreateExamCircuits
+) -> list[CircuitRead]:
+    """One exam circuit per candidate, same stations, lead and timing; the request's transaction
+    makes it all or none."""
+    sitting = await _open_sitting(session, org_id, sitting_id)
+    if domain.Mode(sitting.mode) is not domain.Mode.EXAM:
+        raise errors.NotPermittedInModeError("Separate circuits per candidate are for exam sittings.")
+    await roster.ensure_rosterable(session, org_id, body.candidate_user_ids)
+    names = await roster.names_for_users(session, org_id, body.candidate_user_ids)
+    return [
+        await _create_circuit(
+            session,
+            org_id,
+            sitting,
+            # The column holds 200 characters; a long prefix plus name is cut to fit.
+            name=f"{body.name_prefix} – {names[candidate]}"[:200],
+            trainee_ids=[candidate],
+            station_version_ids=body.station_version_ids,
+            supervisor_user_id=body.supervisor_user_id,
+            timing=body.timing or TimingIn(),
+        )
+        for candidate in body.candidate_user_ids
+    ]
+
+
+async def _open_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> Sitting:
+    """The sitting, if it exists here, is not locked and its programme is active."""
     sitting = await _require_sitting(session, org_id, sitting_id)
     await ensure_sitting_open(session, org_id, sitting)
     await ensure_sitting_programme_active(session, org_id, sitting)
+    return sitting
+
+
+async def _create_circuit(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    sitting: Sitting,
+    *,
+    name: str,
+    trainee_ids: list[uuid.UUID],
+    station_version_ids: list[uuid.UUID],
+    supervisor_user_id: uuid.UUID | None,
+    timing: TimingIn,
+) -> CircuitRead:
+    """Check the roster, build the slots, write the circuit and tell the people on it."""
     mode = domain.Mode(sitting.mode)
     # R3: a revoked trainee is not scheduled into an examination.
     await roster.ensure_rosterable(session, org_id, trainee_ids)
@@ -188,12 +244,7 @@ async def add_circuit(
         raise_mapped(exc, _REFUSALS)
 
     resolved_timing = domain.normalise_timing(
-        {
-            "reading_minutes": timing.reading_minutes,
-            "simulation_minutes": timing.simulation_minutes,
-            "break_minutes": timing.break_minutes,
-            "breaks": [{"after_station": after_station} for after_station in timing.breaks],
-        },
+        timing_input(timing),
         mode=mode,
         station_count=len(station_version_ids),
     )
@@ -201,7 +252,7 @@ async def add_circuit(
     circuit = await repository.create_circuit(
         session,
         org_id,
-        sitting_id=sitting_id,
+        sitting_id=sitting.id,
         name=name,
         supervisor_user_id=supervisor_user_id,
         timing=timing_json(resolved_timing),

@@ -291,6 +291,17 @@ async def trainees_by_user_id(
     return {trainee.user_id: _trainee_read(trainee) for trainee in trainees if trainee.user_id is not None}
 
 
+async def names_for_users(
+    session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """The name to show for each rostered user id: first and last name, else the email."""
+    known = await trainees_by_user_id(session, org_id, user_ids)
+    return {
+        user_id: _display_name(trainee.first_name, trainee.last_name, trainee.email)
+        for user_id, trainee in known.items()
+    }
+
+
 async def claim_roster_entries(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
     """Connect a new account to the roster entries already waiting for it, by email."""
     for trainee in await repository.trainees_by_email_everywhere(session, email):

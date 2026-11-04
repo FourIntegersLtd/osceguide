@@ -22,7 +22,7 @@ const org = (kind: OrgWorkspace["kind"], slug = "kings"): OrgWorkspace => ({
 
 /** Nav keys and screen names are the same vocabulary, bar two spellings. */
 const screenFor = (navKey: string) =>
-  ({ overview: "dashboard", orgs: "organizations" })[navKey] ?? navKey;
+  ({ overview: "dashboard", orgs: "organizations", results: "resultsIndex" })[navKey] ?? navKey;
 
 describe("surface registry", () => {
   it("declares a manifest for every arm", () => {
@@ -315,6 +315,7 @@ describe("surface registry", () => {
     assert.deepEqual(keys(admin), [
       "dashboard",
       "sittings",
+      "results",
       "live",
       "trainees",
       "reporting",
@@ -323,7 +324,7 @@ describe("surface registry", () => {
       "stations",
       "programmes",
     ]);
-    assert.deepEqual(keys(supervisor), ["dashboard", "sittings", "live", "trainees", "reporting", "build"]);
+    assert.deepEqual(keys(supervisor), ["dashboard", "sittings", "results", "live", "trainees", "reporting", "build"]);
     // A trainee (no staff permission) sees only their own items: study and
     // community come from the mounted capabilities, and the staff ones stay out.
     const trainee = SURFACE_MANIFESTS.assess.nav({ workspace, can: () => false, href });

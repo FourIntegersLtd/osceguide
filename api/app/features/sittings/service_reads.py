@@ -151,10 +151,36 @@ async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:
     return await repository_reads.count_sittings(session, org_id)
 
 
-async def recent_sittings(session: AsyncSession, org_id: uuid.UUID, *, limit: int) -> list[SittingRef]:
-    """This organisation's most recently created sittings."""
-    sittings, _ = await repository.list_sittings(session, org_id, limit=limit, cursor=None)
-    return [_sitting_ref(sitting) for sitting in sittings]
+async def recent_sittings(
+    session: AsyncSession, org_id: uuid.UUID, *, limit: int, exclude_status: str | None = None
+) -> list[SittingRef]:
+    """This organisation's most recently created sittings, optionally leaving one status out."""
+    refs, _ = await recent_sittings_page(session, org_id, limit=limit, exclude_status=exclude_status)
+    return refs
+
+
+async def recent_sittings_page(
+    session: AsyncSession, org_id: uuid.UUID, *, limit: int, exclude_status: str | None = None
+) -> tuple[list[SittingRef], bool]:
+    """The most recent sittings, and whether older ones exist beyond `limit`."""
+    sittings, next_cursor = await repository.list_sittings(
+        session, org_id, limit=limit, cursor=None, exclude_status=exclude_status
+    )
+    return [_sitting_ref(sitting) for sitting in sittings], next_cursor is not None
+
+
+async def candidate_counts(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Distinct candidates rostered in each sitting, keyed by sitting id."""
+    return await repository_reads.candidate_counts_for_sittings(session, org_id, sitting_ids)
+
+
+async def candidate_user_ids(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, set[uuid.UUID]]:
+    """The accounts on each sitting's circuits now, keyed by sitting id."""
+    return await repository_reads.candidate_user_ids_for_sittings(session, org_id, sitting_ids)
 
 
 async def supervisor_circuits(

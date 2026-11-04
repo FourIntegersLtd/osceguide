@@ -101,6 +101,46 @@ async def test_an_exam_circuit_puts_one_candidate_through_every_station(
     assert body["timing"]["simulation_minutes"] == 12
 
 
+async def test_each_break_can_have_its_own_length(
+    client: AsyncClient, make_actor, db_session: AsyncSession, agents: FakeRoomAgents
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    template_version = await a_template_version(client, admin)
+    sitting = (
+        await client.post(
+            "/api/v1/orgs/kings/sittings",
+            json={"name": "Finals", "programme_id": str(template_version), "mode": "exam"},
+            headers=bearer(admin),
+        )
+    ).json()
+    stations = [await published_station(client, admin, "kings", f"Station {i}") for i in range(4)]
+    trainee = await a_trainee(db_session, "cand@example.com")
+    url = f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits"
+    base = {"name": "A", "trainee_ids": [str(trainee)], "station_version_ids": stations}
+
+    response = await client.post(
+        url,
+        json={
+            **base,
+            "timing": {
+                "break_minutes": 5,
+                "breaks": [2, 3],
+                "break_lengths": [{"after_station": 2, "minutes": 15}],
+            },
+        },
+        headers=bearer(admin),
+    )
+    assert response.status_code == 201, response.text
+    timing = response.json()["timing"]
+    assert timing["breaks"] == [2, 3]
+    assert timing["break_lengths"] == [{"after_station": 2, "minutes": 15}]
+
+    plain = await client.post(
+        url, json={**base, "name": "B", "timing": {"breaks": [2]}}, headers=bearer(admin)
+    )
+    assert plain.json()["timing"]["break_lengths"] == []
+
+
 async def test_an_exam_circuit_refuses_two_candidates(
     client: AsyncClient, make_actor, db_session: AsyncSession, agents: FakeRoomAgents
 ) -> None:  # type: ignore[no-untyped-def]

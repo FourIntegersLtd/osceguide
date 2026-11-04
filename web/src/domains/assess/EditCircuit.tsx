@@ -12,15 +12,23 @@ import {
   readSitting,
   sittingLibraryScope,
   rebuildCircuit,
+  breakLengthsFrom,
 } from "@/domains/assess/api";
-import { readConsole, type CircuitConsole } from "@/domains/assess/sessions/api";
+import {
+  readConsole,
+  type CircuitConsole,
+} from "@/domains/assess/sessions/api";
 import {
   CircuitBuilder,
   type CircuitDraft,
   type PickedStation,
 } from "@/domains/assess/CircuitBuilder";
 import { editLockNotice } from "@/domains/assess/sessions/support";
-import { DEFAULT_BREAK_MINUTES, DEFAULT_READING_MINUTES, DEFAULT_SIMULATION_MINUTES } from "@/domains/assess/timing";
+import {
+  DEFAULT_BREAK_MINUTES,
+  DEFAULT_READING_MINUTES,
+  DEFAULT_SIMULATION_MINUTES,
+} from "@/domains/assess/timing";
 
 /**
  * Change a circuit that has already been built.
@@ -42,7 +50,13 @@ import { DEFAULT_BREAK_MINUTES, DEFAULT_READING_MINUTES, DEFAULT_SIMULATION_MINU
  * screen's business — this is the screen the gap register meant when it wrote
  * "the screen that rebuilds a circuit is where this belongs".
  */
-export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId: string }) {
+export function EditCircuit({
+  orgSlug,
+  circuitId,
+}: {
+  orgSlug: string;
+  circuitId: string;
+}) {
   const router = useRouter();
   const { hrefFor } = useSurface();
   // The lock is read at load; a save can find it taken since (a 409), and then the page is stale.
@@ -80,7 +94,10 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
           return (
             <>
               <B2CPageHeader
-                back={{ href: hrefFor(`/circuits/${circuitId}`), label: "Circuit" }}
+                back={{
+                  href: hrefFor(`/circuits/${circuitId}`),
+                  label: "Circuit",
+                }}
                 title="Edit circuit"
                 subtitle={`${data.sitting.name} · ${data.sitting.mode}`}
               />
@@ -101,7 +118,9 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
                           While the circuit is locked
                         </h2>
                         <p className="mt-1 text-osce-body text-b2b-mid">
-                          Nothing on this form can be saved while the circuit is locked. While it is running, change its timings from the live circuit screen.
+                          Nothing on this form can be saved while the circuit is
+                          locked. While it is running, change its timings from
+                          the live circuit screen.
                         </p>
                       </section>
                     </>
@@ -116,9 +135,15 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
                 }
                 onSubmit={async (shape) => {
                   try {
-                    await rebuildCircuit(orgSlug, circuitId, shape, data.circuit.revision);
+                    await rebuildCircuit(
+                      orgSlug,
+                      circuitId,
+                      shape,
+                      data.circuit.revision,
+                    );
                   } catch (cause) {
-                    if (hasCode(cause, "circuit_locked", "stale_revision")) setLockedOnSave(true);
+                    if (hasCode(cause, "circuit_locked", "stale_revision"))
+                      setLockedOnSave(true);
                     throw cause;
                   }
                   router.push(hrefFor(`/circuits/${circuitId}`));
@@ -145,7 +170,12 @@ function draftFrom(console_: CircuitConsole): CircuitDraft {
   const stations = dedupe(
     slots.flatMap((slot): PickedStation[] =>
       slot.station
-        ? [{ version_id: slot.station.version_id, title: slot.station.title ?? "Station" }]
+        ? [
+            {
+              version_id: slot.station.version_id,
+              title: slot.station.title ?? "Station",
+            },
+          ]
         : [],
     ),
     (station) => station.version_id,
@@ -162,10 +192,15 @@ function draftFrom(console_: CircuitConsole): CircuitDraft {
     traineeIds: people.map((person) => person.user_id ?? ""),
     supervisorUserId: console_.circuit.supervisor?.user_id ?? null,
     timing: {
-      readingMinutes: console_.circuit.timing?.reading_minutes ?? DEFAULT_READING_MINUTES,
-      simulationMinutes: console_.circuit.timing?.simulation_minutes ?? DEFAULT_SIMULATION_MINUTES,
-      breakMinutes: console_.circuit.timing?.break_minutes ?? DEFAULT_BREAK_MINUTES,
+      readingMinutes:
+        console_.circuit.timing?.reading_minutes ?? DEFAULT_READING_MINUTES,
+      simulationMinutes:
+        console_.circuit.timing?.simulation_minutes ??
+        DEFAULT_SIMULATION_MINUTES,
+      breakMinutes:
+        console_.circuit.timing?.break_minutes ?? DEFAULT_BREAK_MINUTES,
       breaks: console_.circuit.timing?.breaks ?? [],
+      breakLengths: breakLengthsFrom(console_.circuit.timing?.break_lengths),
     },
   };
 }
@@ -184,7 +219,10 @@ function dedupe<T>(rows: T[], key: (row: T) => string): T[] {
 function StaleCircuitNotice({ onReload }: { onReload: () => void }) {
   return (
     <Alert tone="warning" title="This circuit changed while you were editing">
-      <p>Nothing was saved. Reload to see its current state; your changes on this form will be lost.</p>
+      <p>
+        Nothing was saved. Reload to see its current state; your changes on this
+        form will be lost.
+      </p>
       <div className="mt-2">
         <Button themeType="b2b" variant="secondary" onClick={onReload}>
           Reload the circuit

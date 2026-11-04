@@ -4,17 +4,15 @@ import { useCallback, useState } from "react";
 import {
   Alert,
   AsyncBoundary,
-  B2CGroupedRow,
-  B2CGroupedSection,
   B2CHero,
   B2CPageHeader,
-  Badge,
   Button,
   ButtonLink,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
-import { acknowledgeResult, downloadMyResult, readMyResult, stationScoreLabel } from "@/domains/assess/trainee/api";
+import { acknowledgeResult, downloadMyResult, readMyResult } from "@/domains/assess/trainee/api";
+import { ResultView } from "@/domains/assess/trainee/ResultView";
 import { useSurface } from "@/capabilities";
 
 /**
@@ -101,14 +99,9 @@ export function MyResult({ sittingId }: { sittingId: string }) {
           ) : (
             <>
               {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
-              <B2CHero
-                eyebrow="Outcome"
-                title={
-                  result.assessment_score != null
-                    ? `${outcomeLabel(result.assessment_outcome)}, ${result.assessment_score.toFixed(1)} / 100`
-                    : outcomeLabel(result.assessment_outcome)
-                }
-                action={
+              <ResultView
+                result={result}
+                actions={
                   result.acknowledged_at ? (
                     <p className="text-osce-meta text-b2c-text-muted">
                       You read this on {new Date(result.acknowledged_at).toLocaleDateString()}.
@@ -124,22 +117,7 @@ export function MyResult({ sittingId }: { sittingId: string }) {
                     </Button>
                   )
                 }
-              >
-                {result.rationale ? (
-                  <span className="whitespace-pre-wrap">{result.rationale}</span>
-                ) : null}
-              </B2CHero>
-              {result.stations && result.stations.length > 0 ? (
-                <B2CGroupedSection eyebrow="By station">
-                  {result.stations.map((station) => (
-                    <B2CGroupedRow
-                      key={station.slot_id}
-                      title={station.station_title ?? "Station"}
-                      trailing={<Badge tone="neutral">{stationScoreLabel(station)}</Badge>}
-                    />
-                  ))}
-                </B2CGroupedSection>
-              ) : null}
+              />
               <B2CHero
                 eyebrow="Keep practising"
                 title="Practise on your own"
@@ -164,15 +142,4 @@ export function MyResult({ sittingId }: { sittingId: string }) {
       </AsyncBoundary>
     </div>
   );
-}
-
-/**
- * The outcome in words.
- *
- * A result that exists with no outcome on it is possible — a decision can be
- * released as withheld — so "recorded" is said rather than an empty heading.
- */
-function outcomeLabel(outcome: string | null | undefined): string {
-  if (!outcome) return "Recorded";
-  return outcome.replace(/_/g, " ").replace(/^\w/, (letter) => letter.toUpperCase());
 }

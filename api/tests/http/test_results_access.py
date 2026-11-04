@@ -32,6 +32,7 @@ ADMIN_ROUTES = [
     ("POST", "candidates/{t}/decision/release", None),
     ("POST", "decisions/release", {"candidates": [{"trainee_id": str(NOBODY)}]}),
     ("GET", "candidates/{t}/result.pdf", None),
+    ("GET", "candidates/{t}/result-preview", None),
 ]
 
 

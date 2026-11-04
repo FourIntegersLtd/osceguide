@@ -1,5 +1,6 @@
 "use client";
 
+import type { AssessWords } from "@/domains/assess/vocabulary";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -28,6 +29,7 @@ import {
   sittingsScopeNote,
   type SittingFilters,
 } from "@/domains/assess/support";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 type ModeFilter = "all" | "exam" | "training";
 
@@ -47,9 +49,9 @@ export function nextUp(sittings: Sitting[], now: number = Date.now()): Sitting |
 
 const cell = `${b2cTableCellText} text-b2b-graphite`;
 
-const columnsFor = (hrefFor: (path: string) => string): Column<Sitting>[] => [
+const columnsFor = (hrefFor: (path: string) => string, words: AssessWords): Column<Sitting>[] => [
   {
-    header: "Sitting",
+    header: words.Sitting,
     key: "name",
     priority: "primary",
     render: (sitting: Sitting) => (
@@ -93,6 +95,7 @@ const columnsFor = (hrefFor: (path: string) => string): Column<Sitting>[] => [
 
 /** Scheduled examinations and training sessions. */
 export function Sittings({ orgSlug }: { orgSlug: string }) {
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const { session } = useSession();
   // Status, mode, name search, programme and date are the server's (R-31), so they reach every page.
@@ -104,7 +107,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
     [orgSlug, queryKey],
   );
   const programmes = useAsync((signal) => listProgrammes(orgSlug, signal), [orgSlug]);
-  const columns = useMemo(() => columnsFor(hrefFor), [hrefFor]);
+  const columns = useMemo(() => columnsFor(hrefFor, w), [hrefFor, w]);
   // The box answers every keystroke; the server is asked once typing pauses.
   const [typed, setTyped] = useState("");
   useEffect(() => {
@@ -119,11 +122,11 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
   return (
     <div className="flex flex-col gap-6">
       <B2CPageHeader
-        title="Sittings"
+        title={w.Sittings}
         action={
           can(session, "schedule_sittings") ? (
             <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
-              Schedule a sitting
+              {w.scheduleSitting}
             </ButtonLink>
           ) : null
         }
@@ -150,8 +153,8 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
         <PlatformFilterSearch
           value={typed}
           onChange={setTyped}
-          placeholder="Search by sitting name"
-          aria-label="Search sittings"
+          placeholder={`Search by ${w.sitting} name`}
+          aria-label={`Search ${w.sittings}`}
         />
       </div>
 
@@ -159,8 +162,8 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
         state={pages.state}
         isEmpty={(sittings) => sittings.length === 0 && !filtersActive(filters)}
         empty={{
-          title: "No sittings yet",
-          description: sittingsEmptyDescription(can(session, "schedule_sittings")),
+          title: `No ${w.sittings} yet`,
+          description: sittingsEmptyDescription(can(session, "schedule_sittings"), w),
         }}
       >
         {(sittings) => {
@@ -179,7 +182,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                       themeType="b2b"
                       variant="secondary"
                     >
-                      Open sitting
+                      Open {w.sitting}
                     </ButtonLink>
                   }
                 >
@@ -201,7 +204,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                 themeType="b2b"
                 columns={columns}
                 idField="id"
-                empty={{ title: "No sittings match." }}
+                empty={{ title: `No ${w.sittings} match.` }}
               />
             </div>
           );

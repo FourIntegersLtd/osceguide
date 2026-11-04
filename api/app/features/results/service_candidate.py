@@ -69,6 +69,32 @@ async def project_released_result(
     """
     if revision_row.workflow_state != "released":
         raise errors.NotReleased()
+    return await _project_result(session, revision_row, user_id)
+
+
+async def preview_result(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, trainee_id: uuid.UUID
+) -> TraineeResultRead:
+    """What this candidate would see of their latest decision, released or not.
+
+    For staff only (the route is institution-admin): the same narrow shape the
+    candidate gets, so moderation notes never appear. `released_at` is null until release.
+    """
+    if await sittings.sitting_ref(session, org_id, sitting_id) is None:
+        raise errors.SittingNotFound()
+    trainee = await roster.read_trainee(session, org_id, trainee_id)
+    revision_row = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
+    if revision_row is None:
+        raise errors.ResultNotFound()
+    return await _project_result(session, revision_row, trainee.user_id)
+
+
+async def _project_result(
+    session: AsyncSession,
+    revision_row: CandidateResultRevision,
+    user_id: uuid.UUID | None,
+) -> TraineeResultRead:
+    """Build the candidate-facing view of a revision with no release check: callers decide who may see it."""
     acknowledged_at = None
     assessment_score = None
     station_results: list[TraineeStationResult] = []

@@ -9,10 +9,9 @@
  *
  * Two deliberate divergences from the retiring client:
  *
- * - A break has **one** length for the whole circuit (`break_minutes`), not a
- *   length per break. `b2b` carried `B2BExamBreakRule.minutes` on every entry;
- *   the platform's `Timing` has a single `break_minutes`, and inventing a
- *   per-break duration here would be a field nothing reads.
+ * - `break_minutes` is the circuit's **default** break length; any single break
+ *   may carry its own (`break_lengths`, keyed by the station it follows). A break
+ *   with no length of its own takes the default.
  * - Breaks exist in **exam mode only**. `normalise_timing` builds none for any
  *   other mode, because a training circuit rotates one group through stations
  *   and never stops between them.
@@ -46,6 +45,9 @@ export const MAX_EXAM_STATIONS = 12;
 /** `domain.plan_slots`: an exam circuit is one candidate's sitting. */
 export const MAX_EXAM_CANDIDATES = 1;
 
+/** The bulk route makes one circuit per candidate, up to `CreateExamCircuits.candidate_user_ids`. */
+export const MAX_BULK_CANDIDATES = 200;
+
 /**
  * The station numbers a break may follow: 1-based, and never the last one.
  *
@@ -53,7 +55,10 @@ export const MAX_EXAM_CANDIDATES = 1;
  * it to go and with three it can only follow the first or the second.
  */
 export function breakPositions(stationCount: number): number[] {
-  return Array.from({ length: Math.max(stationCount - 1, 0) }, (_, index) => index + 1);
+  return Array.from(
+    { length: Math.max(stationCount - 1, 0) },
+    (_, index) => index + 1,
+  );
 }
 
 /**
@@ -64,7 +69,10 @@ export function breakPositions(stationCount: number): number[] {
  * being legal when a station came off the circuit — the case a form somebody
  * edits twice actually hits.
  */
-export function clampBreaks(breaks: readonly number[], stationCount: number): number[] {
+export function clampBreaks(
+  breaks: readonly number[],
+  stationCount: number,
+): number[] {
   if (stationCount <= 1) return [];
   const highest = stationCount - 1;
   const kept = new Set<number>();
@@ -82,6 +90,25 @@ export function clampBreakMinutes(minutes: number): number {
     BREAK_MINUTES_BOUNDS.max,
     Math.max(BREAK_MINUTES_BOUNDS.min, Math.round(minutes)),
   );
+}
+
+/**
+ * The break lengths worth sending: only breaks that are still chosen, each
+ * clamped into the server's bounds, and only those that differ from the default.
+ */
+export function pruneBreakLengths(
+  lengths: Readonly<Record<number, number>>,
+  breaks: readonly number[],
+  defaultMinutes: number,
+): Record<number, number> {
+  const kept: Record<number, number> = {};
+  for (const after of breaks) {
+    const own = lengths[after];
+    if (own === undefined) continue;
+    const minutes = clampBreakMinutes(own);
+    if (minutes !== defaultMinutes) kept[after] = minutes;
+  }
+  return kept;
 }
 
 /** Whether this circuit's mode is the one that has breaks at all. */

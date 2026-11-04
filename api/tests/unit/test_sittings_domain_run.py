@@ -120,6 +120,23 @@ def test_each_step_runs_for_its_own_minutes() -> None:
     )
 
 
+def test_a_break_with_its_own_minutes_counts_down_that_long() -> None:
+    timing = Timing(
+        reading_minutes=3,
+        simulation_minutes=10,
+        break_minutes=5,
+        breaks=(Break(after_station=2, minutes=15), Break(after_station=4)),
+    )
+    assert domain_run.step_window(domain_run.BreakStep(2), timing=timing, now=NOW) == (
+        NOW,
+        NOW + timedelta(minutes=15),
+    )
+    assert domain_run.step_window(domain_run.BreakStep(4), timing=timing, now=NOW) == (
+        NOW,
+        NOW + timedelta(minutes=5),
+    )
+
+
 def test_a_finished_circuit_has_no_window() -> None:
     with pytest.raises(domain.InvalidCircuit):
         domain_run.step_window(domain_run.Finished(), timing=PLAIN, now=NOW)

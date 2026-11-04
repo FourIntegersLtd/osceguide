@@ -149,7 +149,21 @@ async def list_stations(
         latest = versions[-1] if versions else None
         exam = await _exam_code(session, station)
         station_reads.append(await _station_read(session, station, exam, latest, full_content=full_content))
-    return station_reads, next_cursor
+    if not full_content:
+        return station_reads, next_cursor
+    # Once for the whole page, never per row. Staff only: a trainee reads no usage.
+    # Imported here: service_versions imports this module.
+    from app.features.stations import service_versions
+
+    used_by = await service_versions.used_by_counts(
+        session, [read.current_version_id for read in station_reads if read.current_version_id is not None]
+    )
+    return [
+        read.model_copy(update={"used_by_count": used_by[read.current_version_id]})
+        if read.current_version_id is not None
+        else read
+        for read in station_reads
+    ], next_cursor
 
 
 async def _exam_code(session: AsyncSession, station: Station) -> str:

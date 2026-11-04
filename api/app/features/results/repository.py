@@ -208,6 +208,38 @@ async def released_outcomes(session: AsyncSession, org_id: uuid.UUID) -> list[tu
     return [(row.sitting_id, row.assessment_outcome) for row in rows if row.released_at is not None]
 
 
+async def current_decision_states(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: Sequence[uuid.UUID]
+) -> list[tuple[uuid.UUID, uuid.UUID, str]]:
+    """(sitting, trainee, workflow state) of each candidate's current revision.
+
+    "Current" is the highest revision per (sitting, trainee), as in `released_outcomes`; a
+    candidate with no revision has no row. Decisions are append-only, so rows may name a
+    trainee no longer on any circuit: the caller decides who still counts.
+    """
+    stmt = (
+        select(
+            CandidateResultRevision.sitting_id,
+            CandidateResultRevision.trainee_id,
+            CandidateResultRevision.workflow_state,
+        )
+        .where(
+            CandidateResultRevision.org_id == org_id,
+            CandidateResultRevision.sitting_id.in_(list(sitting_ids)),
+        )
+        .distinct(CandidateResultRevision.sitting_id, CandidateResultRevision.trainee_id)
+        .order_by(
+            CandidateResultRevision.sitting_id,
+            CandidateResultRevision.trainee_id,
+            CandidateResultRevision.revision.desc(),
+        )
+    )
+    return [
+        (sitting_id, trainee_id, state)
+        for sitting_id, trainee_id, state in (await session.execute(stmt)).all()
+    ]
+
+
 async def scrub_text_for_trainees(session: AsyncSession, trainee_ids: Sequence[uuid.UUID]) -> int:
     """Replace the free text on these candidates' decisions with `[erased]`; the one update the
     append-only trigger permits (S-20). Returns how many revisions had text to scrub."""

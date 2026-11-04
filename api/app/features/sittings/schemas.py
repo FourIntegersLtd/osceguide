@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.schemas import AudienceSectionRead
 
@@ -30,12 +30,20 @@ class SlotRead(BaseModel):
     phase_ends_at: datetime | None = None
 
 
+class BreakLength(BaseModel):
+    """A break whose length differs from the circuit's default, named by the station it follows."""
+
+    after_station: int
+    minutes: int
+
+
 class TimingRead(BaseModel):
     reading_minutes: int
     simulation_minutes: int
     break_minutes: int
     # Which stations a break follows, 1-based, as an examiner writes it.
     breaks: list[int] = Field(default_factory=list)
+    break_lengths: list[BreakLength] = Field(default_factory=list)
 
 
 class CircuitRead(BaseModel):
@@ -120,6 +128,7 @@ class TimingIn(BaseModel):
     simulation_minutes: int | None = None
     break_minutes: int | None = None
     breaks: list[int] = Field(default_factory=list)
+    break_lengths: list[BreakLength] = Field(default_factory=list)
 
 
 class CreateCircuit(BaseModel):
@@ -128,6 +137,24 @@ class CreateCircuit(BaseModel):
     station_version_ids: list[uuid.UUID]
     supervisor_user_id: uuid.UUID | None = None
     timing: TimingIn = Field(default_factory=TimingIn)
+
+
+class CreateExamCircuits(BaseModel):
+    """One exam circuit per candidate, all with the same stations, lead and timing."""
+
+    name_prefix: str = Field("Exam", min_length=1, max_length=120)
+    candidate_user_ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
+    station_version_ids: list[uuid.UUID]
+    supervisor_user_id: uuid.UUID | None = None
+    timing: TimingIn | None = None
+
+    @field_validator("candidate_user_ids")
+    @classmethod
+    def _no_repeats(cls, ids: list[uuid.UUID]) -> list[uuid.UUID]:
+        """Refuse a candidate listed twice, so nobody gets two circuits by accident."""
+        if len(set(ids)) != len(ids):
+            raise ValueError("a candidate can be listed only once")
+        return ids
 
 
 class RebuildCircuit(BaseModel):

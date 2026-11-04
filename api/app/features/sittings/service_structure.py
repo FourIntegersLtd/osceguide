@@ -27,7 +27,7 @@ from app.features.sittings import (
 )
 from app.features.sittings.models import Circuit, Slot
 from app.features.sittings.reads import state as _state
-from app.features.sittings.reads import timing_json
+from app.features.sittings.reads import timing_input, timing_json
 from app.features.sittings.schemas import CircuitRead, TimingIn
 from app.features.sittings.service import (
     _REFUSALS,
@@ -208,12 +208,7 @@ async def rebuild_circuit(
     if timing is not None:
         values["timing"] = timing_json(
             domain.normalise_timing(
-                {
-                    "reading_minutes": timing.reading_minutes,
-                    "simulation_minutes": timing.simulation_minutes,
-                    "break_minutes": timing.break_minutes,
-                    "breaks": [{"after_station": after_station} for after_station in timing.breaks],
-                },
+                timing_input(timing),
                 mode=mode,
                 station_count=len(station_version_ids),
             )

@@ -30,9 +30,11 @@ import {
 } from "@/domains/assess/sittingSteps";
 import { sittingModeLabel, sittingRunning, sittingStatusLabel } from "@/domains/assess/support";
 import { formatShortDateTime } from "@/foundation/format";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /** One sitting and its circuits, with the way into each console. */
 export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sittingId: string }) {
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const { session } = useSession();
   const userId = session?.user.id ?? null;
@@ -75,7 +77,7 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
           return (
           <>
             <B2CPageHeader
-              back={{ href: hrefFor("/sittings"), label: "Sittings" }}
+              back={{ href: hrefFor("/sittings"), label: w.Sittings }}
               eyebrow={sittingModeLabel(sitting.mode)}
               title={sitting.name}
               subtitle={
@@ -151,7 +153,7 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                       title={circuit.name}
                       meta={[
                         circuitState(circuit),
-                        `${circuit.trainee_count} ${circuit.trainee_count === 1 ? "trainee" : "trainees"}`,
+                        `${circuit.trainee_count} ${circuit.trainee_count === 1 ? w.trainee : w.trainees}`,
                         circuit.supervisor_user_id
                           ? `Led by ${circuit.supervisor_name ?? "another supervisor"}`
                           : "No supervisor assigned",
