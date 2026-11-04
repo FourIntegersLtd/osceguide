@@ -10,14 +10,15 @@ import {
   type StationLibraryScope,
 } from "@/capabilities/stations";
 import type { CircuitShape } from "@/domains/assess/api";
-import { circuitLeads, moveItem } from "@/domains/assess/support";
-import { TraineePicker, type TraineeRow } from "@/domains/assess/TraineePicker";
+import { circuitLeads, isBulkExam, moveItem } from "@/domains/assess/support";
+import { TraineePicker, type PickerSet, type TraineeRow } from "@/domains/assess/TraineePicker";
 import { BreaksPanel, DurationFields } from "@/domains/assess/TimingFields";
 import {
   DEFAULT_BREAK_MINUTES,
   DEFAULT_READING_MINUTES,
   DEFAULT_SIMULATION_MINUTES,
   clampReadingMinutes,
+  MAX_BULK_CANDIDATES,
   MAX_EXAM_CANDIDATES,
   MAX_EXAM_STATIONS,
   clampBreakMinutes,
@@ -77,6 +78,9 @@ export function CircuitBuilder({
   above,
   disabled = false,
   scope,
+  allowManyCandidates = false,
+  groups,
+  cohorts,
 }: {
   mode: string;
   trainees: TraineeRow[];
@@ -91,6 +95,13 @@ export function CircuitBuilder({
   disabled?: boolean;
   /** Whose stations the picker offers, and for which exam: the sitting's programme's. */
   scope: StationLibraryScope;
+  /**
+   * New exam circuits: several candidates make one circuit each. An edit keeps
+   * the one-candidate cap because it rebuilds a single circuit.
+   */
+  allowManyCandidates?: boolean;
+  groups?: PickerSet[];
+  cohorts?: PickerSet[];
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [stations, setStations] = useState<PickedStation[]>(
@@ -120,7 +131,11 @@ export function CircuitBuilder({
   // stations. Offering the control where the server discards the answer is how
   // a save starts to look ignored.
   const isExam = modeSupportsBreaks(mode);
-  const candidatesFull = isExam && picked.size >= MAX_EXAM_CANDIDATES;
+  const candidateCap = allowManyCandidates ? MAX_BULK_CANDIDATES : MAX_EXAM_CANDIDATES;
+  const candidatesFull = isExam && picked.size >= candidateCap;
+  // The caller sends several candidates to the bulk route; the name is then a prefix.
+  const bulk = allowManyCandidates && isBulkExam(isExam, picked.size);
+  const tooManyCandidates = isExam && picked.size > candidateCap;
   const tooManyStations = isExam && stations.length > MAX_EXAM_STATIONS;
 
   const submit = useCallback(async () => {
@@ -128,7 +143,7 @@ export function CircuitBuilder({
     setError(null);
     try {
       await onSubmit({
-        name: name.trim() || "Circuit",
+        name: name.trim() || (bulk ? "Exam" : "Circuit"),
         stationVersionIds: stations.map((station) => station.version_id),
         // `trainee_ids` on the wire means *user* ids: a slot names a user, and
         // an organisation may examine somebody it has not rostered. A trainee
@@ -161,13 +176,21 @@ export function CircuitBuilder({
     breakMinutes,
     breaks,
     isExam,
+    bulk,
     onSubmit,
   ]);
+
+  const submitText = bulk ? `Create ${picked.size} circuits` : submitLabel;
 
   return (
     <div className="flex flex-col gap-5">
       {above}
       {error && <Alert tone="danger">{assessErrorMessage(error)}</Alert>}
+      {tooManyCandidates && (
+        <Alert tone="warning">
+          An exam run takes at most {candidateCap} candidates at a time. Deselect {picked.size - candidateCap}.
+        </Alert>
+      )}
       {tooManyStations && (
         <Alert tone="warning">
           An exam circuit takes at most {MAX_EXAM_STATIONS} stations.
@@ -177,10 +200,10 @@ export function CircuitBuilder({
       <Panel title="Details">
         <div className="flex max-w-lg flex-col gap-3">
           <Input
-            label="Name"
+            label={bulk ? "Name prefix" : "Name"}
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="Morning circuit"
+            placeholder={bulk ? "Exam" : "Morning circuit"}
           />
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-ink">Lead</span>
@@ -222,6 +245,8 @@ export function CircuitBuilder({
         setPicked={setPicked}
         isExam={isExam}
         candidatesFull={candidatesFull}
+        groups={groups}
+        cohorts={cohorts}
       />
 
       <Panel title={`Stations (${stations.length})`}>
@@ -299,10 +324,11 @@ export function CircuitBuilder({
             busy ||
             stations.length === 0 ||
             picked.size === 0 ||
-            tooManyStations
+            tooManyStations ||
+            tooManyCandidates
           }
         >
-          {busy ? <Spinner label={submitLabel} className="text-current" /> : submitLabel}
+          {busy ? <Spinner label={submitText} className="text-current" /> : submitText}
         </Button>
       </div>
     </div>

@@ -46,6 +46,9 @@ export const MAX_EXAM_STATIONS = 12;
 /** `domain.plan_slots`: an exam circuit is one candidate's sitting. */
 export const MAX_EXAM_CANDIDATES = 1;
 
+/** The bulk route makes one circuit per candidate, up to `CreateExamCircuits.candidate_user_ids`. */
+export const MAX_BULK_CANDIDATES = 200;
+
 /**
  * The station numbers a break may follow: 1-based, and never the last one.
  *
