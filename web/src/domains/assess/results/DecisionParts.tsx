@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { HiOutlinePaperAirplane } from "react-icons/hi2";
-import { Alert, Badge, Button, ConfirmModal, Select } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, ConfirmModal, Modal, Select } from "@/foundation/ui";
+import { useAsync } from "@/foundation/hooks";
+import { ResultView } from "@/domains/assess/trainee/ResultView";
+import { readResultPreview } from "@/domains/assess/results/api";
 import { formatShortDateTime } from "@/foundation/format";
 import type { Decision } from "@/domains/assess/results/api";
 import {
@@ -58,6 +61,43 @@ export function ReleasedDecision({ decision }: { decision: Decision | null }) {
         </p>
       ) : null}
       {decision?.rationale ? <p className="text-osce-body text-b2b-graphite">{decision.rationale}</p> : null}
+    </div>
+  );
+}
+
+/** Shows staff what the candidate will see of this decision, released or not. Read only, never emails. */
+export function ResultPreviewButton({ orgSlug, sittingId, traineeId }: { orgSlug: string; sittingId: string; traineeId: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button themeType="b2b" variant="secondary" onClick={() => setOpen(true)}>
+        Preview what they&apos;ll see
+      </Button>
+      {open ? (
+        <Modal title="Result preview" onClose={() => setOpen(false)} width={{ mobile: "100%", desktop: "640px" }}>
+          <ResultPreview orgSlug={orgSlug} sittingId={sittingId} traineeId={traineeId} />
+        </Modal>
+      ) : null}
+    </>
+  );
+}
+
+function ResultPreview({ orgSlug, sittingId, traineeId }: { orgSlug: string; sittingId: string; traineeId: string }) {
+  const state = useAsync((signal) => readResultPreview(orgSlug, sittingId, traineeId, signal), [orgSlug, sittingId, traineeId]);
+  return (
+    <div className="space-y-4">
+      <AsyncBoundary state={state}>
+        {(result) => (
+          <>
+            <Alert tone="info">
+              {result.released_at
+                ? "Preview of the released result, as the candidate sees it."
+                : "Preview of the last saved version. The candidate cannot see this until it is released."}
+            </Alert>
+            <ResultView result={result} />
+          </>
+        )}
+      </AsyncBoundary>
     </div>
   );
 }

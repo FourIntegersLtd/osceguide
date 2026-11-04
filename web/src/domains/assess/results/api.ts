@@ -5,6 +5,7 @@ import {
   type components,
 } from "@/foundation/platform-client";
 import { orgPath } from "@/domains/assess/api";
+import type { TraineeResult } from "@/domains/assess/trainee/api";
 
 export type SittingReport = components["schemas"]["SittingReport"];
 // `absent` (R-42) is declared here until the generated types are regenerated.
@@ -259,6 +260,23 @@ export function readSlotReviews(
 ): Promise<SlotReviews> {
   return platformRequest<SlotReviews>(
     `${orgPath(slug)}/slots/${encodeURIComponent(slotId)}/reviews`,
+    { signal },
+  );
+}
+
+/**
+ * What the candidate will see of this decision, readable before it is released.
+ *
+ * `traineeId` is the roster id. Staff only; the candidate's own route still shows nothing until release.
+ */
+export function readResultPreview(
+  slug: string,
+  sittingId: string,
+  traineeId: string,
+  signal?: AbortSignal,
+): Promise<TraineeResult> {
+  return platformRequest<TraineeResult>(
+    `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/candidates/${encodeURIComponent(traineeId)}/result-preview`,
     { signal },
   );
 }
