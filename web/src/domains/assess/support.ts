@@ -223,3 +223,13 @@ export function toggleInSet<T>(set: ReadonlySet<T>, id: T): Set<T> {
   else next.add(id);
   return next;
 }
+
+/** A copy of `list` with the item at `index` swapped with its neighbour; unchanged if that is out of bounds. */
+export function moveItem<T>(list: readonly T[], index: number, offset: -1 | 1): T[] {
+  const copy = [...list];
+  const target = index + offset;
+  if (index < 0 || index >= copy.length || target < 0 || target >= copy.length) return copy;
+  const [item] = copy.splice(index, 1);
+  copy.splice(target, 0, item as T);
+  return copy;
+}

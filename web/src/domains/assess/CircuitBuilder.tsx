@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlineTrash } from "react-icons/hi2";
 import { Alert, Button, Input, Spinner, Panel } from "@/foundation/ui";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import {
@@ -9,7 +10,7 @@ import {
   type StationLibraryScope,
 } from "@/capabilities/stations";
 import type { CircuitShape } from "@/domains/assess/api";
-import { circuitLeads } from "@/domains/assess/support";
+import { circuitLeads, moveItem } from "@/domains/assess/support";
 import { TraineePicker, type TraineeRow } from "@/domains/assess/TraineePicker";
 import { BreaksPanel, DurationFields } from "@/domains/assess/TimingFields";
 import {
@@ -50,6 +51,9 @@ import {
  * would be a lie that nothing would catch.
  */
 export type PickedStation = { version_id: string; title: string };
+
+const stationButtonClass =
+  "rounded-control p-1.5 text-ink-subtle hover:bg-canvas hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent";
 
 export type StaffRow = { user_id: string; email?: string | null; role: string };
 
@@ -223,25 +227,47 @@ export function CircuitBuilder({
       <Panel title={`Stations (${stations.length})`}>
         <div className="flex flex-col gap-4">
           {stations.length > 0 && (
-            <ul className="flex flex-wrap gap-2">
-              {stations.map((station) => (
-                <li key={station.version_id}>
+            <ol className="flex flex-col gap-1.5">
+              {stations.map((station, index) => (
+                <li
+                  key={station.version_id}
+                  className="flex items-center gap-2 rounded-control border border-border px-3 py-1.5 text-sm text-ink"
+                >
+                  <span className="w-6 text-ink-muted">{index + 1}.</span>
+                  <span className="min-w-0 flex-1 truncate">{station.title}</span>
                   <button
                     type="button"
+                    className={stationButtonClass}
+                    aria-label={`Move ${station.title} up`}
+                    disabled={index === 0}
+                    onClick={() => setStations((current) => moveItem(current, index, -1))}
+                  >
+                    <HiOutlineArrowUp className="h-4 w-4" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={stationButtonClass}
+                    aria-label={`Move ${station.title} down`}
+                    disabled={index === stations.length - 1}
+                    onClick={() => setStations((current) => moveItem(current, index, 1))}
+                  >
+                    <HiOutlineArrowDown className="h-4 w-4" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={stationButtonClass}
+                    aria-label={`Remove ${station.title}`}
                     onClick={() =>
                       setStations((current) =>
-                        current.filter(
-                          (item) => item.version_id !== station.version_id,
-                        ),
+                        current.filter((item) => item.version_id !== station.version_id),
                       )
                     }
-                    className="rounded-full border border-border px-3 py-1 text-sm text-ink-muted hover:border-danger hover:text-danger"
                   >
-                    {station.title} ×
+                    <HiOutlineTrash className="h-4 w-4" aria-hidden />
                   </button>
                 </li>
               ))}
-            </ul>
+            </ol>
           )}
           <StationLibrary
             scope={scope}

@@ -3,6 +3,7 @@ import test from "node:test";
 import type { Programme, Sitting, SittingMode } from "@/domains/assess/api";
 import type { SittingFormValues } from "@/domains/assess/support";
 import {
+  moveItem,
   toggleInSet,
   circuitLeads,
   fieldDateTime,
@@ -235,4 +236,21 @@ test("only the filters that are set go to the server", () => {
     },
   );
   assert.deepEqual(sittingFilterQuery({ ...NO_SITTING_FILTERS, search: "   " }), {});
+});
+
+test("moveItem swaps an item with its neighbour above or below", () => {
+  assert.deepEqual(moveItem(["a", "b", "c"], 1, -1), ["b", "a", "c"]);
+  assert.deepEqual(moveItem(["a", "b", "c"], 1, 1), ["a", "c", "b"]);
+});
+
+test("moveItem leaves the order alone at either end", () => {
+  assert.deepEqual(moveItem(["a", "b", "c"], 0, -1), ["a", "b", "c"]);
+  assert.deepEqual(moveItem(["a", "b", "c"], 2, 1), ["a", "b", "c"]);
+});
+
+test("moveItem does not change its input", () => {
+  const input = ["a", "b", "c"];
+  const out = moveItem(input, 0, 1);
+  assert.deepEqual(input, ["a", "b", "c"]);
+  assert.notEqual(out, input);
 });
