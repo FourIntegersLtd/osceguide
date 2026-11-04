@@ -8,9 +8,11 @@ import { useSurface } from "@/capabilities";
 import { createSitting, listProgrammes, type Programme, type SittingMode } from "@/domains/assess/api";
 import { listCohorts, type Cohort } from "@/domains/assess/roster/api";
 import { CohortField, ModeField, ProgrammeField, ScheduledForField } from "@/domains/assess/SittingFields";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /** Schedule a sitting against a programme (exam + published rubric). */
 export function NewSitting({ orgSlug }: { orgSlug: string }) {
+  const w = useAssessWords();
   const router = useRouter();
   const { hrefFor } = useSurface();
 
@@ -25,9 +27,9 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
   return (
     <div className="flex flex-col gap-6">
       <B2CPageHeader
-        back={{ href: hrefFor("/sittings"), label: "Sittings" }}
-        title="Schedule a sitting"
-        subtitle="A training sitting rotates a group through stations; an exam sitting is one candidate, marked, signed off and released. Add circuits next."
+        back={{ href: hrefFor("/sittings"), label: w.Sittings }}
+        title={w.scheduleSitting}
+        subtitle={`A training ${w.sitting} rotates a group through stations; an exam ${w.sitting} is one ${w.trainee}, marked, signed off and released. Add circuits next.`}
       />
       <AsyncBoundary state={programmes}>
         {(loaded) => (
@@ -60,6 +62,7 @@ function Form({
   cancelHref: string;
   onCreated: (sittingId: string) => void;
 }) {
+  const w = useAssessWords();
   const activeProgrammes = useMemo(
     () => programmes.filter((programme) => programme.status === "active"),
     [programmes],
@@ -104,7 +107,7 @@ function Form({
         <p>
           {drafts.length > 0
             ? `${drafts.join(", ")} ${drafts.length === 1 ? "is" : "are"} still a draft. Activate it in Programmes, then come back here.`
-            : "Every sitting belongs to a programme, and that programme’s exam needs a published marking scheme. Add a programme and activate it, then come back here."}
+            : `Every ${w.sitting} belongs to a programme, and that programme’s exam needs a published marking scheme. Add a programme and activate it, then come back here.`}
         </p>
         <ButtonLink href={programmesHref} themeType="b2b" variant="secondary" className="mt-2">
           Go to programmes
@@ -143,7 +146,7 @@ function Form({
             Cancel
           </ButtonLink>
           <Button themeType="b2b" variant="commit" type="submit" disabled={busy || name.trim().length === 0 || !programmeId}>
-            {busy ? <Spinner label="Creating" className="text-current" /> : "Create sitting"}
+            {busy ? <Spinner label="Creating" className="text-current" /> : `Create ${w.sitting}`}
           </Button>
         </div>
       </form>

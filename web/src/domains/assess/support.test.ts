@@ -1,3 +1,4 @@
+import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Programme, Sitting, SittingMode } from "@/domains/assess/api";
@@ -194,8 +195,8 @@ test("the sittings list says when its filters cover only what has loaded", () =>
 });
 
 test("only somebody who can schedule is told to schedule", () => {
-  assert.equal(sittingsEmptyDescription(true), "Schedule your first one to get started.");
-  assert.equal(sittingsEmptyDescription(false), "An administrator schedules sittings; they will appear here.");
+  assert.equal(sittingsEmptyDescription(true, INSTITUTION_WORDS), "Schedule your first one to get started.");
+  assert.equal(sittingsEmptyDescription(false, INSTITUTION_WORDS), "An administrator schedules sittings; they will appear here.");
 });
 
 test("toggleInSet adds a missing id, removes a present one and leaves the original alone", () => {
@@ -235,4 +236,11 @@ test("only the filters that are set go to the server", () => {
     },
   );
   assert.deepEqual(sittingFilterQuery({ ...NO_SITTING_FILTERS, search: "   " }), {});
+});
+
+test("an employer workspace's empty list says assessments", () => {
+  assert.equal(
+    sittingsEmptyDescription(false, EMPLOYER_WORDS),
+    "An administrator schedules assessments; they will appear here.",
+  );
 });

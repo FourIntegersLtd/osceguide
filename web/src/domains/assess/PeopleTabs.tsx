@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { B2CSegmentedTabs } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { can, useSession } from "@/foundation/session";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 type PeopleTab = "trainees" | "team";
 
@@ -12,6 +13,7 @@ type PeopleTab = "trainees" | "team";
  * someone who may open both, so a supervisor sees the trainees and no tabs.
  */
 export function PeopleTabs({ active }: { active: PeopleTab }) {
+  const w = useAssessWords();
   const router = useRouter();
   const { hrefFor } = useSurface();
   const { session } = useSession();
@@ -19,12 +21,12 @@ export function PeopleTabs({ active }: { active: PeopleTab }) {
   return (
     <B2CSegmentedTabs<PeopleTab>
       items={[
-        { id: "trainees", label: "Trainees" },
+        { id: "trainees", label: w.Trainees },
         { id: "team", label: "Team" },
       ]}
       value={active}
       onChange={(id) => router.push(hrefFor(`/${id}`))}
-      aria-label="People"
+      aria-label={w.People}
     />
   );
 }

@@ -39,6 +39,7 @@ import {
   splitFinished,
   summaryLine,
 } from "@/domains/assess/trainee/support";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * What a rostered person sees: everything they are down to sit, pushed live.
@@ -86,6 +87,7 @@ function Overview({
   sittings: readonly MySitting[];
   slotId: string | null;
 }) {
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const live = liveSittings(sittings);
   const { current, past } = splitFinished(sortSittings(sittings));
@@ -115,21 +117,21 @@ function Overview({
       ) : null}
       <LiveTurnBanner sittings={live} />
 
-      <section aria-label="Your sittings">
+      <section aria-label={`Your ${w.sittings}`}>
         {current.length === 0 && past.length === 0 ? (
           <EmptyState
             title="You are not booked on anything yet"
-            description="When your organisation adds you to a sitting it appears here, and you are told when it opens."
+            description={`When your organisation adds you, your ${w.sittings} appear here, and you are told when one opens.`}
           />
         ) : (
-          <B2CGroupedSection eyebrow="Your sittings">
+          <B2CGroupedSection eyebrow={`Your ${w.sittings}`}>
             {current.map((sitting) => (
               <SittingRow key={`${sitting.id}-${sitting.circuit_id}`} sitting={sitting} />
             ))}
           </B2CGroupedSection>
         )}
         {past.length > 0 ? (
-          <B2CGroupedSection eyebrow="Past sittings">
+          <B2CGroupedSection eyebrow={`Past ${w.sittings}`}>
             {past.map((sitting) => (
               <SittingRow key={`${sitting.id}-${sitting.circuit_id}`} sitting={sitting} />
             ))}

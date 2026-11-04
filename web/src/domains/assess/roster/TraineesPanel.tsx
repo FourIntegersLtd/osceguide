@@ -46,6 +46,7 @@ import {
   traineeCountLabel,
   traineeStatus,
 } from "@/domains/assess/roster/support";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 type Pending = {
   kind: "revoke" | "restore" | "delete" | "anonymise";
@@ -89,6 +90,7 @@ export function TraineesPanel({
   canManage: boolean;
   onChanged: () => void;
 }) {
+  const w = useAssessWords();
   const [pending, setPending] = useState<Pending>(null);
   const [editing, setEditing] = useState<Trainee | null>(null);
   const [busy, setBusy] = useState(false);
@@ -397,7 +399,7 @@ export function TraineesPanel({
         leading={
           rows.length > 0 || query ? (
             <p className={b2bTokens.b2bEyebrow}>
-              {traineeCountLabel(rows.length)}
+              {traineeCountLabel(rows.length, w)}
               {pages.hasMore ? "+" : ""}
             </p>
           ) : null
@@ -409,8 +411,8 @@ export function TraineesPanel({
             setSearch(value);
             setSelected(new Set());
           }}
-          placeholder="Search trainees…"
-          aria-label="Search trainees"
+          placeholder={`Search ${w.trainees}…`}
+          aria-label={`Search ${w.trainees}`}
         />
         {canManage && awaiting.length > 0 ? (
           <Button
@@ -483,17 +485,17 @@ export function TraineesPanel({
 
       {pages.state.loading && !pages.state.data ? (
         <p className="text-osce-body text-b2c-text-secondary" role="status">
-          Loading trainees…
+          Loading {w.trainees}…
         </p>
       ) : rows.length === 0 ? (
         query ? (
           <p className="text-osce-body text-b2b-mid">
-            No trainees match &ldquo;{query}&rdquo;.
+            No {w.trainees} match &ldquo;{query}&rdquo;.
           </p>
         ) : (
           <EmptyState
-            title="No trainees yet"
-            description="Add trainees so you can put them on an exam or training circuit."
+            title={`No ${w.trainees} yet`}
+            description={`Add ${w.trainees} so you can put them on an exam or training circuit.`}
           />
         )
       ) : (

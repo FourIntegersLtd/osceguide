@@ -28,6 +28,7 @@ import { LiveNow } from "@/domains/assess/dashboard/LiveNow";
 import { SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
 import { homeCommits, nextSetupAction, setupSteps } from "@/domains/assess/dashboard/support";
 import { greetingFor } from "@/domains/assess/trainee/support";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * The institution's home screen.
@@ -65,6 +66,7 @@ function Body({
   admin: boolean;
   runs: boolean;
 }) {
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const { session } = useSession();
   const commits = homeCommits(data.setup, can(session, "schedule_sittings"), can(session, "author_content"));
@@ -80,7 +82,7 @@ function Body({
           commits === "header" ? (
             <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
               <LuPlus className="h-4 w-4" aria-hidden />
-              Schedule a sitting
+              {w.scheduleSitting}
             </ButtonLink>
           ) : null
         }
@@ -101,10 +103,10 @@ function Body({
         {runs ? <SupervisorCircuits orgSlug={orgSlug} sayWhenEmpty={!admin} /> : null}
 
         <B2CGroupedSection
-          eyebrow="Recent sittings"
+          eyebrow={`Recent ${w.sittings}`}
           action={
             <Link href={hrefFor("/sittings")} className={b2bTokens.b2bLink}>
-              All sittings
+              All {w.sittings}
             </Link>
           }
         >
@@ -169,15 +171,16 @@ function Setup({ data, commit }: { data: Data; commit: boolean }) {
 }
 
 function Counts({ data }: { data: Data }) {
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const counts = data.counts;
   const tiles = [
-    { label: "Trainees", value: counts.trainees, path: "/trainees" },
+    { label: w.Trainees, value: counts.trainees, path: "/trainees" },
     { label: "Staff", value: counts.staff, path: "/team" },
     // The backend counts this organisation's own stations, not the
     // platform catalogue it may also run, so it is named that way.
     { label: "Your stations", value: counts.stations, path: "/authoring" },
-    { label: "Sittings", value: counts.sittings, path: "/sittings" },
+    { label: w.Sittings, value: counts.sittings, path: "/sittings" },
   ];
 
   return (

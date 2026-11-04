@@ -1,4 +1,5 @@
 import type { Trainee } from "@/domains/assess/api";
+import type { AssessWords } from "@/domains/assess/vocabulary";
 import type { Cohort } from "@/domains/assess/roster/api";
 import { errorMessage } from "@/foundation/hooks/useAsync";
 import { hasCode } from "@/foundation/platform-client";
@@ -89,13 +90,14 @@ export function sortTrainees(trainees: Trainee[]): Trainee[] {
   });
 }
 
-export function traineeCountLabel(count: number): string {
-  return `${count} trainee${count === 1 ? "" : "s"}`;
+export function traineeCountLabel(count: number, words: AssessWords): string {
+  return `${count} ${count === 1 ? words.trainee : words.trainees}`;
 }
 
 /** The header subtitle, which changed with the tab in the old client. */
 export function sectionSubtitle(
   section: "trainees" | "add" | "groups" | "access",
+  words: AssessWords,
   counts: { trainees: number; groups: number },
 ): string {
   switch (section) {
@@ -103,14 +105,14 @@ export function sectionSubtitle(
       return "Everyone your organisation examines.";
     case "add":
       return counts.trainees === 0
-        ? "Add the people who will sit your exams or training sessions."
-        : "Add people one at a time, or import a spreadsheet.";
+        ? `Add the ${words.trainees} who will sit your exams or training sessions.`
+        : `Add ${words.trainees} one at a time, or import a spreadsheet.`;
     case "groups":
       return counts.groups === 0
-        ? "Sort trainees into groups like intakes or rotation teams."
+        ? `Sort ${words.trainees} into groups like intakes or rotation teams.`
         : "Cohorts are an intake; groups are who you put on a circuit.";
     case "access":
-      return "Give a trainee access to an exam they can practise between sittings.";
+      return `Give a ${words.trainee} access to an exam they can practise between ${words.sittings}.`;
   }
 }
 
@@ -160,10 +162,10 @@ export type RosterTabKey = "trainees" | "add" | "groups" | "access";
  * The roster's tabs. Exam access is the org admin's: its list and grants are closed to a
  * supervisor by the API, so the tab is not offered to one.
  */
-export function rosterTabs(canManage: boolean): { key: RosterTabKey; label: string }[] {
+export function rosterTabs(canManage: boolean, words: AssessWords): { key: RosterTabKey; label: string }[] {
   const tabs: { key: RosterTabKey; label: string }[] = [
     { key: "trainees", label: "Everyone" },
-    { key: "add", label: "Add people" },
+    { key: "add", label: words.addPeople },
     { key: "groups", label: "Groups" },
   ];
   return canManage ? [...tabs, { key: "access", label: "Exam access" }] : tabs;
