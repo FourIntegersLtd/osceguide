@@ -21,6 +21,7 @@ import {
   MAX_EXAM_STATIONS,
   clampBreakMinutes,
   clampBreaks,
+  pruneBreakLengths,
   modeSupportsBreaks,
 } from "@/domains/assess/timing";
 
@@ -108,6 +109,9 @@ export function CircuitBuilder({
   const [breaks, setBreaks] = useState<Set<number>>(
     () => new Set(initial?.timing.breaks ?? []),
   );
+  const [breakLengths, setBreakLengths] = useState<Record<number, number>>(
+    () => ({ ...initial?.timing.breakLengths }),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -120,6 +124,10 @@ export function CircuitBuilder({
   const tooManyStations = isExam && stations.length > MAX_EXAM_STATIONS;
 
   const submit = useCallback(async () => {
+    const chosenBreaks = isExam
+      ? clampBreaks([...breaks], stations.length)
+      : [];
+    const defaultBreak = clampBreakMinutes(breakMinutes);
     setBusy(true);
     setError(null);
     try {
@@ -137,8 +145,13 @@ export function CircuitBuilder({
           // Clamped here as well as on the server: the selection set can hold a
           // position that stopped existing when a station came off the circuit,
           // and a training circuit must not carry breaks at all.
-          breakMinutes: clampBreakMinutes(breakMinutes),
-          breaks: isExam ? clampBreaks([...breaks], stations.length) : [],
+          breakMinutes: defaultBreak,
+          breaks: chosenBreaks,
+          breakLengths: pruneBreakLengths(
+            breakLengths,
+            chosenBreaks,
+            defaultBreak,
+          ),
         },
       });
     } catch (cause) {
@@ -156,6 +169,7 @@ export function CircuitBuilder({
     simulation,
     breakMinutes,
     breaks,
+    breakLengths,
     isExam,
     onSubmit,
   ]);
@@ -209,6 +223,8 @@ export function CircuitBuilder({
           setBreakMinutes={setBreakMinutes}
           breaks={breaks}
           setBreaks={setBreaks}
+          breakLengths={breakLengths}
+          setBreakLengths={setBreakLengths}
         />
       ) : null}
 
@@ -276,7 +292,11 @@ export function CircuitBuilder({
             tooManyStations
           }
         >
-          {busy ? <Spinner label={submitLabel} className="text-current" /> : submitLabel}
+          {busy ? (
+            <Spinner label={submitLabel} className="text-current" />
+          ) : (
+            submitLabel
+          )}
         </Button>
       </div>
     </div>

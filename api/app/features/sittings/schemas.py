@@ -30,12 +30,20 @@ class SlotRead(BaseModel):
     phase_ends_at: datetime | None = None
 
 
+class BreakLength(BaseModel):
+    """A break whose length differs from the circuit's default, named by the station it follows."""
+
+    after_station: int
+    minutes: int
+
+
 class TimingRead(BaseModel):
     reading_minutes: int
     simulation_minutes: int
     break_minutes: int
     # Which stations a break follows, 1-based, as an examiner writes it.
     breaks: list[int] = Field(default_factory=list)
+    break_lengths: list[BreakLength] = Field(default_factory=list)
 
 
 class CircuitRead(BaseModel):
@@ -120,6 +128,7 @@ class TimingIn(BaseModel):
     simulation_minutes: int | None = None
     break_minutes: int | None = None
     breaks: list[int] = Field(default_factory=list)
+    break_lengths: list[BreakLength] = Field(default_factory=list)
 
 
 class CreateCircuit(BaseModel):

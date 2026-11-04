@@ -8881,6 +8881,16 @@ export interface components {
             template_version_id?: string | null;
         };
         /**
+         * BreakLength
+         * @description A break whose length differs from the circuit's default, named by the station it follows.
+         */
+        BreakLength: {
+            /** After Station */
+            after_station: number;
+            /** Minutes */
+            minutes: number;
+        };
+        /**
          * BulkCreateMemberships
          * @description A team at once, in one request. Capped so one request cannot invite a whole
          *     hospital by accident.
@@ -9368,6 +9378,13 @@ export interface components {
             /** Sitting Name */
             sitting_name: string;
         };
+        /** ConsoleBreakLength */
+        ConsoleBreakLength: {
+            /** After Station */
+            after_station: number;
+            /** Minutes */
+            minutes: number;
+        };
         /** ConsoleCircuit */
         ConsoleCircuit: {
             /** Active Slot Id */
@@ -9520,6 +9537,8 @@ export interface components {
         };
         /** ConsoleTiming */
         ConsoleTiming: {
+            /** Break Lengths */
+            break_lengths?: components["schemas"]["ConsoleBreakLength"][];
             /** Break Minutes */
             break_minutes: number;
             /** Breaks */
@@ -15974,6 +15993,8 @@ export interface components {
         };
         /** TimingIn */
         TimingIn: {
+            /** Break Lengths */
+            break_lengths?: components["schemas"]["BreakLength"][];
             /** Break Minutes */
             break_minutes?: number | null;
             /** Breaks */
@@ -15985,6 +16006,8 @@ export interface components {
         };
         /** TimingRead */
         TimingRead: {
+            /** Break Lengths */
+            break_lengths?: components["schemas"]["BreakLength"][];
             /** Break Minutes */
             break_minutes: number;
             /** Breaks */

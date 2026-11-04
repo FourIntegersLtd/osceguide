@@ -1432,6 +1432,25 @@
         "title": "Body_stations_upload_station_import",
         "type": "object"
       },
+      "BreakLength": {
+        "description": "A break whose length differs from the circuit's default, named by the station it follows.",
+        "properties": {
+          "after_station": {
+            "title": "After Station",
+            "type": "integer"
+          },
+          "minutes": {
+            "title": "Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "after_station",
+          "minutes"
+        ],
+        "title": "BreakLength",
+        "type": "object"
+      },
       "BulkCreateMemberships": {
         "description": "A team at once, in one request. Capped so one request cannot invite a whole\nhospital by accident.",
         "properties": {
@@ -2615,6 +2634,24 @@
         "title": "CohortSummary",
         "type": "object"
       },
+      "ConsoleBreakLength": {
+        "properties": {
+          "after_station": {
+            "title": "After Station",
+            "type": "integer"
+          },
+          "minutes": {
+            "title": "Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "after_station",
+          "minutes"
+        ],
+        "title": "ConsoleBreakLength",
+        "type": "object"
+      },
       "ConsoleCircuit": {
         "properties": {
           "active_slot_id": {
@@ -3121,6 +3158,13 @@
       },
       "ConsoleTiming": {
         "properties": {
+          "break_lengths": {
+            "items": {
+              "$ref": "#/components/schemas/ConsoleBreakLength"
+            },
+            "title": "Break Lengths",
+            "type": "array"
+          },
           "break_minutes": {
             "title": "Break Minutes",
             "type": "integer"
@@ -19673,6 +19717,13 @@
       },
       "TimingIn": {
         "properties": {
+          "break_lengths": {
+            "items": {
+              "$ref": "#/components/schemas/BreakLength"
+            },
+            "title": "Break Lengths",
+            "type": "array"
+          },
           "break_minutes": {
             "anyOf": [
               {
@@ -19719,6 +19770,13 @@
       },
       "TimingRead": {
         "properties": {
+          "break_lengths": {
+            "items": {
+              "$ref": "#/components/schemas/BreakLength"
+            },
+            "title": "Break Lengths",
+            "type": "array"
+          },
           "break_minutes": {
             "title": "Break Minutes",
             "type": "integer"

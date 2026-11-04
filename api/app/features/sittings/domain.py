@@ -96,6 +96,8 @@ class Break:
     """One scheduled rest, named by the station it follows (1-based, as an examiner writes it)."""
 
     after_station: int
+    # None means the circuit's default `break_minutes`.
+    minutes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -108,6 +110,13 @@ class Timing:
     # one down and the circuit had no way to know when it was over.
     break_minutes: int = DEFAULT_BREAK_MINUTES
     breaks: tuple[Break, ...] = ()
+
+    def minutes_after(self, station: int) -> int:
+        """How long the break after `station` lasts: its own length, else the default."""
+        for entry in self.breaks:
+            if entry.after_station == station and entry.minutes is not None:
+                return entry.minutes
+        return self.break_minutes
 
 
 def build_slots(
@@ -241,13 +250,14 @@ def normalise_timing(raw: Mapping[str, Any], *, mode: Mode = Mode.TRAINING, stat
     if mode is Mode.EXAM:
         # A break sits between stations, so it can only fall inside the circuit.
         highest = max(station_count - 1, 0)
-        seen: set[int] = set()
+        seen: dict[int, int | None] = {}
         for entry in raw.get("breaks") or []:
             raw_after = entry.get("after_station")
             after = _clamp(int(0 if raw_after is None else raw_after), (1, highest)) if highest else 0
             if after and after not in seen:
-                seen.add(after)
-        breaks = tuple(Break(after) for after in sorted(seen))
+                own = entry.get("minutes")
+                seen[after] = None if own is None else _clamp(int(own), BREAK_BOUNDS)
+        breaks = tuple(Break(after, seen[after]) for after in sorted(seen))
 
     return Timing(
         reading_minutes=reading,

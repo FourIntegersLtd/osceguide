@@ -310,6 +310,30 @@ async def test_a_break_falls_between_the_stations_that_asked_for_it(
     assert circuit.phase_ends_at == NOW + timedelta(minutes=18)
 
 
+async def test_a_break_with_its_own_length_runs_for_that_long(db_session: AsyncSession) -> None:
+    """The stored row (string keys) must reach the live clock, not just the screen."""
+    agents = FakeRoomAgents()
+    org_id, circuit_id = await a_circuit(
+        db_session,
+        stations=2,
+        timing={
+            "reading_minutes": 3,
+            "simulation_minutes": 10,
+            "break_minutes": 5,
+            "breaks": [1],
+            "break_lengths": {"1": 15},
+        },
+    )
+    await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
+    await _advance(db_session, org_id, circuit_id, agents, seq=1, at=NOW + timedelta(minutes=3))
+    await _advance(db_session, org_id, circuit_id, agents, seq=2, at=NOW + timedelta(minutes=13))
+
+    circuit = await repository.circuit_by_id(db_session, org_id, circuit_id)
+    assert circuit is not None
+    assert circuit.phase == "break"
+    assert circuit.phase_ends_at == NOW + timedelta(minutes=28)
+
+
 async def test_the_last_station_ends_the_circuit(db_session: AsyncSession) -> None:
     """Nobody has to remember to close it. That is the morning finishing itself."""
     agents = FakeRoomAgents()

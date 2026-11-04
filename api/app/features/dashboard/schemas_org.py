@@ -131,11 +131,17 @@ class ConsoleSlot(BaseModel):
     phase_ends_at: datetime | None = None
 
 
+class ConsoleBreakLength(BaseModel):
+    after_station: int
+    minutes: int
+
+
 class ConsoleTiming(BaseModel):
     reading_minutes: int
     simulation_minutes: int
     break_minutes: int
     breaks: list[int] = Field(default_factory=list)
+    break_lengths: list[ConsoleBreakLength] = Field(default_factory=list)
 
 
 class ConsoleCircuit(BaseModel):
