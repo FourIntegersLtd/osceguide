@@ -5,6 +5,7 @@ Nothing here touches the database; it is the cryptographic plumbing the service 
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import secrets
 from datetime import datetime, timedelta
@@ -42,11 +43,24 @@ def new_token() -> tuple[str, str]:
     return raw, hash_token(raw)
 
 
-def hash_password(raw: str) -> str:
+# Argon2 (64 MiB, tens of milliseconds) and bcrypt are CPU work. Called on the event loop they
+# stall every other request in the process, so each public verifier hands its sync body to a
+# thread; the hashing libraries release the GIL. Only tests and scripts use the `_sync` bodies.
+
+
+def _hash_sync(raw: str) -> str:
     return _hasher.hash(password_for_hashing(raw))
 
 
-def verify_password(password_hash: str | None, raw: str) -> bool:
+async def hash_password(raw: str) -> str:
+    return await asyncio.to_thread(_hash_sync, raw)
+
+
+async def verify_password(password_hash: str | None, raw: str) -> bool:
+    return await asyncio.to_thread(_verify_sync, password_hash, raw)
+
+
+def _verify_sync(password_hash: str | None, raw: str) -> bool:
     """Whether this password matches the stored hash. Refuses (returns
     False) rather than raises for a missing hash, a wrong password, or a
     hash argon2 itself calls unreadable — every one of those is simply not
@@ -59,7 +73,11 @@ def verify_password(password_hash: str | None, raw: str) -> bool:
         return False
 
 
-def verify_legacy_password(legacy_password_hash: str | None, raw: str) -> bool:
+async def verify_legacy_password(legacy_password_hash: str | None, raw: str) -> bool:
+    return await asyncio.to_thread(_verify_legacy_sync, legacy_password_hash, raw)
+
+
+def _verify_legacy_sync(legacy_password_hash: str | None, raw: str) -> bool:
     """Whether this password matches a legacy b2c bcrypt hash. Never raises; anything that is not a
     match (no hash, wrong password, a hash bcrypt cannot read, an argon2 hash) is False.
 
@@ -130,10 +148,14 @@ def read_mfa_challenge(token: str, *, expected_type: str, settings: Settings) ->
 _ABSENT_USER_HASH = _hasher.hash("password-for-an-account-that-does-not-exist")
 
 
-def verify_absent_password(raw: str) -> bool:
+async def verify_absent_password(raw: str) -> bool:
+    return await asyncio.to_thread(_verify_absent_sync, raw)
+
+
+def _verify_absent_sync(raw: str) -> bool:
     """Spend the same argon2 time an unknown address's login would, then
     always refuse. Called so that address-not-found and wrong-password take
     the same wall-clock time, which is what stops timing from being a
     second, unofficial account-enumeration oracle alongside the message."""
-    verify_password(_ABSENT_USER_HASH, raw)
+    _verify_sync(_ABSENT_USER_HASH, raw)
     return False

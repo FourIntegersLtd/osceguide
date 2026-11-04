@@ -16,7 +16,7 @@ from app.core.settings import get_settings
 from app.features.identity import repository
 from app.features.identity.domain import MFA_VERIFY_TTL_SECONDS
 from app.features.identity.service_sso import sign_in_external
-from app.features.identity.tokens import MFA_CHALLENGE_TYPE, hash_password, issue_mfa_challenge
+from app.features.identity.tokens import MFA_CHALLENGE_TYPE, _hash_sync, issue_mfa_challenge
 from app.features.tenancy import repository as tenancy_repository
 from app.features.tenancy.models import AuditEntry
 from tests.http.test_legacy_exchange_routes import CONSUMER_SECRET, legacy_token
@@ -51,7 +51,7 @@ async def _password_user(db_session: AsyncSession, *, email: str, platform_admin
         db_session,
         email=email,
         name="MFA Person",
-        password_hash=hash_password(PASSWORD),
+        password_hash=_hash_sync(PASSWORD),
         is_platform_admin=platform_admin,
     )
     await db_session.flush()

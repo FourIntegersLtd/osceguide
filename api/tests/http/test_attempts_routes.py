@@ -296,7 +296,7 @@ async def test_an_invited_accounts_trial_counts_from_its_first_sign_in(
     from app.features.identity import repository as identity_repo
     from app.features.identity.models import User
     from app.features.identity.service_invitations import invite_user
-    from app.features.identity.tokens import hash_password
+    from app.features.identity.tokens import _hash_sync
 
     invited = await invite_user(db_session, email="late@example.com", name="Late", invited_to="Acme", now=NOW)
     await db_session.execute(
@@ -304,7 +304,7 @@ async def test_an_invited_accounts_trial_counts_from_its_first_sign_in(
         .where(User.id == invited.id)
         .values(created_at=datetime.now(UTC) - timedelta(days=30), must_change_password=False)
     )
-    await identity_repo.set_password_hash(db_session, invited.id, hash_password("a long enough passphrase"))
+    await identity_repo.set_password_hash(db_session, invited.id, _hash_sync("a long enough passphrase"))
     await db_session.flush()
 
     login = await client.post(

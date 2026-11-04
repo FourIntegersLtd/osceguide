@@ -68,7 +68,7 @@ async def begin_email_change(
         raise PasswordLoginDisabled()
     if user.password_hash is None:
         raise PasswordNotSet()
-    if not verify_password(user.password_hash, current_password):
+    if not await verify_password(user.password_hash, current_password):
         raise InvalidCredentials()
     if user.status != "active":
         raise AccountSuspended()

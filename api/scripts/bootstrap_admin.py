@@ -98,7 +98,7 @@ async def bootstrap(*, email: str, name: str, password: str | None) -> int:
             session,
             email=email,
             name=name,
-            password_hash=hash_password(generated),
+            password_hash=await hash_password(generated),
             is_platform_admin=True,
             must_change_password=True,
         )

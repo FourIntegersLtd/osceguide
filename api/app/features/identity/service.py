@@ -145,7 +145,7 @@ async def register(
         session,
         email=email,
         name=name,
-        password_hash=hash_password(password),
+        password_hash=await hash_password(password),
         exam_code=exam_code,
         # Registering is the first sign-in: the free trial counts from here, not from a later one.
         activated_at=now,
