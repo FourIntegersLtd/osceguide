@@ -37,32 +37,55 @@ function fakeClock() {
 const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 describe("watchMarking", () => {
-  it("shows the feedback when marking is stored after ten minutes, past the old give-up point", async () => {
+  it("reads once on start and then only on a wake-up: ten minutes of silence costs no reads", async () => {
     const clock = fakeClock();
-    const storedAt = 10 * 60 * 1000;
     let checks = 0;
     const events: string[] = [];
-    watchMarking({
+    const wait = watchMarking({
       isMarked: async () => {
         checks += 1;
-        return clock.timers.now() >= storedAt;
+        return false;
       },
       onReady: () => events.push("ready"),
       onSlow: () => events.push("slow"),
       timers: clock.timers,
     });
 
-    await clock.advance(9 * 60 * 1000);
+    await settle();
+    await clock.advance(10 * 60 * 1000);
+    assert.equal(checks, 1);
     assert.deepEqual(events, ["slow"]);
-    assert.ok(checks > 10, `still checking after the old ten-try limit (made ${checks})`);
 
-    // Stored at 10:00; found by the next check, at most the 30-second ceiling later.
-    await clock.advance(90 * 1000);
-    assert.deepEqual(events, ["slow", "ready"]);
-    assert.equal(clock.pendingCount(), 0);
+    wait.wake();
+    await settle();
+    assert.equal(checks, 2);
+    wait.wake();
+    await settle();
+    assert.equal(checks, 3);
   });
 
-  it("checks at once on a wake-up, so a missed or early event costs nothing", async () => {
+  it("goes slow after SLOW_AFTER_MS without reading anything", async () => {
+    const clock = fakeClock();
+    let checks = 0;
+    const events: string[] = [];
+    watchMarking({
+      isMarked: async () => {
+        checks += 1;
+        return false;
+      },
+      onReady: () => events.push("ready"),
+      onSlow: () => events.push("slow"),
+      timers: clock.timers,
+    });
+    await settle();
+    await clock.advance(SLOW_AFTER_MS - 1);
+    assert.deepEqual(events, []);
+    await clock.advance(1);
+    assert.deepEqual(events, ["slow"]);
+    assert.equal(checks, 1);
+  });
+
+  it("shows the feedback on the wake-up after the slow message, however late the result is stored", async () => {
     const clock = fakeClock();
     let stored = false;
     const events: string[] = [];
@@ -73,21 +96,36 @@ describe("watchMarking", () => {
       timers: clock.timers,
     });
 
-    await clock.advance(SLOW_AFTER_MS + 30_000);
-    stored = true; // stored while the stream was down: no event reached this tab
-    wait.wake(); // the stream reconnects and asks every panel to re-read
+    await clock.advance(10 * 60 * 1000);
+    stored = true;
+    wait.wake();
     await settle();
     assert.deepEqual(events, ["slow", "ready"]);
+    assert.equal(clock.pendingCount(), 0);
   });
 
-  it("treats a failed read (a 502 during an API restart) as not yet, and keeps waiting", async () => {
+  it("finds a result stored before the wait started, with no event at all", async () => {
+    const clock = fakeClock();
+    const events: string[] = [];
+    watchMarking({
+      isMarked: async () => true,
+      onReady: () => events.push("ready"),
+      onSlow: () => events.push("slow"),
+      timers: clock.timers,
+    });
+    await settle();
+    assert.deepEqual(events, ["ready"]);
+    assert.equal(clock.pendingCount(), 0);
+  });
+
+  it("treats a failed read (a 502 during an API restart) as not yet; the next wake-up reads again", async () => {
     const clock = fakeClock();
     let calls = 0;
     const events: string[] = [];
-    watchMarking({
+    const wait = watchMarking({
       isMarked: async () => {
         calls += 1;
-        if (calls <= 3) throw new Error("502 Bad Gateway");
+        if (calls <= 1) throw new Error("502 Bad Gateway");
         return true;
       },
       onReady: () => events.push("ready"),
@@ -95,9 +133,12 @@ describe("watchMarking", () => {
       timers: clock.timers,
     });
 
-    await clock.advance(60 * 1000);
+    await settle();
+    assert.deepEqual(events, []);
+    wait.wake();
+    await settle();
     assert.deepEqual(events, ["ready"]);
-    assert.equal(calls, 4);
+    assert.equal(calls, 2);
   });
 
   it("does nothing more once stopped", async () => {
@@ -109,31 +150,37 @@ describe("watchMarking", () => {
         return true;
       },
       onReady: () => assert.fail("closed modal must not navigate"),
-      onSlow: () => undefined,
+      onSlow: () => assert.fail("closed modal must not turn slow"),
       timers: clock.timers,
     });
     wait.stop();
     wait.wake();
     await clock.advance(10 * 60 * 1000);
-    assert.equal(calls, 0);
+    assert.equal(calls <= 1, true);
+    assert.equal(clock.pendingCount(), 0);
   });
 });
 
 describe("watchMarking on a failed attempt", () => {
-  it("says so at the next check instead of waiting for ever, and stops checking", async () => {
+  it("says so at the next check instead of waiting for ever, and stops", async () => {
     const clock = fakeClock();
+    let failed = false;
     const events: string[] = [];
-    watchMarking({
+    const wait = watchMarking({
       isMarked: async () => false,
       failure: {
-        check: async () => clock.timers.now() >= 6_000,
+        check: async () => failed,
         onFailed: () => events.push("failed"),
-        },
+      },
       onReady: () => events.push("ready"),
       onSlow: () => events.push("slow"),
       timers: clock.timers,
     });
-    await clock.advance(10 * 60 * 1000);
+    await settle();
+    assert.deepEqual(events, []);
+    failed = true;
+    wait.wake();
+    await settle();
     assert.deepEqual(events, ["failed"]);
     assert.equal(clock.pendingCount(), 0);
   });
