@@ -31,16 +31,17 @@ under `/platform/…`; they never inherit `OrgAdmin`. Refunds are record-only.
 
 ## Database backups
 
-Railway's Backups tab does not cover our custom Postgres image, so a nightly logical dump is the
-only backup that survives losing the Railway project.
+Railway's Backups tab takes daily and weekly volume snapshots of production, but they live in the
+project and are lost with it, and point-in-time recovery is not offered for our custom (pgvector)
+image. The nightly logical dump is the only backup that survives losing the Railway project.
 
-- **What runs.** The `db-backup` Railway service (source `api/infra/db-backup/`) exists in staging
-  and production. It is a cron job (`0 2 * * *` UTC, restart policy never): `pg_dump -Fc
+- **What runs.** The `db-backup` Railway service (source `api/infra/db-backup/`) runs in production
+  only (staging holds nothing worth keeping; removed 2026-11-04). It is a cron job (`0 2 * * *` UTC, restart policy never): `pg_dump -Fc
   --no-owner --no-privileges` over the private network, checked with `pg_restore -l`, uploaded with
   SSE-S3, size compared with the stored object, then dumps older than 30 days are deleted. Any failure
   fails the deploy run (red in Railway).
-- **Where.** `s3://osceguide-platform/db-backups/nightly/<staging|production>/YYYY-MM-DD.dump`, one
-  per night, about 30 days kept (about 130 MB each in production). `db-backups/manual/` holds hand-made dumps and
+- **Where.** `s3://osceguide-platform/db-backups/nightly/production/YYYY-MM-DD.dump`, one
+  per night, about 30 days kept (about 130 MB each). `db-backups/manual/` holds hand-made dumps and
   is never pruned. The app signs only the folders `bucket_layout` lists, and `DB_BACKUPS` is reserved for this job.
 - **Restore.** Download a dump and restore it into a fresh database, never over the live one:
   `aws s3 cp s3://osceguide-platform/db-backups/nightly/production/<date>.dump .`, then
