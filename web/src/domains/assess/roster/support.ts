@@ -45,6 +45,30 @@ export function invitationResendable(trainee: Trainee): boolean {
   );
 }
 
+/** Rows a bulk invitation would reach: the ones whose invitation can be resent. */
+export function awaitingInvitation(rows: Trainee[]): Trainee[] {
+  return rows.filter(invitationResendable);
+}
+
+/**
+ * One line for a bulk action: how many rows reached `okOutcome`, then each other
+ * outcome counted, e.g. "Sent 2 of 4 invitations. 1 already signed in."
+ */
+export function bulkSummary(
+  results: { outcome: string }[],
+  okOutcome: string,
+  noun: string,
+): string {
+  const ok = results.filter((result) => result.outcome === okOutcome).length;
+  const verb = okOutcome.charAt(0).toUpperCase() + okOutcome.slice(1);
+  const others = new Map<string, number>();
+  for (const { outcome } of results) {
+    if (outcome !== okOutcome) others.set(outcome, (others.get(outcome) ?? 0) + 1);
+  }
+  const rest = [...others].map(([outcome, count]) => ` ${count} ${outcome.replaceAll("_", " ")}.`);
+  return `${verb} ${ok} of ${results.length} ${noun}.${rest.join("")}`;
+}
+
 /**
  * Whether a roster row still has no account behind it.
  *

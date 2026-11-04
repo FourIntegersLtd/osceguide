@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Badge,
+  Button,
   EmptyState,
   PlatformFilterBar,
   PlatformFilterSearch,
@@ -13,7 +14,11 @@ import Table from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
 import { hasCode } from "@/foundation/platform-client";
-import { errorMessage, useCursorPages, useSearchQuery } from "@/foundation/hooks";
+import {
+  errorMessage,
+  useCursorPages,
+  useSearchQuery,
+} from "@/foundation/hooks";
 import { Dialog } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
 import {
@@ -21,14 +26,31 @@ import {
   deleteTrainee,
   listTrainees,
   resendInvitation,
+  resendTraineeInvitations,
+  revokeTrainees,
   setTraineeAccess,
+  setTraineesCohort,
   type Cohort,
 } from "@/domains/assess/roster/api";
+import { TraineeBulkBar } from "@/domains/assess/roster/TraineeBulkBar";
 import { TraineeEditDialog } from "@/domains/assess/roster/TraineeEditDialog";
 import { TraineeRowActions } from "@/domains/assess/roster/TraineeRowActions";
-import { accessActive, cohortName, deleteLead, displayName, rosterErrorMessage, traineeCountLabel, traineeStatus } from "@/domains/assess/roster/support";
+import {
+  accessActive,
+  awaitingInvitation,
+  bulkSummary,
+  cohortName,
+  deleteLead,
+  displayName,
+  rosterErrorMessage,
+  traineeCountLabel,
+  traineeStatus,
+} from "@/domains/assess/roster/support";
 
-type Pending = { kind: "revoke" | "restore" | "delete" | "anonymise"; trainee: Trainee } | null;
+type Pending = {
+  kind: "revoke" | "restore" | "delete" | "anonymise";
+  trainee: Trainee;
+} | null;
 
 /** The line above the table: what the last press actually did. */
 type Message = { tone: "success" | "warning" | "danger"; text: string };
@@ -83,10 +105,61 @@ export function TraineesPanel({
   // A page at a time, searched in SQL, rather than the whole roster walked and
   // filtered in the browser.
   const pages = useCursorPages(
-    (cursor, signal) => listTrainees(orgSlug, signal, { cursor, search: query }),
+    (cursor, signal) =>
+      listTrainees(orgSlug, signal, { cursor, search: query }),
     [orgSlug, query],
   );
   const rows = pages.state.data ?? [];
+
+  // Ticked rows (`trainees.id`). A new search is a new list, so it starts clear.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmingBulkRevoke, setConfirmingBulkRevoke] = useState(false);
+  const toggle = useCallback(
+    (id: string) =>
+      setSelected((current) => {
+        const next = new Set(current);
+        if (!next.delete(id)) next.add(id);
+        return next;
+      }),
+    [],
+  );
+
+  /** Run one bulk call, say what it did, clear the selection and refresh. */
+  const runBulk = useCallback(
+    async (
+      call: () => Promise<{ results: { outcome: string }[] }>,
+      ok: string,
+      noun: string,
+    ) => {
+      setBulkBusy(true);
+      setError(null);
+      setNotice(null);
+      try {
+        const { results } = await call();
+        setNotice({ tone: "success", text: bulkSummary(results, ok, noun) });
+        setSelected(new Set());
+        setConfirmingBulkRevoke(false);
+        pages.state.reload();
+        onChanged();
+      } catch (cause) {
+        // A later chunk can fail after earlier ones applied, so show the true state.
+        const message = errorMessage(cause);
+        // The revoke dialog shows `error`; the other actions have no dialog, so say it above the table too.
+        setError(message);
+        setNotice({ tone: "danger", text: message });
+        pages.state.reload();
+        onChanged();
+      } finally {
+        setBulkBusy(false);
+      }
+    },
+    [pages.state, onChanged],
+  );
+  const awaiting = awaitingInvitation(rows);
+  // Only rows still on the loaded pages count, so a deleted row or an old search never reaches a call.
+  const selectedRows = rows.filter((row) => selected.has(row.id));
+  const selectedIds = selectedRows.map((row) => row.id);
 
   const commit = useCallback(async () => {
     if (!pending) return;
@@ -96,7 +169,10 @@ export function TraineesPanel({
       if (pending.kind === "delete") {
         // `trainees.id`, not the user id a circuit slot names.
         await deleteTrainee(orgSlug, pending.trainee.id);
-        setNotice({ tone: "success", text: `Removed ${displayName(pending.trainee)} from the roster.` });
+        setNotice({
+          tone: "success",
+          text: `Removed ${displayName(pending.trainee)} from the roster.`,
+        });
       } else if (pending.kind === "anonymise") {
         await anonymiseTrainee(orgSlug, pending.trainee.id);
         setNotice({
@@ -157,7 +233,10 @@ export function TraineesPanel({
             text: `${displayName(trainee)}  has already set up their account, so there is no invitation to resend.`,
           });
         } else {
-          setNotice({ tone: "danger", text: rosterErrorMessage(cause, trainee.email) });
+          setNotice({
+            tone: "danger",
+            text: rosterErrorMessage(cause, trainee.email),
+          });
         }
       } finally {
         setResending(null);
@@ -168,6 +247,23 @@ export function TraineesPanel({
 
   const columns = useMemo(
     () => [
+      ...(canManage
+        ? [
+            {
+              header: "Select",
+              key: "id" as keyof Trainee,
+              render: (trainee: Trainee) => (
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${displayName(trainee)}`}
+                  checked={selected.has(trainee.id)}
+                  disabled={bulkBusy}
+                  onChange={() => toggle(trainee.id)}
+                />
+              ),
+            },
+          ]
+        : []),
       {
         header: "Name",
         key: "first_name" as keyof Trainee,
@@ -181,11 +277,20 @@ export function TraineesPanel({
               {displayName(trainee).trim().charAt(0).toUpperCase()}
             </span>
             <span className="flex min-w-0 flex-col">
-              <span className={cn(b2cTableCellText, "font-medium text-b2b-headline")}>
-                {trainee.first_name || trainee.last_name ? displayName(trainee) : trainee.email}
+              <span
+                className={cn(
+                  b2cTableCellText,
+                  "font-medium text-b2b-headline",
+                )}
+              >
+                {trainee.first_name || trainee.last_name
+                  ? displayName(trainee)
+                  : trainee.email}
               </span>
               {trainee.first_name || trainee.last_name ? (
-                <span className="truncate text-osce-meta text-b2b-mid">{trainee.email}</span>
+                <span className="truncate text-osce-meta text-b2b-mid">
+                  {trainee.email}
+                </span>
               ) : null}
             </span>
           </span>
@@ -205,7 +310,9 @@ export function TraineesPanel({
         key: "programme_names" as keyof Trainee,
         render: (trainee: Trainee) => (
           <span className={cn(b2cTableCellText, "text-b2b-mid")}>
-            {trainee.programme_names?.length ? trainee.programme_names.join(", ") : "No programme"}
+            {trainee.programme_names?.length
+              ? trainee.programme_names.join(", ")
+              : "No programme"}
           </span>
         ),
       },
@@ -213,7 +320,9 @@ export function TraineesPanel({
         header: "Stations sat",
         key: "stations_sat" as keyof Trainee,
         render: (trainee: Trainee) => (
-          <span className={cn(b2cTableCellText, "tabular-nums text-b2b-mid")}>{trainee.stations_sat}</span>
+          <span className={cn(b2cTableCellText, "tabular-nums text-b2b-mid")}>
+            {trainee.stations_sat}
+          </span>
         ),
       },
       {
@@ -263,7 +372,16 @@ export function TraineesPanel({
         ),
       },
     ],
-    [canManage, cohorts, settled, resending, resend],
+    [
+      canManage,
+      cohorts,
+      settled,
+      resending,
+      resend,
+      selected,
+      bulkBusy,
+      toggle,
+    ],
   );
 
   const revoking = pending?.kind === "revoke";
@@ -287,16 +405,77 @@ export function TraineesPanel({
       >
         <PlatformFilterSearch
           value={search}
-          onChange={setSearch}
+          onChange={(value) => {
+            setSearch(value);
+            setSelected(new Set());
+          }}
           placeholder="Search trainees…"
           aria-label="Search trainees"
         />
+        {canManage && awaiting.length > 0 ? (
+          <Button
+            themeType="b2b"
+            variant="secondary"
+            size="sm"
+            disabled={bulkBusy}
+            onClick={() =>
+              void runBulk(
+                () =>
+                  resendTraineeInvitations(
+                    orgSlug,
+                    awaiting.map((row) => row.id),
+                  ),
+                "sent",
+                "invitations",
+              )
+            }
+          >
+            {`Invite everyone not signed in on this page (${awaiting.length})`}
+          </Button>
+        ) : null}
       </PlatformFilterBar>
+
+      {canManage && rows.length > 0 ? (
+        <TraineeBulkBar
+          rowIds={rows.map((row) => row.id)}
+          selected={new Set(selectedIds)}
+          cohorts={cohorts}
+          busy={bulkBusy}
+          onSelect={setSelected}
+          onResend={() =>
+            void runBulk(
+              // Same offer as the row control: no invitation to a revoked or signed-in person.
+              () =>
+                resendTraineeInvitations(
+                  orgSlug,
+                  awaitingInvitation(selectedRows).map((row) => row.id),
+                ),
+              "sent",
+              "invitations",
+            )
+          }
+          onMove={(cohortId) =>
+            void runBulk(
+              () => setTraineesCohort(orgSlug, selectedIds, cohortId),
+              "updated",
+              "people",
+            )
+          }
+          onRevoke={() => {
+            setError(null);
+            setConfirmingBulkRevoke(true);
+          }}
+        />
+      ) : null}
 
       {pages.state.error ? (
         <Alert tone="danger">
           {pages.state.error.message}
-          <button type="button" className="ml-2 underline" onClick={() => pages.state.reload()}>
+          <button
+            type="button"
+            className="ml-2 underline"
+            onClick={() => pages.state.reload()}
+          >
             Retry
           </button>
         </Alert>
@@ -308,7 +487,9 @@ export function TraineesPanel({
         </p>
       ) : rows.length === 0 ? (
         query ? (
-          <p className="text-osce-body text-b2b-mid">No trainees match &ldquo;{query}&rdquo;.</p>
+          <p className="text-osce-body text-b2b-mid">
+            No trainees match &ldquo;{query}&rdquo;.
+          </p>
         ) : (
           <EmptyState
             title="No trainees yet"
@@ -357,7 +538,13 @@ export function TraineesPanel({
         busy={busy}
         tone={deleting || anonymising || revoking ? "danger" : "commit"}
         commitLabel={
-          deleting ? "Delete" : anonymising ? "Anonymise" : revoking ? "Revoke access" : "Restore access"
+          deleting
+            ? "Delete"
+            : anonymising
+              ? "Anonymise"
+              : revoking
+                ? "Revoke access"
+                : "Restore access"
         }
         busyLabel={
           deleting
@@ -370,6 +557,25 @@ export function TraineesPanel({
         }
         onClose={() => setPending(null)}
         onCommit={() => void commit()}
+      />
+
+      <Dialog
+        open={confirmingBulkRevoke}
+        title={`Revoke access for ${selectedIds.length} ${selectedIds.length === 1 ? "person" : "people"}?`}
+        lead="They will not be able to sign in or sit anything, and stay on the roster with their results intact."
+        error={error}
+        busy={bulkBusy}
+        tone="danger"
+        commitLabel="Revoke access"
+        busyLabel="Revoking…"
+        onClose={() => setConfirmingBulkRevoke(false)}
+        onCommit={() =>
+          void runBulk(
+            () => revokeTrainees(orgSlug, selectedIds),
+            "revoked",
+            "people",
+          )
+        }
       />
 
       <TraineeEditDialog

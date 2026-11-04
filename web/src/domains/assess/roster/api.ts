@@ -224,6 +224,45 @@ export function resendInvitation(slug: string, traineeId: string): Promise<Invit
   );
 }
 
+export type BulkTraineeResult = { trainee_id: string; outcome: string };
+
+/**
+ * One bulk call per `IMPORT_CHUNK` ids (the server caps each request), answered
+ * as one list. A refused chunk throws: results already applied are not lost,
+ * they are simply not reported, and a reload shows the true state.
+ */
+async function inChunks(
+  slug: string,
+  action: "revoke" | "cohort" | "resend-invitation",
+  ids: string[],
+  extra: Record<string, unknown> = {},
+): Promise<{ results: BulkTraineeResult[] }> {
+  const results: BulkTraineeResult[] = [];
+  for (let start = 0; start < ids.length; start += IMPORT_CHUNK) {
+    const part = await platformRequest<{ results: BulkTraineeResult[] }>(
+      `${orgPath(slug)}/trainees/bulk/${action}`,
+      { method: "POST", body: { trainee_ids: ids.slice(start, start + IMPORT_CHUNK), ...extra } },
+    );
+    results.push(...part.results);
+  }
+  return { results };
+}
+
+/** Revoke access for several trainees; each row answers `revoked`, `already_revoked` or `not_found`. */
+export function revokeTrainees(slug: string, ids: string[]) {
+  return inChunks(slug, "revoke", ids);
+}
+
+/** Put several trainees in a group, or in none with `null`; each row answers `updated` or `not_found`. */
+export function setTraineesCohort(slug: string, ids: string[], cohortId: string | null) {
+  return inChunks(slug, "cohort", ids, { cohort_id: cohortId });
+}
+
+/** The invitation link again for several; each row answers `sent`, `already_signed_in` or `not_found`. */
+export function resendTraineeInvitations(slug: string, ids: string[]) {
+  return inChunks(slug, "resend-invitation", ids);
+}
+
 export function listCohorts(slug: string, signal?: AbortSignal) {
   return platformRequest<components["schemas"]["Page_CohortRead_"]>(`${orgPath(slug)}/cohorts`, {
     signal,
