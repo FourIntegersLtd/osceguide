@@ -15611,6 +15611,8 @@ export interface components {
             template_version_id?: string | null;
             /** Title */
             title: string;
+            /** Used By Count */
+            used_by_count?: number | null;
             /** Version */
             version: number;
         };
