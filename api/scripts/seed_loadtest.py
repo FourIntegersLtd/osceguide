@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import inspect
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -48,12 +47,6 @@ def refuse_unless_safe(database_url: str) -> None:
 
 def email_for(index: int) -> str:
     return f"trainee{index}@{EMAIL_DOMAIN}"
-
-
-async def _hash_once(password: str) -> str:
-    # `hash_password` may be sync or async; one hash is shared by every account.
-    result = hash_password(password)
-    return await result if inspect.isawaitable(result) else result
 
 
 async def _ensure_station(session: AsyncSession, exam_code: str) -> str:
@@ -94,7 +87,7 @@ async def _ensure_station(session: AsyncSession, exam_code: str) -> str:
 
 async def seed(*, count: int, exam_code: str, password: str) -> None:
     import_all_models()
-    password_hash = await _hash_once(password)
+    password_hash = await hash_password(password)  # one hash shared by every account
     created = 0
     async with get_session_factory()() as session, session.begin():
         print(await _ensure_station(session, exam_code))  # noqa: T201

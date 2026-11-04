@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity import repository as identity_repo
 from app.features.identity.service_invitations import invite_user, send_due_invitation_reminders
-from app.features.identity.tokens import hash_password
+from app.features.identity.tokens import _hash_sync
 from app.features.notifications.models import OutboundMessage
 
 pytestmark = pytest.mark.db
@@ -48,7 +48,7 @@ async def test_an_invitation_already_answered_or_expired_is_not_reminded(db_sess
     answered = await invite_user(
         db_session, email="done@example.com", name="Done", invited_to="Acme", now=NOW
     )
-    await identity_repo.set_password_hash(db_session, answered.id, hash_password("a long enough passphrase"))
+    await identity_repo.set_password_hash(db_session, answered.id, _hash_sync("a long enough passphrase"))
     await invite_user(db_session, email="late@example.com", name="Late", invited_to="Acme", now=NOW)
 
     # Day 5 reaches only the pending one; by day 8 the link has expired and a person must re-invite.

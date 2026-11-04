@@ -670,7 +670,7 @@ async def test_a_second_sso_provider_does_not_take_back_the_password_the_person_
     """The takeover defence runs when an address is first linked to any external identity; a
     person who then set their own password keeps it when they add another provider."""
     from app.features.identity import repository as identity_repository
-    from app.features.identity.tokens import hash_password
+    from app.features.identity.tokens import _hash_sync
 
     _, org_id = await provisioned(client, make_actor)
     owner = await make_actor(
@@ -691,7 +691,7 @@ async def test_a_second_sso_provider_does_not_take_back_the_password_the_person_
         )
     ).status_code == 401
 
-    await identity_repository.set_password_hash(db_session, user_id, hash_password("Their-Own-Passw0rd!"))
+    await identity_repository.set_password_hash(db_session, user_id, _hash_sync("Their-Own-Passw0rd!"))
     await db_session.commit()
     await _external(db_session, provider="entra", subject="twice-2", email="twice@example.com")
     kept = await client.post(

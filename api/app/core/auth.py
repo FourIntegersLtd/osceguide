@@ -173,7 +173,8 @@ async def get_principal(
     if credentials is None or not credentials.credentials:
         raise Unauthenticated()
     principal = decode_access_token(credentials.credentials, settings=settings)
-    await refuse_if_deactivated(session, principal.user_id)
+    # A platform admin's status is always read fresh: a staff path never trusts a cached copy.
+    await refuse_if_deactivated(session, principal.user_id, fresh=principal.is_platform_admin)
     if principal.must_change_password:
         _refuse_unless_password_route(request)
     return principal
@@ -218,7 +219,8 @@ async def get_principal_if_present(
     if credentials is None or not credentials.credentials:
         return None
     principal = decode_access_token(credentials.credentials, settings=settings)
-    await refuse_if_deactivated(session, principal.user_id)
+    # A platform admin's status is always read fresh: a staff path never trusts a cached copy.
+    await refuse_if_deactivated(session, principal.user_id, fresh=principal.is_platform_admin)
     if principal.must_change_password:
         _refuse_unless_password_route(request)
     return principal

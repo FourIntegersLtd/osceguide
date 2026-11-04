@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.account_status import forget_status
 from app.features.identity import repository
 from app.features.identity.errors import AccountNotFound, InvalidCredentials
 from app.features.identity.models import User
@@ -58,11 +59,12 @@ async def close_account(
     if user is None:
         raise AccountNotFound()
     if user.password_hash:
-        if not verify_password(user.password_hash, password or ""):
+        if not await verify_password(user.password_hash, password or ""):
             raise InvalidCredentials()
     elif (confirm or "").strip().lower() != "delete":
         raise InvalidCredentials()
     user.status = "deleted"
+    forget_status(session, user_id)
     # Read by the scheduled erasure job (`identity/jobs.py`) to find every
     # account closed more than 30 days ago.
     user.closed_at = now
@@ -92,6 +94,7 @@ async def reopen_if_within_retention(session: AsyncSession, user: User, *, now: 
     if not await can_reopen(session, user, now=now):
         return False
     user.status = "active"
+    forget_status(session, user.id)
     user.closed_at = None
     await _audit_account(session, user, "account.reopened", now, "Closed account reopened by signing in")
     await notifications.enqueue_email(

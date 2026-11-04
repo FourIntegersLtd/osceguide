@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit_wording import RELAYED_PASSWORD_NOTE, roster_added_summary
 from app.core.pagination import keyset_page
 from app.core.search import contains_text
+from app.core.tenancy import forget_org_active
 from app.features.tenancy.domain import END_USER_ROLES, ORG_ADMIN_ROLES
 from app.features.tenancy.models import AuditEntry, Membership, Organization
 
@@ -54,12 +55,21 @@ async def set_organization_status(
     suspended_at: datetime | None = None,
     suspended_by: uuid.UUID | None = None,
 ) -> None:
-    """Change an organisation's status, e.g. suspending or restoring it."""
-    await session.execute(
-        update(Organization)
-        .where(Organization.id == org_id)
-        .values(status=status, suspended_at=suspended_at, suspended_by=suspended_by)
-    )
+    """Change an organisation's status, e.g. suspending or restoring it.
+
+    Every route to a changed status passes through here (suspend, restore, a lapsed contract), so
+    it is where the cached "this organisation is active" answer is dropped once the change commits.
+    """
+    slug = (
+        await session.execute(
+            update(Organization)
+            .where(Organization.id == org_id)
+            .values(status=status, suspended_at=suspended_at, suspended_by=suspended_by)
+            .returning(Organization.slug)
+        )
+    ).scalar_one_or_none()
+    if slug is not None:
+        forget_org_active(session, slug)
 
 
 # --- memberships -----------------------------------------------------------
@@ -351,7 +361,18 @@ async def count_organizations(session: AsyncSession) -> int:
 
 
 async def update_organization(session: AsyncSession, org_id: uuid.UUID, **values: Any) -> None:
-    await session.execute(update(Organization).where(Organization.id == org_id).values(**values))
+    """Write organisation fields. The contract end decides whether it may act, so the cached
+    "active" answer is dropped once this commits (and under the old slug if the slug itself moves)."""
+    old_slug = (
+        await session.scalar(select(Organization.slug).where(Organization.id == org_id))
+        if "slug" in values
+        else None
+    )
+    stmt = update(Organization).where(Organization.id == org_id).values(**values)
+    new_slug = (await session.execute(stmt.returning(Organization.slug))).scalar_one_or_none()
+    for slug in (old_slug, new_slug):
+        if slug is not None:
+            forget_org_active(session, slug)
 
 
 async def live_member_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:

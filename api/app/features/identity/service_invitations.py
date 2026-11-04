@@ -71,7 +71,11 @@ async def seat_user_with_temporary_password(
     except WeakPassword as exc:
         raise WeakPasswordError(str(exc)) from exc
     user = await repository.create_user(
-        session, email=email, name=name, password_hash=hash_password(password), must_change_password=True
+        session,
+        email=email,
+        name=name,
+        password_hash=await hash_password(password),
+        must_change_password=True,
     )
     await _announce_registration(session, user.id, user.email)
     return _ref(user)
@@ -113,7 +117,7 @@ async def reissue_temporary_password(
     user = await repository.user_by_id(session, user_id)
     if user is None or user.password_hash is None or not user.must_change_password:
         return False
-    await repository.set_temporary_password_hash(session, user.id, hash_password(password))
+    await repository.set_temporary_password_hash(session, user.id, await hash_password(password))
     await repository.revoke_all_chains_for_user(
         session, user_id=user.id, at=now, reason="temporary_password_reissued"
     )

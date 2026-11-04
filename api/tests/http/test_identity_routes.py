@@ -639,13 +639,13 @@ async def test_a_suspended_account_cannot_change_its_password_for_a_fresh_sessio
     """Sign-in refuses a suspended account; change-password answers with a new
     pair, so it refuses one too rather than handing an access token minted
     before the suspension a session that outlives it."""
-    from app.features.identity.tokens import hash_password
+    from app.features.identity.tokens import _hash_sync
 
     user = await identity_repo.create_user(
         db_session,
         email="suspended@example.com",
         name="Suspended",
-        password_hash=hash_password("the current horse battery"),
+        password_hash=_hash_sync("the current horse battery"),
     )
     user.status = "suspended"
     await db_session.flush()
@@ -1160,10 +1160,10 @@ async def test_a_legacy_sign_in_still_goes_through_the_second_factor_gate(
 async def test_after_a_reset_the_old_legacy_password_no_longer_signs_in(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    from app.features.identity.tokens import hash_password
+    from app.features.identity.tokens import _hash_sync
 
     user = await _imported(db_session)
-    await identity_repo.set_password_hash(db_session, user.id, hash_password("a brand new horse battery"))
+    await identity_repo.set_password_hash(db_session, user.id, _hash_sync("a brand new horse battery"))
     await db_session.commit()
     await db_session.refresh(user)
     assert user.legacy_password_hash is None

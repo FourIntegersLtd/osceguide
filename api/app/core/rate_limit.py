@@ -27,7 +27,7 @@ import hashlib
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 
 from fastapi import Request
 
@@ -53,6 +53,13 @@ class TooManyRequests(AppError):
 RedisErrorPolicy = Literal["allow", "refuse", "count_locally"]
 
 
+_COUNT_SCRIPT = """
+local n = redis.call('INCR', KEYS[1])
+if n == 1 or redis.call('TTL', KEYS[1]) < 0 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
+return n
+"""
+
+
 @dataclass(frozen=True)
 class Limit:
     """`allowance` calls per `window_seconds`, per caller.
@@ -72,6 +79,15 @@ class Limit:
     allowance: int
     window_seconds: int
     on_redis_error: RedisErrorPolicy = "allow"
+    # The name of a `Settings` field that overrides `allowance`, read at each check so a deployment
+    # sizes the limit (a hospital's NAT at exam start) without a code change.
+    allowance_setting: str | None = None
+
+    def current_allowance(self) -> int:
+        """`allowance`, or the setting that overrides it."""
+        if self.allowance_setting is None:
+            return self.allowance
+        return int(getattr(get_settings(), self.allowance_setting))
 
 
 # Sign-in is counted twice (S-6). Per account, sized against what a real person
@@ -80,8 +96,14 @@ class Limit:
 # one hospital NAT in the same minute at exam start, which a per-address limit
 # of ten used to lock out; it still stops one machine spraying many accounts.
 SIGN_IN = Limit(name="sign-in", allowance=10, window_seconds=60, on_redis_error="count_locally")
+# The ceiling is `sign_in_per_address_per_minute` (2,000): a hospital of 1,000 trainees on one NAT
+# signs in inside one minute at 09:00, and 300 used to answer the cohort with 429s.
 SIGN_IN_ADDRESS = Limit(
-    name="sign-in-address", allowance=300, window_seconds=60, on_redis_error="count_locally"
+    name="sign-in-address",
+    allowance=2000,
+    window_seconds=60,
+    on_redis_error="count_locally",
+    allowance_setting="sign_in_per_address_per_minute",
 )
 # Deliberately tighter, because the cost of the request is an email to
 # somebody else's inbox: the address is the attacker's choice, not theirs.
@@ -206,24 +228,30 @@ def _count_locally(limit: Limit, key: str) -> None:
         start, used = now, 0
     used += 1
     _local_windows[key] = (start, used)
-    if used > limit.allowance:
+    if used > limit.current_allowance():
         retry_after = max(int(limit.window_seconds - (now - start)), 1)
         raise TooManyRequests(details={"retry_after": retry_after, "limit": limit.name})
 
 
 async def check(limit: Limit, caller: str) -> None:
     """Count this call, and refuse it if the window is full."""
+    key = f"{KEY_PREFIX}:{limit.name}:{caller}"
     client = get_redis()
     if client is None:
+        # Redis switched off: a sign-in is still counted, in this process, so a guessed account is
+        # stopped; every other limit lets the call through (a deployment choice, not a failure).
+        if limit.on_redis_error == "count_locally":
+            _count_locally(limit, key)
         return
-    key = f"{KEY_PREFIX}:{limit.name}:{caller}"
     try:
-        used = await client.incr(key)
-        if used == 1:
-            # Only the first call in a window sets the expiry, so a burst
-            # cannot keep pushing the window out in front of itself.
-            await client.expire(key, limit.window_seconds)
-        if used > limit.allowance:
+        # One Lua script, so the counter is created, expired and incremented atomically: it always
+        # has its expiry and cannot lapse between two steps (which would re-create it with no TTL
+        # and lock the caller out for good). The expiry is set only on the first hit, so a burst
+        # cannot push the window out.
+        used = int(
+            await cast("Awaitable[int]", client.eval(_COUNT_SCRIPT, 1, key, str(limit.window_seconds)))
+        )
+        if used > limit.current_allowance():
             ttl = await client.ttl(key)
             raise TooManyRequests(details={"retry_after": max(ttl, 1), "limit": limit.name})
     except TooManyRequests:

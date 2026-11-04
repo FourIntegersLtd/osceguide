@@ -16,6 +16,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.account_status import forget_status
 from app.core.audit_wording import password_reissued_summary
 from app.core.auth import Principal
 from app.core.ports import RoomAgents
@@ -213,6 +214,9 @@ async def update_user(
             raise UserNotFound()
         action = "user.updated"
         status = values.get("status")
+        if status is not None:
+            # Deactivating or reactivating must bite on the next request, not when a cached "active" expires.
+            forget_status(session, user_id)
         if status == "deactivated" and before.status != "deactivated":
             # First: it frees the slot and the room; the sweep below only fails what is left.
             await service_rescue.release_slots_for_user(

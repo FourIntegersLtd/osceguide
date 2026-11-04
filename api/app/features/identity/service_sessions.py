@@ -107,7 +107,7 @@ async def login_with_memberships(
         # Verified against a dummy hash so an unknown address costs the same
         # argon2 work as a known one. The messages already match; without this
         # the response *time* still says whether the account exists.
-        verify_absent_password(password)
+        await verify_absent_password(password)
         raise InvalidCredentials()
     if user.password_login_disabled:
         # Checked before the hash: a hash-less SSO account would fail
@@ -115,13 +115,13 @@ async def login_with_memberships(
         # a stated refusal, and it would not catch an account that somehow
         # does carry a hash (an old row from before SSO was configured).
         raise PasswordLoginDisabled()
-    if not verify_password(user.password_hash, password):
+    if not await verify_password(user.password_hash, password):
         # An imported b2c account: accept the old bcrypt password once and replace it with argon2id
         # now. Only reached after the SSO refusal above, and everything below (suspension, second
         # factor, reopening, the trial clock) applies exactly as for any other password sign-in.
-        if not verify_legacy_password(user.legacy_password_hash, password):
+        if not await verify_legacy_password(user.legacy_password_hash, password):
             raise InvalidCredentials()
-        await repository.set_password_hash(session, user.id, hash_password(password))
+        await repository.set_password_hash(session, user.id, await hash_password(password))
         await session.refresh(user)  # the UPDATE bypassed the loaded row; the sign-in below reads it
     # A closed account is let through to finish signing in, but reopens only when the session is
     # minted (`service_mfa._issue_session`), after any second factor.

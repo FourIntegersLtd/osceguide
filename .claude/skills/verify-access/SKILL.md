@@ -201,3 +201,4 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
   `trial_expired`, while a 3x3-exhausted trial inside 14 days still peers. Proof:
   `poetry run pytest tests/http/test_entitlements_trial_window.py`. One failing request per test:
   the 403 rolls back the shared `db_session`.
+- **`make ci` runs the guards after the unit tests, and they bite auth code.** `test_sql_lives_in_repositories` flags any `.execute(` outside a repository (a Redis pipeline's `execute` too: use a Lua `eval`); `test_code_is_documented` wants a sentence on every nested function; `test_ownership` needs a new test file to match an OWNERS glob (`tests/http/test_identity_*`); `test_services_never_commit` forbids `session.commit()` in a service (the conftest savepoint session hides it, the real `get_session` raises). A cache test must wrap the `get_session` override to also run `cache.flush_cache_ops`, as the conftest does not.
