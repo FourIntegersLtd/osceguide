@@ -4228,6 +4228,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Results Index
+         * @description Every sitting with candidates by decision stage, newest first: where results work is waiting.
+         */
+        get: operations["dashboard_read_results_index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/roster/resolve": {
         parameters: {
             query?: never;
@@ -14141,6 +14161,40 @@ export interface components {
             passed: boolean | null;
             /** Total */
             total: number | null;
+        };
+        /** ResultsIndex */
+        ResultsIndex: {
+            /** Rows */
+            rows?: components["schemas"]["ResultsIndexRow"][];
+        };
+        /**
+         * ResultsIndexRow
+         * @description One sitting's decision progress. `not_decided` is candidates with no decision yet.
+         */
+        ResultsIndexRow: {
+            /** Candidates */
+            candidates: number;
+            /** Draft */
+            draft: number;
+            /** Mode */
+            mode: string;
+            /** Name */
+            name: string;
+            /** Not Decided */
+            not_decided: number;
+            /** Released */
+            released: number;
+            /** Scheduled For */
+            scheduled_for: string | null;
+            /** Signed Off */
+            signed_off: number;
+            /**
+             * Sitting Id
+             * Format: uuid
+             */
+            sitting_id: string;
+            /** Status */
+            status: string;
         };
         /**
          * RevenueByPlanRow
@@ -30727,6 +30781,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrgReporting"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dashboard_read_results_index: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultsIndex"];
                 };
             };
             /** @description unauthenticated, account_suspended */

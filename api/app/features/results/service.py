@@ -384,6 +384,13 @@ async def released_outcomes_by_sitting(
     return grouped
 
 
+async def decision_counts(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, dict[str, int]]:
+    """Per sitting, candidates by the workflow state of their current decision. For the results index."""
+    return await repository.decision_counts_by_sitting(session, org_id, sitting_ids)
+
+
 async def erase_text_for_user(session: AsyncSession, *, user_id: uuid.UUID) -> int:
     """An account is being erased: what was written about them in a decision becomes `[erased]`.
 

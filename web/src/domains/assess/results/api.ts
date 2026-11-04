@@ -9,8 +9,13 @@ import type { TraineeResult } from "@/domains/assess/trainee/api";
 
 export type SittingReport = components["schemas"]["SittingReport"];
 // `absent` (R-42) is declared here until the generated types are regenerated.
-export type StationReport = components["schemas"]["StationReport"] & { absent?: boolean };
-export type CandidateReport = Omit<components["schemas"]["CandidateReport"], "stations"> & {
+export type StationReport = components["schemas"]["StationReport"] & {
+  absent?: boolean;
+};
+export type CandidateReport = Omit<
+  components["schemas"]["CandidateReport"],
+  "stations"
+> & {
   stations?: StationReport[];
 };
 export type CohortSummary = components["schemas"]["CohortSummary"];
@@ -33,7 +38,10 @@ export function readSittingReport(
 }
 
 /** The sitting report as a CSV file the browser saves. */
-export function downloadSittingResults(slug: string, sittingId: string): Promise<PlatformDownload> {
+export function downloadSittingResults(
+  slug: string,
+  sittingId: string,
+): Promise<PlatformDownload> {
   return platformDownload(
     `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/report.csv`,
   );
@@ -120,7 +128,10 @@ export function readDecision(
   signal?: AbortSignal,
 ): Promise<Decision | null> {
   // `null` until a draft is recorded: the ordinary state, not an error.
-  return platformRequest<Decision | null>(decisionPath(slug, sittingId, traineeId), { signal });
+  return platformRequest<Decision | null>(
+    decisionPath(slug, sittingId, traineeId),
+    { signal },
+  );
 }
 
 /**
@@ -164,9 +175,12 @@ export function signOffDecision(
   sittingId: string,
   traineeId: string,
 ): Promise<Decision> {
-  return platformRequest<Decision>(`${decisionPath(slug, sittingId, traineeId)}/sign-off`, {
-    method: "POST",
-  });
+  return platformRequest<Decision>(
+    `${decisionPath(slug, sittingId, traineeId)}/sign-off`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export function releaseDecision(
@@ -174,9 +188,12 @@ export function releaseDecision(
   sittingId: string,
   traineeId: string,
 ): Promise<Decision> {
-  return platformRequest<Decision>(`${decisionPath(slug, sittingId, traineeId)}/release`, {
-    method: "POST",
-  });
+  return platformRequest<Decision>(
+    `${decisionPath(slug, sittingId, traineeId)}/release`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export type BulkReleaseResult = components["schemas"]["BulkReleaseResult"];
@@ -199,7 +216,9 @@ export function releaseDecisions(
     {
       method: "POST",
       body: {
-        candidates: candidates.map((candidate) => ({ trainee_id: candidate.traineeId })),
+        candidates: candidates.map((candidate) => ({
+          trainee_id: candidate.traineeId,
+        })),
       },
     },
   );
@@ -279,4 +298,15 @@ export function readResultPreview(
     `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/candidates/${encodeURIComponent(traineeId)}/result-preview`,
     { signal },
   );
+}
+
+export type ResultsIndex = components["schemas"]["ResultsIndex"];
+export type ResultsIndexRow = components["schemas"]["ResultsIndexRow"];
+
+/** Every sitting with its candidates by decision stage, newest first. */
+export function readResultsIndex(
+  slug: string,
+  signal?: AbortSignal,
+): Promise<ResultsIndex> {
+  return platformRequest<ResultsIndex>(`${orgPath(slug)}/results`, { signal });
 }

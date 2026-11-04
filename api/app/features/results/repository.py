@@ -7,7 +7,7 @@ from collections.abc import Collection, Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import case, or_, select, update
+from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -206,6 +206,37 @@ async def released_outcomes(session: AsyncSession, org_id: uuid.UUID) -> list[tu
     )
     rows = (await session.execute(stmt)).scalars()
     return [(row.sitting_id, row.assessment_outcome) for row in rows if row.released_at is not None]
+
+
+async def decision_counts_by_sitting(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, dict[str, int]]:
+    """Per sitting, how many candidates' current revision is in each workflow state.
+
+    Review requested from marking-owner: "current" is the highest revision per (sitting, trainee),
+    as in `released_outcomes`; a candidate with no revision is not counted here at all.
+    """
+    latest = (
+        select(CandidateResultRevision.sitting_id, CandidateResultRevision.workflow_state)
+        .where(
+            CandidateResultRevision.org_id == org_id,
+            CandidateResultRevision.sitting_id.in_(list(sitting_ids)),
+        )
+        .distinct(CandidateResultRevision.sitting_id, CandidateResultRevision.trainee_id)
+        .order_by(
+            CandidateResultRevision.sitting_id,
+            CandidateResultRevision.trainee_id,
+            CandidateResultRevision.revision.desc(),
+        )
+        .subquery()
+    )
+    stmt = select(latest.c.sitting_id, latest.c.workflow_state, func.count()).group_by(
+        latest.c.sitting_id, latest.c.workflow_state
+    )
+    counts: dict[uuid.UUID, dict[str, int]] = {}
+    for sitting_id, state, count in (await session.execute(stmt)).all():
+        counts.setdefault(sitting_id, {})[state] = int(count)
+    return counts
 
 
 async def scrub_text_for_trainees(session: AsyncSession, trainee_ids: Sequence[uuid.UUID]) -> int:

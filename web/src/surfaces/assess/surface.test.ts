@@ -9,6 +9,12 @@ const navFor = (granted: Permission[]) =>
   assessSurface.nav({ workspace, can: (p) => granted.includes(p), href: (p) => `/app/kings${p}` }).map((i) => i.href);
 
 describe("institution navigation", () => {
+  it("shows staff Results and answers its screen", () => {
+    assert.ok(navFor(["run_circuits"]).includes("/app/kings/results"));
+    assert.ok(!navFor([]).includes("/app/kings/results"));
+    assert.ok(assessSurface.screenNames.includes("resultsIndex"));
+  });
+
   it("opens reporting to staff and answers its screen (R-32)", () => {
     assert.ok(navFor(["run_circuits"]).includes("/app/kings/reporting"));
     assert.ok(!navFor([]).includes("/app/kings/reporting"));

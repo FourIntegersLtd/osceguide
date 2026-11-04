@@ -151,10 +151,21 @@ async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:
     return await repository_reads.count_sittings(session, org_id)
 
 
-async def recent_sittings(session: AsyncSession, org_id: uuid.UUID, *, limit: int) -> list[SittingRef]:
-    """This organisation's most recently created sittings."""
-    sittings, _ = await repository.list_sittings(session, org_id, limit=limit, cursor=None)
+async def recent_sittings(
+    session: AsyncSession, org_id: uuid.UUID, *, limit: int, exclude_status: str | None = None
+) -> list[SittingRef]:
+    """This organisation's most recently created sittings, optionally leaving one status out."""
+    sittings, _ = await repository.list_sittings(
+        session, org_id, limit=limit, cursor=None, exclude_status=exclude_status
+    )
     return [_sitting_ref(sitting) for sitting in sittings]
+
+
+async def candidate_counts(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Distinct candidates rostered in each sitting, keyed by sitting id."""
+    return await repository_reads.candidate_counts_for_sittings(session, org_id, sitting_ids)
 
 
 async def supervisor_circuits(
