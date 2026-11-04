@@ -122,6 +122,7 @@ async def test_an_exam_authored_over_http_can_be_sat_and_marked(
     from app.features.attempts.jobs import policy_for, score_attempt_now
     from app.features.attempts.models import Attempt
     from tests.support.fakes import FakeEvaluator
+    from tests.support.sessions import opener_for
 
     admin = await make_actor("platform-admin@osceguide.com", platform_admin=True)
 
@@ -281,7 +282,7 @@ async def test_an_exam_authored_over_http_can_be_sat_and_marked(
 
     evaluator = FakeEvaluator(payload={"clinical_reasoning": {}, "model_used": "fake-model"})
     wrote = await score_attempt_now(
-        db_session,
+        opener_for(db_session),
         uuid.UUID(attempt_id),
         evaluator=evaluator,
         policy_version=policy_version,

@@ -131,7 +131,7 @@ class EvaluationPolicy(Frozen):
     anthropic_max_tokens: int = Field(default=16000, gt=0)
     # None sends no temperature: Claude 5.5 models refuse any value but their default.
     anthropic_temperature: float | None = Field(default=None, ge=0.0)
-    timeout_s: int = Field(default=480, gt=0)
+    timeout_s: int = Field(default=180, gt=0)
     system_prompt_override: str | None = None
     version: str = "1"
 

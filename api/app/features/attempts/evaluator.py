@@ -15,7 +15,9 @@ instead of storing an empty result.
 from __future__ import annotations
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Any
 
 from app.core.logging import get_logger
@@ -24,6 +26,13 @@ from app.core.settings import get_settings
 from app.features.attempts.errors import MarkerUnavailable
 
 log = get_logger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _marking_pool() -> ThreadPoolExecutor:
+    """The threads markings run on: their own, so marking never queues behind (or starves) other
+    `to_thread` work, and `worker_concurrency` is the real ceiling on model calls in flight."""
+    return ThreadPoolExecutor(max_workers=get_settings().worker_concurrency, thread_name_prefix="marking")
 
 
 def _as_int(value: object, default: int) -> int:
@@ -148,8 +157,8 @@ class EngineEvaluator:
         try:
             # The engine is synchronous and one marking takes a minute: off the
             # event loop, or every other request (and a trial's stream) waits on it.
-            engine_result = await asyncio.to_thread(
-                self._build(framework).evaluate, attempt, engine_transcript, policy, scenario
+            engine_result = await asyncio.get_running_loop().run_in_executor(
+                _marking_pool(), self._build(framework).evaluate, attempt, engine_transcript, policy, scenario
             )
         except Exception as exc:  # noqa: BLE001 - any engine failure is a delivery failure
             log.warning("engine evaluation failed", framework=framework_id, error=str(exc))
