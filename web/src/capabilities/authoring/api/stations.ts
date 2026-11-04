@@ -2,6 +2,7 @@ import { platformRequest, type components } from "@/foundation/platform-client";
 import type { AuthoringScope, Json } from "@/capabilities/authoring/api/scope";
 import type { Station, StationVersion } from "@/capabilities/authoring/api/scope";
 import { pathId } from "@/capabilities/authoring/api/scope";
+import { explainArchiveRefusal } from "@/capabilities/authoring/api/archiveRefusal";
 
 type S = components["schemas"];
 
@@ -151,8 +152,10 @@ export function archiveStationVersion(
   station: string,
   version: number,
 ): Promise<StationVersion> {
-  return platformRequest(`${scope.base}/stations/${pathId(station)}/versions/${version}/archive`, {
+  return platformRequest<StationVersion>(`${scope.base}/stations/${pathId(station)}/versions/${version}/archive`, {
     method: "POST",
+  }).catch((cause: unknown) => {
+    throw explainArchiveRefusal(cause);
   });
 }
 

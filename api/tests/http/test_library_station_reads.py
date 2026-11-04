@@ -437,3 +437,38 @@ async def test_the_library_answers_for_the_versions_a_set_names(
     )
     assert narrowed.status_code == 200, narrowed.text
     assert sorted(row["title"] for row in narrowed.json()["items"]) == ["Headache", "Wheezy child"]
+
+
+async def test_the_org_station_list_says_how_many_things_use_each_station(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Usage is counted on the list, once for the page, so an author sees it before archiving."""
+    from sqlalchemy import select
+
+    from app.features.sittings.models import Circuit, CircuitStation, Sitting
+    from app.features.stations.models import Station
+    from tests.support.rubrics import published_feedback_version
+
+    org_id = await seed_org(client, make_actor)
+    admin = await member(make_actor, org_id, "kings", "owner")
+    used = await make_station(client, admin)
+    unused = await make_station(client, admin)
+    for station in (used, unused):
+        await client.post(f"/api/v1/orgs/kings/stations/{station['id']}/versions/1/publish", headers=bearer(admin))
+    version_id = await db_session.scalar(
+        select(Station.current_version_id).where(Station.id == uuid.UUID(used["id"]))
+    )
+    assert version_id is not None
+
+    rubric_version = await published_feedback_version(db_session, org_id)
+    sitting = Sitting(org_id=org_id, name="S", mode="exam", rubric_version_id=rubric_version.id)
+    db_session.add(sitting)
+    await db_session.flush()
+    circuit = Circuit(org_id=org_id, sitting_id=sitting.id, name="C")
+    db_session.add(circuit)
+    await db_session.flush()
+    db_session.add(CircuitStation(circuit_id=circuit.id, position=0, station_version_id=version_id))
+    await db_session.flush()
+
+    listed = (await client.get("/api/v1/orgs/kings/stations", headers=bearer(admin))).json()["items"]
+    assert {row["id"]: row["used_by_count"] for row in listed} == {used["id"]: 1, unused["id"]: 0}
