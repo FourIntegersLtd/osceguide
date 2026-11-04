@@ -4760,6 +4760,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/circuits/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Exam Circuits */
+        post: operations["sittings_add_exam_circuits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/cohort": {
         parameters: {
             query?: never;
@@ -9651,6 +9668,24 @@ export interface components {
              * @default 3
              */
             station_attempt_limit: number;
+        };
+        /**
+         * CreateExamCircuits
+         * @description One exam circuit per candidate, all with the same stations, lead and timing.
+         */
+        CreateExamCircuits: {
+            /** Candidate User Ids */
+            candidate_user_ids: string[];
+            /**
+             * Name Prefix
+             * @default Exam
+             */
+            name_prefix: string;
+            /** Station Version Ids */
+            station_version_ids: string[];
+            /** Supervisor User Id */
+            supervisor_user_id?: string | null;
+            timing?: components["schemas"]["TimingIn"] | null;
         };
         /** CreateGroup */
         CreateGroup: {
@@ -33206,6 +33241,77 @@ export interface operations {
                 };
             };
             /** @description sitting_locked, lead_cannot_run, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster, programme_not_active */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sittings_add_exam_circuits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sitting_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateExamCircuits"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CircuitRead"][];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sitting_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sitting_locked, lead_cannot_run, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster, programme_not_active, not_permitted_in_mode */
             409: {
                 headers: {
                     [name: string]: unknown;

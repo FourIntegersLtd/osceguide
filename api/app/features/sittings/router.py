@@ -168,6 +168,30 @@ async def add_circuit(
     )
 
 
+# One circuit per exam candidate, all or none.
+@router.post(
+    "/orgs/{org_slug}/sittings/{sitting_id}/circuits/bulk",
+    response_model=list[schemas.CircuitRead],
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(
+        Forbidden,
+        errors.SittingNotFound,
+        errors.SittingLockedError,
+        errors.LeadCannotRun,
+        errors.InvalidCircuitError,
+        errors.TraineeRevokedError,
+        errors.MarkingNotReady,
+        errors.TraineeNotOnRosterError,
+        errors.ProgrammeNotActive,
+        errors.NotPermittedInModeError,
+    ),
+)
+async def add_exam_circuits(
+    sitting_id: uuid.UUID, body: schemas.CreateExamCircuits, workspace: OrgAdmin, session: Session
+) -> list[schemas.CircuitRead]:
+    return await service.add_exam_circuits(session, workspace.org_id, sitting_id, body)
+
+
 @router.put(
     "/orgs/{org_slug}/circuits/{circuit_id}",
     response_model=schemas.CircuitRead,
