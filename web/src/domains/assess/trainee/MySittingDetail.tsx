@@ -35,6 +35,7 @@ import {
   progressOf,
   slotStatus,
 } from "@/domains/assess/trainee/support";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * One sitting, as the candidate sitting it sees it.
@@ -50,6 +51,7 @@ import {
  * them. Keying on the sitting alone showed somebody another circuit's stations.
  */
 export function MySittingDetail({ sittingId }: { sittingId: string }) {
+  const w = useAssessWords();
   const { orgSlug } = useSurface();
   const initial = useAsync((signal) => readMySittings(orgSlug, signal), [orgSlug]);
   const stream = useEventStream<MySittings>(mySittingsStreamPath(orgSlug));
@@ -60,7 +62,7 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
     <div className="flex w-full min-w-0 flex-col gap-6">
       <AsyncBoundary state={initial} isEmpty={() => mine.length === 0}
         empty={{
-          title: "We could not find that sitting",
+          title: `We could not find that ${w.sitting}`,
           description: "You may have been taken off it, or it belongs to another organisation.",
         }}
       >
@@ -77,6 +79,7 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
 }
 
 function Circuit({ sitting }: { sitting: MySitting }) {
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const slots = orderedSlots(sitting);
   const briefSlot = readingBriefSlot(sitting);
@@ -110,7 +113,7 @@ function Circuit({ sitting }: { sitting: MySitting }) {
               </Badge>
             ) : null}
             <ButtonLink themeType="b2b" variant="secondary" size="sm" href={hrefFor("/trainee")}>
-              All sittings
+              All {w.sittings}
             </ButtonLink>
           </>
         }

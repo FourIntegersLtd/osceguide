@@ -14,7 +14,12 @@ test("HIRE-1 an employer admin sees the hiring menu, not the institution's @stag
 
   await openPage(page, `/app/${w.hireSlug}/sittings`);
   await expectPageHeading(page);
+  await expect(page.getByRole("heading", { name: "Assessments", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sittings", exact: true })).toHaveCount(0);
   await expect(page.getByText(/not authorised|permission|forbidden/i)).toHaveCount(0);
+
+  await openPage(page, `/app/${w.hireSlug}/trainees`);
+  await expect(page.getByRole("heading", { name: "Candidates", exact: true })).toBeVisible();
 });
 
 test("HIRE-2 a candidate is shown only My assessments @staging", async ({ page, context }) => {

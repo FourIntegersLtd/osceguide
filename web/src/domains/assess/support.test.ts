@@ -1,3 +1,4 @@
+import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Programme, Sitting, SittingMode } from "@/domains/assess/api";
@@ -22,7 +23,9 @@ import {
 } from "@/domains/assess/support";
 
 /** The smallest thing `sittingEditLock` can be asked about. */
-function sitting(circuits: { started_at: string | null }[]): Pick<Sitting, "circuits"> {
+function sitting(
+  circuits: { started_at: string | null }[],
+): Pick<Sitting, "circuits"> {
   return { circuits: circuits as Sitting["circuits"] };
 }
 
@@ -51,18 +54,28 @@ test("circuits freeze the mode before they freeze the marking", () => {
   const lock = sittingEditLock(sitting([{ started_at: null }]));
   assert.equal(lock.circuits, 1);
   assert.equal(lock.begun, false);
-  assert.equal(lock.modeFrozen, true, "the mode composes the slots, so it is chosen before they exist");
+  assert.equal(
+    lock.modeFrozen,
+    true,
+    "the mode composes the slots, so it is chosen before they exist",
+  );
   assert.equal(lock.assessmentFrozen, false, "nothing has been examined yet");
 });
 
 test("a started circuit freezes every assessment-bearing field", () => {
-  assert.equal(sittingEditLock(sitting([{ started_at: "2026-03-01T09:00:00Z" }])).assessmentFrozen, true);
+  assert.equal(
+    sittingEditLock(sitting([{ started_at: "2026-03-01T09:00:00Z" }]))
+      .assessmentFrozen,
+    true,
+  );
 });
 
 test("a circuit that has finished still counts as begun", () => {
   // `ended_at` is not the question the server asks: an examination that is over
   // is the one whose marks must keep meaning what they meant.
-  const lock = sittingEditLock(sitting([{ started_at: "2026-03-01T09:00:00Z" }]));
+  const lock = sittingEditLock(
+    sitting([{ started_at: "2026-03-01T09:00:00Z" }]),
+  );
   assert.equal(lock.begun, true);
   assert.equal(lock.assessmentFrozen, true);
 });
@@ -119,7 +132,9 @@ test("the same appointment in the other spelling is not a change", () => {
 });
 
 test("an emptied date is a request to unschedule, not an absent field", () => {
-  const before = full({ scheduled_for: new Date(2026, 2, 1, 9, 0).toISOString() });
+  const before = full({
+    scheduled_for: new Date(2026, 2, 1, 9, 0).toISOString(),
+  });
   const changes = sittingChanges(before, {
     name: "March mock",
     mode: "training",
@@ -149,7 +164,9 @@ test("the picker keeps the programme a sitting is already on, retired or not", (
     { id: "p3", exam_name: "Three", exam_code: "C", status: "retired" },
   ];
   assert.deepEqual(
-    programmeChoices(items as Programme[], "p1").map((programme) => programme.id),
+    programmeChoices(items as Programme[], "p1").map(
+      (programme) => programme.id,
+    ),
     ["p1", "p2"],
   );
 });
@@ -160,7 +177,10 @@ test("an unparseable date reads as unscheduled rather than as Invalid Date", () 
 });
 
 function form(
-  sitting: Pick<Sitting, "name" | "mode" | "programme_id" | "scheduled_for" | "cohort_id">,
+  sitting: Pick<
+    Sitting,
+    "name" | "mode" | "programme_id" | "scheduled_for" | "cohort_id"
+  >,
 ): SittingFormValues {
   const mode: SittingMode = sitting.mode === "exam" ? "exam" : "training";
   return {
@@ -186,7 +206,10 @@ test("only people who can run a circuit are offered as its lead", () => {
     { user_id: "c", role: "trainee" },
     { user_id: "d", role: "practice_user" },
   ];
-  assert.deepEqual(circuitLeads(staff).map((member) => member.user_id), ["a", "b"]);
+  assert.deepEqual(
+    circuitLeads(staff).map((member) => member.user_id),
+    ["a", "b"],
+  );
 });
 
 test("the sittings list says when its filters cover only what has loaded", () => {
@@ -198,8 +221,14 @@ test("the sittings list says when its filters cover only what has loaded", () =>
 });
 
 test("only somebody who can schedule is told to schedule", () => {
-  assert.equal(sittingsEmptyDescription(true), "Schedule your first one to get started.");
-  assert.equal(sittingsEmptyDescription(false), "An administrator schedules sittings; they will appear here.");
+  assert.equal(
+    sittingsEmptyDescription(true, INSTITUTION_WORDS),
+    "Schedule your first one to get started.",
+  );
+  assert.equal(
+    sittingsEmptyDescription(false, INSTITUTION_WORDS),
+    "An administrator schedules sittings; they will appear here.",
+  );
 });
 
 test("toggleInSet adds a missing id, removes a present one and leaves the original alone", () => {
@@ -211,11 +240,18 @@ test("toggleInSet adds a missing id, removes a present one and leaves the origin
 
 test("holding a sitting for a cohort, moving it and clearing it are changes; restating is not", () => {
   const unheld = full();
-  assert.deepEqual(sittingChanges(unheld, { ...form(unheld), cohortId: "c1" }), { cohortId: "c1" });
+  assert.deepEqual(
+    sittingChanges(unheld, { ...form(unheld), cohortId: "c1" }),
+    { cohortId: "c1" },
+  );
   const held = full({ cohort_id: "c1" });
   assert.deepEqual(sittingChanges(held, form(held)), {});
-  assert.deepEqual(sittingChanges(held, { ...form(held), cohortId: "c2" }), { cohortId: "c2" });
-  assert.deepEqual(sittingChanges(held, { ...form(held), cohortId: "" }), { cohortId: null });
+  assert.deepEqual(sittingChanges(held, { ...form(held), cohortId: "c2" }), {
+    cohortId: "c2",
+  });
+  assert.deepEqual(sittingChanges(held, { ...form(held), cohortId: "" }), {
+    cohortId: null,
+  });
 });
 
 test("only the filters that are set go to the server", () => {
@@ -238,7 +274,10 @@ test("only the filters that are set go to the server", () => {
       scheduled_to: "2026-05-31",
     },
   );
-  assert.deepEqual(sittingFilterQuery({ ...NO_SITTING_FILTERS, search: "   " }), {});
+  assert.deepEqual(
+    sittingFilterQuery({ ...NO_SITTING_FILTERS, search: "   " }),
+    {},
+  );
 });
 
 test("moveItem swaps an item with its neighbour above or below", () => {
@@ -268,7 +307,12 @@ const row = (id: string, user_id: string | null) => ({
 });
 
 test("expandToUsers maps members to user ids and counts those not signed in", () => {
-  const trainees = [row("t1", "u1"), row("t2", null), row("t3", "u3"), row("t4", "u4")];
+  const trainees = [
+    row("t1", "u1"),
+    row("t2", null),
+    row("t3", "u3"),
+    row("t4", "u4"),
+  ];
   assert.deepEqual(expandToUsers(["t1", "t2", "t3", "gone"], trainees), {
     userIds: ["u1", "u3"],
     notSignedIn: 1,
@@ -276,7 +320,10 @@ test("expandToUsers maps members to user ids and counts those not signed in", ()
 });
 
 test("groupNotice says who was added and who was left out", () => {
-  assert.equal(groupNotice({ userIds: ["a", "b"], notSignedIn: 3 }), "Added 2. 3 not signed in yet, so they were left out.");
+  assert.equal(
+    groupNotice({ userIds: ["a", "b"], notSignedIn: 3 }),
+    "Added 2. 3 not signed in yet, so they were left out.",
+  );
   assert.equal(groupNotice({ userIds: ["a"], notSignedIn: 0 }), "Added 1.");
 });
 
@@ -284,4 +331,11 @@ test("isBulkExam is true only for an exam with several candidates", () => {
   assert.equal(isBulkExam(true, 2), true);
   assert.equal(isBulkExam(true, 1), false);
   assert.equal(isBulkExam(false, 5), false);
+});
+
+test("an employer workspace's empty list says assessments", () => {
+  assert.equal(
+    sittingsEmptyDescription(false, EMPLOYER_WORDS),
+    "An administrator schedules assessments; they will appear here.",
+  );
 });

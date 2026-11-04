@@ -1,3 +1,4 @@
+import type { AssessWords } from "@/domains/assess/vocabulary";
 import { humanise } from "@/foundation/format";
 import { isAdminRole, isSupervisorRole } from "@/foundation/session/roles";
 import {
@@ -206,10 +207,10 @@ export function sittingsScopeNote(loaded: number, hasMore: boolean): string | nu
     : null;
 }
 
-export function sittingsEmptyDescription(canSchedule: boolean): string {
+export function sittingsEmptyDescription(canSchedule: boolean, words: AssessWords): string {
   return canSchedule
     ? "Schedule your first one to get started."
-    : "An administrator schedules sittings; they will appear here.";
+    : `An administrator schedules ${words.sittings}; they will appear here.`;
 }
 
 export function sittingStatusLabel(status: string): string {

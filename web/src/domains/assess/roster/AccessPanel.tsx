@@ -16,6 +16,7 @@ import {
   type Entitlement,
 } from "@/domains/assess/roster/api";
 import { displayName, sortTrainees } from "@/domains/assess/roster/support";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * Exam access for a trainee between sittings.
@@ -42,6 +43,7 @@ export function AccessPanel({
   trainees: Trainee[];
   canManage: boolean;
 }) {
+  const w = useAssessWords();
   const exams = useAsync((signal) => listExams(orgSlug, signal), [orgSlug]);
 
   const [search, setSearch] = useState("");
@@ -101,7 +103,7 @@ export function AccessPanel({
       {canManage ? (
         <Panel
           title="Grant exam access"
-          description="Lets trainees practise between sittings. They do not need it to take an exam they are booked on."
+          description={`Lets ${w.trainees} practise between ${w.sittings}. They do not need it to take an exam they are booked on.`}
         >
           <form
             className="grid grid-cols-1 gap-4 sm:grid-cols-3"
@@ -124,7 +126,7 @@ export function AccessPanel({
                 className={`mt-2 ${b2bTokens.b2bInputBase}`}
                 required
               >
-                <option value="">Choose a trainee…</option>
+                <option value="">Choose a {w.trainee}…</option>
                 {sortTrainees(trainees).map((trainee) => (
                   <option key={trainee.id} value={trainee.email}>
                     {displayName(trainee)} ({trainee.email})
@@ -201,7 +203,7 @@ export function AccessPanel({
         {(entitlements) =>
           entitlements.length === 0 && !query ? (
             <p className="text-osce-body text-b2b-mid">
-              No practice access given yet. Trainees can still take every exam they are booked on.
+              No practice access given yet. {w.Trainees} can still take every exam they are booked on.
             </p>
           ) : (
             <GrantsTable

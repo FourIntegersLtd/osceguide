@@ -3,6 +3,7 @@ import test from "node:test";
 import type { Trainee } from "@/domains/assess/api";
 import { PlatformError } from "@/foundation/platform-client";
 import { cohortDeleteLead, cohortName, deleteLead, rosterErrorMessage, rosterTabs, traineeStatus } from "@/domains/assess/roster/support";
+import { INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
 import { loadRoster, type RosterData, type RosterPart } from "@/domains/assess/roster/useRosterData";
 
 function trainee(over: Partial<Trainee> = {}): Trainee {
@@ -64,8 +65,8 @@ test("revoked access is flagged whatever step was reached", () => {
 
 
 test("a supervisor is not offered the Exam access tab, which the API closes to admins", () => {
-  assert.deepEqual(rosterTabs(false).map((t) => t.key), ["trainees", "add", "groups"]);
-  assert.deepEqual(rosterTabs(true).map((t) => t.key), ["trainees", "add", "groups", "access"]);
+  assert.deepEqual(rosterTabs(false, INSTITUTION_WORDS).map((t) => t.key), ["trainees", "add", "groups"]);
+  assert.deepEqual(rosterTabs(true, INSTITUTION_WORDS).map((t) => t.key), ["trainees", "add", "groups", "access"]);
 });
 
 test("the delete prompt says up front when Revoke is the option that will work", () => {

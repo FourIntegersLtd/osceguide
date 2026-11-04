@@ -8,6 +8,7 @@ import { useTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
 import { rosterErrorMessage } from "@/domains/assess/roster/support";
 import { addTrainee, type Cohort } from "@/domains/assess/roster/api";
 import { BulkImportDialog } from "@/domains/assess/roster/BulkImportDialog";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /** "Amina Khan" → first "Amina", last "Khan"; one word is a first name. */
 export function splitName(value: string): { firstName: string | null; lastName: string | null } {
@@ -40,6 +41,7 @@ export function AddTraineePanel({
   canManage: boolean;
   onAdded: () => void;
 }) {
+  const w = useAssessWords();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [cohortId, setCohortId] = useState("");
@@ -84,7 +86,7 @@ export function AddTraineePanel({
 
   if (!canManage) {
     return (
-      <Alert tone="info" title="Only an owner or admin can add trainees">
+      <Alert tone="info" title={`Only an owner or admin can add ${w.trainees}`}>
         Ask one of them to add the people you need on the roster.
       </Alert>
     );
@@ -184,14 +186,14 @@ export function AddTraineePanel({
             className="inline-flex items-center gap-2"
           >
             <HiOutlineUserPlus className="h-4 w-4 shrink-0" aria-hidden />
-            {busy ? "Saving…" : "Add trainee"}
+            {busy ? "Saving…" : `Add ${w.trainee}`}
           </Button>
         </form>
       </Panel>
 
       <Panel
         title="Import a spreadsheet"
-        description="Upload a list of trainees saved from Excel or Google Sheets as a .csv file. Anyone already on the list is skipped and shown to you."
+        description={`Upload a list of ${w.trainees} saved from Excel or Google Sheets as a .csv file. Anyone already on the list is skipped and shown to you.`}
       >
         <Button themeType="b2b" variant="secondary" onClick={() => setImportOpen(true)}>
           Import from spreadsheet
