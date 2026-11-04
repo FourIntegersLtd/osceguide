@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import uuid
-from contextlib import nullcontext
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +20,7 @@ from app.features.identity import repository as identity_repo
 from tests.support.catalog import ensure_exam
 from tests.support.fakes import FakeEvaluator
 from tests.support.rubrics import frozen_definition
+from tests.support.sessions import opener_for
 
 pytestmark = pytest.mark.db
 
@@ -55,7 +58,7 @@ async def completed_attempt(session: AsyncSession, *, turns: int = 2) -> uuid.UU
 
 async def score(session: AsyncSession, attempt_id: uuid.UUID, evaluator: FakeEvaluator) -> bool:
     return await score_attempt_now(
-        session,
+        opener_for(session),
         attempt_id,
         evaluator=evaluator,
         policy_version=PLATFORM_DEFAULT_POLICY,
@@ -102,7 +105,7 @@ async def test_a_different_policy_scores_again_beside_the_first(db_session: Asyn
     await score(db_session, attempt_id, FakeEvaluator())
     await db_session.flush()
     await score_attempt_now(
-        db_session,
+        opener_for(db_session),
         attempt_id,
         evaluator=FakeEvaluator(payload={"overall": "A"}),
         policy_version="kings-rubric@2",
@@ -163,7 +166,7 @@ async def test_the_last_failed_try_marks_the_attempt_marking_failed_and_says_why
         framework_id="sca-rcgp-v1",
         now=NOW,
         last_try=True,
-        open_session=lambda: nullcontext(db_session),
+        open_session=opener_for(db_session),
     )
     await db_session.flush()
     assert scored is False
@@ -183,9 +186,9 @@ async def test_a_mark_after_a_failed_one_clears_the_failure(db_session: AsyncSes
     assert (attempt.status, attempt.failed_reason) == ("evaluated", None)
 
 
-async def test_the_scoring_job_runs_four_times_and_only_the_fourth_is_the_last_try() -> None:
-    """procrastinate counts `attempts` as failed runs so far: it retries while attempts < 3, so a job
-    runs 1 + 3 times, 4 s, 16 s then 64 s apart, and only the run it will not retry is the last."""
+async def test_the_scoring_job_runs_five_times_and_only_the_fifth_is_the_last_try() -> None:
+    """procrastinate counts `attempts` as failed runs so far: it retries while attempts < 4, so a job
+    runs 1 + 4 times, 4 s, 16 s, 64 s then 256 s apart, and only the run it will not retry is the last."""
     from types import SimpleNamespace
 
     from app.core.jobs import get_jobs_app
@@ -205,8 +208,8 @@ async def test_the_scoring_job_runs_four_times_and_only_the_fourth_is_the_last_t
         assert decision.retry_at is not None
         waits.append(round((decision.retry_at - datetime.now(UTC)).total_seconds()))
         attempts += 1
-    assert waits == [4, 16, 64]
-    assert last_tries == [False, False, False, True]
+    assert waits == [4, 16, 64, 256]
+    assert last_tries == [False, False, False, False, True]
 
 
 async def test_any_error_on_the_last_try_is_recorded_not_just_a_failed_evaluation(
@@ -224,7 +227,7 @@ async def test_any_error_on_the_last_try_is_recorded_not_just_a_failed_evaluatio
         framework_id="sca-rcgp-v1",
         now=NOW,
         last_try=True,
-        open_session=lambda: nullcontext(db_session),
+        open_session=opener_for(db_session),
     )
     await db_session.flush()
     attempt = await repository.attempt_by_id(db_session, attempt_id)
@@ -244,7 +247,7 @@ async def test_a_failed_second_policy_does_not_mark_an_evaluated_attempt_failed(
         framework_id="sca-rcgp-v1",
         now=NOW,
         last_try=True,
-        open_session=lambda: nullcontext(db_session),
+        open_session=opener_for(db_session),
     )
     await db_session.flush()
     attempt = await repository.attempt_by_id(db_session, attempt_id)
@@ -351,3 +354,91 @@ async def test_an_attempt_with_no_frozen_rubric_is_failed_when_its_marking_is_qu
     assert stored is not None
     await db_session.refresh(stored)
     assert (stored.status, stored.failed_reason) == ("failed", NO_MARKING_RUBRIC)
+
+
+async def test_no_session_is_open_while_the_model_thinks(db_session: AsyncSession) -> None:
+    """A connection held for the minute or two a marking takes is a connection the pool cannot lend."""
+    attempt_id = await completed_attempt(db_session)
+    open_sessions = 0
+    seen_during_call: list[int] = []
+
+    @asynccontextmanager
+    async def counting_opener() -> AsyncIterator[AsyncSession]:
+        nonlocal open_sessions
+        open_sessions += 1
+        try:
+            yield db_session
+        finally:
+            open_sessions -= 1
+
+    class Watching(FakeEvaluator):
+        async def evaluate(self, **kwargs: Any) -> dict[str, object]:
+            seen_during_call.append(open_sessions)
+            return await super().evaluate(**kwargs)
+
+    wrote = await score_attempt_now(
+        counting_opener,
+        attempt_id,
+        evaluator=Watching(),
+        policy_version=PLATFORM_DEFAULT_POLICY,
+        framework_id="sca-rcgp-v1",
+        now=NOW,
+    )
+    assert wrote is True
+    assert seen_during_call == [0]
+
+
+async def test_a_mark_that_landed_during_the_model_call_is_not_stored_twice(
+    db_session: AsyncSession,
+) -> None:
+    attempt_id = await completed_attempt(db_session)
+
+    class RacedByAnotherRun(FakeEvaluator):
+        async def evaluate(self, **kwargs: Any) -> dict[str, object]:
+            await score(db_session, attempt_id, FakeEvaluator(payload={"overall": "A"}))
+            await db_session.flush()
+            return await super().evaluate(**kwargs)
+
+    assert await score(db_session, attempt_id, RacedByAnotherRun()) is False
+    results = await transcripts.results_for(db_session, attempt_id)
+    assert [r.payload for r in results] == [{"overall": "A"}]
+
+
+async def test_two_policies_for_one_attempt_share_a_lock_and_marking_goes_first(
+    db_session: AsyncSession,
+) -> None:
+    from sqlalchemy import text
+
+    from app.features.attempts.jobs import enqueue_scoring
+
+    attempt_id = await completed_attempt(db_session)
+    attempt = await repository.attempt_by_id(db_session, attempt_id)
+    assert attempt is not None
+    await enqueue_scoring(db_session, attempt, now=NOW, policy_version="a@1")
+    await enqueue_scoring(db_session, attempt, now=NOW, policy_version="b@1")
+    rows = (
+        await db_session.execute(
+            text("SELECT lock, priority FROM procrastinate_jobs WHERE args->>'attempt_id' = :id"),
+            {"id": str(attempt_id)},
+        )
+    ).all()
+    assert rows == [(f"score:{attempt_id}", 10)] * 2
+
+
+def test_the_marking_clients_carry_the_configured_timeout_and_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.core.settings import get_settings
+    from app.features.attempts import llm_clients
+
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
+    monkeypatch.setenv("MARKING_LLM_TIMEOUT_SECONDS", "77")
+    monkeypatch.setenv("MARKING_LLM_MAX_RETRIES", "1")
+    get_settings.cache_clear()
+    try:
+        for client in (llm_clients.primary_client(), llm_clients.fallback_client()):
+            assert client is not None
+            assert (client.timeout, client.max_retries) == (77.0, 1)
+    finally:
+        get_settings.cache_clear()
