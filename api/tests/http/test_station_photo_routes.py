@@ -261,3 +261,27 @@ async def test_a_trainee_may_not_put_images_on_a_station(client: AsyncClient, ma
     response = await client.post(photos_url(station), files={"files": png()}, headers=bearer(trainee))
 
     assert response.status_code == 403
+
+
+async def test_a_request_with_more_than_ten_images_is_refused_whole(
+    client: AsyncClient, make_actor, fake_s3: list[str]
+) -> None:  # type: ignore[no-untyped-def]
+    org = await seed_org(client, make_actor)
+    token = await admin_of(make_actor, org, "kings")
+    station = await a_station(client, token, "sca", CONTENT)
+
+    refused = await client.post(
+        photos_url(station),
+        files=[("files", png(f"{n}.png")) for n in range(11)],
+        headers=bearer(token),
+    )
+    allowed = await client.post(
+        photos_url(station),
+        files=[("files", png(f"{n}.png")) for n in range(10)],
+        headers=bearer(token),
+    )
+
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["code"] == "invalid_photo"
+    assert allowed.status_code == 200, allowed.text
+    assert allowed.json()["uploaded"] == 10

@@ -19,7 +19,7 @@ from app.core.auth import Principal
 from app.features.catalog import domain, repository
 from app.features.catalog.errors import ExamAlreadyImported, UnknownExamError
 from app.features.catalog.schemas import ExamRead, PlatformCatalogueExamRead
-from app.features.catalog.service import exam_read
+from app.features.catalog.service import bump_catalog, exam_read
 from app.features.stations import service_library_reads as station_library
 from app.features.tenancy import service as tenancy
 
@@ -93,6 +93,7 @@ async def import_platform_exam(
         status="active",
         import_ref={"platform_exam_id": str(platform_exam.id), "platform_exam_code": platform_exam.code},
     )
+    bump_catalog(session)
     await tenancy.record_audit(
         session,
         org_id=org_id,

@@ -11,6 +11,7 @@ stations.
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
@@ -99,3 +100,12 @@ def ensure_usable_in_circuit(station_version: VersionRef) -> None:
 def should_notify_reporter(*, was_open: bool, status: str) -> bool:
     """A reporter hears back when an open report is closed, and not on a reopen or a note edit."""
     return was_open and status == "resolved"
+
+
+def library_cache_scope(exam_id: uuid.UUID | None) -> str:
+    """The cache version name for one exam's library reads (`None` is the browse across all exams).
+
+    Reads build their keys with the version under this name, and every write that changes what a
+    library page or the first-station order shows bumps it, so the two must agree on the spelling.
+    """
+    return "library:all" if exam_id is None else f"library:{exam_id}"
