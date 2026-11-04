@@ -113,13 +113,21 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
         }}
       >
         {(data) => (
-          <Table<ResultsIndexRow>
-            rows={filterResultsRows(data.rows ?? [], tab)}
-            themeType="b2b"
-            columns={columns}
-            idField="sitting_id"
-            empty={{ title: "Nothing here." }}
-          />
+          <>
+            {data.truncated ? (
+              <p role="status" className="mb-3 text-sm text-b2b-graphite">
+                Showing the {(data.rows ?? []).length} most recent{" "}
+                {w.sittings}. Older ones are not listed here.
+              </p>
+            ) : null}
+            <Table<ResultsIndexRow>
+              rows={filterResultsRows(data.rows ?? [], tab)}
+              themeType="b2b"
+              columns={columns}
+              idField="sitting_id"
+              empty={{ title: "Nothing here." }}
+            />
+          </>
         )}
       </AsyncBoundary>
     </div>

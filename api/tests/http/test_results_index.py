@@ -142,3 +142,50 @@ async def test_staff_read_it_and_a_trainee_cannot(
     )
     assert (await client.get("/api/v1/orgs/kings/results", headers=bearer(supervisor))).status_code == 200
     assert (await client.get("/api/v1/orgs/kings/results", headers=bearer(trainee))).status_code == 403
+
+
+async def test_a_candidate_removed_from_the_circuit_no_longer_counts(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import delete
+
+    from app.features.sittings.models import CircuitTrainee
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings", mode="training")
+    stations = [await published_station(client, admin, "kings", f"S{n}") for n in range(2)]
+    emails = ["a@example.com", "b@example.com"]
+    users = [await a_trainee(db_session, email) for email in emails]
+    await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(user) for user in users],
+        station_version_ids=stations,
+    )
+    a, _ = await _trainee_ids(db_session, emails)
+    await _decide(db_session, org_id, sitting["id"], a, ["draft"])
+    await db_session.execute(delete(CircuitTrainee).where(CircuitTrainee.trainee_id == users[0]))
+    await db_session.commit()
+
+    [row] = (await client.get("/api/v1/orgs/kings/results", headers=bearer(admin))).json()["rows"]
+    assert (row["candidates"], row["not_decided"], row["draft"]) == (1, 1, 0)
+
+
+async def test_the_index_says_when_older_sittings_were_left_out(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.dashboard.service_results_index import build_results_index
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    first = await a_sitting(client, admin, "kings")
+    await client.post(
+        "/api/v1/orgs/kings/sittings",
+        json=create_sitting_body(name="Second", programme_id=first["programme_id"], mode="exam"),
+        headers=bearer(admin),
+    )
+    cut = await build_results_index(db_session, org_id, limit=1)
+    assert (len(cut.rows), cut.truncated) == (1, True)
+    whole = await build_results_index(db_session, org_id)
+    assert (len(whole.rows), whole.truncated) == (2, False)

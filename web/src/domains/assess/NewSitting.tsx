@@ -6,7 +6,7 @@ import { Alert, AsyncBoundary, B2CPageHeader, Button, ButtonLink, Input, Spinner
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { createSitting, listProgrammes, type Programme, type SittingMode } from "@/domains/assess/api";
-import { listCohorts, type Cohort } from "@/domains/assess/roster/api";
+import { readAllCohorts, type Cohort } from "@/domains/assess/roster/api";
 import { CohortField, ModeField, ProgrammeField, ScheduledForField } from "@/domains/assess/SittingFields";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 
@@ -19,7 +19,7 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
   const programmes = useAsync(
     async (signal) => ({
       programmes: (await listProgrammes(orgSlug, signal)).items,
-      cohorts: (await listCohorts(orgSlug, signal)).items,
+      cohorts: await readAllCohorts(orgSlug, signal),
     }),
     [orgSlug],
   );

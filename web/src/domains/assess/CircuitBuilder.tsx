@@ -97,7 +97,8 @@ export function CircuitBuilder({
   /** Where an edit starts from. A create leaves it out and gets the defaults. */
   initial?: CircuitDraft;
   submitLabel: string;
-  onSubmit: (shape: CircuitShape) => Promise<void>;
+  /** `bulk`: several exam candidates, so the caller sends one circuit per candidate. */
+  onSubmit: (shape: CircuitShape, bulk: boolean) => Promise<void>;
   /** Anything the caller needs said above the fields — a lock notice, chiefly. */
   above?: React.ReactNode;
   /** True when the caller already knows the submit will be refused — an edit lock, chiefly. */
@@ -160,29 +161,32 @@ export function CircuitBuilder({
     setBusy(true);
     setError(null);
     try {
-      await onSubmit({
-        name: name.trim() || (bulk ? "Exam" : "Circuit"),
-        stationVersionIds: stations.map((station) => station.version_id),
-        // `trainee_ids` on the wire means *user* ids: a slot names a user, and
-        // an organisation may examine somebody it has not rostered. A trainee
-        // who has never signed in has no user row and cannot be put on one.
-        traineeIds: [...picked],
-        supervisorUserId: supervisor || null,
-        timing: {
-          readingMinutes: clampReadingMinutes(reading),
-          simulationMinutes: simulation,
-          // Clamped here as well as on the server: the selection set can hold a
-          // position that stopped existing when a station came off the circuit,
-          // and a training circuit must not carry breaks at all.
-          breakMinutes: defaultBreak,
-          breaks: chosenBreaks,
-          breakLengths: pruneBreakLengths(
-            breakLengths,
-            chosenBreaks,
-            defaultBreak,
-          ),
+      await onSubmit(
+        {
+          name: name.trim() || (bulk ? "Exam" : "Circuit"),
+          stationVersionIds: stations.map((station) => station.version_id),
+          // `trainee_ids` on the wire means *user* ids: a slot names a user, and
+          // an organisation may examine somebody it has not rostered. A trainee
+          // who has never signed in has no user row and cannot be put on one.
+          traineeIds: [...picked],
+          supervisorUserId: supervisor || null,
+          timing: {
+            readingMinutes: clampReadingMinutes(reading),
+            simulationMinutes: simulation,
+            // Clamped here as well as on the server: the selection set can hold a
+            // position that stopped existing when a station came off the circuit,
+            // and a training circuit must not carry breaks at all.
+            breakMinutes: defaultBreak,
+            breaks: chosenBreaks,
+            breakLengths: pruneBreakLengths(
+              breakLengths,
+              chosenBreaks,
+              defaultBreak,
+            ),
+          },
         },
-      });
+        bulk,
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error(String(cause)));
       // Stay put. The whole point of the form is the selection somebody has

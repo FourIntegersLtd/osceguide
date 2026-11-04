@@ -81,3 +81,26 @@ async def test_previewing_with_no_decision_and_across_orgs_is_refused(
     inside = await client.get(preview_url(sitting, trainee, "guys"), headers=bearer(other))
     assert inside.status_code == 404
     assert inside.json()["code"] in {"sitting_not_found", "trainee_not_found"}
+
+
+async def test_only_admins_preview_a_result(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.core.auth import Membership
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    await seat_candidate(db_session, org_id, sitting, trainee)
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "Safe"},
+        headers=bearer(admin),
+    )
+    for role in ("supervisor", "trainee"):
+        person = await make_actor(
+            f"{role}-preview@example.com",
+            memberships=(Membership(org_id=org_id, org_slug="kings", role=role),),
+            active_org_slug="kings",
+        )
+        refused = await client.get(preview_url(sitting, trainee), headers=bearer(person))
+        assert refused.status_code == 403, (role, refused.text)

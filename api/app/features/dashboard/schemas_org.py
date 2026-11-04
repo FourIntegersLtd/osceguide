@@ -244,4 +244,7 @@ class ResultsIndexRow(BaseModel):
 
 
 class ResultsIndex(BaseModel):
+    """`truncated` is true when older sittings than these rows exist and were left out."""
+
     rows: list[ResultsIndexRow] = Field(default_factory=list)
+    truncated: bool = False

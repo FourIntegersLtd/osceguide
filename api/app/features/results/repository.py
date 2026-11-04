@@ -208,16 +208,21 @@ async def released_outcomes(session: AsyncSession, org_id: uuid.UUID) -> list[tu
     return [(row.sitting_id, row.assessment_outcome) for row in rows if row.released_at is not None]
 
 
-async def decision_counts_by_sitting(
+async def current_decision_states(
     session: AsyncSession, org_id: uuid.UUID, sitting_ids: Sequence[uuid.UUID]
-) -> dict[uuid.UUID, dict[str, int]]:
-    """Per sitting, how many candidates' current revision is in each workflow state.
+) -> list[tuple[uuid.UUID, uuid.UUID, str]]:
+    """(sitting, trainee, workflow state) of each candidate's current revision.
 
-    Review requested from marking-owner: "current" is the highest revision per (sitting, trainee),
-    as in `released_outcomes`; a candidate with no revision is not counted here at all.
+    "Current" is the highest revision per (sitting, trainee), as in `released_outcomes`; a
+    candidate with no revision has no row. Decisions are append-only, so rows may name a
+    trainee no longer on any circuit: the caller decides who still counts.
     """
-    latest = (
-        select(CandidateResultRevision.sitting_id, CandidateResultRevision.workflow_state)
+    stmt = (
+        select(
+            CandidateResultRevision.sitting_id,
+            CandidateResultRevision.trainee_id,
+            CandidateResultRevision.workflow_state,
+        )
         .where(
             CandidateResultRevision.org_id == org_id,
             CandidateResultRevision.sitting_id.in_(list(sitting_ids)),
@@ -228,15 +233,11 @@ async def decision_counts_by_sitting(
             CandidateResultRevision.trainee_id,
             CandidateResultRevision.revision.desc(),
         )
-        .subquery()
     )
-    stmt = select(latest.c.sitting_id, latest.c.workflow_state, func.count()).group_by(
-        latest.c.sitting_id, latest.c.workflow_state
-    )
-    counts: dict[uuid.UUID, dict[str, int]] = {}
-    for sitting_id, state, count in (await session.execute(stmt)).all():
-        counts.setdefault(sitting_id, {})[state] = int(count)
-    return counts
+    return [
+        (sitting_id, trainee_id, state)
+        for sitting_id, trainee_id, state in (await session.execute(stmt)).all()
+    ]
 
 
 async def scrub_text_for_trainees(session: AsyncSession, trainee_ids: Sequence[uuid.UUID]) -> int:

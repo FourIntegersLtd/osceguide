@@ -6,11 +6,21 @@ import { AsyncBoundary, B2CPageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import type { StationLibraryScope } from "@/capabilities/stations";
 import { useSurface } from "@/capabilities";
-import { createCircuit, createExamCircuits, listActiveMembers, listActiveTrainees, readSitting, sittingLibraryScope } from "@/domains/assess/api";
+import {
+  createCircuit,
+  createExamCircuits,
+  listActiveMembers,
+  listActiveTrainees,
+  readSitting,
+  sittingLibraryScope,
+  timingBody,
+} from "@/domains/assess/api";
 import { CircuitBuilder, type StaffRow } from "@/domains/assess/CircuitBuilder";
-import { isBulkExam } from "@/domains/assess/support";
-import { modeSupportsBreaks } from "@/domains/assess/timing";
-import { listCohorts, listTraineeGroups, readGroupMembers } from "@/domains/assess/roster/api";
+import {
+  readAllCohorts,
+  readAllTraineeGroups,
+  readGroupMembers,
+} from "@/domains/assess/roster/api";
 import type { PickerSet, TraineeRow } from "@/domains/assess/TraineePicker";
 
 /**
@@ -26,26 +36,33 @@ import type { PickerSet, TraineeRow } from "@/domains/assess/TraineePicker";
  * restructure ask the same four questions, and only the create asks them of an
  * empty circuit.
  */
-export function NewCircuit({ orgSlug, sittingId }: { orgSlug: string; sittingId: string }) {
+export function NewCircuit({
+  orgSlug,
+  sittingId,
+}: {
+  orgSlug: string;
+  sittingId: string;
+}) {
   const router = useRouter();
   const { hrefFor } = useSurface();
 
   const context = useAsync(
     async (signal) => {
-      const [sitting, trainees, staff, groupPage, cohortPage] = await Promise.all([
-        readSitting(orgSlug, sittingId, signal),
-        listActiveTrainees(orgSlug, signal),
-        listActiveMembers(orgSlug, signal),
-        listTraineeGroups(orgSlug, signal),
-        listCohorts(orgSlug, signal),
-      ]);
-      const groups: PickerSet[] = groupPage.items.map((group) => ({
+      const [sitting, trainees, staff, groupPage, cohortPage] =
+        await Promise.all([
+          readSitting(orgSlug, sittingId, signal),
+          listActiveTrainees(orgSlug, signal),
+          listActiveMembers(orgSlug, signal),
+          readAllTraineeGroups(orgSlug, signal),
+          readAllCohorts(orgSlug, signal),
+        ]);
+      const groups: PickerSet[] = groupPage.map((group) => ({
         id: group.id,
         label: group.label,
         loadMemberIds: () => readGroupMembers(orgSlug, group.id, signal),
       }));
       // The api has no cohort filter, so a cohort's members are the loaded trainees tagged with it.
-      const cohorts: PickerSet[] = cohortPage.items.map((cohort) => ({
+      const cohorts: PickerSet[] = cohortPage.map((cohort) => ({
         id: cohort.id,
         label: cohort.name,
         loadMemberIds: async () =>
@@ -73,7 +90,10 @@ export function NewCircuit({ orgSlug, sittingId }: { orgSlug: string; sittingId:
         {(data) => (
           <>
             <B2CPageHeader
-              back={{ href: hrefFor(`/sittings/${sittingId}`), label: data.sitting.name }}
+              back={{
+                href: hrefFor(`/sittings/${sittingId}`),
+                label: data.sitting.name,
+              }}
               title="Add a circuit"
               subtitle={`${data.sitting.name} · ${data.sitting.mode}`}
             />
@@ -117,21 +137,21 @@ function Builder({
   onCreated: () => void;
 }) {
   const submit = useCallback(
-    async (shape: Parameters<typeof createCircuit>[2]) => {
-      if (isBulkExam(modeSupportsBreaks(mode), shape.traineeIds.length)) {
+    async (shape: Parameters<typeof createCircuit>[2], bulk: boolean) => {
+      if (bulk) {
         await createExamCircuits(orgSlug, sittingId, {
-          namePrefix: shape.name,
-          candidateUserIds: shape.traineeIds,
-          stationVersionIds: shape.stationVersionIds,
-          supervisorUserId: shape.supervisorUserId,
-          timing: shape.timing,
+          name_prefix: shape.name,
+          candidate_user_ids: shape.traineeIds,
+          station_version_ids: shape.stationVersionIds,
+          supervisor_user_id: shape.supervisorUserId,
+          timing: timingBody(shape.timing),
         });
       } else {
         await createCircuit(orgSlug, sittingId, shape);
       }
       onCreated();
     },
-    [orgSlug, sittingId, mode, onCreated],
+    [orgSlug, sittingId, onCreated],
   );
 
   return (

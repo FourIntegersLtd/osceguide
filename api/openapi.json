@@ -15146,6 +15146,7 @@
         "type": "object"
       },
       "ResultsIndex": {
+        "description": "`truncated` is true when older sittings than these rows exist and were left out.",
         "properties": {
           "rows": {
             "items": {
@@ -15153,6 +15154,11 @@
             },
             "title": "Rows",
             "type": "array"
+          },
+          "truncated": {
+            "default": false,
+            "title": "Truncated",
+            "type": "boolean"
           }
         },
         "title": "ResultsIndex",

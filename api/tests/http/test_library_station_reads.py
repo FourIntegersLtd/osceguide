@@ -454,7 +454,10 @@ async def test_the_org_station_list_says_how_many_things_use_each_station(
     used = await make_station(client, admin)
     unused = await make_station(client, admin)
     for station in (used, unused):
-        await client.post(f"/api/v1/orgs/kings/stations/{station['id']}/versions/1/publish", headers=bearer(admin))
+        await client.post(
+            f"/api/v1/orgs/kings/stations/{station['id']}/versions/1/publish",
+            headers=bearer(admin),
+        )
     version_id = await db_session.scalar(
         select(Station.current_version_id).where(Station.id == uuid.UUID(used["id"]))
     )

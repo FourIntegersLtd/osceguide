@@ -14162,10 +14162,18 @@ export interface components {
             /** Total */
             total: number | null;
         };
-        /** ResultsIndex */
+        /**
+         * ResultsIndex
+         * @description `truncated` is true when older sittings than these rows exist and were left out.
+         */
         ResultsIndex: {
             /** Rows */
             rows?: components["schemas"]["ResultsIndexRow"][];
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
         };
         /**
          * ResultsIndexRow
