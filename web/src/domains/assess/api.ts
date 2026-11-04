@@ -336,6 +336,17 @@ export function breakLengthsFrom(
   );
 }
 
+/** The clock in the wire's words, shared by every circuit write. */
+function timingBody(timing: CircuitTiming) {
+  return {
+    reading_minutes: timing.readingMinutes,
+    simulation_minutes: timing.simulationMinutes,
+    break_minutes: timing.breakMinutes,
+    breaks: timing.breaks,
+    break_lengths: breakLengthsBody(timing.breakLengths),
+  };
+}
+
 /**
  * Add a circuit to a sitting.
  *
@@ -358,13 +369,39 @@ export function createCircuit(
         station_version_ids: input.stationVersionIds,
         trainee_ids: input.traineeIds,
         supervisor_user_id: input.supervisorUserId,
-        timing: {
-          reading_minutes: input.timing.readingMinutes,
-          simulation_minutes: input.timing.simulationMinutes,
-          break_minutes: input.timing.breakMinutes,
-          breaks: input.timing.breaks,
-          break_lengths: breakLengthsBody(input.timing.breakLengths),
-        },
+        timing: timingBody(input.timing),
+      },
+    },
+  );
+}
+
+/** `CreateExamCircuits` (POST .../circuits/bulk). Local until the api types are generated. */
+export interface ExamCircuitsInput {
+  /** Each circuit is named "<prefix> – <candidate>". */
+  namePrefix: string;
+  /** `user` ids. */
+  candidateUserIds: string[];
+  stationVersionIds: string[];
+  supervisorUserId: string | null;
+  timing: CircuitTiming;
+}
+
+/** One exam circuit per candidate, same stations, lead and clock; all are made or none. */
+export function createExamCircuits(
+  slug: string,
+  sittingId: string,
+  input: ExamCircuitsInput,
+): Promise<Circuit[]> {
+  return platformRequest<Circuit[]>(
+    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/circuits/bulk`,
+    {
+      method: "POST",
+      body: {
+        name_prefix: input.namePrefix,
+        candidate_user_ids: input.candidateUserIds,
+        station_version_ids: input.stationVersionIds,
+        supervisor_user_id: input.supervisorUserId,
+        timing: timingBody(input.timing),
       },
     },
   );
@@ -401,13 +438,7 @@ export function rebuildCircuit(
         station_version_ids: input.stationVersionIds,
         trainee_ids: input.traineeIds,
         supervisor_user_id: input.supervisorUserId,
-        timing: {
-          reading_minutes: input.timing.readingMinutes,
-          simulation_minutes: input.timing.simulationMinutes,
-          break_minutes: input.timing.breakMinutes,
-          breaks: input.timing.breaks,
-          break_lengths: breakLengthsBody(input.timing.breakLengths),
-        },
+        timing: timingBody(input.timing),
       },
     },
   );

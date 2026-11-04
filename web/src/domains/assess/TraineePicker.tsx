@@ -2,7 +2,7 @@
 
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { Input, Panel, cn } from "@/foundation/ui";
-import { toggleInSet } from "@/domains/assess/support";
+import { expandToUsers, groupNotice, toggleInSet } from "@/domains/assess/support";
 
 export type TraineeRow = {
   id: string;
@@ -10,7 +10,11 @@ export type TraineeRow = {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  cohort_id?: string | null;
 };
+
+/** A named set of roster ids the picker can tick in one go. */
+export type PickerSet = { id: string; label: string; loadMemberIds: () => Promise<string[]> };
 
 /** Who sits a circuit: the organisation's signed-in trainees, searchable, picked by user id. */
 export function TraineePicker({
@@ -19,14 +23,30 @@ export function TraineePicker({
   setPicked,
   isExam,
   candidatesFull,
+  groups = [],
+  cohorts = [],
 }: {
   trainees: TraineeRow[];
   picked: Set<string>;
   setPicked: Dispatch<SetStateAction<Set<string>>>;
   isExam: boolean;
   candidatesFull: boolean;
+  /** Groups and cohorts offered as "Add a ..." shortcuts; leave empty to hide them. */
+  groups?: PickerSet[];
+  cohorts?: PickerSet[];
 }) {
   const [traineeSearch, setTraineeSearch] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
+  const addSet = async (set: PickerSet | undefined) => {
+    if (!set) return;
+    try {
+      const result = expandToUsers(await set.loadMemberIds(), trainees);
+      setPicked((current) => new Set([...current, ...result.userIds]));
+      setNotice(groupNotice(result));
+    } catch {
+      setNotice(`Could not load ${set.label}. Try again.`);
+    }
+  };
   return (
     <Panel
       title="Trainees"
@@ -42,6 +62,37 @@ export function TraineePicker({
         </p>
       ) : (
         <>
+          <div className="mb-3 flex flex-wrap gap-3">
+            {[
+              { label: "Add a group", noun: "group", sets: groups },
+              { label: "Add a cohort", noun: "cohort", sets: cohorts },
+            ]
+              .filter((picker) => picker.sets.length > 0)
+              .map((picker) => (
+                <label key={picker.noun} className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-ink">{picker.label}</span>
+                  <select
+                    value=""
+                    onChange={(event) =>
+                      void addSet(picker.sets.find((set) => set.id === event.target.value))
+                    }
+                    className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
+                  >
+                    <option value="">Add a {picker.noun}…</option>
+                    {picker.sets.map((set) => (
+                      <option key={set.id} value={set.id}>
+                        {set.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+          </div>
+          {notice && (
+            <p role="status" className="mb-3 text-sm text-ink-muted">
+              {notice}
+            </p>
+          )}
           <div className="mb-3 max-w-sm">
             <Input
               label="Find a trainee"

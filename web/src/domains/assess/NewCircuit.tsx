@@ -6,9 +6,12 @@ import { AsyncBoundary, B2CPageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import type { StationLibraryScope } from "@/capabilities/stations";
 import { useSurface } from "@/capabilities";
-import { createCircuit, listActiveMembers, listActiveTrainees, readSitting, sittingLibraryScope } from "@/domains/assess/api";
+import { createCircuit, createExamCircuits, listActiveMembers, listActiveTrainees, readSitting, sittingLibraryScope } from "@/domains/assess/api";
 import { CircuitBuilder, type StaffRow } from "@/domains/assess/CircuitBuilder";
-import type { TraineeRow } from "@/domains/assess/TraineePicker";
+import { isBulkExam } from "@/domains/assess/support";
+import { modeSupportsBreaks } from "@/domains/assess/timing";
+import { listCohorts, listTraineeGroups, readGroupMembers } from "@/domains/assess/roster/api";
+import type { PickerSet, TraineeRow } from "@/domains/assess/TraineePicker";
 
 /**
  * Put a circuit on a sitting: who sits it, at which stations, for how long.
@@ -29,12 +32,28 @@ export function NewCircuit({ orgSlug, sittingId }: { orgSlug: string; sittingId:
 
   const context = useAsync(
     async (signal) => {
-      const [sitting, trainees, staff] = await Promise.all([
+      const [sitting, trainees, staff, groupPage, cohortPage] = await Promise.all([
         readSitting(orgSlug, sittingId, signal),
         listActiveTrainees(orgSlug, signal),
         listActiveMembers(orgSlug, signal),
+        listTraineeGroups(orgSlug, signal),
+        listCohorts(orgSlug, signal),
       ]);
+      const groups: PickerSet[] = groupPage.items.map((group) => ({
+        id: group.id,
+        label: group.label,
+        loadMemberIds: () => readGroupMembers(orgSlug, group.id, signal),
+      }));
+      // The api has no cohort filter, so a cohort's members are the loaded trainees tagged with it.
+      const cohorts: PickerSet[] = cohortPage.items.map((cohort) => ({
+        id: cohort.id,
+        label: cohort.name,
+        loadMemberIds: async () =>
+          trainees.filter((t) => t.cohort_id === cohort.id).map((t) => t.id),
+      }));
       return {
+        groups,
+        cohorts,
         sitting,
         scope: await sittingLibraryScope(orgSlug, sitting, signal),
         trainees,
@@ -64,6 +83,8 @@ export function NewCircuit({ orgSlug, sittingId }: { orgSlug: string; sittingId:
               mode={data.sitting.mode}
               scope={data.scope}
               trainees={data.trainees}
+              groups={data.groups}
+              cohorts={data.cohorts}
               staff={data.staff}
               onCreated={() => router.push(hrefFor(`/sittings/${sittingId}`))}
             />
@@ -80,6 +101,8 @@ function Builder({
   mode,
   scope,
   trainees,
+  groups,
+  cohorts,
   staff,
   onCreated,
 }: {
@@ -88,15 +111,27 @@ function Builder({
   mode: string;
   scope: StationLibraryScope;
   trainees: TraineeRow[];
+  groups: PickerSet[];
+  cohorts: PickerSet[];
   staff: StaffRow[];
   onCreated: () => void;
 }) {
   const submit = useCallback(
     async (shape: Parameters<typeof createCircuit>[2]) => {
-      await createCircuit(orgSlug, sittingId, shape);
+      if (isBulkExam(modeSupportsBreaks(mode), shape.traineeIds.length)) {
+        await createExamCircuits(orgSlug, sittingId, {
+          namePrefix: shape.name,
+          candidateUserIds: shape.traineeIds,
+          stationVersionIds: shape.stationVersionIds,
+          supervisorUserId: shape.supervisorUserId,
+          timing: shape.timing,
+        });
+      } else {
+        await createCircuit(orgSlug, sittingId, shape);
+      }
       onCreated();
     },
-    [orgSlug, sittingId, onCreated],
+    [orgSlug, sittingId, mode, onCreated],
   );
 
   return (
@@ -104,6 +139,9 @@ function Builder({
       mode={mode}
       scope={scope}
       trainees={trainees}
+      groups={groups}
+      cohorts={cohorts}
+      allowManyCandidates
       staff={staff}
       submitLabel="Create circuit"
       onSubmit={submit}

@@ -3,6 +3,10 @@ import test from "node:test";
 import type { Programme, Sitting, SittingMode } from "@/domains/assess/api";
 import type { SittingFormValues } from "@/domains/assess/support";
 import {
+  moveItem,
+  expandToUsers,
+  isBulkExam,
+  groupNotice,
   toggleInSet,
   circuitLeads,
   fieldDateTime,
@@ -235,4 +239,49 @@ test("only the filters that are set go to the server", () => {
     },
   );
   assert.deepEqual(sittingFilterQuery({ ...NO_SITTING_FILTERS, search: "   " }), {});
+});
+
+test("moveItem swaps an item with its neighbour above or below", () => {
+  assert.deepEqual(moveItem(["a", "b", "c"], 1, -1), ["b", "a", "c"]);
+  assert.deepEqual(moveItem(["a", "b", "c"], 1, 1), ["a", "c", "b"]);
+});
+
+test("moveItem leaves the order alone at either end", () => {
+  assert.deepEqual(moveItem(["a", "b", "c"], 0, -1), ["a", "b", "c"]);
+  assert.deepEqual(moveItem(["a", "b", "c"], 2, 1), ["a", "b", "c"]);
+});
+
+test("moveItem does not change its input", () => {
+  const input = ["a", "b", "c"];
+  const out = moveItem(input, 0, 1);
+  assert.deepEqual(input, ["a", "b", "c"]);
+  assert.notEqual(out, input);
+});
+
+const row = (id: string, user_id: string | null) => ({
+  id,
+  user_id,
+  email: `${id}@x.test`,
+  first_name: null,
+  last_name: null,
+  cohort_id: null,
+});
+
+test("expandToUsers maps members to user ids and counts those not signed in", () => {
+  const trainees = [row("t1", "u1"), row("t2", null), row("t3", "u3"), row("t4", "u4")];
+  assert.deepEqual(expandToUsers(["t1", "t2", "t3", "gone"], trainees), {
+    userIds: ["u1", "u3"],
+    notSignedIn: 1,
+  });
+});
+
+test("groupNotice says who was added and who was left out", () => {
+  assert.equal(groupNotice({ userIds: ["a", "b"], notSignedIn: 3 }), "Added 2. 3 not signed in yet, so they were left out.");
+  assert.equal(groupNotice({ userIds: ["a"], notSignedIn: 0 }), "Added 1.");
+});
+
+test("isBulkExam is true only for an exam with several candidates", () => {
+  assert.equal(isBulkExam(true, 2), true);
+  assert.equal(isBulkExam(true, 1), false);
+  assert.equal(isBulkExam(false, 5), false);
 });
