@@ -778,6 +778,19 @@ Constraints:
   has not failed; a re-dispatch fails the old one first.
 - Partial UNIQUE `uq_attempts_legacy_ref` WHERE `legacy_ref IS NOT NULL` — a second
   import run updates nothing rather than duplicating history.
+- Partial UNIQUE `uq_attempts_one_unstarted` `NULLS NOT DISTINCT` on
+  `(user_id, kind, exam_id, org_id, station_version_id, set_entry_id)` WHERE the attempt is
+  `created`, never started, not frozen, has no room, has a station version and is a
+  `practice`/`set_station`/`self_practice` — a double start makes one row. The migration
+  fails older duplicates with `failed_reason='duplicate_start'`. Partial indexes
+  `ix_attempts_set_entry_id`, `ix_attempts_peer_session_id`, `ix_attempts_source_attempt_id`
+  (foreign keys, WHERE not null).
+- Exam-day indexes (migration `3e5b8d1f7a42`): `ix_payments_user_id`, `ix_refresh_chains_user_id`,
+  `ix_entitlements_user_id`, `ix_circuits_sitting_id`, `ix_circuit_trainees_trainee_id`,
+  `ix_slots_org_circuit`, `ix_candidate_result_revisions_org_released`, `ix_stations_library`
+  `(exam_id, created_at, id)` for the published library page, `ix_station_versions_station_published`.
+  The same migration sets the database's `statement_timeout` (15s) and
+  `idle_in_transaction_session_timeout` (60s).
 
 Transitions (`domain._ALLOWED`) run `created → running → interaction_complete →
 evaluated`, with `failed` reachable throughout; `TERMINAL = {evaluated, failed}`.

@@ -65,7 +65,9 @@ def get_jobs_app() -> procrastinate.App:
     if _app is None:
         settings = get_settings()
         app = procrastinate.App(
-            connector=procrastinate.PsycopgConnector(conninfo=libpq_url(settings.database_url)),
+            connector=procrastinate.PsycopgConnector(
+                conninfo=libpq_url(settings.database_direct_url or settings.database_url)
+            ),
         )
         # Assigned before the slices register: each `register()` fetches the
         # app through this function, so it has to be there already.
@@ -81,6 +83,16 @@ def get_jobs_app() -> procrastinate.App:
 def registered_task_names() -> set[str]:
     """Task names the worker will run, builtins excluded."""
     return {name for name in get_jobs_app().tasks if not name.startswith(("builtin:", "procrastinate."))}
+
+
+async def allow_long_statement(session: AsyncSession, seconds: int) -> None:
+    """Lift the database's `statement_timeout` to `seconds` for this transaction only.
+
+    For a job that legitimately runs long (the database default is 15s, set by the exam-day
+    migration). `set_config(..., true)` is transaction-local, so it needs no reset and is safe
+    behind PgBouncer's transaction mode. Lives here, not in `core/db.py`, which builds no queries.
+    """
+    await session.execute(text("select set_config('statement_timeout', :v, true)"), {"v": f"{seconds}s"})
 
 
 async def defer_in_transaction(

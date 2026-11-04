@@ -155,6 +155,13 @@ class RefreshChain(Base, UUIDPrimaryKey, Timestamps):
     """One sign-in, from which a series of refresh tokens is issued."""
 
     __tablename__ = "refresh_chains"
+    __table_args__ = (
+        Index(
+            "ix_refresh_chains_user_id",
+            "user_id",
+            postgresql_concurrently=True,
+        ),
+    )
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

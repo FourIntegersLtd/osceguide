@@ -94,6 +94,12 @@ class Settings(BaseSettings):
     database_url: str = ""
     database_pool_size: int = 10
     database_echo: bool = False
+    database_pool_timeout_seconds: float = 5.0
+    database_max_overflow: int = 10
+    # True behind PgBouncer in transaction mode: psycopg must not use server-side prepared statements.
+    database_pgbouncer: bool = False
+    # Direct Postgres for alembic and procrastinate (LISTEN/NOTIFY, DDL); "" => `database_url`.
+    database_direct_url: str = ""
 
     redis_url: str = "redis://localhost:6379/0"
     redis_disabled: bool = False
@@ -228,6 +234,8 @@ class Settings(BaseSettings):
     clinical_buddy_url: str = "https://api.clinicalbuddy.co.uk"
     clinical_buddy_service_key: str = ""
     # Which provider marks first (scoring and live coverage); the other answers if it fails or has no key.
+    marking_llm_timeout_seconds: float = 180.0
+    marking_llm_max_retries: int = 2
     marking_primary_provider: Literal["openai", "anthropic"] = "openai"
     marking_primary_model: str = "gpt-6-luna"
     marking_primary_effort: str = "low"
@@ -262,6 +270,19 @@ class Settings(BaseSettings):
     # read-only). The Ops screen and the daily reading measure against it; 60% writes an audit row,
     # 80% also reports to Sentry.
     database_size_budget_mb: int = 500
+
+    # --- Exam-day capacity (see docs/ENVIRONMENT.md) ---
+    # Comma lists. "" for `worker_queues` => every queue; `worker_exclude_queues` is removed from it.
+    worker_queues: str = ""
+    worker_exclude_queues: str = ""
+    sign_in_per_address_per_minute: int = 2000
+    auth_status_cache_seconds: int = 30
+    library_cache_seconds: int = 300
+    outbox_delivery_batch: int = 100
+    outbox_send_concurrency: int = 5
+    max_request_body_bytes: int = 26 * 1024 * 1024
+    sentry_traces_sample_rate: float = 0.05
+    attempt_deadline_grace_seconds: int = 120
     # Succeeded jobs, and with them their events, are deleted this many days after they finish. Failed
     # jobs are kept: staff retry them from the Ops screen.
     job_history_retention_days: int = 14
