@@ -30,6 +30,7 @@ async def test_live_evidence_is_grounded_and_owner_only(client, db_session, make
         db_session,
         sat.attempt_id,
         body_attempt_id=str(sat.attempt_id),
+        now=NOW,
         message=TranscriptMessageIn(
             role="user",
             message="What brought you in today?",
@@ -132,6 +133,7 @@ async def test_the_nudges_a_session_leaves_behind_coalesce_into_one(client, db_s
             db_session,
             sat.attempt_id,
             body_attempt_id=str(sat.attempt_id),
+            now=NOW,
             message=TranscriptMessageIn(
                 role="user",
                 message="Any chest pain since yesterday?",
@@ -198,6 +200,7 @@ async def test_the_marking_provider_setting_reaches_the_coverage_policy(db_sessi
         db_session,
         sat.attempt_id,
         body_attempt_id=str(sat.attempt_id),
+        now=NOW,
         message=TranscriptMessageIn(role="user", message="Hello", timestamp=NOW, message_id="first", seq=0),
     )
 

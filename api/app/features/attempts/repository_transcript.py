@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts.domain import Turn, from_document, to_document
@@ -23,19 +24,26 @@ async def add_chunk(
     role: str,
     message: str,
     spoken_at: datetime,
-) -> TranscriptMessage:
-    """Store one spoken turn. The worker posts these best-effort, so duplicates are expected upstream."""
-    chunk = TranscriptMessage(
-        attempt_id=attempt_id,
-        message_id=message_id,
-        seq=seq,
-        role=role,
-        message=message,
-        spoken_at=spoken_at,
+) -> bool:
+    """Store one spoken turn; False when this message id was already stored.
+
+    The worker posts these best-effort, so repeats are expected. The unique constraint decides, in
+    the insert itself, instead of a read of every stored id before each write.
+    """
+    stmt = (
+        insert(TranscriptMessage)
+        .values(
+            attempt_id=attempt_id,
+            message_id=message_id,
+            seq=seq,
+            role=role,
+            message=message,
+            spoken_at=spoken_at,
+        )
+        .on_conflict_do_nothing(constraint="uq_transcript_messages_attempt_message")
+        .returning(TranscriptMessage.id)
     )
-    session.add(chunk)
-    await session.flush()
-    return chunk
+    return (await session.execute(stmt)).scalar_one_or_none() is not None
 
 
 async def _document_for(session: AsyncSession, attempt_id: uuid.UUID) -> dict[str, Any] | None:
@@ -77,7 +85,7 @@ async def _row_turns(session: AsyncSession, attempt_id: uuid.UUID) -> list[Turn]
 
 
 async def seen_message_ids(session: AsyncSession, attempt_id: uuid.UUID) -> set[str]:
-    """Every message id already stored, so `domain.should_store_chunk` can spot a repeat.
+    """Every message id already stored, for the late-turn log and the migration re-run.
 
     Rows first, then the document, for the reason `chunks_for` gives. The document branch is
     unreachable from the worker (`accept_chunk` and `accept_transcript` stop once compacted); it
@@ -243,19 +251,41 @@ async def save_result(
     payload: dict[str, Any],
     model_used: str | None,
     at: datetime,
-) -> AssessmentResult:
-    """Store one scored result. Beside any earlier result under a different policy, never over it."""
-    assessment_result = AssessmentResult(
-        attempt_id=attempt_id,
-        framework_id=framework_id,
-        policy_version=policy_version,
-        payload=payload,
-        model_used=model_used,
-        scored_at=at,
+) -> bool:
+    """Store one scored result; False when this policy already has one for the attempt.
+
+    Beside any earlier result under a different policy, never over it. A job retried after a crash
+    scores again and finds its first result: the first one stands.
+    """
+    stmt = (
+        insert(AssessmentResult)
+        .values(
+            attempt_id=attempt_id,
+            framework_id=framework_id,
+            policy_version=policy_version,
+            payload=payload,
+            model_used=model_used,
+            scored_at=at,
+        )
+        .on_conflict_do_nothing(constraint="uq_assessment_results_attempt_policy")
+        .returning(AssessmentResult.id)
     )
-    session.add(assessment_result)
-    await session.flush()
-    return assessment_result
+    return (await session.execute(stmt)).scalar_one_or_none() is not None
+
+
+async def latest_results_by_attempt(
+    session: AsyncSession, attempt_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, AssessmentResult]:
+    """The newest result of each of these attempts, in one query. Attempts with none are absent."""
+    if not attempt_ids:
+        return {}
+    stmt = (
+        select(AssessmentResult)
+        .where(AssessmentResult.attempt_id.in_(list(attempt_ids)))
+        .distinct(AssessmentResult.attempt_id)
+        .order_by(AssessmentResult.attempt_id, AssessmentResult.scored_at.desc())
+    )
+    return {result.attempt_id: result for result in (await session.execute(stmt)).scalars()}
 
 
 async def results_for(session: AsyncSession, attempt_id: uuid.UUID) -> list[AssessmentResult]:

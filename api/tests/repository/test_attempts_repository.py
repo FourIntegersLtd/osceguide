@@ -124,22 +124,21 @@ async def test_a_failed_attempt_frees_the_slot_for_a_new_one(db_session: AsyncSe
     assert second.id != first.id
 
 
-async def test_a_repeated_chunk_is_rejected_by_the_database(db_session: AsyncSession) -> None:
+async def test_a_repeated_chunk_is_stored_once_and_reported_false(db_session: AsyncSession) -> None:
     user, exam = await a_user(db_session), await sca(db_session)
     attempt = await repository.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
     await transcripts.add_chunk(
         db_session, attempt.id, message_id="m1", seq=0, role="user", message="hello", spoken_at=NOW
     )
-    with pytest.raises(IntegrityError):
-        await transcripts.add_chunk(
-            db_session, attempt.id, message_id="m1", seq=0, role="user", message="hello", spoken_at=NOW
-        )
+    assert not await transcripts.add_chunk(
+        db_session, attempt.id, message_id="m1", seq=0, role="user", message="hello", spoken_at=NOW
+    )
 
 
 async def test_one_result_per_policy_version(db_session: AsyncSession) -> None:
     user, exam = await a_user(db_session), await sca(db_session)
     attempt = await repository.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
-    await transcripts.save_result(
+    assert await transcripts.save_result(
         db_session,
         attempt.id,
         framework_id="sca-rcgp-v1",
@@ -148,16 +147,17 @@ async def test_one_result_per_policy_version(db_session: AsyncSession) -> None:
         model_used="gpt-5-mini",
         at=NOW,
     )
-    with pytest.raises(IntegrityError):
-        await transcripts.save_result(
-            db_session,
-            attempt.id,
-            framework_id="sca-rcgp-v1",
-            policy_version="platform-default@1",
-            payload={"grade": "A"},
-            model_used="gpt-5-mini",
-            at=NOW,
-        )
+    assert not await transcripts.save_result(
+        db_session,
+        attempt.id,
+        framework_id="sca-rcgp-v1",
+        policy_version="platform-default@1",
+        payload={"grade": "A"},
+        model_used="gpt-5-mini",
+        at=NOW,
+    )
+    stored = await transcripts.results_for(db_session, attempt.id)
+    assert [r.payload for r in stored] == [{"grade": "G"}]
 
 
 async def test_a_second_policy_scores_beside_the_first(db_session: AsyncSession) -> None:

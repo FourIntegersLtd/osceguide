@@ -69,7 +69,7 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
 - The station runner's clock (`foundation/ui/Timer`) is the brief's `created_at`/`started_at`/
   `server_time` (`stationClock.ts`), aged from `briefReceivedAt` against a wall-clock deadline. No
   browser storage, no tick-by-tick decrement: either one lets a reload, a sleeping tab or the next
-  person in the tab move the time. Practice has no server deadline; the duration is the client's.
+  person in the tab move the time. The client's clock is display only; the server's deadline is below.
 - Transcript turns have two homes: `transcript_messages` rows while live, `transcripts.messages` (a
   `{"v":1,"turns":[...]}` document) once compacted. Read only through `repository_transcript.chunks_for`
   (returns `domain.Turn`, never an ORM row) and count with `chunk_counts_for`; a new direct query on
@@ -85,6 +85,22 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
   `transcripts` row before the rows (compaction's order). Batch order and why: the docstring of
   `attempt_ids_ready_to_compact`. Race tests hold a real lock and wait on `pg_locks`
   (`tests/integration/test_compaction_race.py`).
+
+- **Exam-day idempotency lives in the database.** `start_attempt` creates inside a savepoint and, on
+  `uq_attempts_one_unstarted`, returns the winner. `add_chunk` and `save_result` are `INSERT ... ON CONFLICT DO
+  NOTHING` and return `bool` (stored or not); never read the stored ids first. Coverage is queued only when
+  `add_chunk` returned True.
+- **The server owns the deadline.** `service.attempt_deadline` = `started_at` + reading + simulation (the
+  person's custom timers, else the exam's) + `attempt_deadline_grace_seconds`; only practice, set_station
+  and self_practice are timed (an exam slot's circuit owns its clock). `accept_chunk` refuses a later turn
+  (log `transcript.late_turn_refused`, still 202) and the health sweep closes overdue running attempts:
+  with turns through `complete_interaction` (marking is queued), with none `failed`/`abandoned`.
+  `accept_chunk` takes `now`. The final transcript (`accept_transcript`) is exempt from the deadline. The sweep
+  closes each attempt in a savepoint under `lock_transcript`, re-checking it is still `running`, and imports
+  `service_worker` inside `_close_overdue` (service_worker imports `service`). Custom timers count only
+  while the person's `needs_extra_time` is on.
+- `latest_scored` (the `/me/performance` read) is batched: `attempts_by_ids` and `latest_results_by_attempt`
+  are one query each; a rubric looked up in the database is memoised per exam and snapshot.
 
 ## Deploys and laptops
 - Push to `main` touching `assessment/` deploys staging (K3s, namespace
