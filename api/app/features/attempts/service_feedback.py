@@ -55,7 +55,7 @@ async def read_feedback(
     await service_access.ensure_readable(
         session, attempt, requester_id=requester_id, is_admin=is_admin, memberships=memberships
     )
-    scoring_rubric = await _scoring_rubric_for(session, attempt, exam_versions={})
+    scoring_rubric = await _scoring_rubric_for(session, attempt, exam_versions={}, unfrozen={})
     stored_results = await transcripts.results_for(session, attempt.id)
     return AttemptFeedbackRead(
         attempt_id=attempt.id,
@@ -90,18 +90,20 @@ async def latest_scored(session: AsyncSession, attempt_ids: Sequence[uuid.UUID])
     left out rather than scored against another attempt's rules.
     """
     exam_versions: dict[uuid.UUID, uuid.UUID | None] = {}
+    unfrozen: dict[tuple[uuid.UUID, str], rubrics.ScoringRubric | None] = {}
+    attempts = await repository.attempts_by_ids(session, attempt_ids)
+    latest_results = await transcripts.latest_results_by_attempt(session, list(attempts))
     scored: list[ScoredResult] = []
     for attempt_id in attempt_ids:
-        attempt = await repository.attempt_by_id(session, attempt_id)
-        if attempt is None:
+        attempt = attempts.get(attempt_id)
+        latest = latest_results.get(attempt_id)
+        if attempt is None or latest is None:
             continue
-        stored_results = await transcripts.results_for(session, attempt_id)
-        if not stored_results:
-            continue
-        scoring_rubric = await _scoring_rubric_for(session, attempt, exam_versions=exam_versions)
+        scoring_rubric = await _scoring_rubric_for(
+            session, attempt, exam_versions=exam_versions, unfrozen=unfrozen
+        )
         if scoring_rubric is None:
             continue
-        latest = stored_results[-1]
         scored.append(
             ScoredResult(
                 attempt_id=attempt_id,
@@ -114,9 +116,17 @@ async def latest_scored(session: AsyncSession, attempt_ids: Sequence[uuid.UUID])
 
 
 async def _scoring_rubric_for(
-    session: AsyncSession, attempt: Attempt, *, exam_versions: dict[uuid.UUID, uuid.UUID | None]
+    session: AsyncSession,
+    attempt: Attempt,
+    *,
+    exam_versions: dict[uuid.UUID, uuid.UUID | None],
+    unfrozen: dict[tuple[uuid.UUID, str], rubrics.ScoringRubric | None],
 ) -> rubrics.ScoringRubric | None:
-    """The rubric this attempt is read by. `exam_versions` caches each exam's rubric version."""
+    """The rubric this attempt is read by.
+
+    `exam_versions` caches each exam's rubric version; `unfrozen` caches the rubrics looked up in
+    the database (a frozen one is parsed from the attempt and costs no query), one per exam and snapshot.
+    """
     snapshot = domain_definition.rubric_for(attempt.definition)
     frozen = rubrics.frozen_scoring_rubric(snapshot)
     if frozen is not None:
@@ -124,6 +134,11 @@ async def _scoring_rubric_for(
     if attempt.exam_id not in exam_versions:
         exam = await catalog.exam_for_attempt(session, attempt.exam_id)
         exam_versions[attempt.exam_id] = exam.rubric_version_id
-    return await rubrics.scoring_rubric(
+    key = (attempt.exam_id, repr(snapshot))
+    if key in unfrozen:
+        return unfrozen[key]
+    found = await rubrics.scoring_rubric(
         session, snapshot, exam_rubric_version_id=exam_versions[attempt.exam_id]
     )
+    unfrozen[key] = found
+    return found

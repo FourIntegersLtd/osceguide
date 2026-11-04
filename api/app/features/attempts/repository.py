@@ -562,6 +562,28 @@ async def fail_stale_consumer_attempts(
     return ids
 
 
+async def running_attempts_started_before(
+    session: AsyncSession, *, started_before: datetime, kinds: Sequence[str]
+) -> list[Attempt]:
+    """Running attempts of these kinds started before the instant: candidates for a deadline check."""
+    stmt = select(Attempt).where(
+        Attempt.kind.in_(list(kinds)),
+        Attempt.status == str(Status.RUNNING),
+        Attempt.started_at < started_before,
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def attempts_by_ids(
+    session: AsyncSession, attempt_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, Attempt]:
+    """Each of these attempts by id, in one query. Missing ids are absent."""
+    if not attempt_ids:
+        return {}
+    stmt = select(Attempt).where(Attempt.id.in_(list(attempt_ids)))
+    return {attempt.id: attempt for attempt in (await session.execute(stmt)).scalars()}
+
+
 async def exam_for_slot_attempt(session: AsyncSession, slot_id: uuid.UUID) -> uuid.UUID | None:
     """The exam a previous attempt on this slot ran under.
 

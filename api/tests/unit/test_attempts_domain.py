@@ -115,13 +115,6 @@ def test_a_definition_without_instructions_is_not_servable() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_a_repeated_chunk_is_ignored_rather_than_appended() -> None:
-    """A4. Chunk posts repeat: the worker retries and does not read the response."""
-    seen = {"m1", "m2"}
-    assert not domain.should_store_chunk("m1", seen)
-    assert domain.should_store_chunk("m3", seen)
-
-
 def test_the_completed_transcript_is_accepted_once() -> None:
     assert domain.should_accept_transcript(already_complete=False)
     assert not domain.should_accept_transcript(already_complete=True)

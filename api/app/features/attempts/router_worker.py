@@ -51,9 +51,11 @@ async def bootstrap(attempt_id: uuid.UUID, session: Session, clock: ClockDep) ->
     responses=error_responses(Unauthenticated, errors.AttemptNotFound, errors.AttemptMismatch),
 )
 async def accept_chunk(
-    attempt_id: uuid.UUID, body: schemas.ChunkPost, session: Session
+    attempt_id: uuid.UUID, body: schemas.ChunkPost, session: Session, clock: ClockDep
 ) -> schemas.WorkerAccepted:
-    await service.accept_chunk(session, attempt_id, body_attempt_id=body.attempt_id, message=body.message)
+    await service.accept_chunk(
+        session, attempt_id, body_attempt_id=body.attempt_id, message=body.message, now=clock.now()
+    )
     return schemas.WorkerAccepted()
 
 

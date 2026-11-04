@@ -100,7 +100,7 @@ def late_turn() -> TranscriptMessageIn:
 async def post_late_turn(attempt_id: uuid.UUID) -> None:
     async with get_session_factory()() as session, session.begin():
         await service_worker.accept_chunk(
-            session, attempt_id, body_attempt_id=str(attempt_id), message=late_turn()
+            session, attempt_id, body_attempt_id=str(attempt_id), message=late_turn(), now=NOW
         )
 
 
@@ -149,7 +149,7 @@ async def test_a_chunk_that_holds_the_lock_first_is_kept_by_the_compaction() -> 
             compaction = asyncio.create_task(compact_once(attempt_id))
             await until_one_waits()
             await service_worker.accept_chunk(
-                writer, attempt_id, body_attempt_id=str(attempt_id), message=late_turn()
+                writer, attempt_id, body_attempt_id=str(attempt_id), message=late_turn(), now=NOW
             )
             await writer.commit()
         finally:
