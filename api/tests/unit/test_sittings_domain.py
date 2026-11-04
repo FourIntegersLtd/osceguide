@@ -177,6 +177,23 @@ def test_breaks_are_clamped_to_the_station_count_and_deduplicated() -> None:
     assert [b.after_station for b in timing.breaks] == [1, 2]
 
 
+def test_a_break_keeps_its_own_minutes_and_clamps_them() -> None:
+    timing = domain.normalise_timing(
+        {
+            "break_minutes": 5,
+            "breaks": [
+                {"after_station": 1, "minutes": 15},
+                {"after_station": 2, "minutes": 99},
+                {"after_station": 3},
+            ],
+        },
+        mode=Mode.EXAM,
+        station_count=4,
+    )
+    assert [b.minutes for b in timing.breaks] == [15, 60, None]
+    assert [timing.minutes_after(n) for n in (1, 2, 3)] == [15, 60, 5]
+
+
 def test_a_circuit_that_has_ended_is_no_longer_live() -> None:
     """Guards the moment after starting: is this still running?
 

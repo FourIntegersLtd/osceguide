@@ -9,6 +9,7 @@ import {
   clampBreaks,
   clampReadingMinutes,
   modeSupportsBreaks,
+  pruneBreakLengths,
 } from "@/domains/assess/timing";
 
 test("a break can only fall between two stations", () => {
@@ -54,4 +55,15 @@ test("reading time is held to what the server keeps, and defaults to its default
   assert.equal(clampReadingMinutes(99), 30);
   assert.equal(clampReadingMinutes(2), 2);
   assert.equal(clampReadingMinutes(Number.NaN), 3);
+});
+
+test("pruneBreakLengths keeps only chosen breaks that differ from the default, clamped", () => {
+  assert.deepEqual(
+    pruneBreakLengths({ 2: 15, 3: 5, 4: 99, 6: 20 }, [2, 3, 4], 5),
+    { 2: 15, 4: 60 },
+  );
+});
+
+test("pruneBreakLengths drops the length of a break that was turned off", () => {
+  assert.deepEqual(pruneBreakLengths({ 2: 15 }, [], 5), {});
 });

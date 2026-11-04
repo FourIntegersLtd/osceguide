@@ -30,7 +30,7 @@ from app.features.sittings import (
     service_notify,
 )
 from app.features.sittings.models import Circuit, Sitting, Slot
-from app.features.sittings.reads import circuit_read, sitting_read, timing_json
+from app.features.sittings.reads import circuit_read, sitting_read, timing_input, timing_json
 from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
 from app.features.tenancy import service as tenancy
 
@@ -188,12 +188,7 @@ async def add_circuit(
         raise_mapped(exc, _REFUSALS)
 
     resolved_timing = domain.normalise_timing(
-        {
-            "reading_minutes": timing.reading_minutes,
-            "simulation_minutes": timing.simulation_minutes,
-            "break_minutes": timing.break_minutes,
-            "breaks": [{"after_station": after_station} for after_station in timing.breaks],
-        },
+        timing_input(timing),
         mode=mode,
         station_count=len(station_version_ids),
     )

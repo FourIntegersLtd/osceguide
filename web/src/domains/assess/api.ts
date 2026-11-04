@@ -1,4 +1,8 @@
-import { collectPages, platformRequest, type components } from "@/foundation/platform-client";
+import {
+  collectPages,
+  platformRequest,
+  type components,
+} from "@/foundation/platform-client";
 import type { StationLibraryScope } from "@/capabilities/stations";
 
 export type Sitting = components["schemas"]["SittingRead"];
@@ -11,17 +15,29 @@ export type Organization = components["schemas"]["OrganizationRead"];
 
 export type SsoStatus = components["schemas"]["SsoStatusRead"];
 
-export function readSsoStatus(slug: string, signal?: AbortSignal): Promise<SsoStatus> {
+export function readSsoStatus(
+  slug: string,
+  signal?: AbortSignal,
+): Promise<SsoStatus> {
   return platformRequest<SsoStatus>(`${org(slug)}/sso-status`, { signal });
 }
 
 /** An organisation's own admin renames it; the web address and contract are staff's (B-33). */
-export function renameOrganization(slug: string, name: string): Promise<Organization> {
-  return platformRequest<Organization>(org(slug), { method: "PATCH", body: { name } });
+export function renameOrganization(
+  slug: string,
+  name: string,
+): Promise<Organization> {
+  return platformRequest<Organization>(org(slug), {
+    method: "PATCH",
+    body: { name },
+  });
 }
 
 /** The organisation itself: its name, type and sign-in rules. */
-export function readOrganization(slug: string, signal?: AbortSignal): Promise<Organization> {
+export function readOrganization(
+  slug: string,
+  signal?: AbortSignal,
+): Promise<Organization> {
   return platformRequest<Organization>(org(slug), { signal });
 }
 
@@ -38,10 +54,17 @@ export function listSittings(
   });
 }
 
-export function readSitting(slug: string, sittingId: string, signal?: AbortSignal): Promise<Sitting> {
-  return platformRequest<Sitting>(`${org(slug)}/sittings/${encodeURIComponent(sittingId)}`, {
-    signal,
-  });
+export function readSitting(
+  slug: string,
+  sittingId: string,
+  signal?: AbortSignal,
+): Promise<Sitting> {
+  return platformRequest<Sitting>(
+    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}`,
+    {
+      signal,
+    },
+  );
 }
 
 /* ------------------------------------------------------------------------
@@ -84,7 +107,10 @@ export function listTrainees(
 ): Promise<TraineePage> {
   return platformRequest<TraineePage>(`${org(slug)}/trainees`, {
     signal,
-    query: { ...pageQuery(page), access_revoked: page?.accessRevoked ?? undefined },
+    query: {
+      ...pageQuery(page),
+      access_revoked: page?.accessRevoked ?? undefined,
+    },
   });
 }
 
@@ -104,13 +130,23 @@ export function listMemberships(
  * Everyone on the roster who still has access, every page of it. The circuit
  * pickers read the first page only and dropped everyone past the hundredth.
  */
-export function listActiveTrainees(slug: string, signal?: AbortSignal): Promise<Trainee[]> {
-  return collectPages((cursor) => listTrainees(slug, signal, { cursor, accessRevoked: false }));
+export function listActiveTrainees(
+  slug: string,
+  signal?: AbortSignal,
+): Promise<Trainee[]> {
+  return collectPages((cursor) =>
+    listTrainees(slug, signal, { cursor, accessRevoked: false }),
+  );
 }
 
 /** The active team, every page of it, for the supervisor picker. */
-export function listActiveMembers(slug: string, signal?: AbortSignal): Promise<MembershipPage["items"]> {
-  return collectPages((cursor) => listMemberships(slug, signal, { cursor, status: "active" }));
+export function listActiveMembers(
+  slug: string,
+  signal?: AbortSignal,
+): Promise<MembershipPage["items"]> {
+  return collectPages((cursor) =>
+    listMemberships(slug, signal, { cursor, status: "active" }),
+  );
 }
 
 export type Programme = components["schemas"]["ProgrammeRead"];
@@ -118,10 +154,13 @@ export type Programme = components["schemas"]["ProgrammeRead"];
 /** Every programme, every page: a first page of 25 hid the rest from the sitting pickers (S-27). */
 export async function listProgrammes(slug: string, signal?: AbortSignal) {
   const items = await collectPages((cursor) =>
-    platformRequest<components["schemas"]["Page_ProgrammeRead_"]>(`${org(slug)}/programmes`, {
-      signal,
-      query: { limit: PAGE_LIMIT, cursor: cursor ?? undefined },
-    }),
+    platformRequest<components["schemas"]["Page_ProgrammeRead_"]>(
+      `${org(slug)}/programmes`,
+      {
+        signal,
+        query: { limit: PAGE_LIMIT, cursor: cursor ?? undefined },
+      },
+    ),
   );
   return { items };
 }
@@ -137,8 +176,14 @@ export async function sittingLibraryScope(
   signal?: AbortSignal,
 ): Promise<StationLibraryScope> {
   const programmes = await listProgrammes(slug, signal);
-  const programme = programmes.items.find((item) => item.id === sitting.programme_id);
-  return { orgSlug: slug, examCode: sitting.exam_code ?? null, orgOwnedExam: programme?.exam_owner_kind === "org" };
+  const programme = programmes.items.find(
+    (item) => item.id === sitting.programme_id,
+  );
+  return {
+    orgSlug: slug,
+    examCode: sitting.exam_code ?? null,
+    orgOwnedExam: programme?.exam_owner_kind === "org",
+  };
 }
 
 /**
@@ -215,20 +260,28 @@ export function updateSitting(
   changes: SittingChanges,
   revision?: number,
 ): Promise<Sitting> {
-  const body: components["schemas"]["UpdateSitting"] & { cohort_id?: string | null } = { revision };
+  const body: components["schemas"]["UpdateSitting"] & {
+    cohort_id?: string | null;
+  } = { revision };
   if (changes.name !== undefined) body.name = changes.name;
   if (changes.mode !== undefined) body.mode = changes.mode;
-  if (changes.sittingType !== undefined) body.sitting_type = changes.sittingType;
+  if (changes.sittingType !== undefined)
+    body.sitting_type = changes.sittingType;
   // `null` is meaningful on this one field, so it is tested for absence and not
   // for truthiness.
-  if (changes.scheduledFor !== undefined) body.scheduled_for = changes.scheduledFor;
-  if (changes.programmeId !== undefined) body.programme_id = changes.programmeId;
+  if (changes.scheduledFor !== undefined)
+    body.scheduled_for = changes.scheduledFor;
+  if (changes.programmeId !== undefined)
+    body.programme_id = changes.programmeId;
   if (changes.cohortId !== undefined) body.cohort_id = changes.cohortId;
 
-  return platformRequest<Sitting>(`${org(slug)}/sittings/${encodeURIComponent(sittingId)}`, {
-    method: "PUT",
-    body,
-  });
+  return platformRequest<Sitting>(
+    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}`,
+    {
+      method: "PUT",
+      body,
+    },
+  );
 }
 
 export type Circuit = components["schemas"]["CircuitRead"];
@@ -252,10 +305,9 @@ export interface CircuitShape {
 /**
  * The clock, in the builder's words.
  *
- * `breaks` are 1-based station numbers the break falls *after*, and
- * `breakMinutes` is one length for all of them — the platform's `Timing` carries
- * a single `break_minutes` where the retiring client carried a duration per
- * break. `sittings/domain.py` drops both outside exam mode and clamps them
+ * `breaks` are 1-based station numbers the break falls *after*, `breakMinutes`
+ * is the default length and `breakLengths` the length of any break that differs,
+ * keyed by that station number. `sittings/domain.py` drops them outside exam mode and clamps them
  * inside it; `domains/assess/timing.ts` mirrors that so the form only offers
  * answers the server will keep.
  */
@@ -264,6 +316,24 @@ export interface CircuitTiming {
   simulationMinutes: number;
   breakMinutes: number;
   breaks: number[];
+  breakLengths: Record<number, number>;
+}
+
+/** `breakLengths` as the api's `break_lengths` list. */
+export function breakLengthsBody(lengths: Record<number, number>) {
+  return Object.entries(lengths).map(([after, minutes]) => ({
+    after_station: Number(after),
+    minutes,
+  }));
+}
+
+/** The api's `break_lengths` list as `breakLengths`. */
+export function breakLengthsFrom(
+  list: readonly { after_station: number; minutes: number }[] | undefined,
+): Record<number, number> {
+  return Object.fromEntries(
+    (list ?? []).map((entry) => [entry.after_station, entry.minutes]),
+  );
 }
 
 /**
@@ -293,6 +363,7 @@ export function createCircuit(
           simulation_minutes: input.timing.simulationMinutes,
           break_minutes: input.timing.breakMinutes,
           breaks: input.timing.breaks,
+          break_lengths: breakLengthsBody(input.timing.breakLengths),
         },
       },
     },
@@ -320,22 +391,26 @@ export function rebuildCircuit(
   input: CircuitShape,
   revision?: number,
 ): Promise<Circuit> {
-  return platformRequest<Circuit>(`${org(slug)}/circuits/${encodeURIComponent(circuitId)}`, {
-    method: "PUT",
-    body: {
-      revision,
-      name: input.name,
-      station_version_ids: input.stationVersionIds,
-      trainee_ids: input.traineeIds,
-      supervisor_user_id: input.supervisorUserId,
-      timing: {
-        reading_minutes: input.timing.readingMinutes,
-        simulation_minutes: input.timing.simulationMinutes,
-        break_minutes: input.timing.breakMinutes,
-        breaks: input.timing.breaks,
+  return platformRequest<Circuit>(
+    `${org(slug)}/circuits/${encodeURIComponent(circuitId)}`,
+    {
+      method: "PUT",
+      body: {
+        revision,
+        name: input.name,
+        station_version_ids: input.stationVersionIds,
+        trainee_ids: input.traineeIds,
+        supervisor_user_id: input.supervisorUserId,
+        timing: {
+          reading_minutes: input.timing.readingMinutes,
+          simulation_minutes: input.timing.simulationMinutes,
+          break_minutes: input.timing.breakMinutes,
+          breaks: input.timing.breaks,
+          break_lengths: breakLengthsBody(input.timing.breakLengths),
+        },
       },
     },
-  });
+  );
 }
 
 /**
@@ -343,10 +418,16 @@ export function rebuildCircuit(
  * deleted. Refused with `sitting_locked` (409) once any circuit has started:
  * those circuits are ended instead.
  */
-export function cancelSitting(slug: string, sittingId: string): Promise<Sitting> {
-  return platformRequest<Sitting>(`${org(slug)}/sittings/${encodeURIComponent(sittingId)}/cancel`, {
-    method: "POST",
-  });
+export function cancelSitting(
+  slug: string,
+  sittingId: string,
+): Promise<Sitting> {
+  return platformRequest<Sitting>(
+    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/cancel`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 /**
@@ -354,23 +435,36 @@ export function cancelSitting(slug: string, sittingId: string): Promise<Sitting>
  * has started, because then it holds a record of what was sat.
  */
 export function deleteCircuit(slug: string, circuitId: string): Promise<void> {
-  return platformRequest<void>(`${org(slug)}/circuits/${encodeURIComponent(circuitId)}`, {
-    method: "DELETE",
-  });
+  return platformRequest<void>(
+    `${org(slug)}/circuits/${encodeURIComponent(circuitId)}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 /* ---------- marking ---------- */
 
 export type SlotReview = components["schemas"]["SlotReviewRead"];
 /** What queueing a marking again answered. Declared by hand until schema.d.ts is regenerated (R-5). */
-export type RetryMarkingResult = { queued: boolean; policy_version: string; reason: string | null };
+export type RetryMarkingResult = {
+  queued: boolean;
+  policy_version: string;
+  reason: string | null;
+};
 
 /** Queue this slot's automatic marking again after it failed. Twice is once. */
-export function retrySlotMarking(slug: string, slotId: string): Promise<RetryMarkingResult> {
-  return platformRequest<RetryMarkingResult>(`${org(slug)}/slots/${encodeURIComponent(slotId)}/marking/retry`, {
-    method: "POST",
-    body: {},
-  });
+export function retrySlotMarking(
+  slug: string,
+  slotId: string,
+): Promise<RetryMarkingResult> {
+  return platformRequest<RetryMarkingResult>(
+    `${org(slug)}/slots/${encodeURIComponent(slotId)}/marking/retry`,
+    {
+      method: "POST",
+      body: {},
+    },
+  );
 }
 export type Transcript = components["schemas"]["TranscriptRead"];
 
@@ -419,19 +513,31 @@ export function readMySlotReview(
 export function saveReview(
   slug: string,
   slotId: string,
-  input: { fieldValues: Record<string, unknown>; notes: string | null; status: "draft" | "completed" },
+  input: {
+    fieldValues: Record<string, unknown>;
+    notes: string | null;
+    status: "draft" | "completed";
+  },
 ): Promise<SlotReview> {
   return platformRequest<SlotReview>(
     `${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews/mine`,
     {
       method: "PUT",
-      body: { field_values: input.fieldValues, notes: input.notes, status: input.status },
+      body: {
+        field_values: input.fieldValues,
+        notes: input.notes,
+        status: input.status,
+      },
     },
   );
 }
 
 /** Take back a draft review, so a stale one stops blocking sign-off. */
-export function withdrawReview(slug: string, slotId: string, reviewId: string): Promise<void> {
+export function withdrawReview(
+  slug: string,
+  slotId: string,
+  reviewId: string,
+): Promise<void> {
   return platformRequest<void>(
     `${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews/${encodeURIComponent(reviewId)}`,
     { method: "DELETE" },
@@ -442,15 +548,27 @@ export type ScimToken = components["schemas"]["ScimTokenRead"];
 export type ScimTokenIssued = components["schemas"]["ScimTokenIssued"];
 
 /** The identity-provider connectors that may provision this organisation's people. */
-export function listScimTokens(slug: string, signal?: AbortSignal): Promise<ScimToken[]> {
+export function listScimTokens(
+  slug: string,
+  signal?: AbortSignal,
+): Promise<ScimToken[]> {
   return platformRequest<ScimToken[]>(`${org(slug)}/scim/tokens`, { signal });
 }
 
 /** The token itself comes back once, in this response, and is never readable again. */
-export function issueScimToken(slug: string, label: string): Promise<ScimTokenIssued> {
-  return platformRequest<ScimTokenIssued>(`${org(slug)}/scim/tokens`, { method: "POST", body: { label } });
+export function issueScimToken(
+  slug: string,
+  label: string,
+): Promise<ScimTokenIssued> {
+  return platformRequest<ScimTokenIssued>(`${org(slug)}/scim/tokens`, {
+    method: "POST",
+    body: { label },
+  });
 }
 
 export function revokeScimToken(slug: string, tokenId: string): Promise<void> {
-  return platformRequest<void>(`${org(slug)}/scim/tokens/${encodeURIComponent(tokenId)}`, { method: "DELETE" });
+  return platformRequest<void>(
+    `${org(slug)}/scim/tokens/${encodeURIComponent(tokenId)}`,
+    { method: "DELETE" },
+  );
 }
