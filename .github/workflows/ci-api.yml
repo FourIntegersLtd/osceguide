@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
       - "api/**"
+      # The nightly backup job has its own image and no tests; it does not touch the app.
+      - "!api/infra/db-backup/**"
       - "assessment/packages/osce_assessment/**"
       # The engine's golden prompt files that tests/contract compares against.
       - "assessment/tests/fixtures/**"
@@ -21,6 +23,8 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      # The nightly backup job has its own image and no tests; it does not touch the app.
+      - "!api/infra/db-backup/**"
       - "assessment/packages/osce_assessment/**"
       # The engine's golden prompt files that tests/contract compares against.
       - "assessment/tests/fixtures/**"

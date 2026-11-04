@@ -122,7 +122,7 @@ jobs:
           STAGING_COMMIT: ${{ steps.staging.outputs.commit }}
         run: |
           set -euo pipefail
-          newest=$(git log -1 --format=%H origin/main -- api assessment/packages/osce_assessment)
+          newest=$(git log -1 --format=%H origin/main -- api ':(exclude)api/infra/db-backup' assessment/packages/osce_assessment)
           if [ -z "${newest}" ]; then
             echo "::error::Found no main commit touching api/ or the engine; the checkout is too shallow or origin/main is missing."
             exit 1
@@ -154,7 +154,7 @@ jobs:
           TARGET_SHA: ${{ steps.target.outputs.sha }}
         run: |
           set -euo pipefail
-          api_paths=("api" "assessment/packages/osce_assessment" "assessment/tests/fixtures"
+          api_paths=("api" ":(exclude)api/infra/db-backup" "assessment/packages/osce_assessment" "assessment/tests/fixtures"
             "web/src/capabilities/authoring/rubrics/rubricVocabulary.ts"
             "web/src/capabilities/feedback/rubricView.ts" ".github/workflows/ci-api.yml")
           ci_sha=$(git log -1 --first-parent --format=%H "${TARGET_SHA}" -- "${api_paths[@]}")
