@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef } from "react";
 import { readAttempt } from "@/capabilities/attempt-runner/api";
 import { readResults } from "@/capabilities/feedback/api";
-import { pendingOutcome } from "./outcome";
+import { useMeEvents } from "@/foundation/hooks";
+import { MAX_WAIT_MS, pendingOutcome } from "./outcome";
 import type { PendingFeedbackJob } from "./PendingFeedbackContext";
 
-const RECONCILE_MS = [10_000, 15_000, 20_000, 30_000, 45_000];
-
 /**
- * Polls attempt status until a result exists.
+ * Waits for a result to exist. Reads once on mount and again whenever `/me/events` says the attempt
+ * changed (the scorer publishes `attempt` when it stores a result or gives up) or the stream
+ * reconnected (`resync`). Nothing polls: a timer only flips the copy to "taking longer".
  */
 export function PendingFeedbackWatcher({
   job,
@@ -42,46 +43,35 @@ export function PendingFeedbackWatcher({
     onFailed(job.key);
   }, [job.key, onFailed]);
 
+  const reconcile = useCallback(async () => {
+    if (settledRef.current) return;
+    let resultCount = 0;
+    let attemptStatus: string | null = null;
+    try {
+      resultCount = (await readResults(job.attemptId)).length;
+      if (resultCount === 0) attemptStatus = (await readAttempt(job.attemptId)).status;
+    } catch {
+      // a failed read is not an outcome; the next event asks again
+    }
+    const outcome = pendingOutcome({ resultCount, attemptStatus, elapsedMs: 0 });
+    if (outcome === "ready") markReady();
+    else if (outcome === "failed") markFailed();
+  }, [job.attemptId, markReady, markFailed]);
+
   useEffect(() => {
-    let attempts = 0;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const startedAt = Math.min(job.startedAt, Date.now());
-
-    const schedule = () => {
-      const delay = RECONCILE_MS[Math.min(attempts, RECONCILE_MS.length - 1)];
-      timer = setTimeout(() => void reconcile(), delay);
-    };
-
-    const reconcile = async () => {
-      if (cancelled || settledRef.current) return;
-      let resultCount = 0;
-      let attemptStatus: string | null = null;
-      try {
-        resultCount = (await readResults(job.attemptId)).length;
-        if (resultCount === 0) attemptStatus = (await readAttempt(job.attemptId)).status;
-      } catch {
-        // a failed read is not an outcome; ask again
-      }
-      const outcome = pendingOutcome({
-        resultCount,
-        attemptStatus,
-        elapsedMs: Date.now() - startedAt,
-      });
-      if (outcome === "ready") return markReady();
-      if (outcome === "failed") return markFailed();
-      if (outcome === "expired") return markExpired();
-      attempts += 1;
-      if (!cancelled) schedule();
-    };
-
     void reconcile();
+  }, [reconcile]);
 
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, [job.attemptId, job.startedAt, markReady, markExpired, markFailed]);
+  useMeEvents(["attempt"], (event) => {
+    if (event.name === "resync" || event.data.attempt_id === job.attemptId) void reconcile();
+  });
+
+  // Display only: after MAX_WAIT_MS the banner says it is taking longer. No read happens here.
+  useEffect(() => {
+    const remaining = Math.max(0, MAX_WAIT_MS - (Date.now() - Math.min(job.startedAt, Date.now())));
+    const timer = setTimeout(markExpired, remaining);
+    return () => clearTimeout(timer);
+  }, [job.startedAt, markExpired]);
 
   return null;
 }

@@ -17,6 +17,7 @@ const ME_EVENT_NAMES = [
   "coverage",
   "message.received",
   "community_reply",
+  "debrief",
 ] as const;
 export type MeEventName = (typeof ME_EVENT_NAMES)[number];
 
