@@ -2,7 +2,7 @@
 
 import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
 import { useId, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, AsyncBoundary, Badge, cn, getInputClassName, SelectableCard, SectionSearchField } from "@/foundation/ui";
 import { useAsync, useSearchQuery } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
@@ -12,7 +12,7 @@ import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { labelFor, RATING_KINDS } from "@/capabilities/authoring/rubrics/rubricVocabulary";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
-import { rubricEditPath, rubricsListPath } from "@/capabilities/authoring/templates/paths";
+import { examResumePath, rubricEditPath, rubricsListPath } from "@/capabilities/authoring/templates/paths";
 
 const KIND_WORDS: Record<RubricStartingPoint["kind"], string> = {
   blank: "Blank",
@@ -31,6 +31,7 @@ function RubricStartScreenForm() {
   const scope = useAuthoringScope();
   const { hrefFor } = useSurface();
   const router = useRouter();
+  const examId = useSearchParams().get("exam");
   const action = useAction(undefined, { holdOnSuccess: true });
   const titleId = useId();
   const [title, setTitle] = useState("");
@@ -50,7 +51,7 @@ function RubricStartScreenForm() {
         source_version: picked && picked.kind !== "blank" ? picked.version : null,
       });
       const first = (rubric.versions ?? [])[0];
-      router.push(rubricEditPath(hrefFor, rubric.id, first?.version ?? 1));
+      router.push(rubricEditPath(hrefFor, rubric.id, first?.version ?? 1, examId));
     });
   };
 
@@ -90,7 +91,10 @@ function RubricStartScreenForm() {
         </div>
 
         {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <AuthoringButton variant="secondary" onClick={() => router.push(examId ? examResumePath(hrefFor, examId) : rubricsListPath(hrefFor))}>
+            Cancel
+          </AuthoringButton>
           <AuthoringButton variant="commit" isLoading={action.busy === "create"} disabled={action.busy !== null || !picked} onClick={create}>
             {picked?.kind === "blank" ? "Start blank" : "Copy and edit"}
           </AuthoringButton>

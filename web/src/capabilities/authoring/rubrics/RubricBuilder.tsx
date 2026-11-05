@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Alert, B2CSegmentedTabs, Panel, StepGuide } from "@/foundation/ui";
 import { PlatformError } from "@/foundation/platform-client";
 import {
@@ -12,6 +14,7 @@ import {
   type TrialMarkRequest,
 } from "@/capabilities/authoring/api";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
+import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { RubricBuilderProvider } from "@/capabilities/authoring/rubrics/builderContext";
 import type { RubricDashboardPreview } from "@/capabilities/authoring/rubrics/dashboardSlot";
@@ -46,6 +49,7 @@ export function RubricBuilder({
   version,
   readOnly,
   dashboardPreview,
+  examHref,
   onPublished,
   onStale,
 }: {
@@ -54,6 +58,8 @@ export function RubricBuilder({
   version: RubricVersion;
   readOnly: boolean;
   dashboardPreview?: RubricDashboardPreview;
+  /** The New exam sheet that sent the author here; publishing then offers the way back. */
+  examHref?: string | null;
   onPublished: () => void;
   /** Someone else saved this version first; reload it. */
   onStale: () => void;
@@ -61,6 +67,7 @@ export function RubricBuilder({
   const draft = useRubricDraft(scope, rubric.id, version, onStale);
   const trial = useTrialMark(scope, rubric.id);
   const action = useAction();
+  const router = useRouter();
   const [tab, setTab] = useState<EditorTab>("structure");
   const [note, setNote] = useState<string | null>(null);
 
@@ -89,7 +96,7 @@ export function RubricBuilder({
     window.requestAnimationFrame(() => revealPath(problem.path));
   };
 
-  const publish = () =>
+  const publish = (thenBack: boolean) =>
     action.run("publish", async () => {
       try {
         await publishRubricVersion(scope, rubric.id, version.version);
@@ -99,7 +106,8 @@ export function RubricBuilder({
         }
         throw cause;
       }
-      onPublished();
+      if (thenBack && examHref) router.push(examHref);
+      else onPublished();
     });
 
   const fillInstructions = () =>
@@ -136,13 +144,18 @@ export function RubricBuilder({
               <AuthoringButton variant="secondary" size="sm" isLoading={action.busy === "save"} disabled={action.busy !== null || !draft.dirty || promptMissing} onClick={() => action.run("save", draft.save)}>
                 Save draft
               </AuthoringButton>
-              <AuthoringButton variant="commit" size="sm" isLoading={action.busy === "publish"} disabled={action.busy !== null || publishBlocked !== null} onClick={() => publish()}>
-                Publish
+              <AuthoringButton variant="commit" size="sm" isLoading={action.busy === "publish"} disabled={action.busy !== null || publishBlocked !== null} onClick={() => publish(Boolean(examHref))}>
+                {examHref ? "Publish and go back" : "Publish"}
               </AuthoringButton>
             </div>
           )}
         </StepGuide>
 
+        {examHref && version.status === "published" ? (
+          <Alert tone="success">
+            Published. <Link href={examHref} className="font-medium underline">Back to the exam</Link>
+          </Alert>
+        ) : null}
         {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
         {note ? <Alert tone="info">{note}</Alert> : null}
         {draft.previewError ? <Alert tone="warning">The draft could not be checked: {draft.previewError.message}</Alert> : null}
@@ -176,6 +189,18 @@ export function RubricBuilder({
                 dashboard={dashboardPreview}
                 emptyMessage={draft.checking ? "Checking the draft…" : "Fix the problems to see the preview."}
               />
+            </Panel>
+            <Panel title="Versions">
+              <ul className="space-y-1.5">
+                {[...(rubric.versions ?? [])]
+                  .sort((a, b) => b.version - a.version)
+                  .map((item) => (
+                    <li key={item.id} className="flex items-center justify-between gap-2 text-osce-body text-ink">
+                      <span>v{item.version}</span>
+                      <StatusBadge status={item.status} />
+                    </li>
+                  ))}
+              </ul>
             </Panel>
             <Panel title="Trial mark" description="Mark a real conversation against this version. Nothing is saved.">
               <TrialPanel

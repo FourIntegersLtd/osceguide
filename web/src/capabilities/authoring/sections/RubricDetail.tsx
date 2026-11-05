@@ -21,6 +21,7 @@ import {
   addRubricVersion,
   archiveRubricVersion,
   publishRubricVersion,
+  copyRubric,
   readRubric,
   type Rubric,
 } from "@/capabilities/authoring/api";
@@ -58,7 +59,29 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
         {(data: Rubric) => (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-osce-body font-semibold text-ink">{data.title}</h2>
+              <div>
+                <p className="text-osce-caption text-ink-muted">Marking scheme</p>
+                <h2 className="text-osce-body font-semibold text-ink">{data.title}</h2>
+                <p className="text-osce-caption text-ink-muted">
+                  Each version is a frozen copy. Candidates are marked against the live one.
+                </p>
+              </div>
+              {scope.kind === "org" && data.owner_kind === "platform" ? (
+                <AuthoringButton
+                  write
+                  variant="secondary"
+                  size="sm"
+                  disabled={action.busy !== null}
+                  onClick={() =>
+                    action.run("copy", async () => {
+                      const copy = await copyRubric(scope, { source_rubric_id: data.id, source_version: null });
+                      router.push(rubricEditPath(hrefFor, copy.id, (copy.versions ?? [])[0]?.version ?? 1));
+                    })
+                  }
+                >
+                  {action.busy === "copy" ? "Copying…" : "Copy to my marking schemes"}
+                </AuthoringButton>
+              ) : (
               <AuthoringButton
                 write
                 variant="secondary"
@@ -68,6 +91,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
               >
                 {action.busy === "add" ? "Creating…" : "New draft version"}
               </AuthoringButton>
+              )}
             </div>
 
             {(data.versions ?? []).length === 0 ? (
