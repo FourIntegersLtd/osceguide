@@ -36,6 +36,7 @@ import {
   type AttentionItem,
 } from "@/domains/assess/dashboard/support";
 import { readResultsIndex } from "@/domains/assess/results/api";
+import { StationsToReview } from "@/domains/assess/results/StationsToReview";
 import { greetingFor } from "@/domains/assess/trainee/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 
@@ -127,9 +128,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
       {mayDecide ? <NeedsAttention loading={results.loading} error={results.error} items={attention} /> : null}
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start [&>*]:min-w-0 [&>*]:flex-1">
-        {/* SLOT (Phase 5): "Stations to review" for a supervisor, grouped by circuit, comes from a
-            results component that phase exposes. Until then SupervisorCircuits names the circuits
-            this person leads and links on to Results. */}
+        {runs ? <StationsToReview orgSlug={orgSlug} /> : null}
         {runs ? <SupervisorCircuits orgSlug={orgSlug} sayWhenEmpty={!admin} /> : null}
 
         <B2CGroupedSection
