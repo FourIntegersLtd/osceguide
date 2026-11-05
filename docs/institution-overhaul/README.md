@@ -182,18 +182,21 @@ Ask few questions; record judgement calls below. Phase 6 (money) is merged after
 ## Judgement calls
 
 - (orchestrator) Browser verification runs after each merge, in the main tree, one at a time.
+- (2b) NewStation chooser is org-only; on an org, the AI card says a layout comes first (CreateStation.md: AI appears once a template is chosen).
+- (6) Invoices are a Settings tab; the board's "Open invoices" link card and separate page were not built.
+- (2a) Break time shown read-only in NewExam step 3 (api has no break field).
 
 ## Ledger (the orchestrator updates this)
 
 | Phase | Status | Proof | Notes |
 |---|---|---|---|
-| 0 Baseline | not started | | |
+| 0 Baseline | running | | |
 | 1 Words, menu, Home | not started | | |
-| 2a Exams and programmes | not started | | |
-| 2b Stations and layouts | not started | | |
-| 2c Marking schemes | not started | | |
-| 3 Scheduling and exam day | not started | | |
-| 4 People | not started | | |
-| 5 Results and review | not started | | |
-| 6 Settings and Invoices | not started | | |
+| 2a Exams and programmes | built, in review | npm run ci | Break time read-only (no api field) |
+| 2b Stations and layouts | merged to main (2f471167) | npm run ci, reviewer, quality-reviewer; browser verify pending | Chooser org-only; AI card says a layout comes first |
+| 2c Marking schemes | building | | |
+| 3 Scheduling and exam day | building | | |
+| 4 People | merged to main (3bdec4ec) | npm run ci, reviewer, quality-reviewer; browser verify pending | Menu: remove Team entry (Phase 1) |
+| 5 Results and review | building | | |
+| 6 Settings and Invoices | merged to main (279034ae) | npm run ci, security review clean; user to read (money); browser verify pending | Invoices as a tab; no link card |
 | 7 Docs | not started | | |
