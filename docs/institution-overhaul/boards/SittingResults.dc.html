@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sitting results</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F5F5F7;font-family:"Open Sauce One",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#1D1D1F}
+a{color:#1D4ED8;text-decoration:none}a:hover{color:#1E40AF}
+.shell{display:flex;flex-wrap:wrap;min-height:100vh}
+.side{flex:1 1 232px;max-width:248px;background:#fff;border-right:1px solid #E3E3E8;padding:20px 12px;box-sizing:border-box}
+@media(max-width:760px){.side{max-width:none;border-right:0;border-bottom:1px solid #E3E3E8}.main{padding:24px 16px 48px!important}}
+.org{display:flex;align-items:center;gap:10px;padding:6px 8px 14px}
+.mark{width:32px;height:32px;border-radius:9px;background:#1D4ED8;color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none}
+.sec{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73;padding:16px 10px 6px}
+.nav{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:9px;color:#3A3A3D;font-size:14px}
+.nav:hover{background:#F5F5F7;color:#1D1D1F}
+.nav.on{background:#EBEBEF;color:#1D1D1F;font-weight:500}
+.main{flex:999 1 560px;min-width:0;padding:32px 40px 56px;box-sizing:border-box}
+.page{max-width:1080px;display:flex;flex-direction:column;gap:24px}
+.eyebrow{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73}
+h1{font-size:28px;line-height:1.2;font-weight:600;margin:6px 0}
+h2{font-size:16px;font-weight:600;margin:0}
+.desc{font-size:16px;color:#6E6E73;margin:0;line-height:1.5}
+.meta{font-size:13px;color:#6E6E73;line-height:1.5}
+.card{background:#fff;border:1px solid #E3E3E8;border-radius:14px;overflow:hidden}
+.pad{padding:20px;display:flex;flex-direction:column;gap:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:9px;font-size:14px;font-weight:500;border:1px solid #E3E3E8;background:#fff;color:#1D1D1F;cursor:pointer;font-family:inherit;box-sizing:border-box;white-space:nowrap}
+.btn:hover{background:#F5F5F7;color:#1D1D1F}
+.btn.pri{background:#1D4ED8;border-color:#1D4ED8;color:#fff}.btn.pri:hover{background:#1E40AF;color:#fff}
+.btn.bad{color:#B91C1C}.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;background:#EBEBEF;color:#3A3A3D;white-space:nowrap}
+.chip.ok{background:#EEF8F1;color:#047857}.chip.warn{background:#FCF5E6;color:#92400E}.chip.info{background:#E8EFFC;color:#1E40AF}.chip.live{background:#FCEFEE;color:#B91C1C}
+.row{display:flex;align-items:center;gap:16px;padding:14px 20px;border-top:1px solid #EFEFF2;font-size:14px;color:#1D1D1F;flex-wrap:wrap}
+a.row:hover{background:#FAFAFB;color:#1D1D1F}
+.th{display:flex;gap:16px;padding:10px 20px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73;background:#FAFAFB;flex-wrap:wrap}
+.tabs{display:inline-flex;background:#EBEBEF;border-radius:9px;padding:3px;gap:2px;flex-wrap:wrap;align-self:flex-start}
+.tab{min-height:36px;padding:0 14px;border-radius:7px;font-size:14px;color:#3A3A3D;display:inline-flex;align-items:center;border:0;background:transparent;font-family:inherit;cursor:pointer}
+.tab.on{background:#fff;color:#1D1D1F;font-weight:500}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.g6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+@media(max-width:900px){.g2,.g3{grid-template-columns:minmax(0,1fr)}.g6{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cols{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.colm{flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.cola{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.tile{background:#fff;border:1px solid #E3E3E8;border-radius:14px;padding:16px}
+.tile b{display:block;font-size:24px;font-weight:600;margin-top:4px}
+.rail{display:flex;gap:8px;flex-wrap:wrap}
+.st{flex:1 1 110px;padding:10px 12px;border-radius:9px;background:#fff;border:1px solid #E3E3E8;font-size:13px}
+.st b{display:block;font-size:14px;font-weight:500}
+.st.done{background:#EEF8F1;border-color:#EEF8F1}.st.now{border-color:#1D4ED8;background:#F7F9FE}
+.al{border-radius:9px;padding:12px 14px;font-size:14px;line-height:1.5}
+.al.warn{background:#FCF5E6;color:#92400E}.al.info{background:#E8EFFC;color:#1E40AF}.al.ok{background:#EEF8F1;color:#047857}.al.bad{background:#FCEFEE;color:#B91C1C}
+.al b{display:block}
+label{font-size:14px;font-weight:500;display:block;margin-bottom:6px}
+.input{width:100%;min-height:44px;padding:0 12px;border:1px solid #E3E3E8;border-radius:9px;font-size:16px;font-family:inherit;color:#1D1D1F;box-sizing:border-box;background:#fff}
+textarea.input{min-height:96px;padding:10px 12px;resize:vertical}
+.fields{display:flex;gap:16px;flex-wrap:wrap}.fields>div{flex:1 1 200px}
+.hint{font-size:13px;color:#6E6E73;margin-top:6px;line-height:1.5}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;min-height:32px;font-weight:400;margin:0}
+.check input{width:18px;height:18px;margin-top:2px;accent-color:#1D4ED8}
+.pill{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid #E3E3E8;background:#fff;font-size:13px;font-family:inherit;color:#1D1D1F}
+.pill.on{background:#E8EFFC;border-color:#1D4ED8;color:#1E40AF}
+.seg{display:inline-flex;border:1px solid #E3E3E8;border-radius:9px;overflow:hidden;flex-wrap:wrap}
+.seg span{min-height:40px;padding:0 14px;display:inline-flex;align-items:center;font-size:14px;border-right:1px solid #E3E3E8;background:#fff}
+.seg span:last-child{border-right:0}.seg span.g{background:#EEF8F1;color:#047857;font-weight:500}.seg span.a{background:#FCF5E6;color:#92400E;font-weight:500}.seg span.r{background:#FCEFEE;color:#B91C1C;font-weight:500}
+.clock{font-size:44px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.av{width:32px;height:32px;border-radius:999px;background:#EBEBEF;color:#3A3A3D;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
+.hero{background:#fff;border:1px solid #E3E3E8;border-radius:14px;padding:24px;display:flex;gap:20px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.hero.live{border-color:#1D4ED8;background:#F7F9FE}
+.note{font-size:12px;color:#6E6E73;border-top:1px dashed #E3E3E8;padding-top:12px;line-height:1.5}
+.ov{position:fixed;inset:0;background:rgba(29,29,31,.32);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.dlg{background:#fff;border-radius:14px;max-width:520px;width:100%;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.18);max-height:90vh;overflow:auto}
+.dlg .acts{justify-content:flex-end}
+details.fold{border-top:1px solid #EFEFF2}details.fold summary{padding:14px 20px;font-size:14px;font-weight:500;cursor:pointer;min-height:24px}
+.fold .in{padding:0 20px 16px;font-size:14px;line-height:1.6;color:#3A3A3D}
+.help{width:36px;height:36px;border-radius:999px;border:1px solid #E3E3E8;background:#fff;font-weight:600;color:#3A3A3D;display:inline-flex;align-items:center;justify-content:center}
+</style>
+</helmet>
+<div class="shell">
+<nav class="side" aria-label="Main">
+<div class="org"><div class="mark">SM</div><div><div style="font-size:14px;font-weight:600">St Mary's Medical School</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="Today.dc.html">Home</a>
+<div class="sec">Run</div>
+<a class="nav" href="Sittings.dc.html">Sittings</a>
+<a class="nav" href="LiveBoard.dc.html">Now running</a>
+<a class="nav on" href="Results.dc.html">Results</a>
+<div class="sec">Organise</div>
+<a class="nav" href="People.dc.html">People</a>
+<a class="nav" href="Exams.dc.html">Exams</a>
+<div class="sec">Insight</div>
+<a class="nav" href="Reporting.dc.html">Reporting</a>
+<div style="height:16px"></div>
+<a class="nav" href="Settings.dc.html">Settings</a>
+</nav>
+<main class="main"><div class="page">
+<div class="tabs" role="tablist"><sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button class="{{ t.cls }}" onClick="{{ t.pick }}">{{ t.label }}</button></sc-for></div><sc-if value="{{ p0 }}" hint-placeholder-val="{{ true }}">
+<div><a href="Sitting.dc.html" style="font-size:14px">‹ Sitting</a></div>
+<div class="head"><div><div class="eyebrow">March mock</div><h1>Results</h1><p class="desc">40 of 48 stations marked · 0 of 8 released</p></div><div class="acts"><button class="btn">Download CSV</button></div></div>
+<div class="g6"><div class="tile">Passed<b>3</b></div><div class="tile">Failed<b>1</b></div><div class="tile">Inconclusive<b>0</b></div><div class="tile">Withheld<b>0</b></div><div class="tile">Undecided<b>4</b></div><div class="tile">Awaiting marking<b>2</b></div></div>
+<div class="card pad"><div class="rail"><div class="st done"><b>Schedule</b>Date set</div><div class="st done"><b>Circuits</b>Candidates sat</div><div class="st done"><b>Run</b>All finished</div><div class="st now"><b>Mark</b>40 of 48 marked</div><div class="st "><b>Decide</b>4 of 8 decided</div><div class="st "><b>Release</b>0 of 8 released</div></div>
+<div style="font-size:14px">3 results signed off and not yet released.</div>
+<div class="card"><div class="row" style="border-top:0;justify-content:space-between"><h2>Candidates to release</h2><span class="meta">Untick anyone to hold their result back.</span></div><label class="check row"><input type="checkbox" checked> All 3</label><label class="check row"><input type="checkbox" checked> Amara Okoye</label><label class="check row"><input type="checkbox" checked> Dev Shah</label><label class="check row"><input type="checkbox" checked> Esme Lowe</label></div>
+<div class="acts"><button class="btn pri" onClick="{{ o_release }}">Release 3 signed-off results</button></div></div>
+<div class="card"><div class="row" style="border-top:0;justify-content:space-between"><div><div class="eyebrow">Review order</div><div class="meta">8 candidates, with unfinished reviews first, then the weakest results.</div></div><button class="btn sm ghost">Export readout</button></div>
+<div class="row"><span style="flex:1">1. Chloe Imran<div class="meta">4/6 stations · 67% complete</div></span><span class="chip live">Urgent review</span></div>
+<div class="row"><span style="flex:1">2. Ben Hart<div class="meta">6/6 stations · 48/100 · 100% complete</div></span><span class="chip warn">High priority</span></div></div>
+<div class="card" aria-label="Candidates"><div class="th"><span style="width:32px"></span><span style="flex:1 1 220px">Candidate</span><span style="width:90px">Score</span><span style="width:110px">Outcome</span><span style="width:100px">Status</span><span style="width:60px"></span></div><div class="row"><div class="av">AO</div><div style="flex:1 1 220px"><div style="font-weight:500">Amara Okoye</div><div class="meta">6 of 6 stations marked · overall Green</div></div><span style="width:90px">72/100</span><span style="width:110px"><span class="chip ok">Pass</span></span><span style="width:100px"><span class="chip ok">Signed off</span></span><button class="btn sm">Open</button></div><div class="row"><div class="av">BH</div><div style="flex:1 1 220px"><div style="font-weight:500">Ben Hart</div><div class="meta">6 of 6 stations marked</div></div><span style="width:90px">48/100</span><span style="width:110px"><span class="meta">Not decided</span></span><span style="width:100px"><span class="chip">Marked</span></span><button class="btn sm">Open</button></div><div class="row"><div class="av">CI</div><div style="flex:1 1 220px"><div style="font-weight:500">Chloe Imran</div><div class="meta">4 of 6 stations marked</div></div><span style="width:90px">Not assessed</span><span style="width:110px"><span class="meta">Not decided</span></span><span style="width:100px"><span class="chip">Not marked</span></span><button class="btn sm">Open</button></div></div>
+<div class="card pad" style="border-color:#1D4ED8"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><h2>Ben Hart · the decision</h2><span class="meta"><span class="chip">Draft</span> Revision 1</span></div>
+<div class="rail"><div class="st done"><b>Marked</b>6 of 6 marked</div><div class="st done"><b>Reviewed</b>6 of 6 reviewed</div><div class="st now"><b>Decided</b>Not decided</div><div class="st "><b>Signed off</b>Not signed off</div><div class="st "><b>Released</b>Not released</div></div>
+<div class="card"><div class="row" style="border-top:0"><div class="eyebrow">Stations</div></div><a class="row" href="SlotReview.dc.html"><span style="flex:1">Chest pain history<div class="meta">Circuit 2 · completed</div></span><span class="chip ok">Green</span></a><a class="row" href="SlotReview.dc.html"><span style="flex:1">Breaking bad news<div class="meta">Circuit 2 · completed</div></span><span class="chip warn">Awaiting review</span></a></div>
+<div><label>Outcome</label><div class="g2"><button class="pill" style="min-height:56px;text-align:left">Pass · Met the standard.</button><button class="pill on" style="min-height:56px;text-align:left">Fail · Did not meet the standard.</button><button class="pill" style="min-height:56px;text-align:left">Inconclusive · Not enough was assessed to decide.</button><button class="pill" style="min-height:56px;text-align:left">Withheld · Decided, but held back, for example during an appeal.</button></div><div class="hint">Suggested from the marks: 2 of 6 stations passed. You decide.</div></div>
+<div><label>Recruitment outcome (hire only)</label><select class="input"><option>Not recorded</option><option>Pending</option><option>Hired</option><option>Reserve list</option><option>Not hired</option><option>Withdrawn</option></select><div class="hint">Whether you are taking this candidate on. The candidate does not see it.</div></div>
+<div><label>Rationale</label><textarea class="input" maxlength="4000" placeholder="Why this outcome, in the words you would use to a candidate or an appeal panel."></textarea></div>
+<div class="al warn"><b>Before this can be signed off</b>Write down the reason, so anyone can see why this was decided later.</div>
+<div class="acts"><button class="btn" onClick="{{ o_preview }}">Preview what they'll see</button><button class="btn">Save draft</button><button class="btn pri" disabled>Sign off</button></div>
+<div class="meta">Signed off: the form locks, "Back to draft" appears, and "Result PDF" appears once released. Sign-off covers the marks as they were; a re-mark needs a new sign-off. A withheld or inconclusive outcome is never sent.</div></div>
+
+</sc-if><sc-if value="{{ p1 }}" hint-placeholder-val="{{ false }}"><div class="card pad"><h2>Candidates to release</h2><p class="meta" style="margin:0">Untick anyone to hold their result back.</p><div class="row" style="flex-wrap:wrap"><span style="flex:1 1 240px"><label class="check"><input type="checkbox" checked> Amara Okoye</label><div class="meta">Pass · signed off</div></span><div class="acts"></div></div><div class="row" style="flex-wrap:wrap"><span style="flex:1 1 240px"><label class="check"><input type="checkbox" checked> Ben Hart</label><div class="meta">Fail · signed off</div></span><div class="acts"></div></div><div class="row" style="flex-wrap:wrap"><span style="flex:1 1 240px"><label class="check"><input type="checkbox"> Chloe Imran</label><div class="meta">Not signed off</div></span><div class="acts"></div></div><button class="btn sm pri" onClick="{{ o_rel }}">Release 2 signed-off results</button><div class="al warn">1 released, 1 refused. Chloe Imran: not signed off yet.</div></div></sc-if><sc-if value="{{ p2 }}" hint-placeholder-val="{{ false }}"><div class="card pad"><h2>Decision for Amara Okoye</h2><div><label>Outcome</label><select class="input"><option>Pass</option><option>Fail</option><option>Inconclusive</option><option>Withheld</option></select></div><div class="meta">Hire shows "Recruitment outcome".</div><textarea class="input" placeholder="Why this outcome, in the words you would use to a candidate or an appeal panel."></textarea><div class="eyebrow">Before this can be signed off</div><p class="meta" style="margin:0">Every station marked · a rationale written</p><div class="acts"><button class="btn sm ">Save draft</button><button class="btn sm pri">Sign off</button><button class="btn sm " onClick="{{ o_back }}">Back to draft</button><button class="btn sm " onClick="{{ o_prev }}">Preview what they'll see</button></div><div class="al warn">This decision has changed since you loaded it. <a href="#">Load the latest version</a></div><p class="meta" style="margin:0">Sign-off covers the marks as they were at the time. A later remark does not change it.</p></div></sc-if><sc-if value="{{ p3 }}" hint-placeholder-val="{{ false }}"><div class="g2"><div class="card pad"><h2>Released</h2><p class="meta" style="margin:0">Released 14 Mar. Once released, a decision cannot be edited. Any correction is saved as a new version.</p><button class="btn sm ">Result PDF</button></div><div class="card pad"><h2>Supervisor view</h2><p class="meta" style="margin:0">An institution administrator records, signs off and releases the decision.</p></div></div></sc-if><sc-if value="{{ p4 }}" hint-placeholder-val="{{ false }}"><div class="g2"><div class="card pad"><h2>Review order</h2><div class="row" style="flex-wrap:wrap"><span style="flex:1 1 240px">Ben Hart<div class="meta"><span class="chip warn">Urgent review</span></div></span><div class="acts"></div></div><div class="row" style="flex-wrap:wrap"><span style="flex:1 1 240px">Chloe Imran<div class="meta"><span class="chip warn">High priority</span></div></span><div class="acts"></div></div><div class="row" style="flex-wrap:wrap"><span style="flex:1 1 240px">Dev Shah<div class="meta"><span class="chip ">Standard</span></div></span><div class="acts"></div></div><div class="row" style="flex-wrap:wrap"><span style="flex:1 1 240px">Esme Lowe<div class="meta"><span class="chip ">Low priority</span></div></span><div class="acts"></div></div><button class="btn sm ">Export readout</button><p class="meta" style="margin:0">Formal exam only.</p></div><div class="card pad"><h2>Outcomes</h2><div class="g3"><div class="tile"><div class="eyebrow">Passed</div><b>3</b></div><div class="tile"><div class="eyebrow">Failed</div><b>1</b></div><div class="tile"><div class="eyebrow">Inconclusive</div><b>0</b></div><div class="tile"><div class="eyebrow">Withheld</div><b>0</b></div><div class="tile"><div class="eyebrow">Undecided</div><b>1</b></div><div class="tile"><div class="eyebrow">Awaiting marking</div><b>0</b></div></div><button class="btn sm ">Export CSV</button></div></div></sc-if><div class="note">What changed: none in the decision; the release confirm and refusals are drawn here in full.</div>
+<details class="fold card" style="border-color:#1D4ED8"><summary>Build spec: how to build this screen</summary><div class="in" style="font-size:13px">
+<div class="g2"><div><div class="eyebrow">Route</div><code>/app/[workspace]/sittings/[sittingId]/results</code></div><div><div class="eyebrow">Who sees it</div>sign_off_results</div>
+<div><div class="eyebrow">Owner agent</div><code>marking-owner</code> · prove with <code>verify-marking</code> then the web <code>verify</code> skill</div><div><div class="eyebrow">Design</div><code>web/docs/DESIGN.md</code>, assess skin, <code>foundation/ui</code> only</div></div>
+<div class="eyebrow">Files to change or reuse</div><ul style="margin:0;padding-left:18px"><li><code>web/src/domains/assess/results/Results.tsx</code></li><li><code>web/src/domains/assess/results/CandidateDecision.tsx</code></li><li><code>web/src/domains/assess/results/ReleaseAll.tsx</code></li><li><code>web/src/domains/assess/results/CohortRanking.tsx</code></li><li><code>web/src/domains/assess/results/ReadoutExport.tsx</code></li><li><code>web/src/domains/assess/results/CandidateCard.tsx</code></li></ul>
+<div class="eyebrow">API calls (all exist; add no endpoint, change no schema)</div><div class="card"><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/reporting</code><span style="flex:1">Read Org Reporting<div class="meta">Now: web/src/domains/assess/index.ts, web/src/domains/assess/reporting/Reporting.tsx, web/src/domains/assess/reporting/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/candidates/&#123;trainee_id&#125;/decision</code><span style="flex:1">Read Decision<div class="meta">Now: web/src/domains/assess/results/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/candidates/&#123;trainee_id&#125;/result-preview</code><span style="flex:1">Read Result Preview<div class="meta">Now: web/src/domains/assess/results/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/candidates/&#123;trainee_id&#125;/result.pdf</code><span style="flex:1">Read Result Pdf<div class="meta">Now: web/src/domains/assess/results/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/cohort</code><span style="flex:1">Read Cohort Summary<div class="meta">Now: web/src/domains/assess/results/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/readout</code><span style="flex:1">Read Sitting Readout<div class="meta">Now: web/src/domains/assess/results/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/report</code><span style="flex:1">Read Sitting Report<div class="meta">Now: web/src/domains/assess/results/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/report.csv</code><span style="flex:1">Read Sitting Report Csv<div class="meta">Now: web/src/domains/assess/results/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/candidates/&#123;trainee_id&#125;/decision/release</code><span style="flex:1">Release<div class="meta">No screen calls this today.</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/candidates/&#123;trainee_id&#125;/decision/sign-off</code><span style="flex:1">Sign Off<div class="meta">No screen calls this today.</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/decisions/release</code><span style="flex:1">Release Many<div class="meta">Now: web/src/domains/assess/results/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">PUT /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/candidates/&#123;trainee_id&#125;/decision</code><span style="flex:1">Save Decision<div class="meta">Now: web/src/domains/assess/results/api.ts</div></span></div></div>
+<div class="eyebrow">Steps</div><ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+<li>Each tab on this board is one screen or state. Build every one; none is optional.</li>
+<li>Each button that opens a box is a <code>Modal</code> (or <code>ConfirmModal</code> for a yes/no). Open each box on this board to see its words.</li>
+<li>Copy every word on the board exactly, including the empty, error and busy texts. Put nouns through <code>useAssessWords</code> so hire reads its own words.</li>
+<li>Find the button's call in the list above, by its summary. Today's caller (the "Now:" file) already makes that call: reuse its function from that file's <code>api.ts</code>. Do not write a new fetch.</li>
+<li>Show a write button only to the person in "Who sees it". Anyone else gets the same screen with no write buttons.</li>
+<li>Write a failing test first (Testing Library, assert the literal words), then build, then run <code>npm run ci</code>.</li>
+<li>Live data comes from the existing SSE streams (<code>useMeEvents</code> or the <code>*/stream</code> route above). Never poll.</li>
+<li>Nothing that exists today may disappear. If a control on today's screen is not on this board, stop and ask.</li></ol></div></details>
+</div></main></div>
+<sc-if value="{{ d_release }}" hint-placeholder-val="{{ false }}"><div class="ov"><div class="dlg" role="dialog"><h2>Email 3 candidates their result?</h2><p class="meta" style="margin:0;font-size:14px">Each can read their outcome as soon as it is released, and a released result is final.</p><div class="acts"><button class="btn" onClick="{{ close }}">Cancel</button><a class="btn pri" href="TraineeResult.dc.html">Release</a></div></div></div></sc-if>
+<sc-if value="{{ d_preview }}" hint-placeholder-val="{{ false }}"><div class="ov"><div class="dlg" role="dialog"><h2>Result preview</h2><div class="al info">Preview of the last saved version. The candidate cannot see this until it is released.</div><div class="hero"><div><div class="eyebrow">Outcome</div><h2 style="font-size:22px">Fail, 48.0 / 100</h2><div class="meta">Did not show safe prioritisation in two stations.</div></div></div><div class="acts"><button class="btn" onClick="{{ close }}">Close</button></div></div></div></sc-if>
+<sc-if value="{{ d_rel }}" hint-placeholder-val="{{ false }}"><div class="ov"><div class="dlg" role="dialog"><h2>Email 2 candidates their result?</h2><p class="meta" style="margin:0">Each can read their outcome as soon as it is released, and a released result is final.</p><div class="acts"><button class="btn" onClick="{{ close }}">Cancel</button><button class="btn pri" onClick="{{ close }}">Release</button></div></div></div></sc-if>
+<sc-if value="{{ d_back }}" hint-placeholder-val="{{ false }}"><div class="ov"><div class="dlg" role="dialog"><h2>Back to draft?</h2><p class="meta" style="margin:0">The sign-off is removed so you can change the decision. Nothing has been released.</p><div class="acts"><button class="btn" onClick="{{ close }}">Cancel</button><button class="btn pri" onClick="{{ close }}">Back to draft</button></div></div></div></sc-if>
+<sc-if value="{{ d_prev }}" hint-placeholder-val="{{ false }}"><div class="ov"><div class="dlg" role="dialog"><h2>Result preview</h2><p class="meta" style="margin:0">What Amara Okoye will read once released.</p><div class="card pad"><b>Pass</b><div class="meta">By station: 1 Pass · 2 Pass · 3 Pass</div></div><div class="acts"><button class="btn" onClick="{{ close }}">Close</button></div></div></div></sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0, d: '' }; }
+  renderVals() {
+    const { t, d } = this.state;
+    const L = ["Results", "Release all", "Decision form", "Released and supervisor", "Review order and exports"];
+    return { tabs: L.map((label,k)=>({label, cls: k===t?'tab on':'tab', pick: ()=>this.setState({t:k})})),
+      p0: t===0, go0: ()=>this.setState({t:0}),
+      p1: t===1, go1: ()=>this.setState({t:1}),
+      p2: t===2, go2: ()=>this.setState({t:2}),
+      p3: t===3, go3: ()=>this.setState({t:3}),
+      p4: t===4, go4: ()=>this.setState({t:4}),
+      d_release: d==='release', o_release: ()=>this.setState({d:'release'}),
+      d_preview: d==='preview', o_preview: ()=>this.setState({d:'preview'}),
+      d_rel: d==='rel', o_rel: ()=>this.setState({d:'rel'}),
+      d_back: d==='back', o_back: ()=>this.setState({d:'back'}),
+      d_prev: d==='prev', o_prev: ()=>this.setState({d:'prev'}),
+      close: ()=>this.setState({d:''}) };
+  }
+}
+</script>
+</body>
+</html>

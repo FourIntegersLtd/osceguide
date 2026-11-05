@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Schedule a sitting</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F5F5F7;font-family:"Open Sauce One",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#1D1D1F}
+a{color:#1D4ED8;text-decoration:none}a:hover{color:#1E40AF}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;background:#fff;border-bottom:1px solid #E3E3E8;flex-wrap:wrap}
+.wrap{max-width:1040px;margin:0 auto;padding:32px 16px 64px;display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+.col{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:24px}
+.help{flex:1 1 260px;background:#fff;border:1px solid #E3E3E8;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:8px}
+.eyebrow{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73}
+h1{font-size:28px;line-height:1.2;font-weight:600;margin:6px 0}
+.desc{font-size:16px;color:#6E6E73;margin:0;line-height:1.5}
+.card{background:#fff;border:1px solid #E3E3E8;border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:18px}
+.card.flush{padding:0;gap:0;overflow:hidden}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:9px;font-size:14px;font-weight:500;border:1px solid #E3E3E8;background:#fff;color:#1D1D1F;cursor:pointer;font-family:inherit;box-sizing:border-box;white-space:nowrap}
+.btn:hover{background:#F5F5F7;color:#1D1D1F}
+.btn.pri{background:#1D4ED8;border-color:#1D4ED8;color:#fff}.btn.pri:hover{background:#1E40AF}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13px}
+.meta{font-size:13px;color:#6E6E73;line-height:1.5}
+.strip{display:flex;gap:6px;flex-wrap:wrap;max-width:1040px;margin:24px auto 0;padding:0 16px}
+.st{flex:1 1 130px;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;border:0;background:transparent;font-family:inherit;font-size:13px;color:#A1A1A6;text-align:left;cursor:pointer;min-height:44px}
+.st.on{background:#fff;border:1px solid #E3E3E8;color:#1D1D1F;font-weight:500}
+.st.done{color:#3A3A3D}
+.st.lock{cursor:not-allowed}
+.dot{width:24px;height:24px;flex:0 0 24px;border-radius:999px;border:1px solid #E3E3E8;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+.st.on .dot{border-color:#1D4ED8;color:#1D4ED8}
+.st.done .dot{background:#059669;border-color:#059669;color:#fff}
+label{font-size:14px;font-weight:500;display:block;margin-bottom:6px}
+.input{width:100%;min-height:44px;padding:0 12px;border:1px solid #E3E3E8;border-radius:9px;font-size:16px;font-family:inherit;color:#1D1D1F;box-sizing:border-box;background:#fff}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media(max-width:640px){.g2,.g3{grid-template-columns:minmax(0,1fr)}}
+.opt{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;border:1px solid #E3E3E8;border-radius:9px;background:#fff;font-family:inherit;text-align:left;cursor:pointer;width:100%;color:#1D1D1F}
+.opt.on{border-color:#1D4ED8;background:#F7F9FE}
+.radio{width:18px;height:18px;flex:0 0 18px;border-radius:999px;border:1px solid #A1A1A6;margin-top:2px;box-sizing:border-box}
+.opt.on .radio{border:5px solid #1D4ED8}
+.row{display:flex;align-items:center;gap:14px;padding:12px 20px;border-top:1px solid #EFEFF2;font-size:14px;flex-wrap:wrap}
+.row:first-child{border-top:0}
+.grip{color:#A1A1A6;font-size:16px;width:16px}
+.n{width:24px;height:24px;border-radius:999px;background:#EBEBEF;font-size:12px;display:flex;align-items:center;justify-content:center;flex:0 0 24px}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;background:#EBEBEF;color:#3A3A3D;white-space:nowrap}
+.chip.ok{background:#EEF8F1;color:#047857}.chip.warn{background:#FCF5E6;color:#92400E}.chip.info{background:#E8EFFC;color:#1E40AF}
+.note{padding:12px 14px;border-radius:9px;font-size:14px;line-height:1.5}
+.note.warn{background:#FCF5E6;color:#92400E}.note.ok{background:#EEF8F1;color:#047857}.note.info{background:#E8EFFC;color:#1E40AF}
+.tabs{display:inline-flex;background:#EBEBEF;border-radius:9px;padding:3px;gap:2px;flex-wrap:wrap}
+.tab{min-height:36px;padding:0 14px;border-radius:7px;font-size:14px;color:#3A3A3D;display:inline-flex;align-items:center}
+.tab.on{background:#fff;color:#1D1D1F;font-weight:500}
+.cb{width:18px;height:18px;border-radius:5px;border:1px solid #A1A1A6;flex:0 0 18px;box-sizing:border-box}
+.cb.on{background:#1D4ED8;border-color:#1D4ED8}
+.sum{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid #EFEFF2;font-size:14px;flex-wrap:wrap}
+.big{font-size:22px;font-weight:600}
+</style>
+</helmet>
+<div class="top">
+<div style="display:flex;align-items:center;gap:12px"><a href="Sittings.dc.html" class="btn" aria-label="Close">Close</a><span style="font-weight:600;font-size:16px">Schedule a sitting</span></div>
+<span class="meta">Steps unlock in order. Nothing is created until the last step.</span>
+</div>
+<div class="strip" aria-label="Steps">
+<sc-for list="{{ steps }}" as="s" hint-placeholder-count="6">
+<button class="{{ s.cls }}" onClick="{{ s.pick }}"><span class="dot">{{ s.mark }}</span>{{ s.label }}</button>
+</sc-for>
+</div>
+<div class="wrap">
+<div class="col">
+
+<sc-if value="{{ s1 }}" hint-placeholder-val="{{ true }}">
+<div><div class="eyebrow">Step 1 of 6</div><h1>The basics</h1><p class="desc">What this sitting is, which exam it uses and when it happens.</p></div>
+<div class="card">
+<div><label for="nm">Name</label><input id="nm" class="input" value="Summer finals"></div>
+<div><label for="ex">Exam</label><select id="ex" class="input"><option>Final-year OSCE · Ready to schedule</option><option>Year 4 mock · Ready to schedule</option></select><div class="meta" style="margin-top:6px">Only exams that are ready to schedule show here. Missing one? <a href="NewExam.dc.html">Set up an exam</a></div></div>
+<div><div style="font-size:14px;font-weight:500;margin-bottom:8px">Kind</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ modes }}" as="o" hint-placeholder-count="2">
+<button class="{{ o.cls }}" onClick="{{ o.pick }}"><span class="radio" aria-hidden="true"></span><span><span style="display:block;font-weight:500;font-size:16px">{{ o.title }}</span><span class="meta">{{ o.body }}</span></span></button>
+</sc-for>
+</div></div>
+<div class="g2">
+<div><label for="dt">Date</label><input id="dt" class="input" value="26 Nov 2026"><div class="meta" style="margin-top:6px">You can leave it blank and set it later.</div></div>
+<div><label for="yg">Year group</label><select id="yg" class="input"><option>Final year 2026</option><option>Year 4</option><option>None</option></select></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ s2 }}" hint-placeholder-val="{{ false }}">
+<div><div class="eyebrow">Step 2 of 6</div><h1>Pick the stations</h1><p class="desc">Published stations from Final-year OSCE. Drag to set the order every candidate goes round.</p></div>
+<div class="note info">{{ stationNote }}</div>
+<div class="card flush">
+<sc-for list="{{ stations }}" as="x" hint-placeholder-count="6">
+<div class="row"><span class="grip" aria-hidden="true">⋮⋮</span><span class="n">{{ x.n }}</span><span style="flex:1 1 220px;font-weight:500">{{ x.title }}</span><span class="meta">{{ x.kind }}</span><button class="btn sm" aria-label="Move up">↑</button><button class="btn sm" aria-label="Move down">↓</button><button class="btn sm">Remove</button></div>
+</sc-for>
+</div>
+<div style="display:flex;gap:12px;flex-wrap:wrap"><button class="btn">Add from this exam</button><a class="btn" href="NewStation.dc.html">Write a new station</a></div>
+</sc-if>
+
+<sc-if value="{{ s3 }}" hint-placeholder-val="{{ false }}">
+<div><div class="eyebrow">Step 3 of 6</div><h1>Who is sitting it?</h1><p class="desc">Pick people one by one, or add a whole group or year group.</p></div>
+<div class="tabs"><span class="tab on">People</span><span class="tab">Groups</span><span class="tab">Year groups</span></div>
+<input class="input" placeholder="Search by name or email" aria-label="Search trainees">
+<div class="card flush">
+<div class="row"><span class="cb on"></span><span style="flex:1 1 220px"><span style="font-weight:500">Aisha Bello</span><div class="meta">aisha.bello@stmarys.ac.uk</div></span><span class="chip ok">Signed in</span></div>
+<div class="row"><span class="cb on"></span><span style="flex:1 1 220px"><span style="font-weight:500">Tom Hughes</span><div class="meta">tom.hughes@stmarys.ac.uk</div></span><span class="chip ok">Signed in</span></div>
+<div class="row"><span class="cb on"></span><span style="flex:1 1 220px"><span style="font-weight:500">Priya Nair</span><div class="meta">priya.nair@stmarys.ac.uk</div></span><span class="chip ok">Signed in</span></div>
+<div class="row"><span class="cb"></span><span style="flex:1 1 220px"><span style="font-weight:500">Daniel Osei</span><div class="meta">Invited 3 Nov. Can't be scheduled until they accept.</div></span><span class="chip warn">Not joined yet</span><button class="btn sm">Resend invitation</button></div>
+<div class="row"><span class="cb on"></span><span style="flex:1 1 220px"><span style="font-weight:500">Group: Firm B</span><div class="meta">4 trainees</div></span><span class="chip info">Group</span></div>
+</div>
+<sc-if value="{{ training }}" hint-placeholder-val="{{ false }}"><div class="note warn">7 trainees for 6 stations. In training, each trainee starts at a different station, so these must match.</div></sc-if>
+<sc-if value="{{ formal }}" hint-placeholder-val="{{ true }}"><div class="note ok">7 candidates picked. Each gets their own circuit.</div></sc-if>
+</sc-if>
+
+<sc-if value="{{ s4 }}" hint-placeholder-val="{{ false }}">
+<div><div class="eyebrow">Step 4 of 6</div><h1>Timing and breaks</h1><p class="desc">Taken from the exam. Change them for this sitting only.</p></div>
+<div class="card">
+<div class="g3">
+<div><label for="r">Reading time</label><input id="r" class="input" value="3 min"><div class="meta" style="margin-top:6px">1 to 30</div></div>
+<div><label for="c">Consultation</label><input id="c" class="input" value="10 min"><div class="meta" style="margin-top:6px">1 to 180</div></div>
+<div><label for="s">Start time</label><input id="s" class="input" value="09:00"></div>
+</div>
+<div style="border-top:1px solid #EFEFF2;padding-top:16px"><div style="font-size:14px;font-weight:500;margin-bottom:10px">Breaks</div>
+<div class="card flush" style="border-radius:9px">
+<div class="row"><span style="flex:1 1 200px">After station 2</span><input class="input" style="width:120px" value="5 min" aria-label="Break length"><button class="btn sm">Remove</button></div>
+<div class="row"><span style="flex:1 1 200px">After station 4</span><input class="input" style="width:120px" value="15 min" aria-label="Break length"><button class="btn sm">Remove</button></div>
+</div>
+<div style="margin-top:10px"><button class="btn sm">Add a break</button><span class="meta" style="margin-left:10px">Each break is 1 to 60 minutes.</span></div>
+</div>
+<div class="note info">Ends about 10:41 for each candidate.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ s5 }}" hint-placeholder-val="{{ false }}">
+<div><div class="eyebrow">Step 5 of 6</div><h1>Who supervises?</h1><p class="desc">The supervisor reviews and signs off the circuit afterwards. Any staff member can run the console on the day.</p></div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ sups }}" as="o" hint-placeholder-count="2">
+<button class="{{ o.cls }}" onClick="{{ o.pick }}"><span class="radio" aria-hidden="true"></span><span><span style="display:block;font-weight:500;font-size:16px">{{ o.title }}</span><span class="meta">{{ o.body }}</span></span></button>
+</sc-for>
+</div>
+<sc-if value="{{ oneSup }}" hint-placeholder-val="{{ true }}"><div class="card"><div><label for="sp">Supervisor</label><select id="sp" class="input"><option>Dr Patel</option><option>Dr Okafor (you)</option><option>Ms Clarke</option></select></div><div class="meta">No supervisors yet? <a href="AddPeople.dc.html">Invite staff</a></div></div></sc-if>
+<sc-if value="{{ perSup }}" hint-placeholder-val="{{ false }}"><div class="card flush">
+<div class="row"><span style="flex:1 1 200px;font-weight:500">Aisha Bello</span><select class="input" style="width:200px" aria-label="Supervisor"><option>Dr Patel</option></select></div>
+<div class="row"><span style="flex:1 1 200px;font-weight:500">Tom Hughes</span><select class="input" style="width:200px" aria-label="Supervisor"><option>Ms Clarke</option></select></div>
+<div class="row"><span style="flex:1 1 200px;font-weight:500">Priya Nair</span><select class="input" style="width:200px" aria-label="Supervisor"><option>Dr Patel</option></select></div>
+<div class="row"><span class="meta">and 4 more</span></div>
+</div></sc-if>
+</sc-if>
+
+<sc-if value="{{ s6 }}" hint-placeholder-val="{{ false }}">
+<div><div class="eyebrow">Step 6 of 6</div><h1>Review and create</h1><p class="desc">Check it over. You can change everything on the sitting page afterwards.</p></div>
+<div class="card" style="align-items:flex-start;gap:6px"><div class="big">{{ formula }}</div><div class="meta">{{ formulaHelp }}</div></div>
+<div class="card" style="gap:0">
+<div class="sum" style="border-top:0"><span class="meta">Sitting</span><span>Summer finals · 26 Nov 2026</span></div>
+<div class="sum"><span class="meta">Exam</span><span>Final-year OSCE</span></div>
+<div class="sum"><span class="meta">Kind</span><span>{{ modeTitle }}</span></div>
+<div class="sum"><span class="meta">Year group</span><span>Final year 2026</span></div>
+<div class="sum"><span class="meta">Timing</span><span>3 + 10 min per station · breaks after 2 and 4</span></div>
+<div class="sum"><span class="meta">Supervisor</span><span>Dr Patel</span></div>
+</div>
+<div class="meta">If the sitting is made but its circuits fail, you land on the sitting with the error and a "Try again" button.</div>
+</sc-if>
+
+<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+<button class="btn" onClick="{{ back }}">Back</button>
+<sc-if value="{{ notLast }}" hint-placeholder-val="{{ true }}"><button class="btn pri" onClick="{{ next }}">Continue</button></sc-if>
+<sc-if value="{{ s6 }}" hint-placeholder-val="{{ false }}"><a class="btn pri" href="Sitting.dc.html">Create sitting</a></sc-if>
+</div>
+</div>
+<aside class="help" aria-label="Help">
+<div class="eyebrow">Help</div>
+<div style="font-weight:500;font-size:16px">{{ help.t }}</div>
+<div class="meta">{{ help.b }}</div>
+</aside>
+</div>
+<div style="max-width:1100px;margin:24px auto;padding:0 24px"><details class="fold card" style="border-color:#1D4ED8"><summary>Build spec: how to build this screen</summary><div class="in" style="font-size:13px">
+<div class="g2"><div><div class="eyebrow">Route</div><code>/app/[workspace]/sittings/new</code></div><div><div class="eyebrow">Who sees it</div>manage_sittings</div>
+<div><div class="eyebrow">Owner agent</div><code>institution-owner</code> · prove with <code>verify-institution</code> then the web <code>verify</code> skill</div><div><div class="eyebrow">Design</div><code>web/docs/DESIGN.md</code>, assess skin, <code>foundation/ui</code> only</div></div>
+<div class="eyebrow">Files to change or reuse</div><ul style="margin:0;padding-left:18px"><li><code>web/src/domains/assess/NewSitting.tsx</code></li><li><code>web/src/domains/assess/SittingFields.tsx</code></li><li><code>web/src/domains/assess/CircuitBuilder.tsx</code></li><li><code>web/src/domains/assess/TraineePicker.tsx</code></li><li><code>web/src/domains/assess/TimingFields.tsx</code></li></ul>
+<div class="eyebrow">API calls (all exist; add no endpoint, change no schema)</div><div class="card"><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/roster/resolve</code><span style="flex:1">Resolve Roster<div class="meta">Now: web/src/domains/assess/roster/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/sittings</code><span style="flex:1">Create Sitting<div class="meta">Now: web/src/domains/assess/NewCircuit.tsx, web/src/domains/assess/NewSitting.tsx, web/src/domains/assess/SittingDetail.tsx</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/circuits</code><span style="flex:1">Add Circuit<div class="meta">Now: web/src/domains/assess/SittingDetail.tsx, web/src/domains/assess/api.ts, web/src/foundation/routing/legacyRedirects.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/sittings/&#123;sitting_id&#125;/circuits/bulk</code><span style="flex:1">Add Exam Circuits<div class="meta">Now: web/src/domains/assess/api.ts</div></span></div></div>
+<div class="eyebrow">Steps</div><ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+<li>Each tab on this board is one screen or state. Build every one; none is optional.</li>
+<li>Each button that opens a box is a <code>Modal</code> (or <code>ConfirmModal</code> for a yes/no). Open each box on this board to see its words.</li>
+<li>Copy every word on the board exactly, including the empty, error and busy texts. Put nouns through <code>useAssessWords</code> so hire reads its own words.</li>
+<li>Find the button's call in the list above, by its summary. Today's caller (the "Now:" file) already makes that call: reuse its function from that file's <code>api.ts</code>. Do not write a new fetch.</li>
+<li>Show a write button only to the person in "Who sees it". Anyone else gets the same screen with no write buttons.</li>
+<li>Write a failing test first (Testing Library, assert the literal words), then build, then run <code>npm run ci</code>.</li>
+<li>Live data comes from the existing SSE streams (<code>useMeEvents</code> or the <code>*/stream</code> route above). Never poll.</li>
+<li>Nothing that exists today may disappear. If a control on today's screen is not on this board, stop and ask.</li></ol></div></details></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { i: 0, reached: 0, mode: 0, sup: 0 }; }
+  renderVals() {
+    const { i, reached, mode, sup } = this.state;
+    const labels = ['Basics', 'Stations', 'Candidates', 'Timing', 'Supervisor', 'Review'];
+    const help = [
+      { t: 'Formal or training?', b: 'A formal exam is marked, reviewed by the supervisor, signed off and then released to each candidate. Training gives feedback only, straight after each station.' },
+      { t: 'Station order', b: 'Every candidate goes round in this order. A formal exam can have up to 12 stations. Only published stations of the chosen exam can be used.' },
+      { t: 'Not joined yet?', b: 'People who have not accepted their invitation cannot be scheduled. Resend it here, or give them a temporary password from People.' },
+      { t: 'Breaks', b: 'Breaks sit between stations and can each be a different length. Timings apply to every circuit in this sitting.' },
+      { t: 'What a supervisor does', b: 'Reviews each station, makes decisions and presses "Publish circuit feedback" to finalise. Supervisors are the examiners.' },
+      { t: 'What gets made', b: 'A formal exam makes one circuit per candidate. Training makes one shared circuit where trainees rotate.' }
+    ];
+    const formal = mode === 0;
+    const go = k => this.setState({ i: k, reached: Math.max(reached, k) });
+    const modeOpts = [
+      { title: 'Formal exam: marked, signed off, released', body: 'One circuit per candidate. Results go out when you release them.' },
+      { title: 'Training: feedback only', body: 'Trainees rotate round the stations and see feedback straight away.' }
+    ];
+    const supOpts = [
+      { title: 'One supervisor for every circuit', body: 'Simplest for a small sitting.' },
+      { title: 'A supervisor per candidate', body: 'Share the reviewing across your staff.' }
+    ];
+    const st = [['Chest pain in a 54-year-old','History and examination'],['Breaking bad news','Communication skills'],['Diabetic foot review','History and examination'],['Consent for endoscopy','Communication skills'],['Paediatric asthma','History and examination'],['Prescribing: warfarin','Data interpretation']];
+    return {
+      steps: labels.map((label, k) => ({ label, cls: k === i ? 'st on' : (k <= reached ? 'st done' : 'st lock'), mark: k < reached && k !== i ? '✓' : String(k + 1), pick: () => { if (k <= reached) this.setState({ i: k }); } })),
+      modes: modeOpts.map((o, k) => ({ ...o, cls: k === mode ? 'opt on' : 'opt', pick: () => this.setState({ mode: k }) })),
+      sups: supOpts.map((o, k) => ({ ...o, cls: k === sup ? 'opt on' : 'opt', pick: () => this.setState({ sup: k }) })),
+      stations: st.map((s, k) => ({ n: String(k + 1), title: s[0], kind: s[1] })),
+      stationNote: formal ? '6 of up to 12 stations picked.' : '6 stations picked. Training needs one trainee per station.',
+      training: !formal, formal,
+      oneSup: sup === 0, perSup: sup === 1,
+      modeTitle: modeOpts[mode].title,
+      formula: formal ? '7 candidates × 6 stations → 7 circuits' : '6 trainees × 6 stations → 1 circuit',
+      formulaHelp: formal ? 'Each candidate gets their own circuit, supervised by Dr Patel.' : 'Trainees rotate together round one circuit.',
+      help: help[i],
+      s1: i === 0, s2: i === 1, s3: i === 2, s4: i === 3, s5: i === 4, s6: i === 5, notLast: i < 5,
+      next: () => go(Math.min(i + 1, 5)),
+      back: () => this.setState({ i: Math.max(i - 1, 0) })
+    };
+  }
+}
+</script>
+</body>
+</html>

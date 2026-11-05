@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Marking scheme builder</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F5F5F7;font-family:"Open Sauce One",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#1D1D1F}
+a{color:#1D4ED8;text-decoration:none}a:hover{color:#1E40AF}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;background:#fff;border-bottom:1px solid #E3E3E8;flex-wrap:wrap}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 16px 56px;display:flex;flex-direction:column;gap:20px}
+.eyebrow{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73}
+h1{font-size:28px;line-height:1.2;font-weight:600;margin:6px 0}
+h2{font-size:16px;font-weight:600;margin:0}
+.desc{font-size:16px;color:#6E6E73;margin:0;line-height:1.5}
+.meta{font-size:13px;color:#6E6E73;line-height:1.5}
+.card{background:#fff;border:1px solid #E3E3E8;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:9px;font-size:14px;font-weight:500;border:1px solid #E3E3E8;background:#fff;color:#1D1D1F;cursor:pointer;font-family:inherit;box-sizing:border-box;white-space:nowrap}
+.btn:hover{background:#F5F5F7;color:#1D1D1F}
+.btn.pri{background:#1D4ED8;border-color:#1D4ED8;color:#fff}.btn.pri:hover{background:#1E40AF}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13px}
+.tabs{display:inline-flex;background:#EBEBEF;border-radius:9px;padding:3px;gap:2px;flex-wrap:wrap}
+.tab{min-height:36px;padding:0 14px;border-radius:7px;font-size:14px;color:#3A3A3D;display:inline-flex;align-items:center;border:0;background:transparent;font-family:inherit;cursor:pointer}
+.tab.on{background:#fff;color:#1D1D1F;font-weight:500}
+.cols{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.left{flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.prev{flex:1 1 340px;max-width:400px;display:flex;flex-direction:column;gap:12px}
+label{font-size:14px;font-weight:500;display:block;margin-bottom:6px}
+.input{width:100%;min-height:44px;padding:0 12px;border:1px solid #E3E3E8;border-radius:9px;font-size:16px;font-family:inherit;color:#1D1D1F;box-sizing:border-box;background:#fff}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #EFEFF2;font-size:14px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;background:#EBEBEF;color:#3A3A3D;white-space:nowrap}
+.chip.ok{background:#EEF8F1;color:#047857}.chip.warn{background:#FCF5E6;color:#92400E}.chip.info{background:#E8EFFC;color:#1E40AF}.chip.bad{background:#FCEFEE;color:#B91C1C}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media(max-width:640px){.g3{grid-template-columns:minmax(0,1fr)}}
+.note{padding:12px 14px;border-radius:9px;font-size:14px;line-height:1.5;background:#E8EFFC;color:#1E40AF}
+.fb{border:1px solid #EFEFF2;border-radius:9px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;background:#FAFAFB}
+.bar{height:6px;border-radius:999px;background:#EFEFF2;overflow:hidden}.bar span{display:block;height:100%;background:#1D4ED8}
+.add{border:1px dashed #E3E3E8;border-radius:9px;min-height:44px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#1D4ED8;background:#fff;cursor:pointer;font-family:inherit}
+</style>
+</helmet>
+<div class="top">
+<div style="display:flex;align-items:center;gap:12px"><a href="NewExam.dc.html" class="btn" aria-label="Close">Close</a><span style="font-weight:600;font-size:16px">Marking scheme</span><span class="chip">Draft v4</span></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn">Save draft</button><a class="btn pri" href="NewExam.dc.html">Publish and go back</a></div>
+</div>
+<div class="wrap">
+<div><div class="eyebrow">Exams › Marking schemes</div><h1>St Mary's global rating</h1><p class="desc">How a station is marked, and what the candidate's feedback looks like. Publishing makes a new version; sittings already marked keep the version they used.</p></div>
+<div class="tabs" role="tablist">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5"><button class="{{ t.cls }}" onClick="{{ t.pick }}">{{ t.label }}</button></sc-for>
+</div>
+<div class="cols">
+<div class="left">
+
+<sc-if value="{{ t0 }}" hint-placeholder-val="{{ true }}">
+<div class="card">
+<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><h2>Areas marked</h2><span class="meta">Each domain is rated on its own</span></div>
+<div class="row" style="border-top:0"><span style="flex:1 1 220px;font-weight:500">Data gathering</span><span class="meta">Weight 1</span><button class="btn sm">Edit</button></div>
+<div class="row"><span style="flex:1 1 220px;font-weight:500">Clinical management</span><span class="meta">Weight 1</span><button class="btn sm">Edit</button></div>
+<div class="row"><span style="flex:1 1 220px;font-weight:500">Interpersonal skills</span><span class="meta">Weight 1</span><button class="btn sm">Edit</button></div>
+<div class="row"><span style="flex:1 1 220px;font-weight:500">Safety netting</span><span class="meta">Weight 1</span><button class="btn sm">Edit</button></div>
+<button class="add">Add an area</button>
+</div>
+<div class="card"><h2>Marking instructions</h2><div class="meta">Written for the AI marker and for supervisors. Draft them for me from the areas above, then edit.</div><textarea class="input" style="min-height:96px;padding:10px 12px" aria-label="Marking instructions">Credit open questions early. Safety netting must name a time frame…</textarea></div>
+<div class="card"><h2>Pacing, in seconds</h2><div class="g3"><div><label for="p1">Introduction ends</label><input id="p1" class="input" value="60"></div><div><label for="p2">History ends</label><input id="p2" class="input" value="420"></div><div><label for="p3">Safety-net window</label><input id="p3" class="input" value="90"></div></div></div>
+</sc-if>
+
+<sc-if value="{{ t1 }}" hint-placeholder-val="{{ false }}">
+<div class="card">
+<h2>Grades</h2>
+<div class="row" style="border-top:0"><span class="chip ok">Good</span><span class="meta" style="flex:1 1 200px">Meets the standard with no prompting</span><span>2</span></div>
+<div class="row"><span class="chip warn">Fair</span><span class="meta" style="flex:1 1 200px">Mostly there, minor gaps</span><span>1</span></div>
+<div class="row"><span class="chip bad">Poor</span><span class="meta" style="flex:1 1 200px">Unsafe or missing</span><span>0</span></div>
+<button class="add">Add grade</button>
+</div>
+<div class="card">
+<h2>Station total and pass line</h2>
+<div class="g3"><div><label for="o">Out of</label><input id="o" class="input" value="8"></div><div><label for="pl">Pass line</label><input id="pl" class="input" value="5"></div><div><label for="dp">Domain pass line</label><input id="dp" class="input" value="1"></div></div>
+<label style="display:flex;gap:10px;align-items:center;font-weight:400"><input type="checkbox" checked> Every domain must pass too</label>
+<div class="meta">Bands (optional): Clear pass, Borderline, Fail, each from a score.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ t2 }}" hint-placeholder-val="{{ false }}">
+<div class="note">This was the feedback template. It now lives here, with the marking it describes.</div>
+<div class="card">
+<h2>What the candidate sees</h2>
+<div class="row" style="border-top:0"><span style="flex:1 1 220px;font-weight:500">Overall result and band</span><span class="chip">Shown</span></div>
+<div class="row"><span style="flex:1 1 220px;font-weight:500">Score per area</span><span class="chip">Shown</span></div>
+<div class="row"><span style="flex:1 1 220px;font-weight:500">What went well</span><span class="chip">Shown</span></div>
+<div class="row"><span style="flex:1 1 220px;font-weight:500">What to work on</span><span class="chip">Shown</span></div>
+<div class="row"><span style="flex:1 1 220px;font-weight:500">Transcript quotes</span><span class="chip">Hidden</span></div>
+<button class="add">Add a field</button>
+</div>
+<div class="card"><h2>Tone</h2><select class="input" aria-label="Tone"><option>Supportive and direct</option><option>Formal examiner</option><option>Brief</option></select><div class="meta">Examiner layout: what the supervisor sees when reviewing is set alongside.</div></div>
+</sc-if>
+
+<sc-if value="{{ t3 }}" hint-placeholder-val="{{ false }}">
+<div class="card">
+<h2>Trial mark</h2>
+<div class="meta">Mark a real attempt or a pasted transcript with this draft, before anyone else does.</div>
+<div><label for="ts">Trial source</label><select id="ts" class="input"><option>An attempt: Aisha Bello, Chest pain, 2 Nov</option><option>Paste a transcript</option></select></div>
+<button class="btn pri" style="align-self:flex-start">Run trial mark</button>
+<div class="note">Result: 6 of 8, Clear pass. Safety netting rated Fair: "no time frame given".</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ t4 }}" hint-placeholder-val="{{ false }}">
+<div class="card">
+<h2>Versions</h2>
+<div class="row" style="border-top:0"><span style="flex:1 1 200px;font-weight:500">v4</span><span class="meta">Draft, edited today</span><span class="chip">Draft</span></div>
+<div class="row"><span style="flex:1 1 200px;font-weight:500">v3</span><span class="meta">Published 2 Oct · used by Final-year OSCE</span><span class="chip ok">Live</span></div>
+<div class="row"><span style="flex:1 1 200px;font-weight:500">v2</span><span class="meta">Published 4 Sep</span><span class="chip">Old</span></div>
+</div>
+<div class="card"><h2>Problems</h2><div class="meta">None. Publishing is blocked while any are listed here, and each says what to fix.</div></div>
+</sc-if>
+
+</div>
+<div class="prev" aria-label="Preview">
+<div class="eyebrow">Preview: candidate feedback</div>
+<div class="card" style="gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:16px">Chest pain in a 54-year-old</span><span class="chip ok">Clear pass</span></div>
+<div class="meta">6 of 8</div>
+<div class="fb"><div style="display:flex;justify-content:space-between;font-size:14px"><span>Data gathering</span><span>Good</span></div><div class="bar"><span style="width:100%"></span></div></div>
+<div class="fb"><div style="display:flex;justify-content:space-between;font-size:14px"><span>Clinical management</span><span>Good</span></div><div class="bar"><span style="width:100%"></span></div></div>
+<div class="fb"><div style="display:flex;justify-content:space-between;font-size:14px"><span>Interpersonal skills</span><span>Fair</span></div><div class="bar"><span style="width:50%"></span></div></div>
+<div class="fb"><div style="display:flex;justify-content:space-between;font-size:14px"><span>Safety netting</span><span>Fair</span></div><div class="bar"><span style="width:50%"></span></div></div>
+<div style="font-size:14px;font-weight:500;margin-top:4px">What to work on</div>
+<div class="meta">Give a clear time frame when you safety net: "if it is no better in 48 hours…"</div>
+</div>
+</div>
+</div>
+</div>
+<div style="max-width:1100px;margin:24px auto;padding:0 24px"><details class="fold card" style="border-color:#1D4ED8"><summary>Build spec: how to build this screen</summary><div class="in" style="font-size:13px">
+<div class="g2"><div><div class="eyebrow">Route</div><code>/app/[workspace]/authoring/rubrics/[rubricId]/versions/[version]</code></div><div><div class="eyebrow">Who sees it</div>author_content</div>
+<div><div class="eyebrow">Owner agent</div><code>marking-owner</code> · prove with <code>verify-marking</code> then the web <code>verify</code> skill</div><div><div class="eyebrow">Design</div><code>web/docs/DESIGN.md</code>, assess skin, <code>foundation/ui</code> only</div></div>
+<div class="eyebrow">Files to change or reuse</div><ul style="margin:0;padding-left:18px"><li><code>web/src/capabilities/authoring/rubrics/RubricBuilderScreen.tsx</code></li><li><code>web/src/capabilities/authoring/rubrics/RubricBuilder.tsx</code></li><li><code>web/src/capabilities/authoring/rubrics/TrialPanel.tsx</code></li><li><code>web/src/capabilities/authoring/rubrics/PreviewPane.tsx</code></li></ul>
+<div class="eyebrow">API calls (all exist; add no endpoint, change no schema)</div><div class="card"><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/rubrics</code><span style="flex:1">List Org Rubrics<div class="meta">Now: web/src/app/app/[workspace]/authoring/feedback-templates/[templateId]/versions/[version]/page.tsx, web/src/app/app/[workspace]/authoring/feedback-templates/new/page.tsx, web/src/app/app/[workspace]/authoring/page.tsx</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/rubrics/starting-points</code><span style="flex:1">Org Rubric Starting Points<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/rubrics/trial-candidates</code><span style="flex:1">List Org Trial Candidates<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;</code><span style="flex:1">Read Org Rubric<div class="meta">Now: web/src/app/app/[workspace]/authoring/feedback-templates/[templateId]/versions/[version]/page.tsx, web/src/app/app/[workspace]/authoring/feedback-templates/new/page.tsx, web/src/app/app/[workspace]/authoring/page.tsx</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">PATCH /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;</code><span style="flex:1">Rename Org Rubric<div class="meta">Now: web/src/app/app/[workspace]/authoring/feedback-templates/[templateId]/versions/[version]/page.tsx, web/src/app/app/[workspace]/authoring/feedback-templates/new/page.tsx, web/src/app/app/[workspace]/authoring/page.tsx</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">PATCH /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;/versions/&#123;version&#125;</code><span style="flex:1">Edit Org Version<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics</code><span style="flex:1">Create Org Rubric<div class="meta">Now: web/src/app/app/[workspace]/authoring/feedback-templates/[templateId]/versions/[version]/page.tsx, web/src/app/app/[workspace]/authoring/feedback-templates/new/page.tsx, web/src/app/app/[workspace]/authoring/page.tsx</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/copy</code><span style="flex:1">Copy Org Rubric<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/draft-instructions</code><span style="flex:1">Draft Org Rubric Instructions<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts, web/src/capabilities/authoring/rubrics/draftInstructions.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/preview</code><span style="flex:1">Preview Org Rubric<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts, web/src/capabilities/authoring/rubrics/problems.ts, web/src/capabilities/authoring/rubrics/useRubricDraft.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;/versions</code><span style="flex:1">Add Org Version<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;/versions/&#123;version&#125;/archive</code><span style="flex:1">Archive Org Version<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;/versions/&#123;version&#125;/publish</code><span style="flex:1">Publish Org Version<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;/versions/&#123;version&#125;/trial</code><span style="flex:1">Trial Org Rubric Version<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div></div>
+<div class="eyebrow">Steps</div><ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+<li>Each tab on this board is one screen or state. Build every one; none is optional.</li>
+<li>Each button that opens a box is a <code>Modal</code> (or <code>ConfirmModal</code> for a yes/no). Open each box on this board to see its words.</li>
+<li>Copy every word on the board exactly, including the empty, error and busy texts. Put nouns through <code>useAssessWords</code> so hire reads its own words.</li>
+<li>Find the button's call in the list above, by its summary. Today's caller (the "Now:" file) already makes that call: reuse its function from that file's <code>api.ts</code>. Do not write a new fetch.</li>
+<li>Show a write button only to the person in "Who sees it". Anyone else gets the same screen with no write buttons.</li>
+<li>Write a failing test first (Testing Library, assert the literal words), then build, then run <code>npm run ci</code>.</li>
+<li>Live data comes from the existing SSE streams (<code>useMeEvents</code> or the <code>*/stream</code> route above). Never poll.</li>
+<li>Nothing that exists today may disappear. If a control on today's screen is not on this board, stop and ask.</li></ol></div></details></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { tab: 0 }; }
+  renderVals() {
+    const tab = this.state.tab;
+    const labels = ['Marking', 'Ratings', 'Feedback layout', 'Trial mark', 'Versions'];
+    return {
+      tabs: labels.map((label, k) => ({ label, cls: k === tab ? 'tab on' : 'tab', pick: () => this.setState({ tab: k }) })),
+      t0: tab === 0, t1: tab === 1, t2: tab === 2, t3: tab === 3, t4: tab === 4
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Exam detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F5F5F7;font-family:"Open Sauce One",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#1D1D1F}
+a{color:#1D4ED8;text-decoration:none}a:hover{color:#1E40AF}
+.shell{display:flex;flex-wrap:wrap;min-height:100vh}
+.side{flex:1 1 232px;max-width:248px;background:#fff;border-right:1px solid #E3E3E8;padding:20px 12px;box-sizing:border-box}
+@media(max-width:760px){.side{max-width:none;border-right:0;border-bottom:1px solid #E3E3E8}.main{padding:24px 16px 48px!important}}
+.org{display:flex;align-items:center;gap:10px;padding:6px 8px 14px}
+.mark{width:32px;height:32px;border-radius:9px;background:#1D4ED8;color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center}
+.sec{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73;padding:16px 10px 6px}
+.nav{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:9px;color:#3A3A3D;font-size:14px}
+.nav:hover{background:#F5F5F7;color:#1D1D1F}
+.nav.on{background:#EBEBEF;color:#1D1D1F;font-weight:500}
+.main{flex:999 1 560px;min-width:0;padding:32px 40px 56px;box-sizing:border-box}
+.page{max-width:1080px;display:flex;flex-direction:column;gap:24px}
+.eyebrow{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73}
+h1{font-size:28px;line-height:1.2;font-weight:600;margin:6px 0}
+h2{font-size:20px;line-height:1.3;font-weight:600;margin:0}
+.desc{font-size:16px;color:#6E6E73;margin:0;line-height:1.5}
+.card{background:#fff;border:1px solid #E3E3E8;border-radius:14px;overflow:hidden}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:9px;font-size:14px;font-weight:500;border:1px solid #E3E3E8;background:#fff;color:#1D1D1F;cursor:pointer;font-family:inherit;box-sizing:border-box;white-space:nowrap}
+.btn:hover{background:#F5F5F7;color:#1D1D1F}
+.btn.pri{background:#1D4ED8;border-color:#1D4ED8;color:#fff}.btn.pri:hover{background:#1E40AF}
+.btn.danger{color:#B91C1C}
+.btn[disabled]{background:#F5F5F7;color:#A1A1A6;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;background:#EBEBEF;color:#3A3A3D;white-space:nowrap}
+.chip.ok{background:#EEF8F1;color:#047857}.chip.warn{background:#FCF5E6;color:#92400E}.chip.info{background:#E8EFFC;color:#1E40AF}
+.meta{font-size:13px;color:#6E6E73;line-height:1.5}
+.row{display:flex;align-items:center;gap:16px;padding:14px 20px;border-top:1px solid #EFEFF2;font-size:14px;color:#1D1D1F;flex-wrap:wrap}
+a.row:hover{background:#FAFAFB;color:#1D1D1F}
+.head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;gap:12px;flex-wrap:wrap}
+.cols{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+.toggle{width:51px;height:31px;border-radius:999px;border:0;padding:2px;cursor:pointer;display:flex;box-sizing:border-box;flex:0 0 51px}
+.knob{width:27px;height:27px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.2)}
+</style>
+</helmet>
+<div class="shell">
+<nav class="side" aria-label="Main">
+<div class="org"><div class="mark">SM</div><div><div style="font-size:14px;font-weight:600">St Mary's Medical School</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="Today.dc.html">Home</a>
+<div class="sec">Run</div>
+<a class="nav" href="Sittings.dc.html">Sittings</a>
+<a class="nav" href="LiveBoard.dc.html">Now running</a>
+<a class="nav" href="Results.dc.html">Results</a>
+<div class="sec">Organise</div>
+<a class="nav" href="People.dc.html">People</a>
+<a class="nav on" href="Exams.dc.html">Exams</a>
+<div class="sec">Insight</div>
+<a class="nav" href="Reporting.dc.html">Reporting</a>
+<div style="height:16px"></div>
+<a class="nav" href="Settings.dc.html">Settings</a>
+</nav>
+<main class="main">
+<div class="page">
+<a href="Exams.dc.html" style="font-size:14px">‹ Exams</a>
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:-12px">
+<div>
+<div style="display:flex;gap:10px;align-items:center"><span class="eyebrow">FY-OSCE</span><span class="{{ statusCls }}">{{ status }}</span></div>
+<h1>Final-year OSCE</h1>
+<p class="desc">16 published stations · Marking scheme v3 · 4 sittings</p>
+</div>
+<a class="btn pri" href="ScheduleSitting.dc.html">Schedule a sitting</a>
+</div>
+
+<div class="card" style="display:flex;align-items:center;gap:16px;padding:18px 20px;flex-wrap:wrap">
+<div style="flex:1 1 280px"><div style="font-weight:500;font-size:16px">Available for scheduling</div><div class="meta">{{ toggleHelp }}</div></div>
+<button class="toggle" style="background:{{ toggleBg }};justify-content:{{ toggleSide }}" onClick="{{ flip }}" aria-label="Available for scheduling" aria-pressed="{{ on }}"><span class="knob"></span></button>
+</div>
+
+<div class="cols">
+<div style="flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:24px">
+<div class="card">
+<div class="head"><h2>Stations</h2><a class="btn" href="NewStation.dc.html">Add station</a></div>
+<a class="row" href="NewStation.dc.html"><div style="flex:1 1 220px;font-weight:500">Chest pain in a 54-year-old</div><span class="meta">History and examination</span><span class="chip ok">Published v2</span></a>
+<a class="row" href="NewStation.dc.html"><div style="flex:1 1 220px;font-weight:500">Breaking bad news</div><span class="meta">Communication skills</span><span class="chip">Draft</span></a>
+<a class="row" href="NewStation.dc.html"><div style="flex:1 1 220px;font-weight:500">Diabetic foot review</div><span class="meta">History and examination</span><span class="chip ok">Published v1</span></a>
+<div class="row"><a href="Exams.dc.html" style="font-size:14px">See all 17 stations</a></div>
+</div>
+<div class="card">
+<div class="head"><h2>Sittings</h2><a href="Sittings.dc.html" style="font-size:14px">All sittings</a></div>
+<a class="row" href="Sitting.dc.html"><div style="flex:1 1 220px;font-weight:500">Summer finals</div><span class="meta">26 Nov · Formal exam</span><span class="chip info">Scheduled</span></a>
+<a class="row" href="Sitting.dc.html"><div style="flex:1 1 220px;font-weight:500">March mock</div><span class="meta">Today · Formal exam</span><span class="chip warn">Running</span></a>
+</div>
+</div>
+<div style="flex:1 1 300px;display:flex;flex-direction:column;gap:24px">
+<div class="card" style="padding:20px;display:flex;flex-direction:column;gap:10px">
+<div class="eyebrow">Marking scheme</div>
+<div style="font-weight:500;font-size:16px">St Mary's global rating</div>
+<div class="meta">Version 3, published 2 Oct. 6 areas, rated Good, Fair or Poor.</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn" href="Exams.dc.html">Open scheme</a><a class="btn" href="Exams.dc.html">Change scheme</a></div>
+</div>
+<div class="card" style="padding:20px;display:flex;flex-direction:column;gap:10px">
+<div class="eyebrow">Station layouts (optional)</div>
+<div class="meta">History and examination · Communication skills</div>
+<a href="Exams.dc.html" style="font-size:14px">Manage layouts</a>
+</div>
+<div class="card" style="padding:20px;display:flex;flex-direction:column;gap:10px">
+<div class="eyebrow">Settings</div>
+<div class="meta">3 min reading · 10 min consultation · 5 min break · Patient voice and feedback style</div>
+<a href="NewExam.dc.html" style="font-size:14px">Edit settings</a>
+</div>
+<div class="card" style="padding:20px;display:flex;flex-direction:column;gap:10px">
+<div class="eyebrow">Retire or delete</div>
+<button class="btn">Retire exam</button>
+<button class="btn danger" disabled>Delete exam</button>
+<div class="meta">Can't delete: this exam has sittings and recordings. Retire it instead, and its records stay.</div>
+</div>
+</div>
+</div>
+</div>
+<div style="margin:24px 0 0;padding:14px 16px;border-radius:9px;background:#E8EFFC;color:#1E3A8A;font-size:13px;line-height:1.5"><b>What changed.</b> The "Available for scheduling" switch replaces the Programmes tab's Retire, Activate and Reactivate buttons; that tab still exists on <a href="Exams.dc.html">Exams</a>. Every field and setting is drawn on <a href="ExamSettings.dc.html">Exam settings</a>; the Retire and Delete confirms are on the Exams board.</div>
+<div style="max-width:1100px;margin:24px auto;padding:0 24px"><details class="fold card" style="border-color:#1D4ED8"><summary>Build spec: how to build this screen</summary><div class="in" style="font-size:13px">
+<div class="g2"><div><div class="eyebrow">Route</div><code>/app/[workspace]/authoring/exams (exam row opens it)</code></div><div><div class="eyebrow">Who sees it</div>author_content</div>
+<div><div class="eyebrow">Owner agent</div><code>content-owner</code> · prove with <code>verify-content</code> then the web <code>verify</code> skill</div><div><div class="eyebrow">Design</div><code>web/docs/DESIGN.md</code>, assess skin, <code>foundation/ui</code> only</div></div>
+<div class="eyebrow">Files to change or reuse</div><ul style="margin:0;padding-left:18px"><li><code>web/src/capabilities/authoring/sections/ExamsSection.tsx</code></li><li><code>web/src/domains/assess/programmes/api.ts</code></li></ul>
+<div class="eyebrow">API calls (all exist; add no endpoint, change no schema)</div><div class="card"><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">DELETE /api/v1/orgs/&#123;org_slug&#125;/exams/&#123;exam_id&#125;</code><span style="flex:1">Delete Org Exam<div class="meta">Now: web/src/app/(public)/exams/[exam]/page.tsx, web/src/app/sitemap.ts, web/src/capabilities/authoring/api/catalog.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/exams</code><span style="flex:1">List Org Exams<div class="meta">Now: web/src/app/(public)/exams/[exam]/page.tsx, web/src/app/sitemap.ts, web/src/capabilities/authoring/api/catalog.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/programmes</code><span style="flex:1">List Programmes<div class="meta">Now: web/src/capabilities/authoring/api/catalog.ts, web/src/domains/assess/NewSitting.tsx, web/src/domains/assess/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">PATCH /api/v1/orgs/&#123;org_slug&#125;/exams/&#123;exam_id&#125;</code><span style="flex:1">Update Org Exam<div class="meta">Now: web/src/app/(public)/exams/[exam]/page.tsx, web/src/app/sitemap.ts, web/src/capabilities/authoring/api/catalog.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">PATCH /api/v1/orgs/&#123;org_slug&#125;/programmes/&#123;programme_id&#125;</code><span style="flex:1">Update Programme<div class="meta">Now: web/src/capabilities/authoring/api/catalog.ts, web/src/domains/assess/NewSitting.tsx, web/src/domains/assess/api.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/exams/&#123;exam_id&#125;/publish</code><span style="flex:1">Publish Org Exam<div class="meta">Now: web/src/capabilities/authoring/api/catalog.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/exams/&#123;exam_id&#125;/retire</code><span style="flex:1">Retire Org Exam<div class="meta">Now: web/src/capabilities/authoring/api/catalog.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/programmes</code><span style="flex:1">Add Programme<div class="meta">Now: web/src/capabilities/authoring/api/catalog.ts, web/src/domains/assess/NewSitting.tsx, web/src/domains/assess/api.ts</div></span></div></div>
+<div class="eyebrow">Steps</div><ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+<li>Each tab on this board is one screen or state. Build every one; none is optional.</li>
+<li>Each button that opens a box is a <code>Modal</code> (or <code>ConfirmModal</code> for a yes/no). Open each box on this board to see its words.</li>
+<li>Copy every word on the board exactly, including the empty, error and busy texts. Put nouns through <code>useAssessWords</code> so hire reads its own words.</li>
+<li>Find the button's call in the list above, by its summary. Today's caller (the "Now:" file) already makes that call: reuse its function from that file's <code>api.ts</code>. Do not write a new fetch.</li>
+<li>Show a write button only to the person in "Who sees it". Anyone else gets the same screen with no write buttons.</li>
+<li>Write a failing test first (Testing Library, assert the literal words), then build, then run <code>npm run ci</code>.</li>
+<li>Live data comes from the existing SSE streams (<code>useMeEvents</code> or the <code>*/stream</code> route above). Never poll.</li>
+<li>Nothing that exists today may disappear. If a control on today's screen is not on this board, stop and ask.</li></ol></div></details></div></main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { on: true }; }
+  renderVals() {
+    const on = this.state.on;
+    return {
+      on: on ? 'true' : 'false',
+      toggleBg: on ? '#059669' : '#E3E3E8',
+      toggleSide: on ? 'flex-end' : 'flex-start',
+      toggleHelp: on ? 'On: this exam can be picked when you schedule a sitting.' : 'Off: existing sittings carry on, but no new ones can be scheduled.',
+      status: on ? 'Ready to schedule' : 'Not available',
+      statusCls: on ? 'chip ok' : 'chip',
+      flip: () => this.setState({ on: !on })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,587 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-05T14:00:00Z"
+ },
+ "title": "Institution arm redesign",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "RegisterOrg.dc.html": {
+   "x": 1520,
+   "y": 0,
+   "w": 1440,
+   "h": 1100,
+   "title": "Register your organisation (a request)",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "SignIn.dc.html": {
+   "x": 3040,
+   "y": 0,
+   "w": 1440,
+   "h": 1100,
+   "title": "Sign in, two-step, temporary password, forgot",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Main.dc.html": {
+   "x": 4560,
+   "y": 0,
+   "w": 1440,
+   "h": 1100,
+   "title": "Home: setup assistant, step 1 of 5",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Exams.dc.html": {
+   "x": 0,
+   "y": 1500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Exams hub: exams, stations, schemes, layouts, programmes",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "NewExam.dc.html": {
+   "x": 3040,
+   "y": 1500,
+   "w": 1440,
+   "h": 1100,
+   "title": "New exam wizard",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "MarkingScheme.dc.html": {
+   "x": 7600,
+   "y": 1500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Marking scheme builder (incl. feedback layout)",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "ExamDetail.dc.html": {
+   "x": 9120,
+   "y": 1500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Exam detail: available for scheduling",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "NewStation.dc.html": {
+   "x": 0,
+   "y": 3000,
+   "w": 1440,
+   "h": 1100,
+   "title": "New station: five ways in",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "StationBuilder.dc.html": {
+   "x": 6080,
+   "y": 3000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Station builder: draft, published, archived",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "People.dc.html": {
+   "x": 0,
+   "y": 4500,
+   "w": 1440,
+   "h": 1100,
+   "title": "People: trainees, staff, groups, exam access, history",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "AddPeople.dc.html": {
+   "x": 1520,
+   "y": 4500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Add people: one, spreadsheet, staff",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "AcceptInvite.dc.html": {
+   "x": 3040,
+   "y": 4500,
+   "w": 1440,
+   "h": 1100,
+   "title": "What the invitee sees",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Sittings.dc.html": {
+   "x": 0,
+   "y": 6000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Sittings",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "ScheduleSitting.dc.html": {
+   "x": 1520,
+   "y": 6000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Schedule a sitting wizard",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Sitting.dc.html": {
+   "x": 3040,
+   "y": 6000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Sitting page",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "EditCircuit.dc.html": {
+   "x": 4560,
+   "y": 6000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Edit or add circuits",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Today.dc.html": {
+   "x": 0,
+   "y": 7500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Home: Today (after setup)",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "LiveBoard.dc.html": {
+   "x": 1520,
+   "y": 7500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Now running",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Console.dc.html": {
+   "x": 3040,
+   "y": 7500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Circuit console (formal exam and training)",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "TraineeSitting.dc.html": {
+   "x": 4560,
+   "y": 7500,
+   "w": 1440,
+   "h": 1100,
+   "title": "What the candidate sees",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "SupervisorHome.dc.html": {
+   "x": 0,
+   "y": 9000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Home: supervisor",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "CircuitReview.dc.html": {
+   "x": 1520,
+   "y": 9000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Circuit feedback (console after it ends)",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "SlotReview.dc.html": {
+   "x": 3040,
+   "y": 9000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Mark this station",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Results.dc.html": {
+   "x": 0,
+   "y": 10500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Results: needs your attention",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "SittingResults.dc.html": {
+   "x": 1520,
+   "y": 10500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Sitting results and the decision",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "TraineeResult.dc.html": {
+   "x": 3040,
+   "y": 10500,
+   "w": 1440,
+   "h": 1100,
+   "title": "What the candidate reads",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "TraineeReview.dc.html": {
+   "x": 4560,
+   "y": 10500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Station feedback (candidate)",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Reporting.dc.html": {
+   "x": 0,
+   "y": 12000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Reporting",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Settings.dc.html": {
+   "x": 1520,
+   "y": 12000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Settings",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Invoices.dc.html": {
+   "x": 3040,
+   "y": 12000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Settings: Invoices (new, money)",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Trainee.dc.html": {
+   "x": 0,
+   "y": 13500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Trainee home and practice history",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "SelfPractice.dc.html": {
+   "x": 1520,
+   "y": 13500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Self practice",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "HireHome.dc.html": {
+   "x": 3040,
+   "y": 13500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Hire: overview (employer words)",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Partner.dc.html": {
+   "x": 4560,
+   "y": 13500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Partner: dashboard, reporting, team",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "BuildGuide.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 1100,
+   "title": "How to build from these boards",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "ExamSettings.dc.html": {
+   "x": 4560,
+   "y": 1500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Exam settings: create and edit (every field)",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "AdoptExam.dc.html": {
+   "x": 1520,
+   "y": 1500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Adopt an exam from OSCE Guide (Programmes page)",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "SchemeVersions.dc.html": {
+   "x": 6080,
+   "y": 1500,
+   "w": 1440,
+   "h": 1100,
+   "title": "Marking scheme versions and New marking scheme",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "LayoutBuilder.dc.html": {
+   "x": 4560,
+   "y": 3000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Station layout: new, edit, read only",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "ImportStation.dc.html": {
+   "x": 3040,
+   "y": 3000,
+   "w": 1440,
+   "h": 1100,
+   "title": "Import a station from PDF or Word",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "CreateStation.dc.html": {
+   "x": 1520,
+   "y": 3000,
+   "w": 1440,
+   "h": 1100,
+   "title": "New station form: manual, AI, no template",
+   "expand": "fill",
+   "is_interactive": true
+  }
+ },
+ "order": [
+  "BuildGuide.dc.html",
+  "RegisterOrg.dc.html",
+  "SignIn.dc.html",
+  "Main.dc.html",
+  "Exams.dc.html",
+  "AdoptExam.dc.html",
+  "NewExam.dc.html",
+  "ExamSettings.dc.html",
+  "SchemeVersions.dc.html",
+  "MarkingScheme.dc.html",
+  "ExamDetail.dc.html",
+  "NewStation.dc.html",
+  "CreateStation.dc.html",
+  "ImportStation.dc.html",
+  "LayoutBuilder.dc.html",
+  "StationBuilder.dc.html",
+  "People.dc.html",
+  "AddPeople.dc.html",
+  "AcceptInvite.dc.html",
+  "Sittings.dc.html",
+  "ScheduleSitting.dc.html",
+  "Sitting.dc.html",
+  "EditCircuit.dc.html",
+  "Today.dc.html",
+  "LiveBoard.dc.html",
+  "Console.dc.html",
+  "TraineeSitting.dc.html",
+  "SupervisorHome.dc.html",
+  "CircuitReview.dc.html",
+  "SlotReview.dc.html",
+  "Results.dc.html",
+  "SittingResults.dc.html",
+  "TraineeResult.dc.html",
+  "TraineeReview.dc.html",
+  "Reporting.dc.html",
+  "Settings.dc.html",
+  "Invoices.dc.html",
+  "Trainee.dc.html",
+  "SelfPractice.dc.html",
+  "HireHome.dc.html",
+  "Partner.dc.html"
+ ],
+ "notes": {
+  "t1": {
+   "x": 0,
+   "y": -280,
+   "text": "1. Getting in: register, sign in, land on the setup assistant",
+   "kind": "title1",
+   "maxW": 4480
+  },
+  "p1": {
+   "x": 6080,
+   "y": 0,
+   "w": 440,
+   "fill": "blue",
+   "size": "s",
+   "text": "Parity, getting in\n- Register stays a request (POST /site/messages), Employer type gives hire\n- Login: password, SSO button, sso_only, two-step, temporary password change, forgot and reset, SSO callback\n- First sign-in lands on the setup assistant\n- Setup steps come from the dashboard flags the api already returns; each step shows to whoever can do it\n- Disabled actions say why\n- Today keeps LiveNow (SSE), upcoming sittings, counts\n- Needs your attention: decisions waiting, ready to release, stations to review\n- Supervisor: circuits they lead (SupervisorCircuits), stations to review (LiveMarkingSidebar reads)\n- Nav: Home, Run (Sittings, Now running, Results), Organise (People, Exams), Insight (Reporting), Settings. Every old URL still resolves"
+  },
+  "t2": {
+   "x": 0,
+   "y": 1220,
+   "text": "2. Set up an exam (setup step 1)",
+   "kind": "title1",
+   "maxW": 6000
+  },
+  "p2": {
+   "x": 10640,
+   "y": 1500,
+   "w": 440,
+   "fill": "blue",
+   "size": "s",
+   "text": "Parity, Exams\n- Tabs keep Marking schemes, Station layouts and Programmes lists (advanced)\n- Wizard calls create exam, publish, create programme, PATCH active; a failed step resumes by name\n- Adopt from OSCE Guide (import gives an active programme)\n- Exam settings, timings, retire, reactivate, delete (draft only)\n- Station: from a layout, PDF or Word import, AI from a brief, blank, copy to my organisation\n- Builder tabs, trial mark, draft instructions, preview, versions, photos, reading brief, fact check, approve, reports: all kept\n- Station templates = Station layouts: start from 9 starting layouts or AI, sections, fields, who sees each field, save draft, publish, versions\n- Feedback templates were merged into marking schemes (/feedback-templates redirects to rubrics): the Feedback layout tab is that template"
+  },
+  "t3": {
+   "x": 0,
+   "y": 2720,
+   "text": "3. Add stations (setup step 2)",
+   "kind": "title1",
+   "maxW": 4480
+  },
+  "p3": {
+   "x": 7600,
+   "y": 3000,
+   "w": 440,
+   "fill": "blue",
+   "size": "s",
+   "text": "Parity, stations\n- New station: from a layout, PDF or Word import, AI from a prompt, blank, copy from OSCE Guide\n- Builder: every section with who sees it, photos, reading brief, publish (no-brief warning), trial mark, preview, AI redraft, fact check, versions, revision history, used by, new draft version, archive, delete draft\n- Approve / withdraw approval: platform staff only\n- Layouts: new, edit, publish, archive, delete draft, copy"
+  },
+  "t4": {
+   "x": 0,
+   "y": 4220,
+   "text": "4. Add people (setup steps 3 and 4)",
+   "kind": "title1",
+   "maxW": 4480
+  },
+  "p4": {
+   "x": 4560,
+   "y": 4500,
+   "w": 440,
+   "fill": "blue",
+   "size": "s",
+   "text": "Parity, People\n- Tabs: Trainees, Staff, Groups and year groups, Exam access, History; /team still resolves\n- Every row action: resend, temporary password, revoke, restore, delete, wipe, change role\n- CSV: BOM, delimiter detection, create missing cohorts, batches of 500\n- Bulk bar: Move to year group, Add to group, Resend, Revoke\n- New: staff bulk revoke via memberships/bulk/revoke\n- Last admin protection kept\n- New: Exam access tab (practice-access routes have no screen today)"
+  },
+  "t5": {
+   "x": 0,
+   "y": 5720,
+   "text": "5. Schedule (setup step 5)",
+   "kind": "title1",
+   "maxW": 6000
+  },
+  "p5": {
+   "x": 6080,
+   "y": 6000,
+   "w": 440,
+   "fill": "blue",
+   "size": "s",
+   "text": "Parity, scheduling\n- Wizard: create sitting, then circuits/bulk (formal) or circuits (training); failure lands on the sitting with retry\n- Only Ready to schedule exams; max 12 stations formal; training needs trainees = stations\n- Groups, year groups and people; pending invite shows reason + Resend\n- Per-break lengths 1-60, timings per circuit\n- Supervisor: one for all, or per candidate\n- Sitting page keeps Add a circuit, Edit circuit, reorder, late joiners (training), cancel, delete circuit, set date, console, results\n- New: edit year group on the sitting\n- Sittings list keeps status, kind, exam, date and name filters, load more, Next up\n- Edit circuit: lock reasons and stale-revision reload"
+  },
+  "t6": {
+   "x": 0,
+   "y": 7220,
+   "text": "6. Exam day",
+   "kind": "title1",
+   "maxW": 6000
+  },
+  "p6": {
+   "x": 6080,
+   "y": 7500,
+   "w": 440,
+   "fill": "blue",
+   "size": "s",
+   "text": "Parity, exam day\n- Live board: SSE, worker-down warning, recording-missing and overdue notices, Earlier by day\n- Console: every control asks for a reason (pause, extend 1-3600 s, reset, resend, end, jump, redo), auto-advance, station progress, station content, listen in (exam listen-only; training camera and mic), add trainee (training), interventions log\n- Candidate: auto-join during reading, mic preflight, join refusals, reading brief, station list, feedback when ready"
+  },
+  "t7": {
+   "x": 0,
+   "y": 8720,
+   "text": "7. Marking and review",
+   "kind": "title1",
+   "maxW": 4480
+  },
+  "p7": {
+   "x": 4560,
+   "y": 9000,
+   "w": 440,
+   "fill": "blue",
+   "size": "s",
+   "text": "Parity, marking\n- Supervisor: your marks (draft, withdraw, submit); admin: admin's review with per-domain notes, overall, revision, conflict\n- Automatic marking states and Retry, transcript load and download (named supervisor only), reviewers' agreement, candidate stepper\n- Publish circuit feedback is the manual finalise step"
+  },
+  "t8": {
+   "x": 0,
+   "y": 10220,
+   "text": "8. Results",
+   "kind": "title1",
+   "maxW": 6000
+  },
+  "p8": {
+   "x": 6080,
+   "y": 10500,
+   "w": 440,
+   "fill": "blue",
+   "size": "s",
+   "text": "Parity, Results\n- Results tabs, sitting results, SlotReview controls, senior review, preview before release, PDF, bulk release, back to draft, candidate acknowledgement, CSV and readout exports\n- Publish circuit feedback explained as the finalise step\n- Candidate: outcome, by station, PDF, I have read this; not released and not marked states"
+  },
+  "t9": {
+   "x": 0,
+   "y": 11720,
+   "text": "9. Insight and settings",
+   "kind": "title1",
+   "maxW": 4480
+  },
+  "p9": {
+   "x": 4560,
+   "y": 12000,
+   "w": 440,
+   "fill": "blue",
+   "size": "s",
+   "text": "Parity, insight and settings\n- Reporting: one row per exam, pass rate on released decisions; per-sitting CSV and readout on Results\n- Settings keeps name, read-only web address, SSO status (read only), two-step status, SCIM tokens, profile, two-factor, data download, delete account, preferences\n- Invoices (new): list, detail, PO number on existing /orgs/{slug}/invoices routes. Money: needs your review and a security review"
+  },
+  "t10": {
+   "x": 0,
+   "y": 13220,
+   "text": "10. Other views: trainee, hire, partner",
+   "kind": "title1",
+   "maxW": 6000
+  },
+  "p10": {
+   "x": 6080,
+   "y": 13500,
+   "w": 440,
+   "fill": "blue",
+   "size": "s",
+   "text": "Parity, roles\n- Hire: same structure, words from useAssessWords (Candidate, Assessment, Assessor); Programmes reachable under Exams\n- Hiring outcome on decisions kept\n- Trainee nav unchanged: Home, My sittings, Results, Self practice, Practice sessions\n- Trainee: practice history (transcripts, debriefs), practice sessions (/mocks)\n- Partner unchanged: dashboard tabs, reporting, team\n- Not institution: Library and Discussion are train-only (404 on assess)"
+  },
+  "intro": {
+   "x": 0,
+   "y": -700,
+   "w": 1400,
+   "fill": "yellow",
+   "size": "m",
+   "text": "Read left to right, top to bottom: the order a new administrator meets each screen. Every primary button links to the next board. Same blue and quiet tokens as today; hire changes words only. Each board ends with a blue note listing what it keeps from today."
+  }
+ },
+ "designSystems": []
+}

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>New exam</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F5F5F7;font-family:"Open Sauce One",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#1D1D1F}
+a{color:#1D4ED8;text-decoration:none}a:hover{color:#1E40AF}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;background:#fff;border-bottom:1px solid #E3E3E8;flex-wrap:wrap}
+.wrap{max-width:760px;margin:0 auto;padding:32px 16px 64px;display:flex;flex-direction:column;gap:24px}
+.eyebrow{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73}
+h1{font-size:28px;line-height:1.2;font-weight:600;margin:6px 0}
+.desc{font-size:16px;color:#6E6E73;margin:0;line-height:1.5}
+.card{background:#fff;border:1px solid #E3E3E8;border-radius:14px;padding:28px;display:flex;flex-direction:column;gap:18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:9px;font-size:14px;font-weight:500;border:1px solid #E3E3E8;background:#fff;color:#1D1D1F;cursor:pointer;font-family:inherit;box-sizing:border-box;white-space:nowrap}
+.btn:hover{background:#F5F5F7;color:#1D1D1F}
+.btn.pri{background:#1D4ED8;border-color:#1D4ED8;color:#fff}.btn.pri:hover{background:#1E40AF}
+.meta{font-size:13px;color:#6E6E73;line-height:1.5}
+.strip{display:flex;gap:8px;flex-wrap:wrap}
+.st{flex:1 1 140px;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;border:0;background:transparent;font-family:inherit;font-size:13px;color:#6E6E73;text-align:left;cursor:pointer;min-height:44px}
+.st.on{background:#fff;border:1px solid #E3E3E8;color:#1D1D1F;font-weight:500}
+.st.done{color:#3A3A3D}
+.dot{width:24px;height:24px;flex:0 0 24px;border-radius:999px;border:1px solid #E3E3E8;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+.st.on .dot{border-color:#1D4ED8;color:#1D4ED8}
+.st.done .dot{background:#059669;border-color:#059669;color:#fff}
+label{font-size:14px;font-weight:500;display:block;margin-bottom:6px}
+.input{width:100%;min-height:44px;padding:0 12px;border:1px solid #E3E3E8;border-radius:9px;font-size:16px;font-family:inherit;color:#1D1D1F;box-sizing:border-box;background:#fff}
+.input:focus{outline:none;border-color:#7F9FEA;box-shadow:0 0 0 2px #E8EFFC}
+.opt{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;border:1px solid #E3E3E8;border-radius:9px;background:#fff;font-family:inherit;text-align:left;cursor:pointer;width:100%;color:#1D1D1F}
+.opt.on{border-color:#1D4ED8;background:#F7F9FE}
+.radio{width:18px;height:18px;flex:0 0 18px;border-radius:999px;border:1px solid #A1A1A6;margin-top:2px;box-sizing:border-box}
+.opt.on .radio{border:5px solid #1D4ED8}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media(max-width:640px){.grid{grid-template-columns:minmax(0,1fr)}}
+.sum{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid #EFEFF2;font-size:14px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;background:#EEF8F1;color:#047857}
+</style>
+</helmet>
+<div class="top">
+<div style="display:flex;align-items:center;gap:12px"><a href="Exams.dc.html" class="btn" aria-label="Close">Close</a><span style="font-weight:600;font-size:16px">New exam</span></div>
+<span class="meta">Your progress is saved after each step</span>
+</div>
+<div class="wrap">
+<div class="strip" aria-label="Steps">
+<sc-for list="{{ steps }}" as="s" hint-placeholder-count="4">
+<button class="{{ s.cls }}" onClick="{{ s.pick }}"><span class="dot">{{ s.mark }}</span>{{ s.label }}</button>
+</sc-for>
+</div>
+
+<sc-if value="{{ s1 }}" hint-placeholder-val="{{ true }}">
+<div><div class="eyebrow">Step 1 of 4</div><h1>Name your exam</h1><p class="desc">This is what supervisors and trainees will see on every sitting.</p></div>
+<div class="card">
+<div><label for="n">Exam name</label><input id="n" class="input" value="Paediatrics block"></div>
+<div><label for="c">Short code</label><input id="c" class="input" value="PAED"><div class="meta" style="margin-top:6px">Letters, numbers and dashes. It can't be the same as another of your exams.</div></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ s2 }}" hint-placeholder-val="{{ false }}">
+<div><div class="eyebrow">Step 2 of 4</div><h1>How will it be marked?</h1><p class="desc">The marking scheme lists the areas reviewers rate and how. You can change it later as a new version.</p></div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ schemes }}" as="o" hint-placeholder-count="3">
+<button class="{{ o.cls }}" onClick="{{ o.pick }}"><span class="radio" aria-hidden="true"></span><span><span style="display:block;font-weight:500;font-size:16px">{{ o.title }}</span><span class="meta">{{ o.body }}</span></span></button>
+</sc-for>
+</div>
+<sc-if value="{{ writeNew }}" hint-placeholder-val="{{ false }}"><div class="meta">Opens the scheme builder. When you publish the scheme, you come straight back here.</div></sc-if>
+</sc-if>
+
+<sc-if value="{{ s3 }}" hint-placeholder-val="{{ false }}">
+<div><div class="eyebrow">Step 3 of 4</div><h1>Timings and settings</h1><p class="desc">These are the defaults for every circuit. You can change them per circuit when you schedule.</p></div>
+<div class="card">
+<div class="grid">
+<div><label for="r">Reading time</label><input id="r" class="input" value="3 min"><div class="meta" style="margin-top:6px">1 to 30</div></div>
+<div><label for="t">Consultation</label><input id="t" class="input" value="10 min"><div class="meta" style="margin-top:6px">1 to 180</div></div>
+<div><label for="b">Break</label><input id="b" class="input" value="5 min"><div class="meta" style="margin-top:6px">1 to 60, formal exams</div></div>
+</div>
+<details style="border-top:1px solid #EFEFF2;padding-top:14px"><summary style="font-size:14px;font-weight:500;cursor:pointer;min-height:32px">More settings</summary><div class="meta" style="margin-top:8px">Patient voice, feedback style and the AI writing setup. The same options as today's exam settings.</div></details>
+</div>
+</sc-if>
+
+<sc-if value="{{ s4 }}" hint-placeholder-val="{{ false }}">
+<div><div class="eyebrow">Step 4 of 4</div><h1>Ready to publish</h1><p class="desc">Publishing makes the exam available for scheduling. Add stations next.</p></div>
+<div class="card" style="gap:0">
+<div class="sum" style="border-top:0"><span class="meta">Exam</span><span>Paediatrics block · PAED</span></div>
+<div class="sum"><span class="meta">Marking scheme</span><span>Copy of OSCE Guide global rating, v1</span></div>
+<div class="sum"><span class="meta">Timings</span><span>3 min reading · 10 min consultation · 5 min break</span></div>
+<div class="sum"><span class="meta">Available for scheduling</span><span class="chip">On after publishing</span></div>
+</div>
+<div class="meta">If a step fails, the exam is kept as it is and this screen says which step to retry. Nothing is half made.</div>
+</sc-if>
+
+<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+<button class="btn" onClick="{{ back }}">Back</button>
+<sc-if value="{{ notLast }}" hint-placeholder-val="{{ true }}"><button class="btn pri" onClick="{{ next }}">Continue</button></sc-if>
+<sc-if value="{{ s4 }}" hint-placeholder-val="{{ false }}"><a class="btn pri" href="ExamDetail.dc.html">Publish exam</a></sc-if>
+</div>
+</div>
+<div style="margin:24px auto;max-width:900px;padding:14px 16px;border-radius:9px;background:#E8EFFC;color:#1E3A8A;font-size:13px;line-height:1.5"><b>What changed.</b> Today an exam, its marking scheme and its programme are made on three tabs; here one sheet makes all three. Step 3 is the full form, drawn on the <a href="ExamSettings.dc.html">Exam settings</a> board. Adopting an OSCE Guide exam is on <a href="AdoptExam.dc.html">Adopt an exam</a>.</div>
+<div style="max-width:1100px;margin:24px auto;padding:0 24px"><details class="fold card" style="border-color:#1D4ED8"><summary>Build spec: how to build this screen</summary><div class="in" style="font-size:13px">
+<div class="g2"><div><div class="eyebrow">Route</div><code>/app/[workspace]/authoring/exams (New exam sheet)</code></div><div><div class="eyebrow">Who sees it</div>author_content</div>
+<div><div class="eyebrow">Owner agent</div><code>content-owner</code> · prove with <code>verify-content</code> then the web <code>verify</code> skill</div><div><div class="eyebrow">Design</div><code>web/docs/DESIGN.md</code>, assess skin, <code>foundation/ui</code> only</div></div>
+<div class="eyebrow">Files to change or reuse</div><ul style="margin:0;padding-left:18px"><li><code>web/src/capabilities/authoring/sections/ExamsSection.tsx</code></li><li><code>web/src/capabilities/authoring/sections/ExamFields.tsx</code></li><li><code>web/src/capabilities/authoring/sections/ExamSettingsFields.tsx</code></li></ul>
+<div class="eyebrow">API calls (all exist; add no endpoint, change no schema)</div><div class="card"><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/rubrics</code><span style="flex:1">List Org Rubrics<div class="meta">Now: web/src/app/app/[workspace]/authoring/feedback-templates/[templateId]/versions/[version]/page.tsx, web/src/app/app/[workspace]/authoring/feedback-templates/new/page.tsx, web/src/app/app/[workspace]/authoring/page.tsx</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/rubrics/starting-points</code><span style="flex:1">Org Rubric Starting Points<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/rubrics/trial-candidates</code><span style="flex:1">List Org Trial Candidates<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">GET /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;</code><span style="flex:1">Read Org Rubric<div class="meta">Now: web/src/app/app/[workspace]/authoring/feedback-templates/[templateId]/versions/[version]/page.tsx, web/src/app/app/[workspace]/authoring/feedback-templates/new/page.tsx, web/src/app/app/[workspace]/authoring/page.tsx</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">PATCH /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;</code><span style="flex:1">Rename Org Rubric<div class="meta">Now: web/src/app/app/[workspace]/authoring/feedback-templates/[templateId]/versions/[version]/page.tsx, web/src/app/app/[workspace]/authoring/feedback-templates/new/page.tsx, web/src/app/app/[workspace]/authoring/page.tsx</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">PATCH /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;/versions/&#123;version&#125;</code><span style="flex:1">Edit Org Version<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/exams</code><span style="flex:1">Create Org Exam<div class="meta">Now: web/src/app/(public)/exams/[exam]/page.tsx, web/src/app/sitemap.ts, web/src/capabilities/authoring/api/catalog.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics</code><span style="flex:1">Create Org Rubric<div class="meta">Now: web/src/app/app/[workspace]/authoring/feedback-templates/[templateId]/versions/[version]/page.tsx, web/src/app/app/[workspace]/authoring/feedback-templates/new/page.tsx, web/src/app/app/[workspace]/authoring/page.tsx</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/copy</code><span style="flex:1">Copy Org Rubric<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/draft-instructions</code><span style="flex:1">Draft Org Rubric Instructions<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts, web/src/capabilities/authoring/rubrics/draftInstructions.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/preview</code><span style="flex:1">Preview Org Rubric<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts, web/src/capabilities/authoring/rubrics/problems.ts, web/src/capabilities/authoring/rubrics/useRubricDraft.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;/versions</code><span style="flex:1">Add Org Version<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;/versions/&#123;version&#125;/archive</code><span style="flex:1">Archive Org Version<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;/versions/&#123;version&#125;/publish</code><span style="flex:1">Publish Org Version<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div><div class="row" style="align-items:flex-start;gap:10px;font-size:12px"><code style="flex:0 0 46%;word-break:break-all">POST /api/v1/orgs/&#123;org_slug&#125;/rubrics/&#123;rubric_id&#125;/versions/&#123;version&#125;/trial</code><span style="flex:1">Trial Org Rubric Version<div class="meta">Now: web/src/capabilities/authoring/api/rubrics.ts</div></span></div></div>
+<div class="eyebrow">Steps</div><ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+<li>Each tab on this board is one screen or state. Build every one; none is optional.</li>
+<li>Each button that opens a box is a <code>Modal</code> (or <code>ConfirmModal</code> for a yes/no). Open each box on this board to see its words.</li>
+<li>Copy every word on the board exactly, including the empty, error and busy texts. Put nouns through <code>useAssessWords</code> so hire reads its own words.</li>
+<li>Find the button's call in the list above, by its summary. Today's caller (the "Now:" file) already makes that call: reuse its function from that file's <code>api.ts</code>. Do not write a new fetch.</li>
+<li>Show a write button only to the person in "Who sees it". Anyone else gets the same screen with no write buttons.</li>
+<li>Write a failing test first (Testing Library, assert the literal words), then build, then run <code>npm run ci</code>.</li>
+<li>Live data comes from the existing SSE streams (<code>useMeEvents</code> or the <code>*/stream</code> route above). Never poll.</li>
+<li>Nothing that exists today may disappear. If a control on today's screen is not on this board, stop and ask.</li></ol></div></details></div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { i: 0, scheme: 1 }; }
+  renderVals() {
+    const i = this.state.i;
+    const labels = ['Name', 'Marking scheme', 'Timings', 'Publish'];
+    const opts = [
+      { title: 'Use one of your marking schemes', body: 'St Mary’s global rating v3, Year 4 domains v1' },
+      { title: 'Copy one from OSCE Guide', body: 'Start from a tested scheme and change what you need.' },
+      { title: 'Write a new marking scheme', body: 'Name the areas, the ratings and what each means.' }
+    ];
+    return {
+      steps: labels.map((label, k) => ({ label, cls: k === i ? 'st on' : (k < i ? 'st done' : 'st'), mark: k < i ? '✓' : String(k + 1), pick: () => this.setState({ i: k }) })),
+      schemes: opts.map((o, k) => ({ ...o, cls: k === this.state.scheme ? 'opt on' : 'opt', pick: () => this.setState({ scheme: k }) })),
+      writeNew: this.state.scheme === 2,
+      s1: i === 0, s2: i === 1, s3: i === 2, s4: i === 3, notLast: i < 3,
+      next: () => this.setState({ i: Math.min(i + 1, 3) }),
+      back: () => this.setState({ i: Math.max(i - 1, 0) })
+    };
+  }
+}
+</script>
+</body>
+</html>

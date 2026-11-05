@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Partner dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F5F5F7;font-family:"Open Sauce One",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#1D1D1F}
+a{color:#1D4ED8;text-decoration:none}a:hover{color:#1E40AF}
+.shell{display:flex;flex-wrap:wrap;min-height:100vh}
+.side{flex:1 1 232px;max-width:248px;background:#fff;border-right:1px solid #E3E3E8;padding:20px 12px;box-sizing:border-box}
+@media(max-width:760px){.side{max-width:none;border-right:0;border-bottom:1px solid #E3E3E8}.main{padding:24px 16px 48px!important}}
+.org{display:flex;align-items:center;gap:10px;padding:6px 8px 14px}
+.mark{width:32px;height:32px;border-radius:9px;background:#1D4ED8;color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none}
+.sec{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73;padding:16px 10px 6px}
+.nav{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:9px;color:#3A3A3D;font-size:14px}
+.nav:hover{background:#F5F5F7;color:#1D1D1F}
+.nav.on{background:#EBEBEF;color:#1D1D1F;font-weight:500}
+.main{flex:999 1 560px;min-width:0;padding:32px 40px 56px;box-sizing:border-box}
+.page{max-width:1080px;display:flex;flex-direction:column;gap:24px}
+.eyebrow{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73}
+h1{font-size:28px;line-height:1.2;font-weight:600;margin:6px 0}
+h2{font-size:16px;font-weight:600;margin:0}
+.desc{font-size:16px;color:#6E6E73;margin:0;line-height:1.5}
+.meta{font-size:13px;color:#6E6E73;line-height:1.5}
+.card{background:#fff;border:1px solid #E3E3E8;border-radius:14px;overflow:hidden}
+.pad{padding:20px;display:flex;flex-direction:column;gap:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:9px;font-size:14px;font-weight:500;border:1px solid #E3E3E8;background:#fff;color:#1D1D1F;cursor:pointer;font-family:inherit;box-sizing:border-box;white-space:nowrap}
+.btn:hover{background:#F5F5F7;color:#1D1D1F}
+.btn.pri{background:#1D4ED8;border-color:#1D4ED8;color:#fff}.btn.pri:hover{background:#1E40AF;color:#fff}
+.btn.bad{color:#B91C1C}.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;background:#EBEBEF;color:#3A3A3D;white-space:nowrap}
+.chip.ok{background:#EEF8F1;color:#047857}.chip.warn{background:#FCF5E6;color:#92400E}.chip.info{background:#E8EFFC;color:#1E40AF}.chip.live{background:#FCEFEE;color:#B91C1C}
+.row{display:flex;align-items:center;gap:16px;padding:14px 20px;border-top:1px solid #EFEFF2;font-size:14px;color:#1D1D1F;flex-wrap:wrap}
+a.row:hover{background:#FAFAFB;color:#1D1D1F}
+.th{display:flex;gap:16px;padding:10px 20px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73;background:#FAFAFB;flex-wrap:wrap}
+.tabs{display:inline-flex;background:#EBEBEF;border-radius:9px;padding:3px;gap:2px;flex-wrap:wrap;align-self:flex-start}
+.tab{min-height:36px;padding:0 14px;border-radius:7px;font-size:14px;color:#3A3A3D;display:inline-flex;align-items:center;border:0;background:transparent;font-family:inherit;cursor:pointer}
+.tab.on{background:#fff;color:#1D1D1F;font-weight:500}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.g6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+@media(max-width:900px){.g2,.g3{grid-template-columns:minmax(0,1fr)}.g6{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cols{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.colm{flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.cola{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.tile{background:#fff;border:1px solid #E3E3E8;border-radius:14px;padding:16px}
+.tile b{display:block;font-size:24px;font-weight:600;margin-top:4px}
+.rail{display:flex;gap:8px;flex-wrap:wrap}
+.st{flex:1 1 110px;padding:10px 12px;border-radius:9px;background:#fff;border:1px solid #E3E3E8;font-size:13px}
+.st b{display:block;font-size:14px;font-weight:500}
+.st.done{background:#EEF8F1;border-color:#EEF8F1}.st.now{border-color:#1D4ED8;background:#F7F9FE}
+.al{border-radius:9px;padding:12px 14px;font-size:14px;line-height:1.5}
+.al.warn{background:#FCF5E6;color:#92400E}.al.info{background:#E8EFFC;color:#1E40AF}.al.ok{background:#EEF8F1;color:#047857}.al.bad{background:#FCEFEE;color:#B91C1C}
+.al b{display:block}
+label{font-size:14px;font-weight:500;display:block;margin-bottom:6px}
+.input{width:100%;min-height:44px;padding:0 12px;border:1px solid #E3E3E8;border-radius:9px;font-size:16px;font-family:inherit;color:#1D1D1F;box-sizing:border-box;background:#fff}
+textarea.input{min-height:96px;padding:10px 12px;resize:vertical}
+.fields{display:flex;gap:16px;flex-wrap:wrap}.fields>div{flex:1 1 200px}
+.hint{font-size:13px;color:#6E6E73;margin-top:6px;line-height:1.5}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;min-height:32px;font-weight:400;margin:0}
+.check input{width:18px;height:18px;margin-top:2px;accent-color:#1D4ED8}
+.pill{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid #E3E3E8;background:#fff;font-size:13px;font-family:inherit;color:#1D1D1F}
+.pill.on{background:#E8EFFC;border-color:#1D4ED8;color:#1E40AF}
+.seg{display:inline-flex;border:1px solid #E3E3E8;border-radius:9px;overflow:hidden;flex-wrap:wrap}
+.seg span{min-height:40px;padding:0 14px;display:inline-flex;align-items:center;font-size:14px;border-right:1px solid #E3E3E8;background:#fff}
+.seg span:last-child{border-right:0}.seg span.g{background:#EEF8F1;color:#047857;font-weight:500}.seg span.a{background:#FCF5E6;color:#92400E;font-weight:500}.seg span.r{background:#FCEFEE;color:#B91C1C;font-weight:500}
+.clock{font-size:44px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.av{width:32px;height:32px;border-radius:999px;background:#EBEBEF;color:#3A3A3D;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
+.hero{background:#fff;border:1px solid #E3E3E8;border-radius:14px;padding:24px;display:flex;gap:20px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.hero.live{border-color:#1D4ED8;background:#F7F9FE}
+.note{font-size:12px;color:#6E6E73;border-top:1px dashed #E3E3E8;padding-top:12px;line-height:1.5}
+.ov{position:fixed;inset:0;background:rgba(29,29,31,.32);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.dlg{background:#fff;border-radius:14px;max-width:520px;width:100%;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.18);max-height:90vh;overflow:auto}
+.dlg .acts{justify-content:flex-end}
+details.fold{border-top:1px solid #EFEFF2}details.fold summary{padding:14px 20px;font-size:14px;font-weight:500;cursor:pointer;min-height:24px}
+.fold .in{padding:0 20px 16px;font-size:14px;line-height:1.6;color:#3A3A3D}
+.help{width:36px;height:36px;border-radius:999px;border:1px solid #E3E3E8;background:#fff;font-weight:600;color:#3A3A3D;display:inline-flex;align-items:center;justify-content:center}
+</style>
+</helmet>
+<div class="shell">
+<nav class="side" aria-label="Main">
+<div class="org"><div class="mark">SM</div><div><div style="font-size:14px;font-weight:600">St Mary's Medical School</div><div class="meta">Partner admin</div></div></div>
+<a class="nav" href="Partner.dc.html">Dashboard</a>
+<a class="nav" href="Partner.dc.html">Reporting</a>
+<a class="nav" href="Partner.dc.html">Team</a>
+</nav>
+<main class="main"><div class="page">
+<div class="head"><div><div class="eyebrow">Partner</div><h1>Northern Deanery dashboard</h1><p class="desc">See how people from your links are using OSCE Guide. All dates are UK calendar days.</p></div><div class="acts"></div></div><div class="tabs" role="tablist"><sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button class="{{ t.cls }}" onClick="{{ t.pick }}">{{ t.label }}</button></sc-for></div><sc-if value="{{ p0 }}" hint-placeholder-val="{{ true }}"><div class="card pad"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select class="input" style="max-width:180px" aria-label="Date range"><option>This month</option><option>Last month</option><option>Last 30 days</option><option>Last 3 months</option><option>Last 6 months</option><option>Custom</option></select><select class="input" style="max-width:140px" aria-label="Exam"><option>All exams</option><option>SCA</option><option>PLAB</option><option>ORTHO</option></select><span class="meta" style="flex:1">All exams · 1 Nov 2026 – 5 Nov 2026 · UK calendar days</span><a href="#">Reset filters</a><span class="meta">Updated 14:02</span></div></div><div class="al info"><b>Fee estimates are a guide only</b> The fee shown here is an estimate from our arrival counts. You invoice from your own click records; nothing on this page is a bill.</div><div class="card pad"><div class="eyebrow">Overview</div><h2>How your links are performing</h2><div class="meta">Visits, sign-ups, and your estimated fee for this period.</div><div class="g3"><div class="tile"><div class="eyebrow">Link visits</div><div style="font-size:28px;font-weight:600">1,240</div><div class="meta">How many times someone opened a page with your link. 980 unique people.</div></div><div class="tile"><div class="eyebrow">Sign-ups</div><div style="font-size:28px;font-weight:600">86</div><div class="meta">New accounts where we recorded you as the source they came from.</div></div><div class="tile"><div class="eyebrow">Estimated fee</div><div style="font-size:28px;font-weight:600">£496</div><div class="meta">A rough guide: your link visits in this period times our agreed rate per visit. You invoice from your own records.</div></div></div></div><div class="card pad"><h2>From visit to payment</h2><div class="meta">How many people reached each step</div><div class="g3"><div class="tile"><div class="eyebrow">Visited</div><div style="font-size:28px;font-weight:600">1,240</div><div class="meta">100% of visits</div></div><div class="tile"><div class="eyebrow">Signed up</div><div style="font-size:28px;font-weight:600">86</div><div class="meta">6.9% of visits</div></div><div class="tile"><div class="eyebrow">Paid</div><div style="font-size:28px;font-weight:600">21</div><div class="meta">1.7% of visits</div></div></div></div></sc-if><sc-if value="{{ p1 }}" hint-placeholder-val="{{ false }}"><div class="card pad"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select class="input" style="max-width:180px" aria-label="Date range"><option>This month</option><option>Last month</option><option>Last 30 days</option><option>Last 3 months</option><option>Last 6 months</option><option>Custom</option></select><select class="input" style="max-width:140px" aria-label="Exam"><option>All exams</option><option>SCA</option><option>PLAB</option><option>ORTHO</option></select><span class="meta" style="flex:1">All exams · 1 Nov 2026 – 5 Nov 2026 · UK calendar days</span><a href="#">Reset filters</a><span class="meta">Updated 14:02</span></div></div><div class="card pad"><h2>Link visits over time</h2><div class="meta">How many times people opened your links</div><div style="height:140px;display:flex;align-items:flex-end;gap:6px"><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:30%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:55%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:40%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:70%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:62%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:85%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:50%"></div></div></div><div class="card pad"><h2>Sign-ups over time</h2><div class="meta">New accounts from your links</div><div style="height:140px;display:flex;align-items:flex-end;gap:6px"><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:30%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:55%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:40%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:70%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:62%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:85%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:50%"></div></div></div><div class="card pad"><h2>By exam</h2><div class="meta">How link visits split across SCA, PLAB, and Ortho.</div><div class="row">SCA <span class="meta">62% of visits</span></div><div class="row">PLAB <span class="meta">30% of visits</span></div><div class="row">Ortho <span class="meta">8% of visits</span></div></div></sc-if><sc-if value="{{ p2 }}" hint-placeholder-val="{{ false }}"><div class="card pad"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select class="input" style="max-width:180px" aria-label="Date range"><option>This month</option><option>Last month</option><option>Last 30 days</option><option>Last 3 months</option><option>Last 6 months</option><option>Custom</option></select><select class="input" style="max-width:140px" aria-label="Exam"><option>All exams</option><option>SCA</option><option>PLAB</option><option>ORTHO</option></select><span class="meta" style="flex:1">All exams · 1 Nov 2026 – 5 Nov 2026 · UK calendar days</span><a href="#">Reset filters</a><span class="meta">Updated 14:02</span></div></div><div class="al info"><b>Fee estimates are a guide only</b> The fee shown here is an estimate from our arrival counts. You invoice from your own click records; nothing on this page is a bill.</div><div class="card pad"><h2>Estimated fee over time</h2><div class="meta">Weekly estimated fee from your link visits</div><div style="height:140px;display:flex;align-items:flex-end;gap:6px"><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:30%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:55%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:40%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:70%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:62%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:85%"></div><div style="flex:1;background:#1D4ED8;opacity:.8;border-radius:4px 4px 0 0;height:50%"></div></div></div></sc-if><sc-if value="{{ p3 }}" hint-placeholder-val="{{ false }}"><div class="card pad"><h2>How we count your results</h2><p class="meta" style="margin:0">These are the rules behind the numbers you see here. If something looks wrong, tell us the dates you were viewing and what seemed off.</p><div class="eyebrow">What the numbers mean</div><div class="card"><div class="row"><span style="flex:1"><b>Link visit</b> <span class="chip ">Plain English</span><div class="meta">Someone clicked your link and opened a page on OSCE Guide.</div></span></div><div class="row"><span style="flex:1"><b>Unique people</b> <span class="chip ">Plain English</span><div class="meta">How many different people visited. The same person can open your link more than once.</div></span></div><div class="row"><span style="flex:1"><b>Sign-up</b> <span class="chip ">Plain English</span><div class="meta">Someone created an OSCE Guide account after coming from your link.</div></span></div><div class="row"><span style="flex:1"><b>Paid</b> <span class="chip ">Plain English</span><div class="meta">Someone who signed up through your link and paid for a subscription in the dates you selected.</div></span></div><div class="row"><span style="flex:1"><b>Estimated fee</b> <span class="chip ">Plain English</span><div class="meta">Link visits in the date range times our agreed rate per visit (pilot default £0.40). This is a guide only. You invoice from your own click records.</div></span></div></div><div class="eyebrow">How we decide who gets credit</div><div class="card"><div class="row"><span style="flex:1"><b>Which link gets credit</b> <span class="chip ">Plain English</span><div class="meta">We credit the first partner link someone clicks. If they are already linked to a partner, a later link will not replace it.</div></span></div><div class="row"><span style="flex:1"><b>How long we remember a visit</b> <span class="chip ">Plain English</span><div class="meta">A sign-up can be linked to your visit for up to 90 days after they clicked.</div></span></div><div class="row"><span style="flex:1"><b>Date range</b> <span class="chip ">Plain English</span><div class="meta">Visits and your estimated fee use when people clicked. Sign-ups use when they registered. Paid uses when they subscribed.</div></span></div><div class="row"><span style="flex:1"><b>Filters</b> <span class="chip ">Plain English</span><div class="meta">Choosing an exam or campaign updates every number on the dashboard to match.</div></span></div></div></div></sc-if><sc-if value="{{ p4 }}" hint-placeholder-val="{{ false }}"><div class="head"><div><div class="eyebrow">Partner</div><h1>Reporting</h1><p class="desc">Your tracking references, and who can see the numbers.</p></div><div class="acts"></div></div><div class="card pad"><h2>Tracking references</h2><div class="card"><div class="row" style="flex-wrap:wrap"><span style="flex:1 1 260px"><b>ndeanery-sca-spring</b><div class="meta">SCA · /sca</div></span><div class="acts"></div></div><div class="row" style="flex-wrap:wrap"><span style="flex:1 1 260px"><b>ndeanery-newsletter</b><div class="meta">PLAB · /plab</div></span><div class="acts"></div></div></div><div class="meta">Empty: "No references yet. A reference appears here the first time somebody arrives through one of your links."</div></div><div class="card pad"><h2>Who can read this</h2><p class="meta" style="margin:0">A reporter sees these numbers and nothing else. Ask OSCE Guide staff to add someone. Reporters are added by us, not by your team.</p></div></sc-if><sc-if value="{{ p5 }}" hint-placeholder-val="{{ false }}"><div class="head"><div><div class="eyebrow">Partner</div><h1>Team</h1><p class="desc">Who can run circuits and sign off results in this organisation.</p></div><div class="acts"></div></div><div class="meta">The same Members / Add people / History screens as the People › Staff tab, shown with "Team" as the title. Only with manage_team.</div><a class="btn" href="People.dc.html" style="align-self:flex-start">See the Staff tab</a></sc-if><sc-if value="{{ p6 }}" hint-placeholder-val="{{ false }}"><div class="g2"><div class="card pad"><h2>Custom date range</h2><p class="meta" style="margin:0">Choose the start and end dates for this report.</p><div class="fields"><div><label>From</label><input class="input" type="date"></div><div><label>To</label><input class="input" type="date"></div></div><div class="al bad">The start date must be on or before the end date.</div></div><div class="card pad"><div class="al bad"><b>We couldn't load these numbers</b> Network error. Nothing here is zero; it just hasn't loaded. <button class="btn sm">Try again</button></div><div><b>No activity yet</b><div class="meta">When people open your links, the numbers will show up here.</div></div><div><b>Nothing to show for these dates</b><div class="meta">Try widening the date range or removing filters.</div></div></div></div></sc-if><div class="note">Partner arm unchanged. Its nav is Overview, Reporting and Team.</div>
+<details class="fold card" style="border-color:#1D4ED8"><summary>Build spec: how to build this screen</summary><div class="in" style="font-size:13px">
+<div class="g2"><div><div class="eyebrow">Route</div><code>/app/[workspace] (partner surface)</code></div><div><div class="eyebrow">Who sees it</div>Partner admin and reporters</div>
+<div><div class="eyebrow">Owner agent</div><code>access-owner</code> · prove with <code>verify-access</code> then the web <code>verify</code> skill</div><div><div class="eyebrow">Design</div><code>web/docs/DESIGN.md</code>, assess skin, <code>foundation/ui</code> only</div></div>
+<div class="eyebrow">Files to change or reuse</div><ul style="margin:0;padding-left:18px"><li><code>web/src/domains/partner/Dashboard.tsx</code></li><li><code>web/src/domains/partner/Reporting.tsx</code></li><li><code>web/src/domains/partner/api.ts</code></li></ul>
+<div class="eyebrow">API calls (all exist; add no endpoint, change no schema)</div><div class="card"><div class="row meta">No calls of its own: it is a static explainer or reuses the data of the screen that links here.</div></div>
+<div class="eyebrow">Steps</div><ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+<li>Each tab on this board is one screen or state. Build every one; none is optional.</li>
+<li>Each button that opens a box is a <code>Modal</code> (or <code>ConfirmModal</code> for a yes/no). Open each box on this board to see its words.</li>
+<li>Copy every word on the board exactly, including the empty, error and busy texts. Put nouns through <code>useAssessWords</code> so hire reads its own words.</li>
+<li>Find the button's call in the list above, by its summary. Today's caller (the "Now:" file) already makes that call: reuse its function from that file's <code>api.ts</code>. Do not write a new fetch.</li>
+<li>Show a write button only to the person in "Who sees it". Anyone else gets the same screen with no write buttons.</li>
+<li>Write a failing test first (Testing Library, assert the literal words), then build, then run <code>npm run ci</code>.</li>
+<li>Live data comes from the existing SSE streams (<code>useMeEvents</code> or the <code>*/stream</code> route above). Never poll.</li>
+<li>Nothing that exists today may disappear. If a control on today's screen is not on this board, stop and ask.</li></ol></div></details>
+</div></main></div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0, d: '' }; }
+  renderVals() {
+    const { t, d } = this.state;
+    const L = ["Overview", "Performance", "Your fee", "How we count", "Reporting", "Team", "Custom dates and errors"];
+    return { tabs: L.map((label,k)=>({label, cls: k===t?'tab on':'tab', pick: ()=>this.setState({t:k})})),
+      p0: t===0, go0: ()=>this.setState({t:0}),
+      p1: t===1, go1: ()=>this.setState({t:1}),
+      p2: t===2, go2: ()=>this.setState({t:2}),
+      p3: t===3, go3: ()=>this.setState({t:3}),
+      p4: t===4, go4: ()=>this.setState({t:4}),
+      p5: t===5, go5: ()=>this.setState({t:5}),
+      p6: t===6, go6: ()=>this.setState({t:6}),
+      close: ()=>this.setState({d:''}) };
+  }
+}
+</script>
+</body>
+</html>

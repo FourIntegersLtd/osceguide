@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Self practice</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F5F5F7;font-family:"Open Sauce One",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#1D1D1F}
+a{color:#1D4ED8;text-decoration:none}a:hover{color:#1E40AF}
+.shell{display:flex;flex-wrap:wrap;min-height:100vh}
+.side{flex:1 1 232px;max-width:248px;background:#fff;border-right:1px solid #E3E3E8;padding:20px 12px;box-sizing:border-box}
+@media(max-width:760px){.side{max-width:none;border-right:0;border-bottom:1px solid #E3E3E8}.main{padding:24px 16px 48px!important}}
+.org{display:flex;align-items:center;gap:10px;padding:6px 8px 14px}
+.mark{width:32px;height:32px;border-radius:9px;background:#1D4ED8;color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none}
+.sec{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73;padding:16px 10px 6px}
+.nav{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:9px;color:#3A3A3D;font-size:14px}
+.nav:hover{background:#F5F5F7;color:#1D1D1F}
+.nav.on{background:#EBEBEF;color:#1D1D1F;font-weight:500}
+.main{flex:999 1 560px;min-width:0;padding:32px 40px 56px;box-sizing:border-box}
+.page{max-width:1080px;display:flex;flex-direction:column;gap:24px}
+.eyebrow{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73}
+h1{font-size:28px;line-height:1.2;font-weight:600;margin:6px 0}
+h2{font-size:16px;font-weight:600;margin:0}
+.desc{font-size:16px;color:#6E6E73;margin:0;line-height:1.5}
+.meta{font-size:13px;color:#6E6E73;line-height:1.5}
+.card{background:#fff;border:1px solid #E3E3E8;border-radius:14px;overflow:hidden}
+.pad{padding:20px;display:flex;flex-direction:column;gap:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:9px;font-size:14px;font-weight:500;border:1px solid #E3E3E8;background:#fff;color:#1D1D1F;cursor:pointer;font-family:inherit;box-sizing:border-box;white-space:nowrap}
+.btn:hover{background:#F5F5F7;color:#1D1D1F}
+.btn.pri{background:#1D4ED8;border-color:#1D4ED8;color:#fff}.btn.pri:hover{background:#1E40AF;color:#fff}
+.btn.bad{color:#B91C1C}.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;background:#EBEBEF;color:#3A3A3D;white-space:nowrap}
+.chip.ok{background:#EEF8F1;color:#047857}.chip.warn{background:#FCF5E6;color:#92400E}.chip.info{background:#E8EFFC;color:#1E40AF}.chip.live{background:#FCEFEE;color:#B91C1C}
+.row{display:flex;align-items:center;gap:16px;padding:14px 20px;border-top:1px solid #EFEFF2;font-size:14px;color:#1D1D1F;flex-wrap:wrap}
+a.row:hover{background:#FAFAFB;color:#1D1D1F}
+.th{display:flex;gap:16px;padding:10px 20px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6E6E73;background:#FAFAFB;flex-wrap:wrap}
+.tabs{display:inline-flex;background:#EBEBEF;border-radius:9px;padding:3px;gap:2px;flex-wrap:wrap;align-self:flex-start}
+.tab{min-height:36px;padding:0 14px;border-radius:7px;font-size:14px;color:#3A3A3D;display:inline-flex;align-items:center;border:0;background:transparent;font-family:inherit;cursor:pointer}
+.tab.on{background:#fff;color:#1D1D1F;font-weight:500}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.g6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+@media(max-width:900px){.g2,.g3{grid-template-columns:minmax(0,1fr)}.g6{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cols{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.colm{flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.cola{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.tile{background:#fff;border:1px solid #E3E3E8;border-radius:14px;padding:16px}
+.tile b{display:block;font-size:24px;font-weight:600;margin-top:4px}
+.rail{display:flex;gap:8px;flex-wrap:wrap}
+.st{flex:1 1 110px;padding:10px 12px;border-radius:9px;background:#fff;border:1px solid #E3E3E8;font-size:13px}
+.st b{display:block;font-size:14px;font-weight:500}
+.st.done{background:#EEF8F1;border-color:#EEF8F1}.st.now{border-color:#1D4ED8;background:#F7F9FE}
+.al{border-radius:9px;padding:12px 14px;font-size:14px;line-height:1.5}
+.al.warn{background:#FCF5E6;color:#92400E}.al.info{background:#E8EFFC;color:#1E40AF}.al.ok{background:#EEF8F1;color:#047857}.al.bad{background:#FCEFEE;color:#B91C1C}
+.al b{display:block}
+label{font-size:14px;font-weight:500;display:block;margin-bottom:6px}
+.input{width:100%;min-height:44px;padding:0 12px;border:1px solid #E3E3E8;border-radius:9px;font-size:16px;font-family:inherit;color:#1D1D1F;box-sizing:border-box;background:#fff}
+textarea.input{min-height:96px;padding:10px 12px;resize:vertical}
+.fields{display:flex;gap:16px;flex-wrap:wrap}.fields>div{flex:1 1 200px}
+.hint{font-size:13px;color:#6E6E73;margin-top:6px;line-height:1.5}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;min-height:32px;font-weight:400;margin:0}
+.check input{width:18px;height:18px;margin-top:2px;accent-color:#1D4ED8}
+.pill{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid #E3E3E8;background:#fff;font-size:13px;font-family:inherit;color:#1D1D1F}
+.pill.on{background:#E8EFFC;border-color:#1D4ED8;color:#1E40AF}
+.seg{display:inline-flex;border:1px solid #E3E3E8;border-radius:9px;overflow:hidden;flex-wrap:wrap}
+.seg span{min-height:40px;padding:0 14px;display:inline-flex;align-items:center;font-size:14px;border-right:1px solid #E3E3E8;background:#fff}
+.seg span:last-child{border-right:0}.seg span.g{background:#EEF8F1;color:#047857;font-weight:500}.seg span.a{background:#FCF5E6;color:#92400E;font-weight:500}.seg span.r{background:#FCEFEE;color:#B91C1C;font-weight:500}
+.clock{font-size:44px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.av{width:32px;height:32px;border-radius:999px;background:#EBEBEF;color:#3A3A3D;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
+.hero{background:#fff;border:1px solid #E3E3E8;border-radius:14px;padding:24px;display:flex;gap:20px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.hero.live{border-color:#1D4ED8;background:#F7F9FE}
+.note{font-size:12px;color:#6E6E73;border-top:1px dashed #E3E3E8;padding-top:12px;line-height:1.5}
+.ov{position:fixed;inset:0;background:rgba(29,29,31,.32);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.dlg{background:#fff;border-radius:14px;max-width:520px;width:100%;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.18);max-height:90vh;overflow:auto}
+.dlg .acts{justify-content:flex-end}
+details.fold{border-top:1px solid #EFEFF2}details.fold summary{padding:14px 20px;font-size:14px;font-weight:500;cursor:pointer;min-height:24px}
+.fold .in{padding:0 20px 16px;font-size:14px;line-height:1.6;color:#3A3A3D}
+.help{width:36px;height:36px;border-radius:999px;border:1px solid #E3E3E8;background:#fff;font-weight:600;color:#3A3A3D;display:inline-flex;align-items:center;justify-content:center}
+</style>
+</helmet>
+<div class="shell">
+<nav class="side" aria-label="Main">
+<div class="org"><div class="mark">SM</div><div><div style="font-size:14px;font-weight:600">St Mary's Medical School</div><div class="meta">Amara Okoye · Trainee</div></div></div>
+<a class="nav" href="Trainee.dc.html">My training</a>
+<a class="nav" href="Trainee.dc.html">Practice sessions</a>
+<a class="nav on" href="SelfPractice.dc.html">Self practice</a>
+</nav>
+<main class="main"><div class="page">
+<div class="tabs" role="tablist"><sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button class="{{ t.cls }}" onClick="{{ t.pick }}">{{ t.label }}</button></sc-for></div><sc-if value="{{ p0 }}" hint-placeholder-val="{{ true }}"><div class="head"><div><div class="eyebrow">Practise</div><h1>Self practice</h1><p class="desc">Your organisation's stations. Nothing here is marked for the record.</p></div><div class="acts"></div></div>
+<input class="input" placeholder="Search stations" aria-label="Search stations" style="max-width:420px">
+<div class="card"><div class="row" style="border-top:0"><span class="chip">FINALS</span><span style="flex:1">Chest pain history</span><a class="btn sm" href="#">Practise</a></div><div class="row"><span class="chip">FINALS</span><span style="flex:1">Breaking bad news</span><a class="btn sm" href="#">Practise</a></div><div class="row"><span class="chip">FINALS</span><span style="flex:1">Headache history</span><a class="btn sm" href="#">Practise</a></div></div>
+<div class="note">Opens the practice station (reading, consultation, feedback, transcript, debrief). Empty: "No published stations yet. Your organisation has not added any stations yet. Ask your administrator when they will be ready." Which exams a trainee may practise is set by an admin under People › Exam access.</div>
+</sc-if><sc-if value="{{ p1 }}" hint-placeholder-val="{{ false }}"><div class="card pad"><h2>This station is not available</h2><p class="meta" style="margin:0">It may have been withdrawn, is not published yet, or belongs to another organisation.</p><button class="btn sm ">Back to practice</button></div><p class="meta" style="margin:0">On every self-practice station: "Nothing here is marked for the record."</p></sc-if><div class="note">What changed: none.</div>
+<details class="fold card" style="border-color:#1D4ED8"><summary>Build spec: how to build this screen</summary><div class="in" style="font-size:13px">
+<div class="g2"><div><div class="eyebrow">Route</div><code>/app/[workspace]/trainee/practice and /stations/[stationId]/practise</code></div><div><div class="eyebrow">Who sees it</div>Trainee</div>
+<div><div class="eyebrow">Owner agent</div><code>attempt-engine-owner</code> · prove with <code>verify-attempt-engine</code> then the web <code>verify</code> skill</div><div><div class="eyebrow">Design</div><code>web/docs/DESIGN.md</code>, assess skin, <code>foundation/ui</code> only</div></div>
+<div class="eyebrow">Files to change or reuse</div><ul style="margin:0;padding-left:18px"><li><code>web/src/domains/assess/trainee/SelfPractice.tsx</code></li><li><code>web/src/domains/assess/trainee/SelfPracticeStation.tsx</code></li><li><code>web/src/domains/assess/trainee/practisableStation.ts</code></li></ul>
+<div class="eyebrow">API calls (all exist; add no endpoint, change no schema)</div><div class="card"><div class="row meta">No calls of its own: it is a static explainer or reuses the data of the screen that links here.</div></div>
+<div class="eyebrow">Steps</div><ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+<li>Each tab on this board is one screen or state. Build every one; none is optional.</li>
+<li>Each button that opens a box is a <code>Modal</code> (or <code>ConfirmModal</code> for a yes/no). Open each box on this board to see its words.</li>
+<li>Copy every word on the board exactly, including the empty, error and busy texts. Put nouns through <code>useAssessWords</code> so hire reads its own words.</li>
+<li>Find the button's call in the list above, by its summary. Today's caller (the "Now:" file) already makes that call: reuse its function from that file's <code>api.ts</code>. Do not write a new fetch.</li>
+<li>Show a write button only to the person in "Who sees it". Anyone else gets the same screen with no write buttons.</li>
+<li>Write a failing test first (Testing Library, assert the literal words), then build, then run <code>npm run ci</code>.</li>
+<li>Live data comes from the existing SSE streams (<code>useMeEvents</code> or the <code>*/stream</code> route above). Never poll.</li>
+<li>Nothing that exists today may disappear. If a control on today's screen is not on this board, stop and ask.</li></ol></div></details>
+</div></main></div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0, d: '' }; }
+  renderVals() {
+    const { t, d } = this.state;
+    const L = ["Screen", "Not available"];
+    return { tabs: L.map((label,k)=>({label, cls: k===t?'tab on':'tab', pick: ()=>this.setState({t:k})})),
+      p0: t===0, go0: ()=>this.setState({t:0}),
+      p1: t===1, go1: ()=>this.setState({t:1}),
+      close: ()=>this.setState({d:''}) };
+  }
+}
+</script>
+</body>
+</html>
