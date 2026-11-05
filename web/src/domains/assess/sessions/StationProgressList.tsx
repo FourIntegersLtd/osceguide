@@ -119,7 +119,7 @@ function Row({
       <td className="px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={progressTone(progress)} dot>{PROGRESS_LABEL[progress]}</Badge>
-          {slot.has_review ? <Badge variant="accent">Marked</Badge> : null}
+          {slot.marked ? <Badge variant="accent">Marked</Badge> : null}
         </div>
       </td>
       <td className="px-4 py-3 font-mono text-osce-body text-b2b-mid">
@@ -133,7 +133,7 @@ function Row({
             nobody had. */}
         {markable(slot) ? (
           <ButtonLink href={reviewHref} themeType="b2b" variant="secondary" size="sm">
-            {slot.has_review ? "Review" : "Mark"}
+            {slot.marked ? "Review" : "Mark"}
           </ButtonLink>
         ) : null}
       </td>

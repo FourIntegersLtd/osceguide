@@ -73,6 +73,15 @@ are `institution-owner`'s; this is how a mark and an outcome are computed.
   engine's per-request `timeout_s` defaults to 180 (a per-request value overrides the client's), and
   markings run on `evaluator._marking_pool()` (`worker_concurrency` threads), not `asyncio.to_thread`.
   `save_result` may return a bool (C1.3): `False` means another run stored it, so do nothing more.
+- **A rubric's `display` block decides what the candidate sees**: `show` (`overall`, `areaScores`,
+  `wentWell`, `workOn`, `quotes`; absent means shown, so old rubrics are unchanged) and `feedbackTone`
+  (`supportive|formal|brief`, not `tones`, which colours numbers). Both are frozen into the attempt
+  snapshot (`service_marking._snapshot_of`; the tone is added to the prompt there). Hiding is done by
+  `feedbackModel` in the web, by field role; the API result payload is NOT redacted, and an examiner
+  view passes `showAll`.
+- **The console's `marked` is `station_is_marked`**, the same test sitting results use; `has_review`
+  alone is not "marked". Reviewers hear an AI mark on their own `attempt` stream because
+  `sittings.announcements.attempt_progress` also tells the circuit supervisor and the org admins.
 
 ## What a failure looks like here
 - A wrong score with no error: a rule never called, a v1 rubric read as v2, a field silently dropped.

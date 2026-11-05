@@ -54,13 +54,16 @@ export function RubricFeedback({
   result,
   heading,
   narrow = false,
+  showAll = false,
 }: {
   rubric: MarkingRubric;
   result: MarkedResult;
   heading?: string;
   narrow?: boolean;
+  /** An examiner's reading: show what the author hid from the candidate too. */
+  showAll?: boolean;
 }) {
-  const model = useMemo(() => feedbackModel(rubric, result, heading), [rubric, result, heading]);
+  const model = useMemo(() => feedbackModel(rubric, result, heading, { showAll }), [rubric, result, heading, showAll]);
 
   if (model.blocks.length === 0) {
     return (

@@ -14,8 +14,10 @@ import { listAt, pathText } from "@/capabilities/authoring/rubrics/jsonPath";
 import { problemsAt } from "@/capabilities/authoring/rubrics/problems";
 import { appendAt, readRating } from "@/capabilities/authoring/rubrics/rubricEdits";
 import {
+  CANDIDATE_SEES,
   DISPLAY_LABELS,
   DOMAIN_AGGREGATES,
+  FEEDBACK_TONES,
   TONES,
   TOTAL_AGGREGATES,
 } from "@/capabilities/authoring/rubrics/rubricVocabulary";
@@ -72,7 +74,21 @@ export function DisplayPanel() {
 
       <p className="text-osce-caption text-ink-muted">This was the feedback template. It now lives here, with the marking it describes.</p>
 
-      <FoldSection title="What the candidate sees" description="Replace the default headings on the feedback page and dashboard.">
+      <FoldSection title="What the candidate sees" description="Untick what the candidate does not see. An examiner still sees everything.">
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2" data-path="display.show">
+          {CANDIDATE_SEES.map((item) => (
+            <ToggleAtPath key={item.value} path={["display", "show", item.value]} label={item.label} hint={item.hint} defaultOn />
+          ))}
+        </div>
+        <div className="mb-4">
+          <SelectAtPath
+            path={["display", "feedbackTone"]}
+            label="Tone of the written feedback"
+            hint="How the marker words what it writes."
+            choices={FEEDBACK_TONES}
+            emptyLabel="Default"
+          />
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-path="display.labels">
           {DISPLAY_LABELS.map((label) => (
             <TextAtPath key={label.value} path={["display", "labels", label.value]} label={label.label} hint={label.hint} />

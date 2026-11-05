@@ -414,3 +414,10 @@ def _gp_read(review: GpLeadReview, *, form: ReviewFormRead | None) -> GpLeadRevi
 async def reviewed_slot_ids(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
     """Which of these slots have been marked. For the console's slot list."""
     return await repository.slots_with_any_review(session, list(slot_ids))
+
+
+async def draft_counts_for_slots(
+    session: AsyncSession, slot_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Reviews still waiting to be completed, per slot. For the console's drafts line."""
+    return await repository.draft_counts_for_slots(session, list(slot_ids))

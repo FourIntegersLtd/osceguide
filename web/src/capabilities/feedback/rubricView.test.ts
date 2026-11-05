@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { feedbackModel, type DomainView, type SectionView } from "@/capabilities/feedback/rubricView";
-import { CASC, ORTHO, PLAB, SCA, WARD_ROUND } from "@/capabilities/feedback/testRubrics";
+import { CASC, ORTHO, PLAB, SCA, SCA_DISPLAY, WARD_ROUND } from "@/capabilities/feedback/testRubrics";
 
 function domain(blocks: Array<DomainView | SectionView>, identifier: string): DomainView {
   const found = blocks.find((block) => block.kind === "domain" && block.id === identifier);
@@ -145,5 +145,38 @@ describe("feedback rendered from the rubric", () => {
     assert.deepEqual(summary.answers, [
       { type: "text", role: "explanation", label: "Narrative", text: "A safe round with a thin plan." },
     ]);
+  });
+});
+
+describe("fields the author hid from the candidate", () => {
+  const hiding = (show: Record<string, boolean>) => ({ ...SCA.rubric, display: { ...SCA_DISPLAY, show } });
+
+  it("hides the overall result and band but keeps the heading", () => {
+    const header = feedbackModel(hiding({ overall: false }), SCA.result).header;
+    assert.deepEqual(header, { heading: "Your mark", total: null, caption: "", outcome: null, passed: null, band: null, passLine: null });
+  });
+
+  it("hides the score per area but not the areas", () => {
+    const model = feedbackModel(hiding({ areaScores: false }), SCA.result);
+    assert.equal(domain(model.blocks, "global_skills").aggregate, null);
+    assert.equal(domain(model.blocks, "global_skills").competencies.length, 1);
+  });
+
+  it("hides what went well, what to work on and the quotes by the role of the answer", () => {
+    const wentWell = feedbackModel(hiding({ wentWell: false }), SCA.result);
+    const analysis = wentWell.blocks.find((block) => block.id === "clinical_analysis");
+    assert.deepEqual(analysis?.kind === "section" ? analysis.answers.map((answer) => answer.label) : null, ["Safety considerations"]);
+
+    const workOn = feedbackModel(hiding({ workOn: false }), SCA.result);
+    assert.deepEqual(workOn.blocks.map((block) => block.title), ["Global skills", "Clinical analysis"]);
+
+    const quotes = feedbackModel(hiding({ quotes: false }), SCA.result);
+    assert.deepEqual(domain(quotes.blocks, "global_skills").competencies[0]?.answers.map((answer) => answer.label), ["Why"]);
+  });
+
+  it("shows everything to an examiner whatever the author hid", () => {
+    const everything = { overall: false, areaScores: false, wentWell: false, workOn: false, quotes: false };
+    const model = feedbackModel(hiding(everything), SCA.result, "Automatic marking", { showAll: true });
+    assert.deepEqual(model, feedbackModel(SCA.rubric, SCA.result, "Automatic marking"));
   });
 });

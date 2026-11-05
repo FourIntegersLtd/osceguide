@@ -2981,6 +2981,10 @@
             ],
             "title": "Attempt Id"
           },
+          "draft_reviews": {
+            "title": "Draft Reviews",
+            "type": "integer"
+          },
           "ended_at": {
             "anyOf": [
               {
@@ -3016,6 +3020,10 @@
           },
           "is_active": {
             "title": "Is Active",
+            "type": "boolean"
+          },
+          "marked": {
+            "title": "Marked",
             "type": "boolean"
           },
           "phase": {
@@ -3102,6 +3110,8 @@
           "trainee",
           "station",
           "has_review",
+          "marked",
+          "draft_reviews",
           "is_active"
         ],
         "title": "ConsoleSlot",
@@ -15829,6 +15839,18 @@
       },
       "RubricVersionRead": {
         "properties": {
+          "archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -15897,6 +15919,25 @@
           "system_prompt": {
             "title": "System Prompt",
             "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "used_by_exams": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Used By Exams",
+            "type": "array"
           },
           "version": {
             "title": "Version",
@@ -18195,6 +18236,37 @@
             ],
             "title": "Observer Trainee Id"
           },
+          "overall": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall"
+          },
+          "reviewer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewer Name"
+          },
           "slot_id": {
             "format": "uuid",
             "title": "Slot Id",
@@ -18252,6 +18324,17 @@
             },
             "title": "Items",
             "type": "array"
+          },
+          "reviewers_agree": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewers Agree"
           },
           "summary": {
             "$ref": "#/components/schemas/SlotRagSummary"

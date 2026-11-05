@@ -126,6 +126,10 @@ class ConsoleSlot(BaseModel):
     # Whether this slot has been marked. The console probed one request per
     # slot for this.
     has_review: bool
+    # Marked by the sitting results' own rule: the attempt is evaluated or a completed review rated it.
+    marked: bool
+    # Reviews started on this slot and not yet completed.
+    draft_reviews: int
     is_active: bool
     # The live attempt, if the patient has been dispatched for this slot.
     attempt_id: uuid.UUID | None = None

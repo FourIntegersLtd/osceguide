@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.events import PENDING_KEY, circuit_topic, org_topic
+from app.core.events import PENDING_KEY, circuit_topic, org_topic, user_topic
 from app.features.attempts import repository as attempts_repo
 from app.features.attempts import service as attempts_service
 from app.features.attempts import service_worker
@@ -16,6 +16,7 @@ from app.features.identity import repository as identity_repo
 from app.features.results import repository as results_repo
 from app.features.roster import repository as roster_repo
 from app.features.sittings import announcements, repository, service_rescue, service_run
+from app.features.tenancy.models import Membership
 from tests.repository.test_circuit_run import a_circuit
 from tests.support.catalog import ensure_exam
 from tests.support.fakes import FakeRoomAgents
@@ -55,6 +56,39 @@ async def test_a_slot_attempt_progress_tells_the_board_and_the_console(db_sessio
     assert sent == {
         (circuit_topic(circuit_id), announcements.ATTEMPT_PROGRESS),
         (org_topic(org_id), announcements.ATTEMPT_PROGRESS),
+    }
+
+
+async def test_a_marked_slot_attempt_reaches_the_supervisor_and_the_admins_but_not_a_plain_member(
+    db_session: AsyncSession,
+) -> None:
+    org_id, circuit_id, attempt = await a_slot_attempt(db_session)
+    supervisor = await identity_repo.create_user(
+        db_session, email=f"s{uuid.uuid4().hex[:8]}@example.com", name="S", password_hash=None
+    )
+    admin = await identity_repo.create_user(
+        db_session, email=f"a{uuid.uuid4().hex[:8]}@example.com", name="A", password_hash=None
+    )
+    member = await identity_repo.create_user(
+        db_session, email=f"m{uuid.uuid4().hex[:8]}@example.com", name="M", password_hash=None
+    )
+    db_session.add_all(
+        [
+            Membership(org_id=org_id, user_id=admin.id, role="owner"),
+            Membership(org_id=org_id, user_id=member.id, role="trainee"),
+        ]
+    )
+    circuit = await repository.circuit_by_id(db_session, org_id, circuit_id)
+    assert circuit is not None
+    circuit.supervisor_user_id = supervisor.id
+    await db_session.flush()
+
+    await announcements.attempt_progress(db_session, attempt)
+
+    heard = {topic: payload for topic, name, payload in db_session.info[PENDING_KEY] if name == "attempt"}
+    assert heard == {
+        user_topic(supervisor.id): {"attempt_id": str(attempt.id)},
+        user_topic(admin.id): {"attempt_id": str(attempt.id)},
     }
 
 

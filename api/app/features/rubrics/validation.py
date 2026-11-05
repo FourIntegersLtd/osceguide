@@ -19,6 +19,8 @@ from typing import Any, TypeGuard
 __all__ = [
     "DISPLAY_LABELS",
     "DOMAIN_AGGREGATES",
+    "FEEDBACK_SHOW",
+    "FEEDBACK_TONES",
     "FIELD_ROLES",
     "FIELD_SOURCES",
     "FIELD_TYPES",
@@ -64,6 +66,9 @@ TOTAL_AGGREGATES = ("ragShare", "sum", "mean", "percentAchieved")
 TONES = ("excellent", "good", "fair", "weak", "poor")
 # "title" is legacy: no screen renders it now; kept so stored rubrics that carry it still validate.
 DISPLAY_LABELS = ("title", "domainSubtitle", "domainPassLabel", "totalTitle", "trendSubtitle", "passLabel")
+# What the candidate's feedback may show or hide, and the wording tone the marker is asked for.
+FEEDBACK_SHOW = ("overall", "areaScores", "wentWell", "workOn", "quotes")
+FEEDBACK_TONES = ("supportive", "formal", "brief")
 
 # --- Size limits --------------------------------------------------------------
 # A structure becomes a strict JSON Schema sent to the model provider, whose
@@ -437,6 +442,7 @@ class _Checker:
                     if not isinstance(band.get("label", ""), str):
                         self.fail(f"{band_path}.label", "A band's label must be text.")
                     self.tone(band.get("tone"), f"{band_path}.tone")
+        self.feedback_display(raw)
         labels = raw.get("labels")
         if labels is not None:
             if not isinstance(labels, Mapping):
@@ -450,6 +456,23 @@ class _Checker:
                         )
                     elif not isinstance(value, str):
                         self.fail(f"display.labels.{key}", "A label must be text.")
+
+    def feedback_display(self, raw: Mapping[str, Any]) -> None:
+        """Which feedback fields the candidate sees, and the tone the marker writes in."""
+        tone = raw.get("feedbackTone")
+        if tone is not None and tone not in FEEDBACK_TONES:
+            self.fail("display.feedbackTone", f"A feedback tone is one of {', '.join(FEEDBACK_TONES)}.")
+        show = raw.get("show")
+        if show is None:
+            return
+        if not isinstance(show, Mapping):
+            self.fail("display.show", "Shown fields must be an object of field to true or false.")
+            return
+        for key, value in show.items():
+            if key not in FEEDBACK_SHOW:
+                self.fail(f"display.show.{key}", f"Unknown field; the fields are {', '.join(FEEDBACK_SHOW)}.")
+            elif not isinstance(value, bool):
+                self.fail(f"display.show.{key}", "Shown or hidden must be true or false.")
 
     def tone(self, tone: Any, path: str) -> None:
         """A colour from the few the screens draw."""

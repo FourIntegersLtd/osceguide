@@ -21,6 +21,10 @@ class SlotReviewRead(BaseModel):
     field_values: dict[str, Any]
     notes: str | None
     completed_at: datetime | None
+    # Who finished this review and what it rated overall, as the exam-day board shows them. Null on
+    # a draft: a half-written judgement is not attributed to anyone.
+    reviewer_name: str | None = None
+    overall: RatingValueRead | None = None
     # What the reviewer can rate, from the sitting's rubric; null if the slot has none.
     form: ReviewFormRead | None = None
 
@@ -65,6 +69,8 @@ class SlotReviewsRead(BaseModel):
     summary: SlotRagSummary
     # What a reviewer can rate on this slot, from the sitting's rubric.
     form: ReviewFormRead | None = None
+    # Whether every finished review rated the station the same overall; null with fewer than two.
+    reviewers_agree: bool | None = None
     # Why the slot's last attempt failed when it has no live one (`no_marking_rubric`): the
     # station was taken, so "nobody took it" would be untrue. Null otherwise.
     attempt_failed_reason: str | None = None

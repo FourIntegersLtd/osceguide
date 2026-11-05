@@ -27,7 +27,7 @@ export function MarkingPanel({
   const result = feedback?.results?.at(-1) ?? null;
   // The same feedback the candidate reads, drawn from the same rubric.
   if (result && feedback?.rubric) {
-    return <RubricFeedback rubric={feedback.rubric} result={result} heading="Automatic marking" narrow />;
+    return <RubricFeedback rubric={feedback.rubric} result={result} heading="Automatic marking" narrow showAll />;
   }
   return (
     <Panel

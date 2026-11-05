@@ -184,8 +184,6 @@ Ask few questions; record judgement calls below. Phase 6 (money) is merged after
 - (orchestrator) Browser verification runs after each merge, in the main tree, one at a time.
 - (2b) NewStation chooser is org-only; on an org, the AI card says a layout comes first (CreateStation.md: AI appears once a template is chosen).
 - (6) Invoices: Settings tab holds the "Open invoices" link card; list and detail are on /settings/invoices.
-- (2c) Per-field Shown/Hidden switches and the Tone select are not built: no such data in the rubric or api.
-- (5) Per-reviewer names and "Reviewers agree." on SlotReview not built (review rows carry no reviewer name). "This page updates on its own." reworded: attempt events go only to the trainee's topic.
 - (3) Training-mode breaks not built by design (training has no breaks; the exam break is stored in `exams.settings.default_break_minutes`, no migration); bulk create defaults the name prefix to "Exam".
 
 ## Ledger (the orchestrator updates this)

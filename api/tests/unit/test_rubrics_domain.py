@@ -354,6 +354,8 @@ def test_a_rag_rubric_reads_as_counts_and_a_share_with_tones_by_position() -> No
         ],
         "bands": [],
         "labels": {},
+        "show": {"overall": True, "areaScores": True, "wentWell": True, "workOn": True, "quotes": True},
+        "feedbackTone": None,
     }
 
 

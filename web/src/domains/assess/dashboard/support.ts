@@ -369,6 +369,11 @@ export function stillToReviewLine(unmarked: number, total: number, w: AssessWord
   return `${unmarked} of ${total} ${total === 1 ? w.trainee : w.trainees} still to review`;
 }
 
+/** "2 drafts waiting to be completed". */
+export function draftsWaitingLine(drafts: number): string {
+  return `${drafts} ${drafts === 1 ? "draft" : "drafts"} waiting to be completed`;
+}
+
 /** A supervisor's circuits grouped by sitting: one row per sitting, "· 6 circuits" when several. */
 export function circuitsBySitting<T extends { sitting_id: string; sitting_name: string; circuit_name: string }>(
   rows: readonly T[],

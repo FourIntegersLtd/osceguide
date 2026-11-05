@@ -190,6 +190,10 @@ class DisplaySpec:
     tones: tuple[DisplayTone, ...] = ()
     bands: tuple[DisplayBand, ...] = ()
     labels: Mapping[str, str] = field(default_factory=dict)
+    # Feedback fields the author hid from the candidate (`overall`, `areaScores`, ...); absent means shown.
+    show: Mapping[str, bool] = field(default_factory=dict)
+    # The marker's tone: `supportive`, `formal` or `brief`; None leaves the prompt as written.
+    feedback_tone: str | None = None
 
 
 @dataclass(frozen=True)

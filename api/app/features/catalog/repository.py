@@ -145,6 +145,24 @@ async def count_live_exams_for_rubric_version(session: AsyncSession, rubric_vers
     return int((await session.execute(stmt)).scalar_one())
 
 
+async def live_exam_names_by_rubric_version(
+    session: AsyncSession, org_id: uuid.UUID | None, rubric_version_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[str]]:
+    """Names of the owner's own exams not yet retired, keyed by rubric version, in name order."""
+    if not rubric_version_ids:
+        return {}
+    owner = Exam.org_id.is_(None) if org_id is None else Exam.org_id == org_id
+    stmt = (
+        select(Exam.rubric_version_id, Exam.name)
+        .where(Exam.rubric_version_id.in_(rubric_version_ids), Exam.status != "retired", owner)
+        .order_by(Exam.name)
+    )
+    names: dict[uuid.UUID, list[str]] = {}
+    for version_id, name in (await session.execute(stmt)).all():
+        names.setdefault(version_id, []).append(name)
+    return names
+
+
 async def pilot_exam_codes(session: AsyncSession) -> list[str]:
     """Exams a partner attribution link may name.
 

@@ -9525,6 +9525,8 @@ export interface components {
         ConsoleSlot: {
             /** Attempt Id */
             attempt_id?: string | null;
+            /** Draft Reviews */
+            draft_reviews: number;
             /** Ended At */
             ended_at: string | null;
             /** Exam Completed At */
@@ -9538,6 +9540,8 @@ export interface components {
             id: string;
             /** Is Active */
             is_active: boolean;
+            /** Marked */
+            marked: boolean;
             /** Phase */
             phase?: string | null;
             /** Phase Ends At */
@@ -14468,6 +14472,8 @@ export interface components {
         };
         /** RubricVersionRead */
         RubricVersionRead: {
+            /** Archived At */
+            archived_at?: string | null;
             /**
              * Id
              * Format: uuid
@@ -14507,6 +14513,10 @@ export interface components {
             };
             /** System Prompt */
             system_prompt: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Used By Exams */
+            used_by_exams?: string[];
             /** Version */
             version: number;
         };
@@ -15395,6 +15405,10 @@ export interface components {
             notes: string | null;
             /** Observer Trainee Id */
             observer_trainee_id: string | null;
+            /** Overall */
+            overall?: boolean | number | string | null;
+            /** Reviewer Name */
+            reviewer_name?: string | null;
             /**
              * Slot Id
              * Format: uuid
@@ -15415,6 +15429,8 @@ export interface components {
             form?: components["schemas"]["ReviewFormRead"] | null;
             /** Items */
             items?: components["schemas"]["SlotReviewRead"][];
+            /** Reviewers Agree */
+            reviewers_agree?: boolean | null;
             summary: components["schemas"]["SlotRagSummary"];
         };
         /** SsoBinding */

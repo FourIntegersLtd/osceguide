@@ -23,6 +23,8 @@ function slot(over: Partial<ConsoleSlot> & { id: string; slot_index: number }): 
     trainee: { user_id: "u-a", name: "Person a", email: null, trainee_id: null },
     station: { version_id: `v-${over.id}`, station_id: null, title: `Station ${over.id}`, version: 1, status: "published" },
     has_review: false,
+    marked: false,
+    draft_reviews: 0,
     is_active: false,
     attempt_id: null,
     phase: null,
@@ -186,7 +188,7 @@ test("a circuit ended with nothing sat does not claim every station was", () => 
 });
 
 test("a station is markable from its consultation, not its reading time", () => {
-  const of = (status: string, has_review = false) => slot({ id: "a", slot_index: 0, status, has_review });
+  const of = (status: string, marked = false) => slot({ id: "a", slot_index: 0, status, marked });
   assert.equal(markable(of("scheduled")), false);
   assert.equal(markable(of("reading")), false);
   assert.equal(markable(of("skipped")), false);
@@ -222,7 +224,7 @@ test("an override's seconds must be a whole number the server accepts", () => {
 test("summariseCircuit counts candidates and who is still to review", () => {
   const data = console_({
     slots: [
-      slot({ id: "a", slot_index: 0, status: "completed", has_review: true }),
+      slot({ id: "a", slot_index: 0, status: "completed", marked: true }),
       slot({ id: "b", slot_index: 1, status: "completed", trainee: { user_id: "u-b", name: "B", email: null, trainee_id: null } }),
       slot({ id: "c", slot_index: 2, status: "scheduled", trainee: { user_id: "u-c", name: "C", email: null, trainee_id: null } }),
     ],
@@ -234,8 +236,19 @@ test("summariseCircuit counts candidates and who is still to review", () => {
   assert.equal(summary.readyToPublish, false);
 });
 
+test("summariseCircuit adds up the drafts waiting to be completed", () => {
+  const data = console_({
+    slots: [
+      slot({ id: "a", slot_index: 0, status: "completed", draft_reviews: 1 }),
+      slot({ id: "b", slot_index: 1, status: "completed", draft_reviews: 1, trainee: { user_id: "u-b", name: "B", email: null, trainee_id: null } }),
+    ],
+  });
+  assert.equal(summariseCircuit(data, null).drafts, 2);
+  assert.equal(summariseCircuit(console_({ slots: [slot({ id: "a", slot_index: 0 })] }), null).drafts, 0);
+});
+
 test("summariseCircuit: all marked is ready to publish only when the review is read and unpublished", () => {
-  const data = console_({ slots: [slot({ id: "a", slot_index: 0, status: "completed", has_review: true })] });
+  const data = console_({ slots: [slot({ id: "a", slot_index: 0, status: "completed", marked: true })] });
   assert.equal(summariseCircuit(data, { state: "draft" }).readyToPublish, true);
   assert.equal(summariseCircuit(data, { state: "published" }).readyToPublish, false);
   assert.equal(summariseCircuit(data, null).readyToPublish, false);

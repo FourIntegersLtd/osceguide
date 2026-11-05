@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.reviews.models import CircuitReview, GpLeadReview, SlotReview
@@ -222,3 +222,17 @@ async def slots_with_any_review(session: AsyncSession, slot_ids: Sequence[uuid.U
         return set()
     stmt = select(SlotReview.slot_id).where(SlotReview.slot_id.in_(list(slot_ids))).distinct()
     return {slot_id for slot_id in (await session.execute(stmt)).scalars()}
+
+
+async def draft_counts_for_slots(
+    session: AsyncSession, slot_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many reviews on each slot are still drafts, in one query."""
+    if not slot_ids:
+        return {}
+    stmt = (
+        select(SlotReview.slot_id, func.count())
+        .where(SlotReview.slot_id.in_(list(slot_ids)), SlotReview.status == "draft")
+        .group_by(SlotReview.slot_id)
+    )
+    return {slot_id: count for slot_id, count in (await session.execute(stmt)).all()}
