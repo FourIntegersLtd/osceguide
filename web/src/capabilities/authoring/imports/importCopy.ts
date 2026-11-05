@@ -33,3 +33,9 @@ export function importStatusLine(status: string, templatePublished: boolean): st
       return status;
   }
 }
+
+/** The pill beside an import: "…" while it is being worked on, "Failed" when it could not be read. */
+export function importStatusChip(status: string): string | null {
+  if (status === "drafting_template" || status === "drafting_station") return "…";
+  return status === "failed" ? "Failed" : null;
+}

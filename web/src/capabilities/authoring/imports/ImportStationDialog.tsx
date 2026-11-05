@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import { HiOutlineCloudArrowUp } from "react-icons/hi2";
 import { Alert, Select, Spinner, TextLink } from "@/foundation/ui";
-import { importStatusLine, uploadFailureMessage } from "@/capabilities/authoring/imports/importCopy";
+import { importStatusChip, importStatusLine, uploadFailureMessage } from "@/capabilities/authoring/imports/importCopy";
 import { errorMessage, useAsync, useMeEvents } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
@@ -23,6 +23,8 @@ import { AuthoringExamSelect } from "@/capabilities/authoring/parts/AuthoringExa
 import { matchesExamFilter } from "@/capabilities/authoring/parts/examCatalogFilter";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { latestOf } from "@/capabilities/authoring/sections/versions";
+import { stationsListPath } from "@/capabilities/authoring/stations/paths";
+import { stationListUrl } from "@/capabilities/authoring/parts/stationListUrl";
 import { stationTemplateEditPath } from "@/capabilities/authoring/templates/paths";
 
 /**
@@ -356,6 +358,9 @@ function ImportRow({
         <p className="flex items-center gap-2 text-osce-meta text-ink-subtle" role="status">
           {drafting ? <Spinner label="Working" /> : null}
           {importStatusLine(status, templatePublished)}
+          {importStatusChip(status) ? (
+            <span className="rounded-full bg-surface-raised px-2 py-0.5 font-medium">{importStatusChip(status)}</span>
+          ) : null}
         </p>
       </div>
 
@@ -365,6 +370,15 @@ function ImportRow({
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
 
       {status === "completed" ? <CheckNotes stationImport={stationImport} /> : null}
+      {status === "completed" && stationImport.station_id ? (
+        <TextLink
+          variant="muted"
+          className="text-osce-meta"
+          href={stationListUrl(stationsListPath(hrefFor), { status: "active", station: stationImport.station_id })}
+        >
+          Open
+        </TextLink>
+      ) : null}
 
       {canCreateStation ? (
         <div className="flex flex-wrap items-center gap-3">

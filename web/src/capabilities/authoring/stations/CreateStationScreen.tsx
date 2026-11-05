@@ -1,9 +1,9 @@
 "use client";
 
 import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, Button, getInputClassName, Select, Textarea, FoldSection } from "@/foundation/ui";
 import { b2bWizardTabActive, b2bWizardTabInactive } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 import { useSurface } from "@/capabilities";
@@ -20,6 +20,8 @@ import { stationTemplateThenStationPath } from "@/capabilities/authoring/templat
 import { stationsListPath } from "@/capabilities/authoring/stations/paths";
 import { stationListUrl } from "@/capabilities/authoring/parts/stationListUrl";
 import { LoadError } from "@/capabilities/authoring/parts/LoadError";
+import { NewStationChooser } from "@/capabilities/authoring/stations/NewStationChooser";
+import { showsCreateForm } from "@/capabilities/authoring/stations/stationStart";
 
 function CreateStationScreenForm() {
   const scope = useAuthoringScope();
@@ -39,6 +41,18 @@ function CreateStationScreenForm() {
       router.replace(stationListUrl(listHref, { status: "active", station: station.id }));
     },
   });
+
+  // Arriving from the chooser: the exam and the way are already picked.
+  const params = useSearchParams();
+  const chosen = useRef(false);
+  const { setExamCode, setMode } = form;
+  useEffect(() => {
+    if (chosen.current) return;
+    chosen.current = true;
+    const exam = params.get("exam");
+    if (exam && !params.get("templateVersion")) setExamCode(exam);
+    if (params.get("start") === "ai") setMode("ai");
+  }, [params, setExamCode, setMode]);
 
   const aiAvailable = promptGeneration || Boolean(form.templateVersionId);
   const aiMode = form.mode === "ai" && aiAvailable;
@@ -61,7 +75,7 @@ function CreateStationScreenForm() {
   return (
     <PlatformTemplateWizardPageLayout
       title="New station"
-      subtitle="Choose a published template and fill in content manually or with AI. Saving opens the draft to check its facts and publish."
+      subtitle="Choose a published template and fill in content manually or with AI. Saving opens the draft so you can publish it."
       backHref={listHref}
       backLabel="Stations"
     >
@@ -283,10 +297,14 @@ function CreateStationScreenForm() {
   );
 }
 
+function CreateStationScreenRoute() {
+  return showsCreateForm(useSearchParams()) ? <CreateStationScreenForm /> : <NewStationChooser />;
+}
+
 export function CreateStationScreen() {
   return (
     <RequireAuthor>
-      <CreateStationScreenForm />
+      <CreateStationScreenRoute />
     </RequireAuthor>
   );
 }

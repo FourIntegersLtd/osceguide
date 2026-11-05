@@ -95,6 +95,9 @@ function GalleryCard({
           <span className="min-w-0 flex-1 truncate text-osce-body font-medium text-ink">
             {option.title}
           </span>
+          {option.recommended ? (
+            <span className="shrink-0 text-osce-caption font-medium text-osce-accent">Recommended</span>
+          ) : null}
           {selected ? (
             <HiCheck className="h-4 w-4 shrink-0 text-osce-accent" aria-hidden />
           ) : null}
