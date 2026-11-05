@@ -3,7 +3,7 @@
 import { isOrgSurface } from "@/capabilities/surface";
 import { useState } from "react";
 import { Alert, AsyncBoundary, Badge, Button, Input, Panel } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync, useDirtyGuard } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { Settings } from "@/capabilities/account";
@@ -14,6 +14,7 @@ import {
   type Organization,
 } from "@/domains/assess/api";
 import { describeSsoStatus } from "@/domains/assess/settings/ssoStatus";
+import { InvoicesPanel } from "@/domains/assess/settings/InvoicesPanel";
 import { ScimTokens } from "@/domains/assess/settings/ScimTokens";
 
 /**
@@ -33,9 +34,10 @@ export function WorkspaceSettings() {
       extraTabs={
         runsOrg
           ? [
-              { id: "organisation", label: "Organisation", panel: <OrganisationPanel orgSlug={orgSlug} /> },
-              { id: "sso", label: "Single sign-on", panel: <SignInPanel orgSlug={orgSlug} /> },
-              { id: "provisioning", label: "Provisioning", panel: <ScimTokens key={orgSlug} orgSlug={orgSlug} /> },
+              { id: "organisation", label: "Organisation", panel: (setDirty) => <OrganisationPanel orgSlug={orgSlug} setDirty={setDirty} /> },
+              { id: "sso", label: "Single sign-on", panel: () => <SignInPanel orgSlug={orgSlug} /> },
+              { id: "provisioning", label: "Provisioning", panel: () => <ScimTokens key={orgSlug} orgSlug={orgSlug} /> },
+              { id: "invoices", label: "Invoices", after: true, panel: (setDirty) => <InvoicesPanel key={orgSlug} orgSlug={orgSlug} setDirty={setDirty} /> },
             ]
           : []
       }
@@ -44,20 +46,23 @@ export function WorkspaceSettings() {
 }
 
 /** The organisation's name, which its admin may change; the web address is fixed and changes go through support. */
-function OrganisationPanel({ orgSlug }: { orgSlug: string }) {
+function OrganisationPanel({ orgSlug, setDirty }: { orgSlug: string; setDirty: (dirty: boolean) => void }) {
   const state = useAsync((signal) => readOrganization(orgSlug, signal), [orgSlug]);
   return (
     <AsyncBoundary state={state}>
-      {(org) => <RenameForm key={org.name} org={org} onSaved={state.reload} />}
+      {(org) => <RenameForm key={org.name} org={org} onSaved={state.reload} setDirty={setDirty} />}
     </AsyncBoundary>
   );
 }
 
-function RenameForm({ org, onSaved }: { org: Organization; onSaved: () => void }) {
+function RenameForm({ org, onSaved, setDirty }: { org: Organization; onSaved: () => void; setDirty: (dirty: boolean) => void }) {
   const [name, setName] = useState(org.name);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const changed = name.trim() !== "" && name.trim() !== org.name;
+
+  // An edited, unsaved name arms the tab strip's "Leave without saving?" guard.
+  useDirtyGuard(changed, setDirty);
 
   async function save() {
     setBusy(true);

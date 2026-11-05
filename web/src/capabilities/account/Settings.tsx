@@ -11,7 +11,7 @@ import {
 } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import ProfilePanel from "@/capabilities/account/settings/ProfilePanel";
-import { tabsFor, type SettingsTab } from "@/capabilities/account/settings/settingsTabs";
+import { arrangeTabs, tabsFor, type SettingsTab } from "@/capabilities/account/settings/settingsTabs";
 
 export type { SettingsTab };
 import PreferencesPanel from "@/capabilities/account/settings/PreferencesPanel";
@@ -22,7 +22,10 @@ import ReferralsPanel from "@/capabilities/account/settings/ReferralsPanel";
 export interface ExtraSettingsTab {
   id: string;
   label: string;
-  panel: ReactNode;
+  /** A panel that can hold unsaved edits takes the setter that arms the leave guard. */
+  panel: (setDirty: (dirty: boolean) => void) => ReactNode;
+  /** Placed after the person's own tabs instead of before them. */
+  after?: boolean;
 }
 
 const NO_EXTRA_TABS: ExtraSettingsTab[] = [];
@@ -123,10 +126,7 @@ function SettingsFrame({
     if (next) onChange(next);
   };
 
-  const items: B2CSegmentedTabItem<string>[] = [
-    ...tabsFor(surface),
-    ...extraTabs,
-  ].map(({ id, label }) => ({ id, label }));
+  const items: B2CSegmentedTabItem<string>[] = arrangeTabs(tabsFor(surface), extraTabs);
 
   const panels = (
     <>
@@ -137,7 +137,7 @@ function SettingsFrame({
       {tab === "preferences" ? <PreferencesPanel /> : null}
       {tab === "payments" ? <PaymentsPanel /> : null}
       {tab === "referrals" ? <ReferralsPanel /> : null}
-      {extraTabs.map((entry) => (tab === entry.id ? <div key={entry.id}>{entry.panel}</div> : null))}
+      {extraTabs.map((entry) => (tab === entry.id ? <div key={entry.id}>{entry.panel(setDirty)}</div> : null))}
     </>
   );
 

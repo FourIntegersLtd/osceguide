@@ -33,7 +33,25 @@ const PLATFORM_TABS: { id: SettingsTab; label: string }[] = [
   { id: "data", label: "Data" },
 ];
 
-const ORG_TABS = TABS.filter((tab) => tab.id === "profile" || tab.id === "preferences");
+/** The person's own two tabs on an organisation's arm: the Settings board calls the first "Your account". */
+const ORG_TABS = TABS.filter((tab) => tab.id === "profile" || tab.id === "preferences").map((tab) =>
+  tab.id === "profile" ? { ...tab, label: "Your account" } : tab,
+);
 
 export const tabsFor = (surface: string) =>
   surface === "platform" ? PLATFORM_TABS : isOrgSurface(surface) ? ORG_TABS : TABS;
+
+/**
+ * The strip an arm's extra tabs make with the person's own: extras first (an organisation's
+ * own settings open the strip), then the person's, then any extra marked `after`.
+ */
+export function arrangeTabs<E extends { id: string; label: string; after?: boolean }>(
+  own: readonly { id: string; label: string }[],
+  extras: readonly E[],
+): { id: string; label: string }[] {
+  return [
+    ...extras.filter((entry) => !entry.after),
+    ...own,
+    ...extras.filter((entry) => entry.after),
+  ].map(({ id, label }) => ({ id, label }));
+}

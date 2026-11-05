@@ -589,3 +589,32 @@ export function revokeScimToken(slug: string, tokenId: string): Promise<void> {
     { method: "DELETE" },
   );
 }
+
+export type Invoice = components["schemas"]["InvoiceRead"];
+export type InvoiceLine = components["schemas"]["InvoiceLineRead"];
+export type InvoicePage = components["schemas"]["Page_InvoiceRead_"];
+
+/** The invoices raised for this organisation, most recently issued first. Org admin only. */
+export function listInvoices(
+  slug: string,
+  signal?: AbortSignal,
+  page?: { cursor?: string | null },
+): Promise<InvoicePage> {
+  return platformRequest<InvoicePage>(`${org(slug)}/invoices`, {
+    signal,
+    query: { limit: 25, cursor: page?.cursor ?? undefined },
+  });
+}
+
+/** One invoice with its lines. */
+export function readInvoice(slug: string, invoiceId: string, signal?: AbortSignal): Promise<Invoice> {
+  return platformRequest<Invoice>(`${org(slug)}/invoices/${encodeURIComponent(invoiceId)}`, { signal });
+}
+
+/** Quote the organisation's purchase order number; the api refuses it once the invoice is paid or void. */
+export function setInvoicePoNumber(slug: string, invoiceId: string, poNumber: string): Promise<Invoice> {
+  return platformRequest<Invoice>(`${org(slug)}/invoices/${encodeURIComponent(invoiceId)}/po-number`, {
+    method: "PUT",
+    body: { po_number: poNumber },
+  });
+}

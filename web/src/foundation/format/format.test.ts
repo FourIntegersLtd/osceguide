@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formatLongDate, formatMoney, humanise, formatShortDateTime, parseApiDate } from "@/foundation/format";
+import { formatLongDate, formatShortDate, formatMoney, humanise, formatShortDateTime, parseApiDate } from "@/foundation/format";
 
 describe("formatMoney", () => {
   it("writes pence as pounds by default", () => {
@@ -23,6 +23,18 @@ describe("parseApiDate", () => {
     assert.equal(parseApiDate(null), null);
     assert.equal(parseApiDate("soon"), null);
     assert.equal(formatLongDate("soon"), "-");
+  });
+});
+
+describe("formatShortDate", () => {
+  it("writes the UK day, short month and year", () => {
+    assert.equal(formatShortDate("2026-11-01T10:00:00Z"), "1 Nov 2026");
+  });
+  it("reads a late-evening summer UTC time as the next UK day", () => {
+    assert.equal(formatShortDate("2026-07-01T23:30:00Z"), "2 Jul 2026");
+  });
+  it("shows a dash for a missing date", () => {
+    assert.equal(formatShortDate(null), "-");
   });
 });
 
