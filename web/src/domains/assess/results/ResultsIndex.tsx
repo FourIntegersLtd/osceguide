@@ -3,23 +3,31 @@
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { LuClipboardCheck } from "react-icons/lu";
 import {
   AsyncBoundary,
+  B2CGroupedRowLink,
+  B2CGroupedSection,
   B2CPageHeader,
   B2CSegmentedTabs,
+  Badge,
 } from "@/foundation/ui";
 import Table, { type Column } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { useAsync } from "@/foundation/hooks";
+import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import {
   readResultsIndex,
   type ResultsIndexRow,
 } from "@/domains/assess/results/api";
 import {
+  attentionItems,
   filterResultsRows,
+  type AttentionItem,
   type ResultsTab,
 } from "@/domains/assess/results/support";
+import { useStationsToReview } from "@/domains/assess/results/StationsToReview";
 
 const cell = `${b2cTableCellText} text-b2b-graphite`;
 
@@ -61,10 +69,10 @@ const columnsFor = (
     ),
   },
   {
-    header: "Mode",
+    header: "Kind",
     key: "mode",
     render: (row: ResultsIndexRow) => (
-      <span className={`${cell} capitalize`}>{row.mode}</span>
+      <span className={cell}>{row.mode === "exam" ? "Formal exam" : "Training"}</span>
     ),
   },
   count("candidates", "Candidates"),
@@ -83,6 +91,8 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
     [orgSlug],
   );
   const w = useAssessWords();
+  const { session } = useSession();
+  const { stations } = useStationsToReview(orgSlug);
   const columns = useMemo(
     () => columnsFor(hrefFor, w.Sitting),
     [hrefFor, w.Sitting],
@@ -93,6 +103,14 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
         title="Results"
         subtitle={`Each ${w.sitting} with how far its decisions have got.`}
       />
+      {state.data ? (
+        <NeedsAttention
+          items={attentionItems(
+            can(session, "sign_off_results") ? (state.data.rows ?? []) : [],
+            stations,
+          )}
+        />
+      ) : null}
       <B2CSegmentedTabs<ResultsTab>
         aria-label="Filter results"
         compact
@@ -108,7 +126,7 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
         state={state}
         isEmpty={(data) => (data.rows ?? []).length === 0}
         empty={{
-          title: "No results yet",
+          title: "No results yet.",
           description: `Results appear here once ${w.sitting === "sitting" ? "a sitting" : "an assessment"} has ${w.trainees}.`,
         }}
       >
@@ -116,8 +134,7 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
           <>
             {data.truncated ? (
               <p role="status" className="mb-3 text-sm text-b2b-graphite">
-                Showing the {(data.rows ?? []).length} most recent{" "}
-                {w.sittings}. Older ones are not listed here.
+                Showing the {(data.rows ?? []).length} most recent {w.sittings}.
               </p>
             ) : null}
             <Table<ResultsIndexRow>
@@ -125,11 +142,30 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
               themeType="b2b"
               columns={columns}
               idField="sitting_id"
-              empty={{ title: "Nothing here." }}
+              empty={{ title: "Nothing here.", description: `No ${w.sitting} matches this tab.` }}
             />
           </>
         )}
       </AsyncBoundary>
     </div>
+  );
+}
+
+/** "Needs your attention": what is waiting on this person, before the full list. */
+function NeedsAttention({ items }: { items: AttentionItem[] }) {
+  const { hrefFor } = useSurface();
+  if (items.length === 0) return null;
+  return (
+    <B2CGroupedSection eyebrow="Needs your attention">
+      {items.map((item) => (
+        <B2CGroupedRowLink
+          key={item.key}
+          href={hrefFor(item.path)}
+          icon={LuClipboardCheck}
+          title={item.text}
+          trailing={<Badge variant="info">{item.action}</Badge>}
+        />
+      ))}
+    </B2CGroupedSection>
   );
 }

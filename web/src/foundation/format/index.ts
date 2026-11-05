@@ -44,6 +44,13 @@ export function formatLongDate(iso: string | null | undefined): string {
   return date.toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" });
 }
 
+/** "1 Nov 2026", in UK time, as invoices and bills are dated. */
+export function formatShortDate(iso: string | null | undefined): string {
+  const date = parseApiDate(iso);
+  if (!date) return NO_DATE;
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London" });
+}
+
 /** "26 September 2026 at 18:44". */
 export function formatLongDateTime(iso: string | null | undefined): string {
   const date = parseApiDate(iso);

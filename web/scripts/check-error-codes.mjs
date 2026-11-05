@@ -68,7 +68,7 @@ const GENERIC_GROUPS = [
       "cannot_revoke_own_console_access", "circuit_review_finalized", "claim_outside_item",
       "conflict", "decision_outside_exam", "exam_in_use", "exam_not_in_pilot",
       "exam_not_publishable", "fact_check_running", "generation_empty", "generation_unavailable",
-      "import_not_ready", "invitation_pending", "invoice_not_editable", "job_not_cancellable",
+      "import_not_ready", "invitation_pending", "job_not_cancellable",
       "job_not_retryable", "knowledge_unavailable", "lead_cannot_run",
       "legacy_exchange_unavailable", "marker_unavailable", "marking_not_ready",
       "media_already_published", "media_being_produced", "media_not_deletable",
@@ -102,7 +102,7 @@ const KNOWN_GAPS = allowList(
 
 const GENERIC = allowList(
   Object.fromEntries(GENERIC_GROUPS.flatMap(([reason, list]) => list.map((c) => [c, reason]))),
-  170, // lower only
+  169, // lower only
 );
 
 const codes = spec().components.schemas.ErrorResponse.properties.code.enum;

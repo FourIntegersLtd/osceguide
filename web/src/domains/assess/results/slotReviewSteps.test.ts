@@ -8,7 +8,7 @@ test("marking state tells not taken, not ready and not available apart", () => {
   assert.equal(markingState({ attemptId: "a", hasResult: true, hasRubric: false }), "unavailable");
   assert.equal(markingState({ attemptId: "a", hasResult: true, hasRubric: true }), "ready");
   assert.equal(markingNotice("ready"), null);
-  assert.equal(markingNotice("pending"), "Automatic marking is not ready yet. It appears here when it finishes.");
+  assert.equal(markingNotice("pending"), "The AI mark is on its way. Refresh to see it when it lands.");
   assert.match(markingNotice("unavailable") ?? "", /there will not be/);
 });
 

@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { HiCheckCircle } from "react-icons/hi2";
 import { Alert, AsyncBoundary, Button, b2bTokens, Panel } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import type { AsyncState } from "@/foundation/hooks";
 import {
   finalizeCircuitReview,
-  readCircuitReview,
   type CircuitReviewState,
 } from "@/domains/assess/sessions/api";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
@@ -28,6 +27,7 @@ export function CircuitFeedbackCard({
   data,
   orgSlug,
   circuitId,
+  review,
   busy,
   offline,
   run,
@@ -35,16 +35,14 @@ export function CircuitFeedbackCard({
   data: CircuitConsole;
   orgSlug: string;
   circuitId: string;
+  /** The circuit review read the runner holds, shared with the review step so both reload after a publish. */
+  review: AsyncState<CircuitReviewState>;
   busy: string | null;
   /** The live stream is down, so the marks on screen may be stale. */
   offline: boolean;
   run: (name: string, action: () => Promise<unknown>) => Promise<void>;
 }) {
   const slots = data.slots ?? [];
-  const review = useAsync(
-    (signal) => readCircuitReview(orgSlug, circuitId, signal),
-    [orgSlug, circuitId],
-  );
 
   if (slots.length === 0) return null;
 

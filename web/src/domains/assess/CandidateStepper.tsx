@@ -33,7 +33,7 @@ export function CandidateStepper({ orgSlug, sittingId, slotId }: { orgSlug: stri
           variant="secondary"
           size="sm"
         >
-          Previous
+          ‹ Previous candidate
         </ButtonLink>
       ) : null}
       {steps.next ? (
@@ -43,7 +43,7 @@ export function CandidateStepper({ orgSlug, sittingId, slotId }: { orgSlug: stri
           variant="secondary"
           size="sm"
         >
-          Next candidate
+          Next candidate ›
         </ButtonLink>
       ) : null}
     </div>

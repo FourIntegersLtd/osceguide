@@ -41,7 +41,7 @@ export function markingNotice(state: MarkingState, failedReason?: string | null)
     case "none":
       return "Nobody has taken this station, so there is no automatic marking.";
     case "pending":
-      return "Automatic marking is not ready yet. It appears here when it finishes.";
+      return "The AI mark is on its way. Refresh to see it when it lands.";
     case "failed":
       return "Automatic marking failed. Retry it, or mark this station without it.";
     case "unmarkable":

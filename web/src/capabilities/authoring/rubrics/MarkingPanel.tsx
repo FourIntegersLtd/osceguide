@@ -3,6 +3,7 @@
 import { useId } from "react";
 import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
+import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { cn, getInputClassName, Textarea, FoldSection } from "@/foundation/ui";
 
 /** The four pacing numbers a rubric's station runs on, in seconds. */
@@ -32,6 +33,7 @@ export function MarkingPanel({
   title,
   readOnly,
   layoutRequired,
+  draft,
 }: {
   systemPrompt: string;
   onSystemPrompt: (value: string) => void;
@@ -43,11 +45,21 @@ export function MarkingPanel({
   readOnly: boolean;
   /** Platform catalogue rubrics need an examiner layout before they can be published. */
   layoutRequired: boolean;
+  /** Fill the instructions from the areas above (backend draft-instructions). */
+  draft: { run: () => void; busy: boolean; allowed: boolean };
 }) {
   const promptId = useId();
   return (
     <div className="space-y-6">
-      <FoldSection title="Marking instructions">
+      <FoldSection title="Marking instructions" description="Written for the AI marker and for supervisors.">
+        {!readOnly ? (
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <p className="text-osce-caption text-ink-muted">Draft them for me from the areas above, then edit.</p>
+            <AuthoringButton variant="ghost" size="sm" isLoading={draft.busy} disabled={!draft.allowed || draft.busy} onClick={draft.run}>
+              Draft them for me
+            </AuthoringButton>
+          </div>
+        ) : null}
         <label htmlFor={promptId} className="sr-only">
           Marking instructions (system prompt)
         </label>

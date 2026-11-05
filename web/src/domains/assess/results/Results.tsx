@@ -106,6 +106,7 @@ function Report({
       />
       {downloadError ? <Alert tone="danger">{downloadError}</Alert> : null}
 
+      <h2 className="text-osce-body font-medium text-b2b-headline">Outcomes</h2>
       <OutcomeTiles candidates={candidates} awaitingMarking={report.totals.awaiting_marking} />
       {candidates.length === 0 ? (
         <EmptyState title="Nobody has sat this yet." />

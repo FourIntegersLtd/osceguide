@@ -10,7 +10,7 @@ test("HIRE-1 an employer admin sees the hiring menu, not the institution's @stag
   await signedInAs(context, "hireAdmin");
   await openPage(page, `/app/${w.hireSlug}/dashboard`);
   // Employer wording: the institution's "Sittings" and "People" are not offered.
-  await expectMenu(page, { shows: ["Overview", "Assessments", "Results", "Now running", "Candidates", "Build"], hides: ["Sittings", "People"] });
+  await expectMenu(page, { shows: ["Overview", "Assessments", "Results", "Now running", "Candidates", "Exams"], hides: ["Sittings", "People", "Build"] });
 
   await openPage(page, `/app/${w.hireSlug}/sittings`);
   await expectPageHeading(page);

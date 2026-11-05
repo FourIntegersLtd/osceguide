@@ -18,7 +18,7 @@ describe("assessErrorMessage", () => {
     );
     assert.equal(
       assessErrorMessage(refusal("review_conflict")),
-      "Someone else changed this review while you had it open. Reload the page and make your changes again, so theirs are not lost.",
+      "Another reviewer saved since you opened this. Load theirs before saving.",
     );
     assert.equal(
       assessErrorMessage(refusal("reviews_pending")),

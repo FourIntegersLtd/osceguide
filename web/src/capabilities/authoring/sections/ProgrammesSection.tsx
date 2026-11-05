@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useSurface } from "@/capabilities";
 import { HiOutlineAcademicCap, HiOutlineArrowPath, HiOutlineNoSymbol, HiOutlinePlusCircle } from "react-icons/hi2";
-import { Alert, Select } from "@/foundation/ui";
+import { Alert, Select, TextLink } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -40,6 +41,7 @@ export function ProgrammesSection() {
   const action = useAction(programmes.reload);
 
   const { session } = useSession();
+  const { hrefFor } = useSurface();
   const [adding, setAdding] = useState(false);
   const [examCode, setExamCode] = useState("");
 
@@ -51,6 +53,10 @@ export function ProgrammesSection() {
       <AuthoringSectionLead
         action={
           can(session, "schedule_sittings") ? (
+            <div className="flex flex-wrap items-center gap-3">
+            <TextLink href={hrefFor("/programmes")} variant="muted" className="text-osce-meta">
+              Exams the platform publishes
+            </TextLink>
             <AuthoringButton
               variant="commit"
               size="sm"
@@ -60,6 +66,7 @@ export function ProgrammesSection() {
               <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
               New programme
             </AuthoringButton>
+            </div>
           ) : null
         }
       >

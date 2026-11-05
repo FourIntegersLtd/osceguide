@@ -1,15 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { ResultsIndexRow } from "@/domains/assess/results/api";
+import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
 import type { LiveCircuit, OrgSetup } from "@/domains/assess/dashboard/api";
 import {
   runsByDay,
   boardOrder,
   candidatesLabel,
   circuitStatus,
-  homeCommits,
-  nextSetupAction,
+  assistantSteps,
+  attentionFromResults,
+  firstOpenStep,
   recordingMissing,
-  setupSteps,
+  setupComplete,
+  todaySentence,
+  stepBlockedReason,
 } from "@/domains/assess/dashboard/support";
 
 function setup(over: Partial<OrgSetup> = {}): OrgSetup {
@@ -53,56 +58,57 @@ function circuit(over: Partial<LiveCircuit> & { circuit_id: string }): LiveCircu
   } as LiveCircuit;
 }
 
-test("a fresh organisation sees the eight steps in build order, all to do", () => {
+test("a fresh organisation sees the five steps, in order, none done, the supervisor one optional", () => {
   assert.deepEqual(
-    setupSteps(setup()).map((step) => [step.id, step.label, step.state, step.note, step.path]),
+    assistantSteps(setup(), INSTITUTION_WORDS).map((step) => [step.id, step.label, step.done, step.optional, step.cta, step.href]),
     [
-      ["rubric", "Marking scheme", "todo", "Publish one", "/authoring/rubrics"],
-      ["exam", "Exam", "todo", "Publish one", "/programmes"],
-      ["programme", "Programme", "todo", "Add one", "/programmes"],
-      ["template", "Station template", "todo", "Publish one", "/authoring/station-templates"],
-      ["stations", "Stations", "todo", "None to run", "/authoring/stations"],
-      ["team", "Team", "todo", "Invite a supervisor", "/team"],
-      ["trainees", "Trainees", "todo", "None added", "/trainees"],
-      ["sitting", "First sitting", "todo", "Not scheduled", "/sittings/new"],
+      ["exam", "Set up an exam", false, false, "Set up an exam", "/authoring/exams/new"],
+      ["stations", "Add stations", false, false, "Add a station", "/authoring/stations"],
+      ["trainees", "Add trainees", false, false, "Add trainees", "/trainees"],
+      ["supervisor", "Invite a supervisor", false, true, "Invite staff", "/team"],
+      ["sitting", "Schedule your first sitting", false, false, "Schedule a sitting", "/sittings/new"],
     ],
   );
 });
 
-test("the one action is the first step not done, in order", () => {
-  assert.deepEqual(nextSetupAction(setup(), true), {
-    step: "rubric",
-    path: "/authoring/rubrics",
-    label: "Write a marking scheme",
-    line: "Start with a marking scheme: what candidates are marked against.",
-  });
-  assert.equal(nextSetupAction(setup({ rubric_published: true }), true)?.step, "exam");
-  // Done out of order, the earliest gap still leads.
-  assert.equal(nextSetupAction(setup({ rubric_published: true, exam_published: true, team_invited: true }), true)?.step, "programme");
+test("hire reads its own words in the steps", () => {
+  const steps = assistantSteps(setup(), EMPLOYER_WORDS);
+  assert.deepEqual(
+    [steps[2]?.title, steps[3]?.title, steps[4]?.cta],
+    ["Add your candidates", "Invite an assessor", "Schedule an assessment"],
+  );
 });
 
-test("nothing is left to do once every step is done", () => {
-  const all = setup({
-    rubric_published: true,
-    exam_published: true,
-    programme_exam_rubric_ready: true,
-    template_published: true,
-    stations_available: true,
-    team_invited: true,
-    trainees_added: true,
-    sitting_scheduled: true,
-  });
-  assert.equal(nextSetupAction(all, true), null);
-  assert.equal(setupSteps(all).every((step) => step.state === "done" && step.note === "Done"), true);
+test("the first open step leads, and setup ends when the required steps are done", () => {
+  assert.equal(firstOpenStep(assistantSteps(setup(), INSTITUTION_WORDS)), 0);
+  assert.equal(firstOpenStep(assistantSteps(setup({ programme_exam_rubric_ready: true, stations_available: true }), INSTITUTION_WORDS)), 2);
+  const done = setup({ programme_exam_rubric_ready: true, stations_available: true, trainees_added: true, sitting_scheduled: true });
+  // The supervisor step is optional: it does not hold setup open.
+  assert.equal(setupComplete(assistantSteps(done, INSTITUTION_WORDS)), true);
+  assert.equal(setupComplete(assistantSteps(setup({ trainees_added: true }), INSTITUTION_WORDS)), false);
 });
 
-test("the station step follows what is available, not what was authored", () => {
-  // An institution that adopted the platform catalogue can examine somebody
-  // today, so telling it to author a station was a step it had already taken.
-  const done = setupSteps(setup({ stations_available: true })).find((step) => step.id === "stations");
-  const not = setupSteps(setup()).find((step) => step.id === "stations");
-  assert.equal(done?.state, "done");
-  assert.equal(not?.state, "todo");
+test("somebody who may not do a step is told why", () => {
+  const exam = assistantSteps(setup(), INSTITUTION_WORDS)[0];
+  assert.ok(exam);
+  assert.equal(stepBlockedReason(exam, () => true), null);
+  assert.equal(stepBlockedReason(exam, () => false), "Only an administrator can do this. Ask one to complete this step.");
+});
+
+test("needs-your-attention lists outcomes to write and results to release, oldest first", () => {
+  const row = (over: Partial<ResultsIndexRow>): ResultsIndexRow =>
+    ({ sitting_id: "s", name: "Sitting", candidates: 3, draft: 0, not_decided: 0, released: 0, signed_off: 0, mode: "exam", status: "ended", scheduled_for: null, ...over }) as ResultsIndexRow;
+  const items = attentionFromResults(
+    [row({ sitting_id: "new", name: "Year 4 mock", signed_off: 2 }), row({ sitting_id: "old", name: "February", not_decided: 2, draft: 1 })],
+    INSTITUTION_WORDS,
+  );
+  assert.deepEqual(
+    items.map((item) => [item.tag, item.title, item.href]),
+    [
+      ["3 decisions", "Record outcomes for February", "/sittings/old/results"],
+      ["2 ready", "Release results for Year 4 mock", "/sittings/new/results"],
+    ],
+  );
 });
 
 test("a consultation with no attempt behind it is a station nobody is recording", () => {
@@ -168,15 +174,8 @@ test("finished runs are headed by the day they ended, newest first", () => {
   );
 });
 
-test("somebody who cannot author is never sent to the screens that build things", () => {
-  assert.equal(nextSetupAction(setup(), false), null);
-});
-
-test("the home screen has one commit button while setup is unfinished", () => {
-  const todo = setup();
-  const ready = setup({ ready_to_run: true });
-  assert.deepEqual(homeCommits(todo, true, true), "card");
-  assert.deepEqual(homeCommits(ready, true, true), "header");
-  assert.deepEqual(homeCommits(ready, false, true), "card");
-  assert.deepEqual(homeCommits(ready, true, false), "header");
+test("the Today sentence counts what runs and what needs you", () => {
+  assert.equal(todaySentence(1, 5), "One circuit is running and five things need you.");
+  assert.equal(todaySentence(0, 1), "No circuit is running and one thing needs you.");
+  assert.equal(todaySentence(2, 0), "Two circuits are running and nothing needs you.");
 });

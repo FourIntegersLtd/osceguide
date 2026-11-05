@@ -14,3 +14,13 @@ export function stationNewPath(hrefFor: (path: string) => string, templateVersio
   const base = `${stationsListPath(hrefFor)}/new`;
   return templateVersionId ? `${base}?templateVersion=${encodeURIComponent(templateVersionId)}` : base;
 }
+
+/** The Stations tab narrowed to one exam, by its code. */
+export function stationsForExamPath(hrefFor: (path: string) => string, examCode: string): string {
+  return `${stationsListPath(hrefFor)}?exam=${encodeURIComponent(examCode)}`;
+}
+
+/** The New station chooser with the exam already picked. */
+export function stationNewForExamPath(hrefFor: (path: string) => string, examCode: string): string {
+  return `${stationsListPath(hrefFor)}/new?exam=${encodeURIComponent(examCode)}`;
+}

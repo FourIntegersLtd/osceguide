@@ -45,7 +45,7 @@ export function DisplayPanel() {
         </div>
       </FoldSection>
 
-      <FoldSection title="Station total" description="The one figure for the whole station, and what passes.">
+      <FoldSection title="Station total and pass line" description="The one figure for the whole station, and what passes.">
         <div className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <SelectAtPath path={["display", "total", "aggregate"]} label="Total" choices={TOTAL_AGGREGATES} emptyLabel="Default" />
@@ -66,11 +66,11 @@ export function DisplayPanel() {
         </FoldSection>
       ) : null}
 
-      <FoldSection title="Bands" description="Name ranges of the total, e.g. 0–4 “Not yet”, 5–7 “Borderline”.">
+      <FoldSection title="Bands (optional)" description="Name ranges of the total, e.g. 0–4 “Not yet”, 5–7 “Borderline”.">
         <BandList />
       </FoldSection>
 
-      <FoldSection title="Wording" description="Replace the default headings on the feedback page and dashboard.">
+      <FoldSection title="What the candidate sees" description="Replace the default headings on the feedback page and dashboard.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-path="display.labels">
           {DISPLAY_LABELS.map((label) => (
             <TextAtPath key={label.value} path={["display", "labels", label.value]} label={label.label} hint={label.hint} />
