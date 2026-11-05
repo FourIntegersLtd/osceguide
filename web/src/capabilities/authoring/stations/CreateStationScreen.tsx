@@ -287,6 +287,6 @@ function CreateStationScreenForm() {
 
 export function CreateStationScreen() {
   // The route's page puts a Suspense above this, which `useSearchParams` needs.
-  const showForm = showsCreateForm(useSearchParams());
+  const showForm = showsCreateForm(useSearchParams(), useAuthoringScope().kind);
   return <RequireAuthor>{showForm ? <CreateStationScreenForm /> : <NewStationChooser />}</RequireAuthor>;
 }

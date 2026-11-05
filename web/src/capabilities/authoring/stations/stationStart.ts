@@ -1,5 +1,7 @@
 /** The ways to start a station, as the New station chooser offers them. */
 
+import { matchesExamFilter } from "@/capabilities/authoring/parts/examCatalogFilter";
+
 export type StationStartWay = "layout" | "import" | "ai" | "library" | "blank";
 
 export const STATION_START_WAYS: readonly {
@@ -26,9 +28,9 @@ export const STATION_START_WAYS: readonly {
   {
     id: "ai",
     title: "Draft with AI from a brief",
-    body: "Describe the case in a few lines.",
-    next: "Write the brief. The AI drafts the station; check it, run a fact check, then publish.",
-    cta: "Write a brief",
+    body: "Pick a layout, then describe the case in a few lines.",
+    next: "Pick a published layout first; the AI needs one to draft against. Then write the brief, check the draft, run a fact check and publish.",
+    cta: "Choose a layout",
   },
   {
     id: "library",
@@ -52,7 +54,26 @@ export function stationStartHref(newPath: string, way: StationStartWay, examCode
   return `${newPath}?${query.join("&")}`;
 }
 
-/** The form shows once a way is chosen, or a published template is already named (back from the template wizard). */
-export function showsCreateForm(params: { get(name: string): string | null }): boolean {
-  return params.get("start") !== null || params.get("templateVersion") !== null;
+/**
+ * The form shows once a way is chosen, or a published template is already named (back from the
+ * template wizard). The chooser is the organisation's: the staff console keeps the form directly.
+ */
+export function showsCreateForm(
+  params: { get(name: string): string | null },
+  scopeKind: "org" | "platform",
+): boolean {
+  return scopeKind !== "org" || params.get("start") !== null || params.get("templateVersion") !== null;
+}
+
+/**
+ * The templates the form may offer. With an exam carried from the chooser, only that exam's (and
+ * unscoped ones), so choosing a template cannot swap the exam. A named template (deep link) is never narrowed.
+ */
+export function templatesForChosenExam<T extends { exam_code?: string | null }>(
+  templates: readonly T[],
+  params: { get(name: string): string | null },
+): T[] {
+  const exam = params.get("exam");
+  if (!exam || params.get("templateVersion")) return [...templates];
+  return templates.filter((t) => matchesExamFilter(t.exam_code, exam, { includeUnscoped: true }));
 }

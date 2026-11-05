@@ -8,6 +8,7 @@ import { useCreateStationForm } from "@/capabilities/authoring/hooks/useCreateSt
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 import { hasPublishedVersion } from "@/capabilities/authoring/sections/StationsSection";
 import { useAsync } from "@/foundation/hooks";
+import { templatesForChosenExam } from "@/capabilities/authoring/stations/stationStart";
 
 /**
  * What the create-station screen lets the author choose from: published
@@ -50,14 +51,15 @@ export function useCreateStationChoices({
     [examCatalog.exams, form.examCode],
   );
 
+  const offered = useMemo(() => templatesForChosenExam(published, params), [published, params]);
   const choices = useMemo(
     () =>
-      published.flatMap((t) =>
+      offered.flatMap((t) =>
         t.versions
           .filter((v) => v.status === "published")
           .map((v) => ({ id: v.id, label: `${t.title} (v${v.version})` })),
       ),
-    [published],
+    [offered],
   );
 
   const { templateVersionId, handleTemplateSelect } = form;
