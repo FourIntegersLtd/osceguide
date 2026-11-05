@@ -44,11 +44,9 @@ export function LiveNow({ orgSlug }: { orgSlug: string }) {
           <ButtonLink href={hrefFor(`/circuits/${first.circuit_id}`)} themeType="b2b" variant="commit">
             Open console
           </ButtonLink>
-          {circuits.length > 1 ? (
-            <ButtonLink href={hrefFor("/live")} themeType="b2b" variant="secondary">
-              All {circuits.length} running
-            </ButtonLink>
-          ) : null}
+          <ButtonLink href={hrefFor("/live")} themeType="b2b" variant="secondary">
+            {circuits.length > 1 ? `Open the live board (${circuits.length} running)` : "Open the live board"}
+          </ButtonLink>
         </>
       }
       aside={

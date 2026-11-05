@@ -312,19 +312,9 @@ describe("surface registry", () => {
       href,
     });
     const keys = (items: { key: string }[]) => items.map((item) => item.key);
-    assert.deepEqual(keys(admin), [
-      "dashboard",
-      "sittings",
-      "results",
-      "live",
-      "trainees",
-      "reporting",
-      "team",
-      "build",
-      "stations",
-      "programmes",
-    ]);
-    assert.deepEqual(keys(supervisor), ["dashboard", "sittings", "results", "live", "trainees", "reporting", "build"]);
+    assert.deepEqual(keys(admin), ["dashboard", "sittings", "live", "results", "trainees", "build", "reporting"]);
+    // A supervisor has no Exams entry: authoring is the administrator's.
+    assert.deepEqual(keys(supervisor), ["dashboard", "sittings", "live", "results", "trainees", "reporting"]);
     // A trainee (no staff permission) sees only their own items: study and
     // community come from the mounted capabilities, and the staff ones stay out.
     const trainee = SURFACE_MANIFESTS.assess.nav({ workspace, can: () => false, href });

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { LuClipboardCheck } from "react-icons/lu";
 import {
@@ -8,11 +9,15 @@ import {
   B2CGroupedRowLink,
   B2CGroupedSection,
   Badge,
+  ButtonLink,
   Spinner,
+  b2bTokens,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { readSupervisorCircuits } from "@/domains/assess/dashboard/api";
+import { readSupervisorCircuits, type SupervisorCircuitRow } from "@/domains/assess/dashboard/api";
+import { modeLabel } from "@/domains/assess/dashboard/support";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * What a supervisor is here to do: the circuits they are named on.
@@ -65,13 +70,14 @@ export function SupervisorCircuits({
 
   return (
     <Section>
+      {ordered[0] ? <NextCircuit row={ordered[0]} /> : null}
       {ordered.map((row) => (
         <B2CGroupedRowLink
           key={row.circuit_id}
           href={hrefFor(`/circuits/${row.circuit_id}`)}
           icon={LuClipboardCheck}
           title={`${row.sitting_name} · ${row.circuit_name}`}
-          meta={`${row.mode} · ${row.slot_count} station${row.slot_count === 1 ? "" : "s"}${
+          meta={`${modeLabel(row.mode)} · ${row.slot_count} station${row.slot_count === 1 ? "" : "s"}${
             row.scheduled_for ? ` · ${new Date(row.scheduled_for).toLocaleString()}` : ""
           }`}
           trailing={
@@ -87,5 +93,41 @@ export function SupervisorCircuits({
 
 /** The heading this list lives under, wherever it is mounted. */
 function Section({ children }: { children: ReactNode }) {
-  return <B2CGroupedSection eyebrow="Assigned to you">{children}</B2CGroupedSection>;
+  const { hrefFor } = useSurface();
+  const w = useAssessWords();
+  return (
+    <B2CGroupedSection
+      eyebrow="Circuits you lead"
+      action={
+        <Link href={hrefFor("/sittings")} className={b2bTokens.b2bLink}>
+          {`All ${w.sittings}`}
+        </Link>
+      }
+    >
+      {children}
+    </B2CGroupedSection>
+  );
+}
+
+/** "Your next circuit": the one running now, else the first to run. */
+function NextCircuit({ row }: { row: SupervisorCircuitRow }) {
+  const { hrefFor } = useSurface();
+  const w = useAssessWords();
+  return (
+    <div className="flex flex-col gap-2 p-4">
+      <p className={b2bTokens.b2bEyebrow}>Your next circuit</p>
+      <p className="text-osce-body font-semibold text-b2b-headline">{`${row.sitting_name} · ${row.circuit_name}`}</p>
+      <p className="text-osce-meta text-b2b-muted">
+        {`${row.scheduled_for ? `${new Date(row.scheduled_for).toLocaleString()} · ` : ""}${modeLabel(row.mode)} · ${row.slot_count} station${row.slot_count === 1 ? "" : "s"}`}
+      </p>
+      <div>
+        <ButtonLink href={hrefFor(`/circuits/${row.circuit_id}`)} themeType="b2b" variant="commit">
+          Open the console
+        </ButtonLink>
+      </div>
+      <p className="text-osce-meta text-b2b-muted">
+        The console opens when the {w.sitting} starts. Any staff member can run any circuit on the day; reviewing stays with the circuit&apos;s {w.supervisor}.
+      </p>
+    </div>
+  );
 }

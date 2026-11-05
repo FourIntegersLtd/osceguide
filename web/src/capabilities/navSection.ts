@@ -18,6 +18,10 @@ export const NAV_SECTIONS = [
   "operations",
   "practice",
   "connect",
+  /* The institution and employer menus, ordered by job: what runs today, what is organised, what is measured. */
+  "run",
+  "organise",
+  "insight",
   "general",
 ] as const;
 
@@ -34,6 +38,9 @@ export const NAV_LABELS: Record<string, string> = {
   operations: "Operations",
   practice: "Practice",
   connect: "Connect",
+  run: "Run",
+  organise: "Organise",
+  insight: "Insight",
   general: "General",
   debriefs: "Debriefs",
   transcripts: "Transcripts",
