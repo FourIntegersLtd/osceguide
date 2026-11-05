@@ -169,3 +169,17 @@ export function rosterErrorMessage(cause: unknown, email: string): string {
   if (hasCode(cause, "trainee_exists")) return `${email} is already on this roster.`;
   return errorMessage(cause);
 }
+
+/**
+ * What an "Add to group" really did. The group is read, then replaced (last write wins), so
+ * someone else's edit in between can drop a person: re-read afterwards and report who is in.
+ */
+export function addToGroupSummary(requested: string[], after: string[]): string {
+  const inGroup = new Set(after);
+  const missing = requested.filter((id) => !inGroup.has(id)).length;
+  const added = requested.length - missing;
+  const base = `Added ${added} of ${requested.length} people to the group.`;
+  return missing === 0
+    ? base
+    : `${base} ${missing} ${missing === 1 ? "is" : "are"} not in it: the group changed while you were adding. Try again.`;
+}

@@ -41,6 +41,7 @@ import { TraineeRowActions } from "@/domains/assess/roster/TraineeRowActions";
 import {
   accessActive,
   addToGroupIds,
+  addToGroupSummary,
   awaitingInvitation,
   bulkSummary,
   cohortName,
@@ -139,16 +140,18 @@ export function TraineesPanel({
   /** Run one bulk call, say what it did, clear the selection and refresh. */
   const runBulk = useCallback(
     async (
-      call: () => Promise<{ results: { outcome: string }[] }>,
-      ok: string,
-      noun: string,
+      call: () => Promise<{ results: { outcome: string }[] } | string>,
+      ok?: string,
+      noun?: string,
     ) => {
       setBulkBusy(true);
       setError(null);
       setNotice(null);
       try {
-        const { results } = await call();
-        setNotice({ tone: "success", text: bulkSummary(results, ok, noun) });
+        const done = await call();
+        const text =
+          typeof done === "string" ? done : bulkSummary(done.results, ok ?? "done", noun ?? "people");
+        setNotice({ tone: "success", text });
         setSelected(new Set());
         setConfirmingBulkRevoke(false);
         pages.state.reload();
@@ -474,16 +477,14 @@ export function TraineesPanel({
             )
           }
           onAddToGroup={(groupId) =>
-            void runBulk(
-              async () => {
-                // PUT replaces the list, so read who is in it first and keep them.
-                const current = await readGroupMembers(orgSlug, groupId);
-                await setGroupMembers(orgSlug, groupId, addToGroupIds(current, selectedIds));
-                return { results: selectedIds.map(() => ({ outcome: "added" })) };
-              },
-              "added",
-              "people",
-            )
+            void runBulk(async () => {
+              // PUT replaces the list, so read who is in it first and keep them, then
+              // read it again: a concurrent edit can win, and the summary says so.
+              const current = await readGroupMembers(orgSlug, groupId);
+              await setGroupMembers(orgSlug, groupId, addToGroupIds(current, selectedIds));
+              const after = await readGroupMembers(orgSlug, groupId);
+              return addToGroupSummary(selectedIds, after);
+            })
           }
           onRevoke={() => {
             setError(null);

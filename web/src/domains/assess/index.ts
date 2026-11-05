@@ -11,7 +11,7 @@ export {
 } from "@/domains/assess/trainee";
 export { People } from "@/domains/assess/people/People";
 export { initialPeopleTab } from "@/domains/assess/people/support";
-export * from "@/domains/assess/roster";
+// Team is the partner surface's only: assess shows its staff inside People.
 export { Team } from "@/domains/assess/team";
 export { NewSitting } from "@/domains/assess/NewSitting";
 export { SlotReview } from "@/domains/assess/SlotReview";

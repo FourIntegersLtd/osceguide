@@ -1,6 +1,7 @@
 "use client";
 
 import { roleLabel } from "@/foundation/session/roles";
+import { useSession } from "@/foundation/session";
 import { useMemo, useState } from "react";
 import { Alert, Badge, Button, EmptyState, PlatformFilterBar, PlatformFilterSearch, b2bTokens } from "@/foundation/ui";
 import Table from "@/foundation/table/Table";
@@ -21,8 +22,11 @@ import {
 import {
   ASSIGNABLE_ROLES,
   ROLE_CHOICE_HELP,
+  bulkRevokeFailure,
   isActive,
+  isAwaitingInvite,
   isOwner,
+  resendSummary,
   revokableStaff,
   staffCountLabel,
   staffRevokeTitle,
@@ -76,13 +80,16 @@ export function MembersPanel({
   const rows = pages.state.data ?? [];
 
   // Everybody on the loaded pages who has not yet chosen a password.
-  const awaiting = rows.filter((member) => member.invited && isActive(member) && !isOwner(member));
+  const awaiting = rows.filter(isAwaitingInvite);
   const [resendingAll, setResendingAll] = useState(false);
 
   // Ticked rows (membership ids). Only rows still on the loaded pages ever reach a call.
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [confirmingBulk, setConfirmingBulk] = useState(false);
   const selectedRows = rows.filter((member) => selected.has(member.id));
+  const { session } = useSession();
+  const selfId = session?.user.id;
+  const revokable = revokableStaff(selectedRows, rows, selfId);
   const toggle = (id: string) =>
     setSelected((current) => {
       const next = new Set(current);
@@ -94,52 +101,45 @@ export function MembersPanel({
     setBusy(true);
     setError(null);
     try {
-      const ids = revokableStaff(selectedRows).map((member) => member.id);
-      const { results } = await revokeMemberships(orgSlug, ids);
+      const { results } = await revokeMemberships(
+        orgSlug,
+        revokable.map((member) => member.id),
+      );
       const done = results.filter((result) => result.outcome === "revoked").length;
       setNotice(`Revoked access for ${done} of ${results.length} staff.`);
       setSelected(new Set());
       setConfirmingBulk(false);
       pages.state.reload();
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(bulkRevokeFailure(cause, errorMessage(cause)));
       pages.state.reload();
     } finally {
       setBusy(false);
     }
   }
 
-  async function resendSelected() {
+  /** Resend the choose-a-password link to these people and say how many went. */
+  async function resendTo(members: Membership[]) {
     setError(null);
     setResendingAll(true);
     try {
-      const ids = selectedRows
-        .filter((member) => member.invited && isActive(member) && !isOwner(member))
-        .map((member) => member.id);
-      const { results } = await resendInvitations(orgSlug, ids);
-      const sent = results.filter((result) => result.outcome === "sent").length;
-      setNotice(`Resent ${sent} of ${results.length} invitations.`);
-      setSelected(new Set());
+      const { results } = await resendInvitations(
+        orgSlug,
+        members.map((member) => member.id),
+      );
+      setNotice(resendSummary(results));
+      return true;
     } catch (cause) {
       setError(errorMessage(cause));
+      return false;
     } finally {
       setResendingAll(false);
     }
   }
-
-  async function resendAll() {
-    setError(null);
-    setResendingAll(true);
-    try {
-      const { results } = await resendInvitations(orgSlug, awaiting.map((member) => member.id));
-      const sent = results.filter((result) => result.outcome === "sent").length;
-      setNotice(`Resent ${sent} of ${results.length} invitations.`);
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setResendingAll(false);
-    }
-  }
+  const resendSelected = async () => {
+    if (await resendTo(selectedRows.filter(isAwaitingInvite))) setSelected(new Set());
+  };
+  const resendAll = () => resendTo(awaiting);
 
   async function resend(member: Membership) {
     setError(null);
@@ -319,7 +319,7 @@ export function MembersPanel({
             themeType="b2b"
             variant="secondary"
             size="sm"
-            disabled={busy || revokableStaff(selectedRows).length === 0}
+            disabled={busy || revokable.length === 0}
             onClick={() => {
               setError(null);
               setConfirmingBulk(true);
@@ -381,8 +381,8 @@ export function MembersPanel({
 
       <Dialog
         open={confirmingBulk}
-        title={staffRevokeTitle(revokableStaff(selectedRows).length)}
-        lead="They lose access to this organisation. Nothing they have marked is deleted. The owner and the last admin are skipped."
+        title={staffRevokeTitle(revokable.length)}
+        lead="They lose access to this organisation. Nothing they have marked is deleted. The owner, you and the last admin are left out of the selection; if a revoke would still leave no admin, nobody is revoked."
         error={error}
         busy={busy}
         tone="danger"

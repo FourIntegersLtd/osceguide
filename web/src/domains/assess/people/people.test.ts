@@ -3,15 +3,21 @@ import { afterEach, describe, it } from "node:test";
 import type { Membership } from "@/domains/assess/team/api";
 import { revokeMemberships } from "@/domains/assess/team/api";
 import {
+  LAST_ADMIN_MESSAGE,
   ROLE_CHOICE_HELP,
+  bulkRevokeFailure,
+  isAwaitingInvite,
+  resendSummary,
   revokableStaff,
   staffRevokeTitle,
 } from "@/domains/assess/team/support";
+import { PlatformError } from "@/foundation/platform-client";
 import {
   ADD_TO_GROUP_LABEL,
   MOVE_TO_YEAR_GROUP_LABEL,
   NO_YEAR_GROUP_LABEL,
   addToGroupIds,
+  addToGroupSummary,
   cohortDeleteLead,
 } from "@/domains/assess/roster/support";
 import { INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
@@ -84,6 +90,16 @@ describe("the trainee bulk bar words", () => {
   });
 });
 
+describe("add to group", () => {
+  it("reports only who is really in the group afterwards", () => {
+    assert.equal(addToGroupSummary(["a", "b"], ["a", "b", "z"]), "Added 2 of 2 people to the group.");
+    assert.equal(
+      addToGroupSummary(["a", "b", "c"], ["a"]),
+      "Added 1 of 3 people to the group. 2 are not in it: the group changed while you were adding. Try again.",
+    );
+  });
+});
+
 describe("staff bulk revoke", () => {
   it("posts the ticked ids to memberships/bulk/revoke", async () => {
     const calls: { url: string; body: unknown }[] = [];
@@ -101,13 +117,36 @@ describe("staff bulk revoke", () => {
     assert.equal(results[0]?.outcome, "revoked");
   });
 
-  it("offers only active people who are not the owner", () => {
+  it("leaves out the owner, revoked rows and you", () => {
     const rows = [
       member({ id: "o", role: "owner" }),
       member({ id: "p", role: "supervisor" }),
-      member({ id: "r", role: "admin", status: "revoked", revoked_at: "2026-11-01T00:00:00Z" }),
+      member({ id: "me", role: "supervisor" }),
+      member({ id: "r", role: "supervisor", status: "revoked", revoked_at: "2026-11-01T00:00:00Z" }),
     ];
-    assert.deepEqual(revokableStaff(rows).map((row) => row.id), ["p"]);
+    assert.deepEqual(revokableStaff(rows, rows, "u-me").map((row) => row.id), ["p"]);
+  });
+
+  it("leaves out the last admin standing, but not an admin when another stays", () => {
+    const sole = [member({ id: "a", role: "admin" }), member({ id: "s", role: "supervisor" })];
+    assert.deepEqual(revokableStaff(sole, sole, "u-x").map((row) => row.id), ["s"]);
+    const two = [member({ id: "a", role: "admin" }), member({ id: "b", role: "admin" })];
+    assert.deepEqual(revokableStaff([two[0]!], two, "u-x").map((row) => row.id), ["a"]);
+    assert.deepEqual(revokableStaff(two, two, "u-x"), []);
+  });
+
+  it("tells a refused batch (409 last_admin) apart from any other failure", () => {
+    const refused = new PlatformError(409, { code: "last_admin", message: "x" });
+    assert.equal(bulkRevokeFailure(refused, "fallback"), LAST_ADMIN_MESSAGE);
+    assert.match(LAST_ADMIN_MESSAGE, /nobody was revoked/);
+    assert.equal(bulkRevokeFailure(new Error("boom"), "fallback"), "fallback");
+  });
+
+  it("offers a resend only to someone invited, active and not the owner", () => {
+    assert.equal(isAwaitingInvite(member({ id: "i", role: "supervisor", invited: true })), true);
+    assert.equal(isAwaitingInvite(member({ id: "j", role: "supervisor" })), false);
+    assert.equal(isAwaitingInvite(member({ id: "k", role: "owner", invited: true })), false);
+    assert.equal(resendSummary([{ outcome: "sent" }, { outcome: "skipped" }]), "Resent 1 of 2 invitations.");
   });
 
   it("titles the confirmation by count", () => {
@@ -118,7 +157,7 @@ describe("staff bulk revoke", () => {
   it("explains the two roles together in the change-role box", () => {
     assert.equal(
       ROLE_CHOICE_HELP,
-      "Supervisor: runs circuits and marks the candidates on them. Admin: also manages the team and the organisation's settings, and signs off results.",
+      "Supervisor: Runs circuits and marks the candidates on them. Admin: Manages the team and the organisation's settings, and signs off results.",
     );
   });
 });

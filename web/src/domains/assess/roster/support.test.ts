@@ -3,7 +3,6 @@ import test from "node:test";
 import type { Trainee } from "@/domains/assess/api";
 import { PlatformError } from "@/foundation/platform-client";
 import { cohortDeleteLead, cohortName, deleteLead, rosterErrorMessage, traineeStatus } from "@/domains/assess/roster/support";
-import { INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
 import { loadRoster, type RosterData, type RosterPart } from "@/domains/assess/roster/useRosterData";
 
 function trainee(over: Partial<Trainee> = {}): Trainee {

@@ -1,5 +1,6 @@
 import type { Membership } from "@/domains/assess/team/api";
-import { isAdminRole } from "@/foundation/session/roles";
+import { isAdminRole, ROLE_DESCRIPTIONS } from "@/foundation/session/roles";
+import { isPlatformError } from "@/foundation/platform-client";
 
 /**
  * The roles a screen may offer, and what they are called.
@@ -35,9 +36,44 @@ export function sortMembers(members: Membership[]): Membership[] {
   });
 }
 
-/** Who a bulk revoke may name: active people other than the owner (the server also skips the last admin). */
-export function revokableStaff(rows: Membership[]): Membership[] {
-  return rows.filter((member) => isActive(member) && !isOwner(member));
+/** Somebody who has been invited and not yet chosen a password: the one a resend is for. */
+export function isAwaitingInvite(member: Membership): boolean {
+  return member.invited === true && isActive(member) && !isOwner(member);
+}
+
+/**
+ * Who a bulk revoke may name, out of the ticked rows: active people other than the owner and
+ * other than you, and never the last admin standing. The server refuses the WHOLE batch with
+ * `last_admin` if it would remove the last administrator, so the screen leaves those rows out
+ * (judged on the pages loaded; the 409 is still handled for the rest).
+ */
+export function revokableStaff(
+  selected: Membership[],
+  everyone: Membership[],
+  selfUserId: string | null | undefined,
+): Membership[] {
+  const candidates = selected.filter(
+    (member) => isActive(member) && !isOwner(member) && member.user_id !== selfUserId,
+  );
+  const going = new Set(candidates.map((member) => member.id));
+  const adminStays = everyone.some(
+    (member) => isActive(member) && isAdminRole(member.role) && !going.has(member.id),
+  );
+  return adminStays ? candidates : candidates.filter((member) => !isAdminRole(member.role));
+}
+
+export const LAST_ADMIN_MESSAGE =
+  "That would leave the organisation with no admin, so nobody was revoked. Keep at least one admin, or make someone else an admin first.";
+
+/** What to tell the user when a bulk revoke fails: `last_admin` is the whole batch refused. */
+export function bulkRevokeFailure(cause: unknown, fallback: string): string {
+  return isPlatformError(cause) && cause.code === "last_admin" ? LAST_ADMIN_MESSAGE : fallback;
+}
+
+/** "Resent 2 of 3 invitations." */
+export function resendSummary(results: { outcome: string }[]): string {
+  const sent = results.filter((result) => result.outcome === "sent").length;
+  return `Resent ${sent} of ${results.length} invitations.`;
 }
 
 export function staffRevokeTitle(count: number): string {
@@ -45,8 +81,7 @@ export function staffRevokeTitle(count: number): string {
 }
 
 /** The change-role box's one-line explanation of the two roles it offers. */
-export const ROLE_CHOICE_HELP =
-  "Supervisor: runs circuits and marks the candidates on them. Admin: also manages the team and the organisation's settings, and signs off results.";
+export const ROLE_CHOICE_HELP = `Supervisor: ${ROLE_DESCRIPTIONS.supervisor} Admin: ${ROLE_DESCRIPTIONS.admin}`;
 
 /** "4 staff accounts" — the count the old members card carried. */
 export function staffCountLabel(count: number): string {

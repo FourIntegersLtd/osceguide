@@ -58,6 +58,13 @@ export function People({ orgSlug, initialTab }: { orgSlug: string; initialTab: P
         }
       />
 
+      {!canManage ? (
+        <p className="text-osce-caption text-b2b-mid">
+          <span className="font-medium">Supervisor (read only)</span>. Only an owner or admin can
+          add {w.trainees}. Ask one of them to add the people you need on the roster.
+        </p>
+      ) : null}
+
       <TabStrip
         tabs={tabs.map((entry) =>
           entry.key === "trainees" ? { ...entry, count: trainees.total } : entry,
@@ -132,25 +139,16 @@ export function People({ orgSlug, initialTab }: { orgSlug: string; initialTab: P
                 </div>
               ) : null}
 
-              {adding ? (
-                <AddPeopleSheet
-                  orgSlug={orgSlug}
-                  initialKind={adding}
-                  cohorts={data.cohorts}
-                  canManage={canManage}
-                  onTraineesAdded={reloadAfter("trainees", "groups", "cohorts")}
-                  onStaffAdded={() => setStaffKey((key) => key + 1)}
-                  onClose={() => setAdding(null)}
-                />
-              ) : null}
             </>
           )}
         </AsyncBoundary>
-      ) : adding ? (
+      ) : null}
+
+      {adding ? (
         <AddPeopleSheet
           orgSlug={orgSlug}
           initialKind={adding}
-          cohorts={[]}
+          cohorts={state.data?.cohorts ?? []}
           canManage={canManage}
           onTraineesAdded={reloadAfter("trainees", "groups", "cohorts")}
           onStaffAdded={() => setStaffKey((key) => key + 1)}

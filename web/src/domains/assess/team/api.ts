@@ -132,8 +132,9 @@ export function resendInvitations(
 export type BulkRevokeResponse = components["schemas"]["BulkMembershipRevokeResponse"];
 
 /**
- * Revoke several staff at once. Each row answers for itself (`revoked`,
- * `already_revoked`, `not_found`, ...); the owner and the last admin are skipped server side.
+ * Revoke several staff at once. Each row answers for itself (`revoked`, `already_revoked`,
+ * `not_found`). A batch that would remove the last admin is refused WHOLE with 409 `last_admin`,
+ * so the caller leaves that person out first (`revokableStaff`).
  */
 export function revokeMemberships(
   slug: string,

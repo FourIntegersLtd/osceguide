@@ -29,6 +29,7 @@ const TABS: readonly Tab<Section>[] = [
  * string on the membership row: the old B2B client kept its own copy of that
  * policy and offered actions the API then refused.
  */
+// Partner-only now: assess serves its team inside People. Kept for the partner surface.
 export function Team({ orgSlug }: { orgSlug: string }) {
   const { session } = useSession();
   const { hrefFor } = useSurface();
