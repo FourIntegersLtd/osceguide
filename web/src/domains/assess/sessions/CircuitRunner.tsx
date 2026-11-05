@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { can, useSession } from "@/foundation/session";
 import { useState } from "react";
+import { useAsync } from "@/foundation/hooks";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { Alert, AsyncBoundary, B2CPageHeader, Badge, Button, b2bTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { ExamClock } from "@/capabilities/attempt-runner";
-import type { CircuitConsole } from "@/domains/assess/sessions/api";
+import { readCircuitReview, type CircuitConsole } from "@/domains/assess/sessions/api";
 import { AddTraineesDialog } from "@/domains/assess/sessions/AddTraineesDialog";
+import { CircuitReviewStep } from "@/domains/assess/sessions/CircuitReviewStep";
 import { CircuitFeedbackCard } from "@/domains/assess/sessions/CircuitFeedbackCard";
 import { InterventionsLog } from "@/domains/assess/sessions/InterventionsLog";
 import { LiveMarkingSidebar } from "@/domains/assess/sessions/LiveMarkingSidebar";
@@ -77,6 +79,8 @@ function Runner({
   const { session } = useSession();
   const observer = useObserverRoom(orgSlug, circuitId);
   const [adding, setAdding] = useState(false);
+  // One read of the circuit's published feedback, shared by the review step and the feedback card.
+  const review = useAsync((signal) => readCircuitReview(orgSlug, circuitId, signal), [orgSlug, circuitId]);
   const circuit = data.circuit;
   const isExam = data.sitting.mode === "exam";
   const live = circuit.started_at !== null && circuit.ended_at === null;
@@ -181,10 +185,13 @@ function Runner({
 
       <LiveMarkingSidebar data={data} orgSlug={orgSlug} />
 
+      {circuit.ended_at !== null ? <CircuitReviewStep data={data} published={review.data?.state === "published"} /> : null}
+
       <CircuitFeedbackCard
         data={data}
         orgSlug={orgSlug}
         circuitId={circuitId}
+        review={review}
         busy={run.busy}
         offline={run.reconnecting}
         run={run.run}

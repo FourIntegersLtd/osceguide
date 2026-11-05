@@ -113,7 +113,7 @@ export function ReopenButton({ busy, disabled, onConfirm }: { busy: boolean; dis
       <ConfirmModal
         isOpen={confirming}
         title="Back to draft?"
-        message="The sign-off is withdrawn and the decision becomes a draft you can change. It has to be signed off again before it can be released."
+        message="The sign-off is removed so you can change the decision. Nothing has been released."
         confirmText="Back to draft"
         onCancel={() => setConfirming(false)}
         onConfirm={() => {

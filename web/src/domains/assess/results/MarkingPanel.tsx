@@ -30,7 +30,10 @@ export function MarkingPanel({
     return <RubricFeedback rubric={feedback.rubric} result={result} heading="Automatic marking" narrow />;
   }
   return (
-    <Panel padding="md">
+    <Panel
+      padding="md"
+      title={marking === "pending" ? "Marking" : marking === "failed" ? "Could not be marked" : undefined}
+    >
       <p className="text-osce-body text-b2b-mid">{markingNotice(marking, failedReason)}</p>
       {marking === "failed" && (
         <div className="mt-3 flex flex-col gap-2">
