@@ -82,4 +82,10 @@ EXPOSE 8000
 #
 # `exec`: uvicorn replaces the shell, so Railway's SIGTERM reaches it and it
 # finishes the requests in flight during the draining window.
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 75"]
+#
+# `--workers ${WEB_CONCURRENCY:-1}`: one process serves one CPU core, so a
+# container with more than one vCPU sets WEB_CONCURRENCY (Railway variable).
+# Each worker process holds its own DB pool, so size
+# (pool_size + max_overflow) x WEB_CONCURRENCY x replicas against Postgres's
+# connection limit. api/docs/ENVIRONMENT.md, "Processes".
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 75 --workers ${WEB_CONCURRENCY:-1}"]

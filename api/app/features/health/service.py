@@ -10,11 +10,12 @@ from typing import TypeVar
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.pool import QueuePool
 
 from app import __version__
 from app.core import observability
 from app.core.auth import Principal
-from app.core.db import SessionOpener, savepoint
+from app.core.db import SessionOpener, get_engine, savepoint
 from app.core.events import voice_queue_topic
 from app.core.logging import get_logger
 from app.core.ports import EventBus
@@ -27,6 +28,7 @@ from app.features.health.errors import JobNotCancellable, JobNotFound, JobNotRet
 from app.features.health.repository_jobs import JobEventRef, JobRef
 from app.features.health.schemas import (
     CheckState,
+    DatabasePoolRead,
     DatabaseSizeRead,
     HealthResponse,
     JobEventRead,
@@ -128,6 +130,18 @@ async def _measured_size(session: AsyncSession) -> DatabaseSizeRead:
         return size
 
 
+def database_pool() -> DatabasePoolRead | None:
+    """This process's pool, so the console shows pool exhaustion before requests start timing out."""
+    pool = get_engine().pool
+    if not isinstance(pool, QueuePool):
+        return None
+    return DatabasePoolRead(
+        checked_out=pool.checkedout(),
+        overflow=max(pool.overflow(), 0),
+        ceiling=pool.size() + get_settings().database_max_overflow,
+    )
+
+
 async def platform_health(session: AsyncSession, redis: Redis | None) -> PlatformHealth:
     """The public health report, plus the queue's counts by status, when a worker last checked in and how
     full the database is.
@@ -140,6 +154,7 @@ async def platform_health(session: AsyncSession, redis: Redis | None) -> Platfor
         **report.model_dump(),
         jobs_by_status=await repository_jobs.counts_by_status(session),
         worker_seen_at=await repository_jobs.latest_worker_heartbeat(session),
+        database_pool=database_pool(),
         database_size=await _answers_in_time(
             "database_size", _measured_size(session), timeout=CHECK_TIMEOUT_SECONDS + SIZE_BACKSTOP_SECONDS
         ),
