@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   HiOutlineArrowUpTray,
   HiOutlineNoSymbol,
@@ -8,7 +10,11 @@ import {
   HiOutlinePlusCircle,
   HiOutlineTrash,
 } from "react-icons/hi2";
-import { Alert, Checkbox, ConfirmModal, StepGuide } from "@/foundation/ui";
+import { Alert, Badge, Checkbox, StepGuide } from "@/foundation/ui";
+import { useSurface } from "@/capabilities";
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
+import { DeleteExamConfirm, RetireExamConfirm } from "@/capabilities/authoring/exams/ExamConfirms";
+import { examDetailPath, examNewPath, examSettingsPath } from "@/capabilities/authoring/exams/paths";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -18,12 +24,12 @@ import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRo
 import { useAsync } from "@/foundation/hooks";
 import {
   createExam,
-  deleteExam,
   listExams,
+  listProgrammes,
   publishExam,
-  retireExam,
   updateExam,
   type Exam,
+  type Programme,
 } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { staleRefusal } from "@/capabilities/authoring/api/stale";
@@ -31,8 +37,8 @@ import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { ListCard } from "@/capabilities/authoring/parts/ListCard";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog";
-import { examNextAction, examSteps } from "@/capabilities/authoring/sections/examSteps";
-import { ExamFields, blankExam, type ExamDraft } from "@/capabilities/authoring/sections/ExamFields";
+import { examChip, examNextAction, examSteps } from "@/capabilities/authoring/sections/examSteps";
+import { ExamFields, blankExam, examToDraft, type ExamDraft } from "@/capabilities/authoring/sections/ExamFields";
 
 /**
  * Exams: what an organisation assesses against.
@@ -49,6 +55,15 @@ export function ExamsSection() {
   const exams = useAsync(
     (signal) => listExams(scope, { status: draftsOnly ? "draft" : "all" }, signal),
     [scope.base, draftsOnly],
+  );
+  const { hrefFor } = useSurface();
+  const router = useRouter();
+  const canAuthor = useCanAuthor();
+  const org = scope.kind === "org";
+  // Programmes say which exams are offered for scheduling; the staff catalogue has none.
+  const programmes = useAsync(
+    async (signal) => (org ? (await listProgrammes(scope, signal)).items : []),
+    [scope.base, org],
   );
   const action = useAction(exams.reload);
 
@@ -72,19 +87,38 @@ export function ExamsSection() {
           label="Drafts only"
           className="items-center"
         />
-        <AuthoringButton
-          write
-          variant="commit"
-          size="sm"
-          className="gap-2"
-          onClick={() => {
-            setForm(blankExam);
-            setCreating(true);
-          }}
-        >
-          <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Create exam
-        </AuthoringButton>
+        <div className="flex flex-wrap items-center gap-3">
+          {org && canAuthor ? (
+            <Link href={hrefFor("/programmes")} className="text-osce-meta font-medium text-osce-accent hover:underline">
+              Adopt from OSCE Guide
+            </Link>
+          ) : null}
+          {org ? (
+            canAuthor ? (
+              <Link
+                href={examNewPath(hrefFor)}
+                className="inline-flex min-h-9 items-center gap-2 rounded-osce-md bg-osce-accent px-3 text-osce-meta font-semibold text-white hover:bg-osce-accent-hover"
+              >
+                <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+                Create exam
+              </Link>
+            ) : null
+          ) : (
+            <AuthoringButton
+              write
+              variant="commit"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                setForm(blankExam);
+                setCreating(true);
+              }}
+            >
+              <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+              Create exam
+            </AuthoringButton>
+          )}
+        </div>
       </div>
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
@@ -110,9 +144,10 @@ export function ExamsSection() {
             <AuthoringListRow
               key={exam.id}
               title={exam.name}
+              onOpen={org ? () => router.push(examDetailPath(hrefFor, exam.id)) : undefined}
               meta={`${exam.code} · ${Math.round(exam.default_reading_seconds / 60)} min reading · ${Math.round(exam.default_simulation_seconds / 60)} min station${exam.owner_kind === "platform" ? " · OSCE Guide" : ""}${exam.partner_pilot ? " · partner pilot" : ""}`}
             >
-              <StatusBadge status={exam.status} />
+              {org ? <ExamChipBadge exam={exam} programmes={programmes.data ?? []} /> : <StatusBadge status={exam.status} />}
               <AuthoringRowActions write>
                 <AuthoringIconAction
                   label={
@@ -122,16 +157,7 @@ export function ExamsSection() {
                   }
                   disabled={locked}
                   onClick={() => {
-                    setForm({
-                      code: exam.code,
-                      name: exam.name,
-                      reading: String(exam.default_reading_seconds),
-                      simulation: String(exam.default_simulation_seconds),
-                      attempts: String(exam.station_attempt_limit),
-                      partnerPilot: exam.partner_pilot,
-                      rubricVersionId: exam.rubric_version_id ?? "",
-                      settings: exam.settings ?? blankExam.settings,
-                    });
+                    setForm(examToDraft(exam));
                     setEditing(exam);
                   }}
                 >
@@ -245,6 +271,14 @@ export function ExamsSection() {
           })
         }
       >
+        {editing && org ? (
+          <Link
+            href={examSettingsPath(hrefFor, editing.id)}
+            className="mb-3 inline-block text-osce-meta font-medium text-osce-accent hover:underline"
+          >
+            Open the full form ›
+          </Link>
+        ) : null}
         {editingExam ? (
           <div className="mb-4 space-y-3">
             <StepGuide steps={examSteps(editingExam)} line={examNextAction(editingExam).line} />
@@ -253,39 +287,17 @@ export function ExamsSection() {
         <ExamFields value={form} onChange={setForm} codeDisabled />
       </AuthoringDialog>
 
-      <ConfirmModal
-        isOpen={deleting !== null}
-        onCancel={() => setDeleting(null)}
-        onConfirm={() => {
-          if (!deleting) return;
-          void action.run(`delete:${deleting.id}`, () => deleteExam(scope, deleting.id)).then((ok) => {
-            if (ok) setDeleting(null);
-          });
-        }}
-        isLoading={deleting !== null && action.busy === `delete:${deleting.id}`}
-        tone="danger"
-        title={deleting ? `Delete "${deleting.name}"?` : "Confirm"}
-        confirmText="Delete exam"
-        error={action.error}
-        message="Only a draft nothing was ever built on can be deleted this way. Anything with a station, a sitting or an attempt against it cannot be deleted. Retire it instead."
-      />
-
-      <ConfirmModal
-        isOpen={retiring !== null}
-        onCancel={() => setRetiring(null)}
-        onConfirm={() => {
-          if (!retiring) return;
-          void action.run(`retire:${retiring.id}`, () => retireExam(scope, retiring.id)).then((ok) => {
-            if (ok) setRetiring(null);
-          });
-        }}
-        isLoading={retiring !== null && action.busy === `retire:${retiring.id}`}
-        tone="danger"
-        title={retiring ? `Retire "${retiring.name}"?` : "Confirm"}
-        confirmText="Retire exam"
-        error={action.error}
-        message="It stops being offered for new practice and sittings, and cannot be published again. What was already attempted against it stays as it is."
-      />
+      <DeleteExamConfirm scope={scope} exam={deleting} action={action} onCancel={() => setDeleting(null)} />
+      <RetireExamConfirm scope={scope} exam={retiring} action={action} onCancel={() => setRetiring(null)} />
     </div>
+  );
+}
+
+function ExamChipBadge({ exam, programmes }: { exam: Exam; programmes: Programme[] }) {
+  const chip = examChip(exam, programmes.find((p) => p.exam_code === exam.code) ?? null);
+  return (
+    <Badge tone={chip === "Ready to schedule" ? "success" : "warning"} size="sm" dot>
+      {chip}
+    </Badge>
   );
 }

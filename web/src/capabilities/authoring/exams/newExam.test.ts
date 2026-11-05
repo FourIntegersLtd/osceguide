@@ -1,0 +1,36 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import {
+  NEW_EXAM_STEPS,
+  nextPublishStep,
+  resumeStep,
+  timingProblem,
+  timingsLine,
+} from "@/capabilities/authoring/exams/newExam";
+
+describe("New exam sheet", () => {
+  it("names its four steps", () => {
+    assert.deepEqual(NEW_EXAM_STEPS, ["Name", "Marking scheme", "Timings", "Publish"]);
+  });
+  it("resumes at the first step still to do", () => {
+    assert.equal(resumeStep(null), 0);
+    assert.equal(resumeStep({ rubric_version_id: null }), 1);
+    assert.equal(resumeStep({ rubric_version_id: "rv1" }), 2);
+  });
+  it("holds timings to the board's ranges", () => {
+    assert.equal(timingProblem({ reading: "3", simulation: "10" }), null);
+    assert.equal(timingProblem({ reading: "0", simulation: "10" }), "Reading time must be 1 to 30 minutes.");
+    assert.equal(timingProblem({ reading: "31", simulation: "10" }), "Reading time must be 1 to 30 minutes.");
+    assert.equal(timingProblem({ reading: "3", simulation: "181" }), "Consultation must be 1 to 180 minutes.");
+    assert.equal(timingProblem({ reading: "", simulation: "10" }), "Reading time must be 1 to 30 minutes.");
+  });
+  it("summarises timings", () => {
+    assert.equal(timingsLine({ reading: "3", simulation: "10" }), "3 min reading · 10 min consultation");
+  });
+  it("names the publish step to retry", () => {
+    assert.equal(nextPublishStep({ status: "draft" }, null), "publish");
+    assert.equal(nextPublishStep({ status: "published" }, null), "programme");
+    assert.equal(nextPublishStep({ status: "published" }, { status: "draft" }), "activate");
+    assert.equal(nextPublishStep({ status: "published" }, { status: "active" }), "done");
+  });
+});

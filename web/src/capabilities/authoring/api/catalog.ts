@@ -103,3 +103,12 @@ export function updateProgramme(
     body: { status },
   });
 }
+
+/** One page of an exam's programme's sittings: only the count is read, so one row is asked for. */
+export function countProgrammeSittings(
+  scope: AuthoringScope,
+  programmeId: string,
+  signal?: AbortSignal,
+): Promise<S["Page_SittingRead_"]> {
+  return platformRequest(`${scope.base}/sittings`, { query: { programme_id: programmeId, limit: 100 }, signal });
+}

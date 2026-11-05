@@ -27,6 +27,31 @@ export function examSteps(exam: ExamState): RailStep<ExamStepId>[] {
   ];
 }
 
+type ProgrammeState = { status: string } | null | undefined;
+
+export type ExamChip = "Draft" | "Needs a marking scheme" | "Ready to schedule" | "Not available";
+
+/** The exam, its marking scheme and its programme joined into one status. */
+export function examChip(exam: ExamState, programme: ProgrammeState): ExamChip {
+  if (exam.status === "draft") return exam.rubric_version_id ? "Draft" : "Needs a marking scheme";
+  if (exam.status === "published" && programme?.status === "active") return "Ready to schedule";
+  return "Not available";
+}
+
+export function toggleHelp(on: boolean): string {
+  return on
+    ? "On: this exam can be picked when you schedule a sitting."
+    : "Off: existing sittings carry on, but no new ones can be scheduled.";
+}
+
+export type AvailabilityStep = "add" | "activate" | "retire";
+
+/** The "Available for scheduling" switch is the programme's add, activate and retire. */
+export function availabilityPlan(programme: ProgrammeState, on: boolean): AvailabilityStep[] {
+  if (on) return programme ? ["activate"] : ["add", "activate"];
+  return programme && programme.status === "active" ? ["retire"] : [];
+}
+
 export type ExamNextAction = { id: "pick-scheme" | "publish" | "programme" | "none"; line: string };
 
 export function examNextAction(exam: ExamState): ExamNextAction {

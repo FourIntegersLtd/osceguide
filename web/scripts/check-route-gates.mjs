@@ -49,16 +49,6 @@ const NEEDS_NO_CHECK = new Set(["public", "worker", "signed_in", "org_member"]);
 // Keyed "METHOD route  (file#function)". Each needs a reason; the list only shrinks.
 const GATE_ALLOW = allowList(
   {
-    "POST /api/v1/orgs/{org_slug}/exams  (src/capabilities/authoring/api/catalog.ts#createExam)":
-      "Gated at the control, not the handler: fired only from ExamsSection's `write` AuthoringButton / AuthoringRowActions and the dialogs they open",
-    "PATCH /api/v1/orgs/{org_slug}/exams/{exam_id}  (src/capabilities/authoring/api/catalog.ts#updateExam)":
-      "Gated at the control, not the handler: fired only from ExamsSection's `write` AuthoringButton / AuthoringRowActions and the dialogs they open",
-    "POST /api/v1/orgs/{org_slug}/exams/{exam_id}/publish  (src/capabilities/authoring/api/catalog.ts#publishExam)":
-      "Gated at the control, not the handler: fired only from ExamsSection's `write` AuthoringButton / AuthoringRowActions and the dialogs they open",
-    "POST /api/v1/orgs/{org_slug}/exams/{exam_id}/retire  (src/capabilities/authoring/api/catalog.ts#retireExam)":
-      "Gated at the control, not the handler: fired only from ExamsSection's `write` AuthoringButton / AuthoringRowActions and the dialogs they open",
-    "DELETE /api/v1/orgs/{org_slug}/exams/{exam_id}  (src/capabilities/authoring/api/catalog.ts#deleteExam)":
-      "Gated at the control, not the handler: fired only from ExamsSection's `write` AuthoringButton / AuthoringRowActions and the dialogs they open",
     "POST /api/v1/orgs/{org_slug}/station-imports  (src/capabilities/authoring/api/imports.ts#uploadStationImport)":
       "Gated at the control, not the handler: ImportStationDialog mounts only from the import button inside AuthoringSectionLead (author only)",
     "POST /api/v1/orgs/{org_slug}/station-imports/{import_id}/station  (src/capabilities/authoring/api/imports.ts#draftStationFromImport)":
@@ -82,7 +72,7 @@ const GATE_ALLOW = allowList(
     "src/capabilities/staff-media/api.ts#generateContent":
       "Takes its path as an argument; its one caller, generateBlog, passes /platform/generate/blog, reached from the staff console only",
   },
-  16,
+  11,
 );
 
 /** What a check must admit: the rung, or `rung|platform` when a platform admin also passes. */

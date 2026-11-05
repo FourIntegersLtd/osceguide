@@ -97,6 +97,7 @@ export {
   retireExam,
   deleteExam,
   listProgrammes,
+  countProgrammeSittings,
   addProgramme,
   updateProgramme,
 } from "@/capabilities/authoring/api/catalog";
