@@ -85,11 +85,11 @@ export function SittingEditForm({
   return (
     <Dialog
       open
-      title="Edit this sitting"
+      title="Edit sitting"
       lead="Only what you change is written. The name and the date can move for the life of the record; what the sitting examines cannot once anybody has been examined against it."
       error={failure}
       busy={busy}
-      commitLabel="Save sitting"
+      commitLabel="Save"
       busyLabel="Saving…"
       commitDisabled={busy || values.name.trim().length === 0 || !hasChanges(patch)}
       onClose={onClose}

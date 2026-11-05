@@ -49,7 +49,7 @@ export function TraineePicker({
   };
   return (
     <Panel
-      title="Trainees"
+      title="Candidates"
       description={`${picked.size} of ${trainees.length} selected. ${
         isExam
           ? "An exam circuit is one candidate's sitting: they go through every station."
@@ -65,7 +65,7 @@ export function TraineePicker({
           <div className="mb-3 flex flex-wrap gap-3">
             {[
               { label: "Add a group", noun: "group", sets: groups },
-              { label: "Add a cohort", noun: "cohort", sets: cohorts },
+              { label: "Add a year group", noun: "year group", sets: cohorts },
             ]
               .filter((picker) => picker.sets.length > 0)
               .map((picker) => (
@@ -95,7 +95,7 @@ export function TraineePicker({
           )}
           <div className="mb-3 max-w-sm">
             <Input
-              label="Find a trainee"
+              label="Find a candidate"
               value={traineeSearch}
               onChange={(event) => setTraineeSearch(event.target.value)}
             />

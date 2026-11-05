@@ -280,11 +280,11 @@ export function splitFinished(sittings: readonly MySitting[]): { current: MySitt
 }
 
 const JOIN_REFUSALS: Record<string, string> = {
-  circuit_not_live: "This circuit is not open yet. You will be let in when your supervisor starts it.",
-  circuit_not_found: "That circuit is not on your list any more. Go back to your sittings.",
-  voice_unavailable: "The voice service is not available right now. Wait a minute and try again.",
-  trainee_revoked: "Your access to this organisation has been withdrawn. Ask your administrator.",
-  trainee_not_on_roster: "You are not on this circuit. Ask your supervisor to add you.",
+  circuit_not_live: "This circuit is not open yet. It opens when your supervisor starts it.",
+  circuit_not_found: "That circuit is not on your list any more. Ask your organiser.",
+  voice_unavailable: "The voice service is not available right now. Try again in a minute.",
+  trainee_revoked: "Your access to this organisation has been withdrawn.",
+  trainee_not_on_roster: "You are not on this circuit.",
 };
 
 /** Why a join was refused, in words a candidate can act on (T-7). */

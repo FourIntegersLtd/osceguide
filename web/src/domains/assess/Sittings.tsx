@@ -7,7 +7,6 @@ import {
   AsyncBoundary,
   B2CHero,
   B2CPageHeader,
-  B2CSegmentedTabs,
   Badge,
   ButtonLink,
   PlatformFilterSearch,
@@ -30,8 +29,6 @@ import {
   type SittingFilters,
 } from "@/domains/assess/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
-
-type ModeFilter = "all" | "exam" | "training";
 
 /** The sitting running now, else the soonest one still to come; finished ones are never next. */
 export function nextUp(sittings: Sitting[], now: number = Date.now()): Sitting | null {
@@ -64,12 +61,12 @@ const columnsFor = (hrefFor: (path: string) => string, words: AssessWords): Colu
     ),
   },
   {
-    header: "Mode",
+    header: "Kind",
     key: "mode" as keyof Sitting,
-    render: (sitting: Sitting) => <span className={`${cell} capitalize`}>{sitting.mode}</span>,
+    render: (sitting: Sitting) => <span className={cell}>{sitting.mode === "exam" ? "Formal exam" : "Training"}</span>,
   },
   {
-    header: "Programme",
+    header: "Exam",
     key: "programme_name" as keyof Sitting,
     render: (sitting: Sitting) => <span className={cell}>{sitting.programme_name ?? ""}</span>,
   },
@@ -139,17 +136,6 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <B2CSegmentedTabs<ModeFilter>
-          aria-label="Filter by mode"
-          compact
-          value={filters.mode === "exam" || filters.mode === "training" ? filters.mode : "all"}
-          onChange={(mode) => setFilters({ ...filters, mode: mode === "all" ? "" : mode })}
-          items={[
-            { id: "all", label: "All" },
-            { id: "exam", label: "Exam" },
-            { id: "training", label: "Training" },
-          ]}
-        />
         <PlatformFilterSearch
           value={typed}
           onChange={setTyped}

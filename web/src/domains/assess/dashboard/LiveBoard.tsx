@@ -60,7 +60,7 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
     <div className="flex w-full min-w-0 flex-col gap-5">
       <B2CPageHeader
         title="Now running"
-        subtitle="Every circuit that is live in your organisation."
+        subtitle="Every circuit that is live in your organisation, updated as it happens."
         action={
           streaming ? (
             <Badge variant={stream.connected ? "success" : "warning"} dot>
@@ -71,7 +71,7 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
       />
 
       {stream.error ? (
-        <Alert tone="danger">The live view is unavailable: {stream.error.message}</Alert>
+        <Alert tone="danger">Live updates stopped. Reload to reconnect.</Alert>
       ) : null}
 
       <AsyncBoundary state={initial}>
@@ -109,6 +109,7 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
               >
                 {circuits[0]!.sitting_name}
               </B2CHero>
+              <p className="text-sm text-ink-muted">Trouble first, then least time left.</p>
               <B2CGroupedSection eyebrow="Running">
                 {circuits.map((circuit) => (
                   <Row key={circuit.circuit_id} circuit={circuit} />

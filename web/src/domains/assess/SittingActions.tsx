@@ -58,9 +58,9 @@ export function SittingActionDialog({
     <ConfirmModal
       isOpen={pending?.kind === "cancel"}
       title="Cancel this sitting?"
-      message="Nobody can sit it once it is cancelled. It stays in the list, marked cancelled."
+      message="Nobody can take it once it is cancelled. Nothing has started, so no attempt is lost."
       confirmText="Cancel sitting"
-      cancelText="Keep it"
+      cancelText="Cancel"
       tone="danger"
       error={refused}
       onCancel={close}

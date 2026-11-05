@@ -20,6 +20,8 @@ import { readSitting, type Circuit, type Sitting } from "@/domains/assess/api";
 import { SittingActionDialog, type PendingSittingAction } from "@/domains/assess/SittingActions";
 import { SittingEditForm } from "@/domains/assess/SittingEditForm";
 import { readSittingReport, type SittingReport } from "@/domains/assess/results/api";
+import { readAllCohorts } from "@/domains/assess/roster/api";
+import { TabStrip } from "@/domains/assess/team/chrome";
 import {
   circuitToOpen,
   countsFromReport,
@@ -41,6 +43,8 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
   const state = useAsync((signal) => readSitting(orgSlug, sittingId, signal), [orgSlug, sittingId]);
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState<PendingSittingAction>(null);
+  const [tab, setTab] = useState<SittingTab>("circuits");
+  const cohorts = useAsync((signal) => readAllCohorts(orgSlug, signal), [orgSlug]);
   // The report's counts feed the steps. Every staff role reads it; a failure shows as one,
   // never as "0 marked, 0 decided".
   const report = useAsync((signal) => readSittingReport(orgSlug, sittingId, signal), [orgSlug, sittingId]);
@@ -80,9 +84,14 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
               back={{ href: hrefFor("/sittings"), label: w.Sittings }}
               eyebrow={sittingModeLabel(sitting.mode)}
               title={sitting.name}
-              subtitle={
-                sitting.scheduled_for ? formatShortDateTime(sitting.scheduled_for) : "No date set"
-              }
+              subtitle={[
+                sitting.scheduled_for ? formatShortDateTime(sitting.scheduled_for) : "No date set",
+                sitting.cohort_id
+                  ? `Year group: ${cohorts.data?.find((cohort) => cohort.id === sitting.cohort_id)?.name ?? "…"}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
               action={
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={sittingRunning(sitting.status) ? "success" : "neutral"} dot>
@@ -106,16 +115,6 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                   >
                     Results
                   </ButtonLink>
-                  {manage ? (
-                    <ButtonLink
-                      themeType="b2b"
-                      size="sm"
-                      variant="commit"
-                      href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}
-                    >
-                      Add a circuit
-                    </ButtonLink>
-                  ) : null}
                 </div>
               }
             />
@@ -136,7 +135,22 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
               />
             ) : null}
 
-            {(sitting.circuits ?? []).length === 0 ? (
+            <TabStrip
+              label="Sitting sections"
+              active={tab}
+              onSelect={setTab}
+              tabs={[
+                { key: "circuits", label: "Circuits", count: (sitting.circuits ?? []).length },
+                { key: "candidates", label: "Candidates" },
+                { key: "results", label: "Results so far" },
+              ]}
+            />
+
+            {tab === "candidates" ? <CandidatesTab report={report} /> : null}
+            {tab === "results" ? (
+              <ResultsTab report={report} href={hrefFor(`/sittings/${sitting.id}/results`)} />
+            ) : null}
+            {tab !== "circuits" ? null : (sitting.circuits ?? []).length === 0 ? (
               <B2CHero eyebrow="Circuits" title="No circuits yet">
                 Add at least one circuit so candidates can take this sitting.
               </B2CHero>
@@ -180,6 +194,18 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                 })}
               </B2CGroupedSection>
             )}
+            {tab === "circuits" && manage && (sitting.circuits ?? []).length > 0 ? (
+              <div>
+                <ButtonLink themeType="b2b" size="sm" variant="secondary" href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}>
+                  Add a circuit
+                </ButtonLink>
+              </div>
+            ) : null}
+            {tab === "circuits" && (sitting.circuits ?? []).length > 1 ? (
+              <p className="text-sm text-ink-muted">
+                {(sitting.circuits ?? []).length - 1} more circuits · supervisors see their own circuit first
+              </p>
+            ) : null}
 
             <SittingActionDialog
               orgSlug={orgSlug}
@@ -193,6 +219,79 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
         }}
       </AsyncBoundary>
     </div>
+  );
+}
+
+type SittingTab = "circuits" | "candidates" | "results";
+
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+}
+
+/** Everyone on the sitting, from the report: who they are and the circuit they sit. */
+function CandidatesTab({ report }: { report: AsyncState<SittingReport> }) {
+  return (
+    <AsyncBoundary
+      state={report}
+      isEmpty={(data) => (data.candidates ?? []).length === 0}
+      empty={{ title: "No candidates yet", description: "Add a circuit to put people on this sitting." }}
+    >
+      {(data) => (
+        <B2CGroupedSection eyebrow="Candidates">
+          {(data.candidates ?? []).map((candidate) => {
+            const label = candidate.name ?? candidate.email ?? "Candidate";
+            const circuits = [...new Set((candidate.stations ?? []).map((station) => station.circuit_name))];
+            return (
+              <div key={candidate.user_id} className="flex items-center gap-3 px-4 py-3 text-sm">
+                <span
+                  aria-hidden
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-canvas text-osce-meta font-medium text-ink"
+                >
+                  {initials(label)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-ink">{label}</span>
+                  <span className="block truncate text-ink-muted">Signed in</span>
+                </span>
+                <span className="text-ink-muted">{circuits.join(", ")}</span>
+              </div>
+            );
+          })}
+        </B2CGroupedSection>
+      )}
+    </AsyncBoundary>
+  );
+}
+
+/** How far marking and release have got, with the way into the full results. */
+function ResultsTab({ report, href }: { report: AsyncState<SittingReport>; href: string }) {
+  return (
+    <AsyncBoundary state={report}>
+      {(data) => {
+        const counts = countsFromReport(data);
+        return (
+          <B2CGroupedSection eyebrow="Results so far">
+            <p className="px-4 py-3 text-sm text-ink">
+              Stations marked {counts.stationsMarked} of {counts.stations}
+            </p>
+            <p className="px-4 py-3 text-sm text-ink">
+              Decided {counts.decided} of {counts.candidates}
+            </p>
+            <p className="px-4 py-3 text-sm text-ink">
+              Released {counts.released} of {counts.candidates}
+            </p>
+            <div className="px-4 py-3">
+              <OpenResults href={href} />
+            </div>
+          </B2CGroupedSection>
+        );
+      }}
+    </AsyncBoundary>
   );
 }
 

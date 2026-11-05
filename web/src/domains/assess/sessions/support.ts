@@ -42,7 +42,15 @@ export const ALERT_COPY: Record<string, string> = {
     "The clock has run past this phase and the circuit has not moved on by itself. Advance it by hand.",
 };
 
-export function alertCopy(code: string): string {
+/** The same alerts as the supervisor sees them in the room, where "do this" matters more than why. */
+const CONSOLE_ALERT_COPY: Record<string, string> = {
+  attempt_failed: "This station's attempt failed. Resend the patient or redo the station.",
+  voice_fault: "Voice fault in the room. The candidate may not hear the patient.",
+  clock_overdue: "The clock is overdue. Move the circuit on by hand.",
+};
+
+export function alertCopy(code: string, where: "board" | "console" = "board"): string {
+  if (where === "console" && CONSOLE_ALERT_COPY[code]) return CONSOLE_ALERT_COPY[code];
   return ALERT_COPY[code] ?? code.replace(/_/g, " ");
 }
 

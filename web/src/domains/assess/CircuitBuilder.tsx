@@ -1,20 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import {
-  HiOutlineArrowDown,
-  HiOutlineArrowUp,
-  HiOutlineTrash,
-} from "react-icons/hi2";
 import { Alert, Button, Input, Spinner, Panel } from "@/foundation/ui";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
-import {
-  StationLibrary,
-  type LibraryStation,
-  type StationLibraryScope,
-} from "@/capabilities/stations";
+import type { StationLibraryScope } from "@/capabilities/stations";
+import { StationOrder } from "@/domains/assess/ScheduleSteps";
 import type { CircuitShape } from "@/domains/assess/api";
-import { circuitLeads, isBulkExam, moveItem } from "@/domains/assess/support";
+import { circuitLeads, isBulkExam } from "@/domains/assess/support";
 import {
   TraineePicker,
   type PickerSet,
@@ -61,9 +53,6 @@ import {
  * would be a lie that nothing would catch.
  */
 export type PickedStation = { version_id: string; title: string };
-
-const stationButtonClass =
-  "rounded-control p-1.5 text-ink-subtle hover:bg-canvas hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent";
 
 export type StaffRow = { user_id: string; email?: string | null; role: string };
 
@@ -235,7 +224,7 @@ export function CircuitBuilder({
             placeholder={bulk ? "Exam" : "Morning circuit"}
           />
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-ink">Lead</span>
+            <span className="text-sm font-medium text-ink">Supervisor</span>
             <select
               value={supervisor}
               onChange={(event) => setSupervisor(event.target.value)}
@@ -280,80 +269,25 @@ export function CircuitBuilder({
         cohorts={cohorts}
       />
 
-      <Panel title={`Stations (${stations.length})`}>
-        <div className="flex flex-col gap-4">
-          {stations.length > 0 && (
-            <ol className="flex flex-col gap-1.5">
-              {stations.map((station, index) => (
-                <li
-                  key={station.version_id}
-                  className="flex items-center gap-2 rounded-control border border-border px-3 py-1.5 text-sm text-ink"
-                >
-                  <span className="w-6 text-ink-muted">{index + 1}.</span>
-                  <span className="min-w-0 flex-1 truncate">
-                    {station.title}
-                  </span>
-                  <button
-                    type="button"
-                    className={stationButtonClass}
-                    aria-label={`Move ${station.title} up`}
-                    disabled={index === 0}
-                    onClick={() =>
-                      setStations((current) => moveItem(current, index, -1))
-                    }
-                  >
-                    <HiOutlineArrowUp className="h-4 w-4" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className={stationButtonClass}
-                    aria-label={`Move ${station.title} down`}
-                    disabled={index === stations.length - 1}
-                    onClick={() =>
-                      setStations((current) => moveItem(current, index, 1))
-                    }
-                  >
-                    <HiOutlineArrowDown className="h-4 w-4" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className={stationButtonClass}
-                    aria-label={`Remove ${station.title}`}
-                    onClick={() =>
-                      setStations((current) =>
-                        current.filter(
-                          (item) => item.version_id !== station.version_id,
-                        ),
-                      )
-                    }
-                  >
-                    <HiOutlineTrash className="h-4 w-4" aria-hidden />
-                  </button>
-                </li>
-              ))}
-            </ol>
-          )}
-          <StationLibrary
-            scope={scope}
-            onPick={(station: LibraryStation) =>
-              setStations((current) =>
-                current.some((item) => item.version_id === station.version_id)
-                  ? current
-                  : [
-                      ...current,
-                      { version_id: station.version_id, title: station.title },
-                    ],
-              )
-            }
-            pickLabel="Add"
-            selectedVersionIds={
-              new Set(stations.map((station) => station.version_id))
-            }
-          />
-        </div>
+      <Panel
+        title={`Stations (${stations.length})`}
+        description={isExam ? `At most ${MAX_EXAM_STATIONS} on a formal exam circuit` : undefined}
+      >
+        <StationOrder
+          stations={stations}
+          setStations={setStations}
+          scope={scope}
+          examName={scope.examCode ?? "this exam"}
+        />
       </Panel>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {bulk ? (
+          <p className="text-sm text-ink-muted">
+            {picked.size} candidates make {picked.size} circuits, one each, named {name.trim() || "Exam"} 1 to{" "}
+            {name.trim() || "Exam"} {picked.size}.
+          </p>
+        ) : null}
         <Button
           themeType="b2b"
           variant="commit"

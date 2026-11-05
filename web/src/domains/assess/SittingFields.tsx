@@ -119,10 +119,10 @@ export function CohortField({
 }) {
   return (
     <FieldSelect
-      label="Cohort (optional)"
+      label="Year group"
       value={value}
       onChange={onChange}
-      options={[{ value: "", label: "No cohort" }, ...cohorts.map((c) => ({ value: c.id, label: c.name }))]}
+      options={[{ value: "", label: "None" },...cohorts.map((c) => ({ value: c.id, label: c.name }))]}
     />
   );
 }

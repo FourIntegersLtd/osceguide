@@ -16,18 +16,32 @@ test("ASSESS-1 admin schedules a sitting and finds it listed", async ({ page, co
 
   await expect(page.getByRole("heading", { level: 1, name: "Schedule a sitting" })).toBeVisible();
   const name = `Journey sitting ${Date.now().toString(36)}`;
-  const create = page.getByRole("button", { name: "Create sitting" });
-  await expect(create).toBeDisabled(); // nothing to create until it has a name
+  // Six steps unlock in order: Continue stays shut until the step is answered.
+  const next = page.getByRole("button", { name: "Continue" });
+  await expect(next).toBeDisabled();
   await page.getByRole("textbox", { name: "Name" }).fill(name);
-  await page.getByRole("button", { name: /^Exam/ }).click();
-  await page.getByLabel("Scheduled for").fill("2030-03-04T10:00");
-  await create.click();
+  await page.getByRole("button", { name: /^Formal exam/ }).click();
+  await page.getByLabel("Date").fill("2030-03-04");
+  await next.click();
 
-  // Lands on the new sitting, with the guide asking for the circuit.
+  await expect(page.getByRole("heading", { name: "Pick the stations" })).toBeVisible();
+  await expect(next).toBeDisabled();
+  await page.getByRole("button", { name: "Add", exact: true }).first().click();
+  await next.click();
+
+  await expect(page.getByRole("heading", { name: "Who is sitting it?" })).toBeVisible();
+  await page.getByRole("button", { name: "Pick", exact: true }).first().click();
+  await next.click();
+  await next.click(); // timing keeps the exam's defaults
+  await next.click(); // the supervisor is optional
+
+  await expect(page.getByRole("heading", { name: "Review and create" })).toBeVisible();
+  await page.getByRole("button", { name: "Create sitting" }).click();
+
+  // Lands on the new sitting, with the circuit the wizard made.
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   await expect(page.getByText("Scheduled", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("list", { name: "Steps" })).toContainText("Circuits");
-  await expect(page.getByRole("link", { name: "Add a circuit" }).first()).toBeVisible();
 
   // It is on the list, and the api agrees on what was scheduled.
   await openPage(page, `/app/${w.slug}/sittings`);

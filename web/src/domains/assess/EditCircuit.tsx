@@ -107,7 +107,7 @@ export function EditCircuit({
                 trainees={trainees}
                 staff={staff}
                 initial={draftFrom(data)}
-                submitLabel={blocked ? "Rebuild refused" : "Save changes"}
+                submitLabel={blocked ? "Save changes · locked" : "Save changes"}
                 disabled={blocked !== null}
                 above={
                   blocked ? (

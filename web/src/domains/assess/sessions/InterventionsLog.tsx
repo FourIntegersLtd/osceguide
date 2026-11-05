@@ -61,7 +61,7 @@ function Entries({ orgSlug, circuitId }: { orgSlug: string; circuitId: string })
 
   if (log.loading) return <Spinner />;
   if (log.error) {
-    return <Alert tone="danger">That record could not be read. {log.error.message}</Alert>;
+    return <Alert tone="danger">Could not load the log. {log.error.message}</Alert>;
   }
 
   const items = log.data?.items ?? [];

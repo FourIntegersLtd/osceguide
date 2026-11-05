@@ -28,6 +28,7 @@ const ASSESS_ERROR_COPY: Partial<Record<PlatformErrorCode, string>> = {
   // sittings and circuits
   circuit_locked: "This circuit has started or has feedback recorded, so its stations can no longer be changed. Reload to see where it is now.",
   sitting_locked: "A circuit on this sitting has started, so it cannot be cancelled. End its circuits instead.",
+  stale_revision: "This circuit changed since you opened it. Reload to see the latest.",
   invalid_circuit: "This circuit cannot be built as set up. Check the stations, candidates and timings.",
   circuit_not_found: "This circuit no longer exists. It may have been deleted.",
   circuit_not_started: "The circuit has not been started yet.",

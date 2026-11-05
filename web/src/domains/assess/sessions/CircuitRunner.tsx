@@ -125,7 +125,7 @@ function Runner({
       {/* Alerts arrive as codes on purpose: the board decides how to say it. */}
       {(circuit.alerts ?? []).map((code) => (
         <Alert key={code} tone="warning">
-          {alertCopy(code)}
+          {alertCopy(code, "console")}
         </Alert>
       ))}
 
