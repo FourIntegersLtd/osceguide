@@ -83,7 +83,6 @@ jobs:
       - name: Exam freeze
         uses: ./.github/actions/exam-freeze
         with:
-          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
           override-reason: ${{ inputs.override_freeze_reason }}
 
       - name: Connect to the control plane
@@ -257,7 +256,6 @@ jobs:
       - name: Exam freeze
         uses: ./.github/actions/exam-freeze
         with:
-          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
           override-reason: ${{ inputs.override_freeze_reason }}
 
       # Deploy the manifests (assessment/k8s) as they were at the promoted commit, so production gets

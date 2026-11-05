@@ -1,13 +1,9 @@
 name: Exam freeze
 description: >-
-  Fails inside a freeze window listed in the repo variable EXAM_FREEZE_WINDOWS unless an override
+  Fails inside a freeze window listed in this file (WINDOWS below) unless an override
   reason is given. Run it after main's checkout, in the job that checks and again in the job that
   pushes, because a deploy job can be approved hours after the check job ran.
 inputs:
-  windows:
-    description: 'Comma-separated "start/end" ISO-UTC pairs, for example 2026-11-14T06:00Z/2026-11-14T20:00Z.'
-    required: false
-    default: ""
   override-reason:
     description: Why this promotion cannot wait. Leave empty normally.
     required: false
@@ -18,7 +14,10 @@ runs:
     - name: Exam freeze
       shell: bash
       env:
-        WINDOWS: ${{ inputs.windows }}
+        # Edit this list and merge to add a freeze: comma-separated "start/end" ISO-UTC pairs,
+        # for example "2026-11-14T06:00Z/2026-11-14T20:00Z,2026-12-02T06:00Z/2026-12-02T20:00Z".
+        # Empty means no freeze. Hard-coded on purpose: no repository variable to set.
+        WINDOWS: ""
         OVERRIDE_REASON: ${{ inputs.override-reason }}
       run: |
         now=$(date -u +%s)
@@ -26,7 +25,7 @@ runs:
         for pair in "${pairs[@]}"; do
           pair="${pair// /}"
           [ -z "${pair}" ] && continue
-          bad="::error::Bad EXAM_FREEZE_WINDOWS entry (want start/end): ${pair}"
+          bad="::error::Bad freeze window entry (want start/end): ${pair}"
           [[ "${pair}" =~ ^[^/]+/[^/]+$ ]] || { echo "${bad}"; exit 1; }
           start="${pair%%/*}"
           end="${pair##*/}"

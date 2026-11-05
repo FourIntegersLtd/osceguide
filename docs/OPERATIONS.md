@@ -26,7 +26,7 @@ logging integration, which happens when `SENTRY_DSN` is set on the api.
 ## Exam freeze (promote workflows)
 
 `Promote api`, `Promote web` and `Promote workers to production` run the shared `.github/actions/exam-freeze` action (after main's checkout, before
-any gate, and again in the job that pushes, because an approval can come hours after the check). It reads the repository variable `EXAM_FREEZE_WINDOWS` (repository Settings, Secrets and
+any gate, and again in the job that pushes, because an approval can come hours after the check). It reads the list `WINDOWS` in `.github/actions/exam-freeze/action.yml` (hard-coded; edit and merge to add a freeze) (repository Settings, Secrets and
 variables, Actions, Variables): comma-separated `start/end` pairs in ISO UTC, for example
 `2026-12-03T07:00:00Z/2026-12-03T18:00:00Z,2026-12-10T07:00:00Z/2026-12-10T18:00:00Z`. While now falls
 inside a window the run fails and production is untouched. An unset or empty variable means no freeze. A

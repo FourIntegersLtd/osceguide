@@ -87,7 +87,6 @@ jobs:
       - name: Exam freeze
         uses: ./.github/actions/exam-freeze
         with:
-          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
           override-reason: ${{ inputs.override_freeze_reason }}
 
       - name: Work out which commit to ship
@@ -197,7 +196,6 @@ jobs:
       - name: Exam freeze
         uses: ./.github/actions/exam-freeze
         with:
-          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
           override-reason: ${{ inputs.override_freeze_reason }}
 
       - name: Move the production-web branch to the commit

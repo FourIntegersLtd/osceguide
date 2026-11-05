@@ -71,7 +71,6 @@ jobs:
       - name: Exam freeze
         uses: ./.github/actions/exam-freeze
         with:
-          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
           override-reason: ${{ inputs.override_freeze_reason }}
 
       - uses: ./.github/actions/staging-checks
@@ -110,7 +109,6 @@ jobs:
       - name: Exam freeze
         uses: ./.github/actions/exam-freeze
         with:
-          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
           override-reason: ${{ inputs.override_freeze_reason }}
 
       # Ask staging what it runs. Its answer is also the default commit to promote.
