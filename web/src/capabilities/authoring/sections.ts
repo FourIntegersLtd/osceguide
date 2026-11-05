@@ -1,14 +1,16 @@
 import type { B2CSegmentedTabItem } from "@/foundation/ui";
 
 export const AUTHORING_SECTIONS = [
-  { id: "rubrics", label: "Marking schemes" },
   { id: "exams", label: "Exams" },
-  { id: "programmes", label: "Programmes" },
-  { id: "station-templates", label: "Templates" },
   { id: "stations", label: "Stations" },
+  { id: "rubrics", label: "Marking schemes" },
+  { id: "station-templates", label: "Station layouts" },
+  { id: "programmes", label: "Programmes" },
 ] as const;
 
 export type AuthoringSection = (typeof AUTHORING_SECTIONS)[number]["id"];
+
+export const DEFAULT_AUTHORING_SECTION: AuthoringSection = "exams";
 
 export function parseAuthoringSection(value: string | undefined): AuthoringSection | null {
   if (!value) return null;
