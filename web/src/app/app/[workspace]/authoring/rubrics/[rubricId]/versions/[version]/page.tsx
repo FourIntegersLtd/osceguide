@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Capability } from "@/app/app/[workspace]/capability";
 import { RubricBuilderScreen } from "@/capabilities/authoring/rubrics/RubricBuilderScreen";
 import { RubricDashboardPreview } from "@/domains/train/dashboard/RubricDashboardPreview";
@@ -16,11 +17,13 @@ export default async function Page({
   const versionNumber = Number.parseInt(version, 10);
   return (
     <Capability id="authoring">
-      <RubricBuilderScreen
+      <Suspense fallback={null}>
+<RubricBuilderScreen
         rubricId={rubricId}
         version={Number.isFinite(versionNumber) ? versionNumber : 0}
         dashboardPreview={RubricDashboardPreview}
       />
+</Suspense>
     </Capability>
   );
 }

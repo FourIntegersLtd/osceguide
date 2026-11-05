@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Checkbox, getInputClassName, Select } from "@/foundation/ui";
 import { LoadError } from "@/capabilities/authoring/parts/LoadError";
 import { useAsync } from "@/foundation/hooks";
-import { listRubrics, type ExamSettings } from "@/capabilities/authoring/api";
+import { listRubrics, type Exam, type ExamSettings } from "@/capabilities/authoring/api";
 import {
   ExamSettingsFields,
   Field,
@@ -49,6 +49,38 @@ export const blankExam: ExamDraft = {
   settings: defaultSettings,
 };
 
+/** The form's values for a saved exam. */
+export function examToDraft(exam: Exam): ExamDraft {
+  return {
+    code: exam.code,
+    name: exam.name,
+    reading: String(exam.default_reading_seconds),
+    simulation: String(exam.default_simulation_seconds),
+    attempts: String(exam.station_attempt_limit),
+    partnerPilot: exam.partner_pilot,
+    rubricVersionId: exam.rubric_version_id ?? "",
+    settings: exam.settings ?? blankExam.settings,
+  };
+}
+
+/** The latest published version of each marking scheme; a selected older one stays listed. */
+export function useSchemeVersions(selectedId: string) {
+  const scope = useAuthoringScope();
+  const rubrics = useAsync((signal) => listRubrics(scope, {}, signal), [scope.base]);
+  const versions = useMemo(
+    () =>
+      (rubrics.data?.items ?? []).flatMap((rubric) => {
+        const published = (rubric.versions ?? []).filter((v) => v.status === "published");
+        const latest = Math.max(0, ...published.map((v) => v.version));
+        return published
+          .filter((v) => v.version === latest || v.id === selectedId)
+          .map((v) => ({ id: v.id, label: `${rubric.title} · v${v.version}` }));
+      }),
+    [rubrics.data, selectedId],
+  );
+  return { rubrics, versions };
+}
+
 /**
  * The exam form, shared by create and edit.
  *
@@ -66,23 +98,7 @@ export function ExamFields({
   codeDisabled?: boolean;
 }) {
   const scope = useAuthoringScope();
-  const rubrics = useAsync(
-    (signal) => listRubrics(scope, {}, signal),
-    [scope.base],
-  );
-
-  // The latest published version of each rubric; a selected older one stays listed.
-  const versions = useMemo(
-    () =>
-      (rubrics.data?.items ?? []).flatMap((rubric) => {
-        const published = (rubric.versions ?? []).filter((v) => v.status === "published");
-        const latest = Math.max(0, ...published.map((v) => v.version));
-        return published
-          .filter((v) => v.version === latest || v.id === value.rubricVersionId)
-          .map((v) => ({ id: v.id, label: `${rubric.title} · v${v.version}` }));
-      }),
-    [rubrics.data, value.rubricVersionId],
-  );
+  const { rubrics, versions } = useSchemeVersions(value.rubricVersionId);
 
   const set = (patch: Partial<ExamDraft>) => onChange({ ...value, ...patch });
   const setSettings = (patch: Partial<ExamSettings>) =>

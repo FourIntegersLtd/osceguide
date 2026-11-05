@@ -49,14 +49,15 @@ export function StationsSection() {
   const { session } = useSession();
   const router = useRouter();
   const { hrefFor } = useSurface();
-  const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
+  const searchParams = useSearchParams();
+  // An exam page links here with its code.
+  const [examFilter, setExamFilter] = useState(searchParams.get("exam") ?? AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
   const query = useSearchQuery(search);
   // The status filter and the open station live in the address, so a reload or a shared
   // link lands on the same list, and a saved station has an address of its own.
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const status = parseStatusFilter(searchParams.get("status"));
   const openId = searchParams.get("station");
   // Arriving on a station's own address, it may be an archived one; the filter alone would hide it.

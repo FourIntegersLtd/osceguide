@@ -48,9 +48,11 @@ function toggled<T>(list: readonly T[] | undefined, item: T, on: boolean): T[] {
 export function ExamSettingsFields({
   value,
   onChange,
+  title = "Exam settings",
 }: {
   value: ExamSettings;
   onChange: (patch: Partial<ExamSettings>) => void;
+  title?: string;
 }) {
   const generation: Partial<NonNullable<ExamSettings["generation"]>> =
     value.generation ?? {};
@@ -63,7 +65,7 @@ export function ExamSettingsFields({
     });
 
   return (
-    <FoldSection title="Exam settings" defaultOpen={false}>
+    <FoldSection title={title} defaultOpen={false}>
       <div className="space-y-4">
         <Field label="Date label">
           <input

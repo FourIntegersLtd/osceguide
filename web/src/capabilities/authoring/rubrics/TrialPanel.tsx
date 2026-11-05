@@ -37,7 +37,7 @@ export function TrialPanel({
   blockedReason: string | null;
   onRun: (body: TrialMarkRequest) => void;
 }) {
-  const [source, setSource] = useState<TrialSource>("transcript");
+  const [source, setSource] = useState<TrialSource>("attempt");
   const [transcript, setTranscript] = useState("");
   const [attemptId, setAttemptId] = useState("");
   const inputId = useId();
@@ -46,10 +46,11 @@ export function TrialPanel({
   const snapshot = trial.snapshot;
   return (
     <div className="space-y-3">
+      <p className="text-osce-meta font-medium text-ink-muted">Trial source</p>
       <B2CSegmentedTabs
         items={[
-          { id: "transcript", label: "Paste a transcript" },
           { id: "attempt", label: "An attempt" },
+          { id: "transcript", label: "Paste a transcript" },
         ]}
         value={source}
         onChange={setSource}
@@ -82,7 +83,7 @@ export function TrialPanel({
           isLoading={trial.running}
           onClick={() => onRun(body)}
         >
-          {trial.running ? "Marking…" : "Trial mark"}
+          {trial.running ? "Marking…" : "Run trial mark"}
         </AuthoringButton>
         {trial.running ? (
           <AuthoringButton variant="ghost" size="sm" onClick={trial.cancel}>

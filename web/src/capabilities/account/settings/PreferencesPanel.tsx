@@ -19,7 +19,8 @@ import {
   type PracticeTimers,
   type PreferenceField,
 } from "@/capabilities/account/settings/preferencesModel";
-import { SettingsRow, SettingsRows, Switch } from "@/capabilities/account/settings/SettingsKit";
+import { SettingsRow, SettingsRows } from "@/capabilities/account/settings/SettingsKit";
+import { Switch } from "@/foundation/ui";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 import { describeTimer, formatTimer, parseTimer } from "@/capabilities/account/settings/timerFields";
 

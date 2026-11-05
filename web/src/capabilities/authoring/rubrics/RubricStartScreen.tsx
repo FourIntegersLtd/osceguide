@@ -6,13 +6,15 @@ import { useRouter } from "next/navigation";
 import { Alert, AsyncBoundary, Badge, cn, getInputClassName, SelectableCard, SectionSearchField } from "@/foundation/ui";
 import { useAsync, useSearchQuery } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { copyRubric, listRubricStartingPoints, type RubricStartingPoint } from "@/capabilities/authoring/api";
+import { listRubricStartingPoints, type RubricStartingPoint } from "@/capabilities/authoring/api";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { labelFor, RATING_KINDS } from "@/capabilities/authoring/rubrics/rubricVocabulary";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
-import { rubricEditPath, rubricsListPath } from "@/capabilities/authoring/templates/paths";
+import { copyAndOpen } from "@/capabilities/authoring/rubrics/copyAndOpen";
+import { useExamReturn } from "@/capabilities/authoring/rubrics/useExamReturn";
+import { rubricsListPath } from "@/capabilities/authoring/templates/paths";
 
 const KIND_WORDS: Record<RubricStartingPoint["kind"], string> = {
   blank: "Blank",
@@ -31,6 +33,7 @@ function RubricStartScreenForm() {
   const scope = useAuthoringScope();
   const { hrefFor } = useSurface();
   const router = useRouter();
+  const { examId, examHref } = useExamReturn();
   const action = useAction(undefined, { holdOnSuccess: true });
   const titleId = useId();
   const [title, setTitle] = useState("");
@@ -43,15 +46,19 @@ function RubricStartScreenForm() {
   const picked = (points.data?.items ?? []).find((point) => keyOf(point) === chosen) ?? null;
 
   const create = () => {
-    void action.run("create", async () => {
-      const rubric = await copyRubric(scope, {
-        title: title.trim() || null,
-        source_rubric_id: picked && picked.kind !== "blank" ? picked.rubric_id : null,
-        source_version: picked && picked.kind !== "blank" ? picked.version : null,
-      });
-      const first = (rubric.versions ?? [])[0];
-      router.push(rubricEditPath(hrefFor, rubric.id, first?.version ?? 1));
-    });
+    void action.run("create", () =>
+      copyAndOpen(
+        scope,
+        router.push,
+        hrefFor,
+        {
+          title: title.trim() || null,
+          source_rubric_id: picked && picked.kind !== "blank" ? picked.rubric_id : null,
+          source_version: picked && picked.kind !== "blank" ? picked.version : null,
+        },
+        examId,
+      ),
+    );
   };
 
   return (
@@ -90,7 +97,10 @@ function RubricStartScreenForm() {
         </div>
 
         {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <AuthoringButton variant="secondary" onClick={() => router.push(examHref ?? rubricsListPath(hrefFor))}>
+            Cancel
+          </AuthoringButton>
           <AuthoringButton variant="commit" isLoading={action.busy === "create"} disabled={action.busy !== null || !picked} onClick={create}>
             {picked?.kind === "blank" ? "Start blank" : "Copy and edit"}
           </AuthoringButton>

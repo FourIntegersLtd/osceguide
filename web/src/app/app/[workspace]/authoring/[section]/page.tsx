@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 import { Capability } from "@/app/app/[workspace]/capability";
 import { AuthoringHome } from "@/capabilities/authoring";
 
-export const metadata: Metadata = { title: "Authoring" };
+export const metadata: Metadata = { title: "Exams" };
 
 export default async function Page({
   params,
