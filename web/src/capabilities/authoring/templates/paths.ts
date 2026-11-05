@@ -71,7 +71,7 @@ export function rubricEditPath(
 }
 
 /** `?exam=<id>`: the exam sheet that sent the author here, carried until the scheme is published. */
-function examQuery(examId?: string | null): string {
+export function examQuery(examId?: string | null): string {
   return examId ? `?exam=${encodeURIComponent(examId)}` : "";
 }
 
