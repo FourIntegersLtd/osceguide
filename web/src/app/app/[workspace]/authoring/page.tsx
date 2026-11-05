@@ -6,5 +6,5 @@ export default async function Page({
   params: Promise<{ workspace: string }>;
 }) {
   const { workspace } = await params;
-  redirect(`/app/${workspace}/authoring/rubrics`);
+  redirect(`/app/${workspace}/authoring/exams`);
 }

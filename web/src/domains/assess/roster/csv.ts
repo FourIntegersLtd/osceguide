@@ -12,6 +12,9 @@
  * so a file written for that screen still imports here.
  */
 
+/** The file the setup assistant offers: headers the import below recognises. */
+export const TEMPLATE_CSV = "email,first name,last name,cohort\n";
+
 export interface CsvRow {
   email: string;
   firstName: string | null;

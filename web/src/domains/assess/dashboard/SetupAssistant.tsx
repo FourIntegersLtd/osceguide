@@ -4,21 +4,30 @@ import Link from "next/link";
 import { useState } from "react";
 import { HiOutlineQuestionMarkCircle } from "react-icons/hi2";
 import { Badge, Button, ButtonLink, b2bTokens, cn } from "@/foundation/ui";
-import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import type { OrgSetup } from "@/domains/assess/dashboard/api";
-import { assistantSteps, firstOpenStep, stepBlockedReason } from "@/domains/assess/dashboard/support";
+import { assistantSteps, firstOpenStep, stepBlock } from "@/domains/assess/dashboard/support";
+import { TEMPLATE_CSV } from "@/domains/assess/roster/csv";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
+
+/** Saves the spreadsheet template to the browser's downloads. */
+function downloadTemplate() {
+  const url = URL.createObjectURL(new Blob([TEMPLATE_CSV], { type: "text/csv" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "people-template.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 /**
  * Until the first sitting is possible: five steps, one at a time, from the flags `/dashboard`
- * already returns. Every step is shown to every administrator; the button of one somebody may
- * not do is disabled and says why. Any step can be reopened, and "Skip for now" moves on.
+ * already returns. A button that cannot be used yet is disabled, says why and links to the fix.
+ * Any step can be reopened, and "Skip for now" moves on.
  */
 export function SetupAssistant({ orgName, setup }: { orgName: string; setup: OrgSetup }) {
   const w = useAssessWords();
   const { hrefFor } = useSurface();
-  const { session } = useSession();
   const steps = assistantSteps(setup, w);
   const [chosen, setChosen] = useState<number | null>(null);
   const [showPieces, setShowPieces] = useState(true);
@@ -28,11 +37,11 @@ export function SetupAssistant({ orgName, setup }: { orgName: string; setup: Org
     { title: w.Exam, body: "What is examined and how it is marked", path: "/authoring" },
     { title: "Stations", body: "The cases candidates sit", path: "/authoring/stations" },
     { title: w.People, body: `${w.Trainees} and ${w.supervisors}`, path: "/trainees" },
-    { title: w.Sitting, body: "One occasion, such as the March mock", path: "/sittings" },
+    { title: w.Sitting, body: w.hiring ? "One assessment day, such as the Band 6 nurse day" : "One occasion, such as the March mock", path: "/sittings" },
   ];
 
   if (!cur) return null;
-  const blocked = stepBlockedReason(cur, (permission) => can(session, permission));
+  const blocked = stepBlock(cur, setup, w);
 
   return (
     <section className="flex flex-col gap-6" aria-label="Setup">
@@ -92,7 +101,10 @@ export function SetupAssistant({ orgName, setup }: { orgName: string; setup: Org
                   {cur.cta}
                 </Button>
                 <p id="step-blocked" className="text-osce-meta text-b2b-muted">
-                  {blocked}
+                  {`${blocked.reason} `}
+                  <Link href={hrefFor(blocked.fixHref)} className={b2bTokens.b2bLink}>
+                    {blocked.fixLabel}
+                  </Link>
                 </p>
               </>
             ) : (
@@ -100,6 +112,11 @@ export function SetupAssistant({ orgName, setup }: { orgName: string; setup: Org
                 {cur.cta}
               </ButtonLink>
             )}
+            {cur.alt && cur.altDownload ? (
+              <Button themeType="b2b" variant="secondary" onClick={downloadTemplate}>
+                {cur.alt}
+              </Button>
+            ) : null}
             {cur.alt && cur.altHref ? (
               <ButtonLink href={hrefFor(cur.altHref)} themeType="b2b" variant="secondary">
                 {cur.alt}

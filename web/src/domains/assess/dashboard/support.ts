@@ -1,7 +1,6 @@
 import type { LiveCircuit, OrgSetup, OrgSittingRow } from "@/domains/assess/dashboard/api";
 import type { ResultsIndexRow } from "@/domains/assess/results/api";
 import type { AssessWords } from "@/domains/assess/vocabulary";
-import type { Permission } from "@/foundation/session/permissions";
 
 /**
  * What the institution's home screen works out from what it is given.
@@ -27,8 +26,8 @@ export type AssistantStep = {
   href: string;
   alt?: string;
   altHref?: string;
-  /** Who can do this step; anyone else sees the button disabled with the reason. */
-  permission: Permission;
+  /** The alternative downloads the spreadsheet template instead of linking. */
+  altDownload?: boolean;
 };
 
 /** "a supervisor", "an assessor". */
@@ -52,7 +51,6 @@ export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[]
       whyTitle: "Why first",
       why: `Stations, ${w.sittings} and results all belong to an ${w.exam}. When it is ready it shows "Ready to schedule".`,
       cta: `Set up an ${w.exam}`, href: NEW_EXAM_PATH, alt: `Browse OSCE Guide ${w.exams}`, altHref: "/authoring",
-      permission: "author_content",
     },
     {
       id: "stations", label: "Add stations", optional: false, done: setup.stations_available,
@@ -60,8 +58,7 @@ export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[]
       body: "Write your own, import a PDF or Word file, ask the AI to draft one from a brief, or copy ours. Publish each one when it is ready.",
       whyTitle: "What counts",
       why: `Only published stations for this ${w.exam} can go into a ${w.sitting}. A formal ${w.exam} takes up to 12.`,
-      cta: "Add a station", href: "/authoring/stations", alt: "Browse the station library", altHref: "/authoring/stations",
-      permission: "author_content",
+      cta: "Add a station", href: "/authoring/stations",
     },
     {
       id: "trainees", label: `Add ${w.trainees}`, optional: false, done: setup.trainees_added,
@@ -69,8 +66,7 @@ export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[]
       body: `Add one person, or upload a spreadsheet. Each ${w.trainee} gets an invitation email and joins when they set a password.`,
       whyTitle: "Tip",
       why: `Put ${w.trainees} in a ${w.yearGroup} as you add them. You can schedule a whole ${w.yearGroup} in one step later.`,
-      cta: `Add ${w.trainees}`, href: "/trainees", alt: "Download the spreadsheet template", altHref: "/trainees",
-      permission: "manage_team",
+      cta: `Add ${w.trainees}`, href: "/trainees", alt: "Download the spreadsheet template", altDownload: true,
     },
     {
       id: "supervisor", label: `Invite ${withArticle(w.supervisor)}`, optional: true, done: setup.team_invited,
@@ -79,24 +75,34 @@ export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[]
       whyTitle: `${w.Supervisors} are your examiners`,
       why: `They review the recordings of the circuits they lead. Administrators can do everything ${w.supervisors} can.`,
       cta: "Invite staff", href: "/team",
-      permission: "manage_team",
     },
     {
       id: "sitting", label: `Schedule your first ${w.sitting}`, optional: false, done: setup.sitting_scheduled,
       tag: "Last step", title: `Schedule your first ${w.sitting}`,
       body: `Pick the ${w.exam}, its stations and the people sitting it. We build the circuits for you.`,
-      whyTitle: "Formal exam or training",
-      why: "A formal exam is marked, signed off and released. Training gives feedback only.",
+      whyTitle: `${w.formalExam} or ${w.training.toLowerCase()}`,
+      why: `A ${w.formalExam.toLowerCase()} is marked, signed off and released. ${w.training} gives feedback only.`,
       cta: w.scheduleSitting, href: SCHEDULE_SITTING_PATH,
-      permission: "schedule_sittings",
     },
   ];
 }
 
-/** Why a step's button is disabled for somebody who may not do it; null when they may. */
-export function stepBlockedReason(step: AssistantStep, can: (permission: Permission) => boolean): string | null {
-  if (can(step.permission)) return null;
-  return "Only an administrator can do this. Ask one to complete this step.";
+/**
+ * Why a step's button is disabled, with the link that fixes it; null when it can be used.
+ * Only the sitting step has a prerequisite: nothing can be scheduled before an exam is ready.
+ * The assistant is shown to people who manage the team, who hold every permission a step needs.
+ */
+export function stepBlock(
+  step: AssistantStep,
+  setup: OrgSetup,
+  w: AssessWords,
+): { reason: string; fixLabel: string; fixHref: string } | null {
+  if (step.id !== "sitting" || setup.ready_to_run) return null;
+  return {
+    reason: `Nothing can be scheduled until ${withArticle(w.exam)} is ready.`,
+    fixLabel: `Set up ${withArticle(w.exam)}`,
+    fixHref: NEW_EXAM_PATH,
+  };
 }
 
 /** Setup is over when every required step is done; the optional supervisor step never holds it open. */
@@ -111,8 +117,8 @@ export function firstOpenStep(steps: AssistantStep[]): number {
 }
 
 /** "Formal exam" or "Training": the words for a sitting's mode. */
-export function modeLabel(mode: string): string {
-  return mode === "exam" ? "Formal exam" : mode === "training" ? "Training" : mode;
+export function modeLabel(mode: string, w: AssessWords): string {
+  return mode === "exam" ? w.formalExam : mode === "training" ? w.training : mode;
 }
 
 /** The sittings still to come, soonest first. */
@@ -120,6 +126,10 @@ export function comingUp(sittings: readonly OrgSittingRow[]): OrgSittingRow[] {
   return sittings
     .filter((sitting) => sitting.status === "scheduled")
     .sort((a, b) => (a.scheduled_for ?? "").localeCompare(b.scheduled_for ?? ""));
+}
+
+function decidable(row: ResultsIndexRow): boolean {
+  return row.mode === "exam" && (row.status === "completed" || row.status === "reviewed");
 }
 
 export type AttentionItem = {
@@ -133,20 +143,33 @@ export type AttentionItem = {
 
 /**
  * What needs the administrator, oldest first, from the results index: outcomes still to write
- * and signed-off results still to release, one row per sitting and kind.
+ * and signed-off results still to release, one row per sitting and kind. Only a formal exam
+ * that has finished has decisions to write: a scheduled sitting's candidates are not waiting on
+ * anyone and a training sitting never signs off.
  */
 export function attentionFromResults(rows: readonly ResultsIndexRow[], w: AssessWords): AttentionItem[] {
   const items: AttentionItem[] = [];
   for (const row of rows.slice().reverse()) {
-    const decisions = row.not_decided + row.draft;
+    const decisions = decidable(row) ? row.not_decided + row.draft : 0;
     if (decisions > 0) {
-      items.push({
-        key: `${row.sitting_id}-decide`,
-        tag: `${decisions} ${decisions === 1 ? "decision" : "decisions"}`,
-        title: `Record outcomes for ${row.name}`,
-        body: `Every review is complete. Write the outcome and reason, then sign off.`,
-        href: `/sittings/${row.sitting_id}/results`,
-      });
+      const href = `/sittings/${row.sitting_id}/results`;
+      items.push(
+        w.hiring
+          ? {
+              key: `${row.sitting_id}-decide`,
+              tag: "Decide",
+              title: `${decisions} ${decisions === 1 ? `${w.trainee} needs` : `${w.trainees} need`} a hiring decision`,
+              body: row.name,
+              href,
+            }
+          : {
+              key: `${row.sitting_id}-decide`,
+              tag: `${decisions} ${decisions === 1 ? "decision" : "decisions"}`,
+              title: `Record outcomes for ${row.name}`,
+              body: `Every review is complete. Write the outcome and reason, then sign off.`,
+              href,
+            },
+      );
     }
     if (row.signed_off > 0) {
       items.push({
