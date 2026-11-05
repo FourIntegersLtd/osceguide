@@ -384,8 +384,8 @@
 <div class="facts">
 <div><div class="k">Who uses it</div><div class="v">Doctors practising alone, schools, employers</div></div>
 <div><div class="k">What it runs on</div><div class="v">One shared engine for every user</div></div>
-<div><div class="k">Refusals described</div><div class="v">All 277 the product can give</div></div>
-<div><div class="k">Checked against</div><div class="v">Checked against commit 31a5e741, 8 Oct 2026</div></div>
+<div><div class="k">Refusals described</div><div class="v">All 285 the product can give</div></div>
+<div><div class="k">Checked against</div><div class="v">Checked against commit 4b7a7da1, 5 Nov 2026</div></div>
 </div>
 </header>
 
@@ -621,6 +621,7 @@
 <li><b>Refunds.</b> If a payment is refunded, the access it bought is withdrawn, and any referral credit it earned is taken back.</li>
 <li><b>Disputes.</b> If a card holder disputes a payment with their bank, its access is withdrawn while the dispute runs. If we win, what the dispute took is given back.</li>
 <li><b>Receipts.</b> Each payment has a receipt the person can open again from their account.</li>
+<li><b>Station limits.</b> Our team can set a plan to unlock only a set number of stations. A plan with no limit unlocks every station for its exam.</li>
 </ol>
 <div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
 <li data-code="already_purchased"><b>Buying the same plan while it is still running.</b> You read: <span class="says">"You already have this plan. Choose a different plan to extend your access, or buy it again when it ends."</span></li>
@@ -756,24 +757,25 @@
 <div class="meta"><div><b>Who</b>An organisation with administrators, supervisors and trainees</div><div><b>Pays</b>By contract with us, not by card</div><div><b>Status</b><span class="chip s-ok">Works today</span></div></div></div>
 
 <h3 class="ch">Six words, each inside the next</h3>
+<p>The menu follows the order of the work: <b>Home</b>; <b>Run</b> (Sittings, Now running, Results); <b>Organise</b> (People, Exams); <b>Insight</b> (Reporting); and <b>Settings</b>. A school's own exam, its marking scheme and its programme are shown as one thing, an exam. Employers see the same menu in their own words (chapter 5).</p>
 <p>Almost everything on the school side is one of six things. Each lives inside the one before it, so once these six are clear the rest of the chapter follows.</p>
 <figure><div class="nest">
 <div class="lv"><span class="nm">School</span><span class="ds">the organisation itself: its people, its web address, its contract</span>
-<div class="lv"><span class="nm">Programme</span><span class="ds">one exam the school runs, such as its final-year OSCE, with the marking scheme it uses</span>
+<div class="lv"><span class="nm">Exam</span><span class="ds">one exam the school runs, such as its final-year OSCE, with the marking scheme it uses. Behind the screen the school's copy of an exam is called a programme, and the exam's "Available for scheduling" switch turns that programme on or off</span>
 <div class="lv"><span class="nm">Sitting</span><span class="ds">one occasion: "the March mock" or "the summer finals", with its timings</span>
 <div class="lv"><span class="nm">Circuit</span><span class="ds">one group going round the stations together, with a supervisor in charge</span>
 <div class="lv"><span class="nm">Slot</span><span class="ds">one candidate at one station on that circuit</span>
 <div class="lv"><span class="nm">Recording</span><span class="ds">what happened in that slot: the conversation, the transcript and the marking, exactly as in chapter 2</span></div>
 </div></div></div></div></div>
-</div><figcaption><b>The nesting.</b> A school runs several programmes. Each programme has many sittings, each sitting one or more circuits, each circuit a slot for every candidate at every station, and each slot one recording.</figcaption></figure>
+</div><figcaption><b>The nesting.</b> A school runs several exams. Each exam has many sittings, each sitting one or more circuits, each circuit a slot for every candidate at every station, and each slot one recording.</figcaption></figure>
 
 <h3 class="ch">Who does what</h3>
 <div class="table-wrap"><table class="matrix"><caption>The people in a school, and what each may do</caption><thead><tr><th>Role</th><th>Set up the school</th><th>Write stations and schemes</th><th>Schedule sittings</th><th>Run a circuit live</th><th>Review recordings</th><th>Senior review and sign-off</th></tr></thead><tbody>
 <tr><td class="k">Owner or administrator</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
-<tr><td class="k">Supervisor</td><td>No</td><td>No</td><td>No</td><td>Yes, when leading</td><td>The circuits they lead</td><td>No</td></tr>
+<tr><td class="k">Supervisor</td><td>No</td><td>No</td><td>No</td><td>Yes, any circuit</td><td>The circuits they lead</td><td>No</td></tr>
 <tr><td class="k">Trainee or candidate</td><td>No</td><td>No</td><td>No</td><td>Takes part</td><td>Reads their own feedback</td><td>Reads a released result</td></tr>
 </tbody></table></div>
-<p>When inviting someone, the screens offer two roles: supervisor and administrator. Trainees join through the roster instead (stage 3). A school must always keep at least one administrator.</p>
+<p>When inviting someone, the screens offer two roles: supervisor and administrator. Trainees join through the roster instead (stage 3). A school must always keep at least one administrator. Any member of staff can open and run any circuit's console on the day; only reviewing a circuit and reading its transcripts is limited to the supervisor who leads it (or an administrator).</p>
 
 <nav class="spine" aria-label="The eight stages of a school's year">
 <a href="#c4-1"><span class="n">Stage 1</span><span class="t">Setting up</span><span class="who">Our team, then the school</span></a>
@@ -790,13 +792,14 @@
 <figure><div class="flow">
 <div class="bx"><b>We create the school</b><span>Its name and a web address of its own, which can never change afterwards.</span></div><div class="ar">›</div>
 <div class="bx"><b>We seat the first administrator</b><span>An invitation email, valid for 7 days, with a reminder on day 5.</span></div><div class="ar">›</div>
-<div class="bx"><b>They choose a password</b><span>Or sign in through the school's own system, if it has one connected.</span></div><div class="ar">›</div>
-<div class="bx good"><b>The checklist</b><span>Eight setup steps, shown in order until each is done.</span></div>
+<div class="bx"><b>They choose a password</b><span>Or sign in through the school's own system, if our team has connected one.</span></div><div class="ar">›</div>
+<div class="bx good"><b>Setup on Home</b><span>Five steps, shown one at a time until each is done.</span></div>
 </div><figcaption><b>From contract to first login.</b> A school is always in one of three states: trial, active or suspended. There is no way to delete one; it is suspended instead, so its records survive.</figcaption></figure>
-<div class="note"><h4>The eight setup steps, in order</h4><p>1. A marking scheme. 2. An exam. 3. A programme. 4. A station template. 5. Stations. 6. The team. 7. Trainees. 8. The first sitting. Each step needs the ones before it: a sitting needs a programme, a programme needs an exam, and an exam needs a marking scheme.</p></div>
+<div class="note"><h4>The five setup steps, in order</h4><p>Until setup is done, Home shows one step at a time with "Step N of 5" and a "Continue setup" button: 1. Set up an exam (bring one in from OSCE Guide, or make your own). 2. Add stations. 3. Add trainees. 4. Invite a supervisor, which can be skipped. 5. Schedule the first sitting. Each step is shown to whoever can do it. Behind the scenes a sitting still needs an exam that is switched on for scheduling, and an exam needs a marking scheme. Once setup is done Home becomes "Today": what is running now, what needs your attention (decisions waiting, results ready to release, people who have not accepted their invitation) and the sittings coming up.</p></div>
 <ol class="plain" style="margin-top:14px">
-<li><b>Inviting the team.</b> An administrator invites supervisors and other administrators by email. If an invitation runs out, it can be resent. Someone who has already chosen a password gets a reset link instead.</li>
-<li><b>The school's own sign-in.</b> A school can connect its own sign-in system, so its people use their usual school login. It names the web address or email domain its people use, and that address can belong to only one school. It can then turn off passwords altogether, but only once nobody would be locked out.</li>
+<li><b>Inviting the team.</b> An administrator invites supervisors and other administrators by email. If an invitation runs out, it can be resent, but only while it is still pending: for someone who has already chosen a password, or who signs in through the school's system, there is nothing to resend and the screen says so. Several staff can be removed in one step, and a spreadsheet of staff can be invited at once. For people who cannot receive email, an administrator can give a temporary password instead, to someone who has not yet chosen one.</li>
+<li><b>The school's own sign-in.</b> A school can use its own sign-in system, so its people use their usual school login, but only our team can connect or change it; the school sees its status on its Settings page. The connection names the web address or email domain its people use, and that address can belong to only one school. Our team can then turn off passwords altogether, but only once nobody would be locked out. Settings also shows whether two-step sign-in is on.</li>
+<li><b>Automatic roster updates.</b> On its Settings page an administrator can issue and revoke the tokens that let the school's own systems keep the roster in step (stage 3). No school sign-in is needed first.</li>
 <li><b>Switching between places.</b> A person who belongs to more than one organisation, or also practises alone, switches between them from their account menu. Each keeps its own records.</li>
 </ol>
 <div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
@@ -823,7 +826,7 @@
 </ul></div>
 </section>
 
-<section class="stage" id="c4-2"><div class="stage-head"><div class="num">Stage 2</div><h3>Exams, marking schemes and stations</h3><p>Before anyone can be examined, the school needs an exam to run, a scheme to mark it against, and stations to put in it. It can write its own, or bring in ours.</p></div>
+<section class="stage" id="c4-2"><div class="stage-head"><div class="num">Stage 2</div><h3>Exams, marking schemes and stations</h3><p>Before anyone can be examined, the school needs an exam to run, a scheme to mark it against, and stations to put in it. It can write its own, or bring in ours. All of it lives under <b>Exams</b> in the menu, in tabs: Exams, Stations, Marking schemes, Station layouts and Programmes.</p></div>
 <figure><div class="flow">
 <div class="bx"><b>Marking scheme</b><span>The areas to rate and how. Published in numbered versions.</span></div><div class="ar">›</div>
 <div class="bx"><b>Exam</b><span>Names the scheme it is marked against. The school's own, or one of ours imported.</span></div><div class="ar">›</div>
@@ -832,8 +835,10 @@
 <div class="bx good"><b>Stations</b><span>Written into a template, checked, then published.</span></div>
 </div><figcaption><b>What a sitting stands on.</b> Every piece has drafts and published versions. A published version is never changed in place: a change is a new draft, published as the next version, so a recording always points at exactly what the candidate was given.</figcaption></figure>
 <ol class="plain" style="margin-top:14px">
-<li><b>Writing a station.</b> Write by hand, start from an uploaded document, or ask the AI to draft one from a brief. A station can have pictures, such as an X-ray or a rash, in the places its template allows.</li>
+<li><b>Making an exam.</b> A "New exam" sheet takes four steps: name and short code, the marking scheme (pick one, copy one of ours, or write a new one), timings and settings, then publish. If a step fails, the sheet says which one and lets you carry on from there. Each exam shows a status: Draft, Needs a marking scheme, Ready to schedule or Not available. "Available for scheduling" is the switch that turns the exam on or off for sittings. Bringing in one of our exams takes one click and leaves it switched on. Only exams that are ready to schedule can be picked when scheduling a sitting.</li>
+<li><b>Writing a station.</b> A "New station" sheet starts from a layout (the school's or ours), an uploaded PDF or Word document, an AI draft from a brief, or a blank page, with the exam already chosen. A station can have pictures, such as an X-ray or a rash, in the places its template allows.</li>
 <li><b>Fact check.</b> Before publishing, the AI can check the station's medical facts and mark anything doubtful for a person to look at.</li>
+<li><b>Approval.</b> A published station can be approved; a draft or a withdrawn one cannot.</li>
 <li><b>Publishing.</b> A draft with nothing in it cannot go live. Publishing the next version leaves earlier recordings pointing at the version they used.</li>
 <li><b>Retiring.</b> A published version is archived rather than deleted, and only a draft can be deleted. An exam that has anything recorded against it is retired, never deleted.</li>
 <li><b>Reports.</b> Anyone using a station can report a problem with it. The report goes to its authors.</li>
@@ -879,10 +884,11 @@
 
 <section class="stage" id="c4-3"><div class="stage-head"><div class="num">Stage 3</div><h3>Candidates arrive: the roster</h3><p>The roster is the school's list of its trainees. A circuit can only examine people on it.</p></div>
 <ol class="plain" style="margin-top:14px">
-<li><b>Adding people.</b> One at a time, or from a spreadsheet. A spreadsheet can hold up to 500 people per upload; the screen sends larger lists in batches. Someone already on the list is skipped, not added twice. Each new trainee gets an invitation email.</li>
+<li><b>Adding people.</b> The People page has one "Add people" button. It asks whether you are adding trainees or staff, then one person or a spreadsheet. A spreadsheet can hold up to 500 people per upload; the screen sends larger lists in batches. It forgives a byte-order mark, a semicolon or tab instead of a comma, and offers to create any year groups it names. Someone already on the list is skipped, not added twice. Each new trainee gets an invitation email; for someone who cannot receive email, an administrator can set a temporary password.</li>
+<li><b>The People page.</b> Its tabs are Trainees, Staff, Groups and year groups, Exam access and History. Trainees and staff can be selected several at a time to resend invitations, remove access, move to a year group or add to a group. The old Team address still opens the Staff tab. A trainee who has not accepted their invitation cannot be scheduled; the sitting wizard says so beside their name and offers "Resend invitation".</li>
 <li><b>Cohorts and groups.</b> A cohort is a year group, and a trainee is in at most one. Groups are any other way of sorting people, such as by hospital site, and a trainee can be in several.</li>
 <li><b>Automatic lists.</b> A school with its own sign-in system can keep the roster in step with it automatically. Changes flow from the school's own records, so nobody re-types them.</li>
-<li><b>Practice access.</b> A school can also give trainees access to practise alone (chapter 3) for an exam, until a date it chooses, instead of each trainee paying.</li>
+<li><b>Practice access.</b> A school can also give trainees access to practise alone (chapter 3) for an exam, until a date it chooses, instead of each trainee paying. This is the Exam access tab.</li>
 <li><b>Leavers.</b> Removing someone's access is how a person leaves. Their records stay. A trainee who has a decision recorded cannot be deleted, only have their access removed.</li>
 </ol>
 <div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
@@ -904,21 +910,23 @@
 </ul></div>
 </section>
 
-<section class="stage" id="c4-4"><div class="stage-head"><div class="num">Stage 4</div><h3>Scheduling a sitting</h3><p>A sitting is one occasion, such as "the March mock". It belongs to one programme and is either a training session or a real exam.</p></div>
+<section class="stage" id="c4-4"><div class="stage-head"><div class="num">Stage 4</div><h3>Scheduling a sitting</h3><p>A sitting is one occasion, such as "the March mock". It belongs to one exam and is either a training session ("Training: feedback only") or a real exam ("Formal exam: marked, signed off, released").</p></div>
 <div class="table-wrap"><table><caption>Training session or real exam</caption><thead><tr><th></th><th>Training session</th><th>Real exam</th></tr></thead><tbody>
 <tr><td class="k">Who is on a circuit</td><td>As many trainees as there are stations, rotating together</td><td>One candidate, going round up to 12 stations</td></tr>
-<tr><td class="k">Breaks</td><td>None</td><td>Yes, between stations</td></tr>
+<tr><td class="k">Breaks</td><td>None</td><td>Yes, after any station, each with its own length</td></tr>
 <tr><td class="k">After marking</td><td>Stops at feedback and review</td><td>Goes on to a decision and a result</td></tr>
 <tr><td class="k">Hiring outcome</td><td>Never</td><td>Optional, for employers (chapter 5)</td></tr>
 </tbody></table></div>
 <figure><div class="big3">
 <div><span class="n">1–30</span><span class="l">minutes of reading time before each station, 3 by default</span></div>
 <div><span class="n">1–180</span><span class="l">minutes in the consultation, 10 by default</span></div>
-<div><span class="n">1–60</span><span class="l">minutes of break between stations in an exam, 5 by default</span></div>
-</div><figcaption><b>Timings a sitting sets.</b> A value outside its range is brought back to the nearest end of it.</figcaption></figure>
+<div><span class="n">1–60</span><span class="l">minutes for each break between stations in an exam, 5 by default</span></div>
+</div><figcaption><b>Timings a circuit sets.</b> They are set for each circuit, starting from the exam's defaults; the wizard sets them once for every circuit it makes. A value outside its range is brought back to the nearest end of it.</figcaption></figure>
 <ol class="plain" style="margin-top:14px">
-<li><b>Build circuits.</b> Choose stations, candidates and a supervisor to lead. The lead must be an administrator or supervisor of the school.</li>
-<li><b>When things lock.</b> A circuit's stations and people can no longer change once it has ended, once a station on it is in progress, or once feedback has been recorded on it. A sitting's content locks once any of its circuits has started, so everyone sitting it is examined on the same thing.</li>
+<li><b>The wizard.</b> "Schedule a sitting" is six steps in a fixed order, and nothing is made until the last: 1. The basics (name, exam, kind, date, year group). 2. Stations, in the order every candidate goes round. 3. Candidates, picked as people, groups or year groups. 4. Timing and breaks. 5. Who supervises: one for every circuit, or one for each candidate. 6. Review and create, which states, for example, "7 candidates x 6 stations = 7 circuits". A real exam gets one circuit per candidate. A training sitting needs as many trainees as stations, and the wizard counts them as you pick. If the sitting is made but its circuits fail, you land on the sitting with the error and a "Try again" button.</li>
+<li><b>The sitting page.</b> It shows one main button that follows the next step (set a date, add a circuit, open the console, open results), its circuits with their supervisors, its candidates and how far results have got. Name, date and year group stay editable after it starts; only the kind, the exam and the type lock once a circuit has started. A sitting can be cancelled before any circuit starts, and a circuit that never started can be deleted. Circuits can still be added and edited one at a time afterwards, including adding a group or year group to a circuit, reordering its stations and, on a training circuit, adding a late joiner.</li>
+<li><b>The lead.</b> Each circuit names a supervisor who leads it and reviews it afterwards. The lead must be an administrator or supervisor of the school.</li>
+<li><b>When things lock.</b> A circuit's stations and people can no longer change once it has ended, once a station on it is in progress, or once feedback has been recorded on it. Once any circuit of a sitting has started, the sitting's kind, exam and type lock, so everyone sitting it is examined on the same thing.</li>
 </ol>
 <div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
 <li data-code="programme_required"><b>A sitting with no programme.</b> You read: <span class="says">"Choose a programme for this sitting first."</span></li>
@@ -937,13 +945,14 @@
 
 <section class="stage" id="c4-5"><div class="stage-head"><div class="num">Stage 5</div><h3>Exam day</h3><p>The supervisor presses one button to start the circuit. From then on the product runs the clock, opens each room, sends each patient in and moves everyone on.</p></div>
 <figure><div class="lanes four">
-<div><h4>Supervisor</h4><ol><li>Starts the circuit.</li><li>Watches every room on one screen.</li><li>Can listen in to any room.</li><li>Steps in when needed.</li></ol></div>
+<div><h4>Supervisor</h4><ol><li>Starts the circuit (any member of staff can).</li><li>Watches every room on one screen.</li><li>Can listen in to any room.</li><li>Steps in when needed.</li></ol></div>
 <div><h4>Candidate</h4><ol><li>Joins from their own screen.</li><li>Reads the instructions.</li><li>Holds the consultation.</li><li>Moves on when the clock says.</li></ol></div>
 <div><h4>AI patient</h4><ol><li>Arrives when the station opens.</li><li>Plays the case as written.</li><li>Leaves when time is up.</li></ol></div>
 <div><h4>What is saved</h4><ol><li>The recording and transcript.</li><li>The time each step happened.</li><li>Every step a supervisor took, with who and why.</li></ol></div>
 </div><figcaption><b>Exam day in four lanes.</b> Exam day never checks a plan or a trial: a candidate a school examines is never turned away for not having paid.</figcaption></figure>
 <div class="note"><h4>What a supervisor can do while it runs</h4><p>Pause and resume the clock, give extra time, restart the clock on a station, send the patient in again, let a candidate redo a station, jump to a station, move everyone on now, or let the circuit move on by itself. Every one of these is saved with the name of the person who did it and the reason they gave.</p></div>
 <ol class="plain" style="margin-top:14px">
+<li><b>Now running.</b> A live board in the menu lists every circuit running, with its station, the time left and its supervisor, and updates by itself. Opening a circuit from it opens its console.</li>
 <li><b>The minute check.</b> Every minute the product checks every live circuit. A patient who has gone quiet for 60 seconds is sent in again.</li>
 <li><b>Forgotten circuits.</b> A circuit left untouched for 12 hours is closed by itself, unless it is paused on purpose.</li>
 </ol>
@@ -970,8 +979,9 @@
 <ol class="plain" style="margin-top:14px">
 <li><b>Who reviews.</b> The supervisor who led the circuit, or an administrator. Each person writes one review per candidate per station.</li>
 <li><b>Drafts.</b> A review stays a draft until every area is rated. Its author can withdraw a draft; a completed review is edited instead, never withdrawn.</li>
-<li><b>Senior review.</b> An administrator can add a senior review on top, with a reason of up to 4,000 characters. If someone else saved it first, the screen asks you to reload rather than overwrite them.</li>
-<li><b>Finalising.</b> Once every review on a circuit is done, the circuit's review is finalised. After a decision is signed off, its reviews are fixed.</li>
+<li><b>Senior review.</b> An administrator can add a senior review on top, to sit above the others. If someone else saved it first, the screen asks you to reload rather than overwrite them.</li>
+<li><b>Finalising.</b> Finalising a circuit's review is a step someone takes: when the reviews are complete, they press "Publish circuit feedback". After a decision is signed off, its reviews are fixed.</li>
+<li><b>Finding the work.</b> The Results page opens with "Needs your attention": sittings with decisions waiting, results ready to release and, for a supervisor, stations waiting for their marks. A supervisor's Home also lists "Stations to review". Below it each sitting shows how many candidates are undecided, in draft, signed off and released, under tabs for what needs a decision, what is ready to release, and all.</li>
 </ol>
 <div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
 <li data-code="not_slot_reviewer"><b>Reviewing a circuit you did not lead</b>, without being an administrator. You read: <span class="says">"Only the supervisor named on this circuit, or an administrator, can review it."</span></li>
@@ -994,6 +1004,11 @@
 <div class="bx warn"><b>The evidence check</b><span>If any mark moved since sign-off, release is refused until it is signed off again.</span></div><div class="ar">›</div>
 <div class="bx good"><b>Released</b><span>The candidate is emailed and can read it.</span></div>
 </div><figcaption><b>The life of a decision.</b> Outcomes are pass, fail, inconclusive and withheld. Inconclusive and withheld are never released to the candidate.</figcaption></figure>
+<ol class="plain" style="margin-top:14px">
+<li><b>Preview.</b> Before releasing, a senior reviewer can open a preview of exactly what the candidate will see, and a PDF of the result.</li>
+<li><b>Releasing.</b> One result at a time, or every signed-off result on a sitting at once after a confirmation. A signed-off decision can be sent back to draft to change it.</li>
+<li><b>The candidate.</b> A released result appears in the candidate's own portal and by email, and the candidate can acknowledge that they have read it. A partner administrator cannot sign off or release anything.</li>
+</ol>
 <div class="table-wrap"><table><caption>Which hiring outcomes go with which exam outcome</caption><thead><tr><th>Exam outcome</th><th>Hiring outcomes allowed</th></tr></thead><tbody>
 <tr><td class="k">Pass</td><td>Hired, reserve, not hired, withdrawn or pending</td></tr>
 <tr><td class="k">Fail</td><td>Not hired or withdrawn</td></tr>
@@ -1018,7 +1033,7 @@
 
 <section class="stage" id="c4-8"><div class="stage-head"><div class="num">Stage 8</div><h3>Term after term</h3><p>After the exam, the school reads its results, moves people on, and renews its contract.</p></div>
 <ol class="plain" style="margin-top:14px">
-<li><b>Reports.</b> A summary per exam sitting shows how the group did, station by station and area by area. Training sessions get feedback, not a group summary.</li>
+<li><b>Reports.</b> The Reporting page covers the whole organisation, and each exam sitting has its own report showing how the group did, station by station and area by area. Results can be exported as a spreadsheet, and a sitting's read-out can be exported. Training sessions get feedback, not a group summary.</li>
 <li><b>Leavers and new years.</b> New trainees join the roster; leavers have their access removed. Their past records stay.</li>
 <li><b>Contract end.</b> When the contract's end date passes, an hourly check suspends the school. Its members can no longer act in it. Our team renews it with a new end date, which must be in the future, and everything is as it was.</li>
 </ol>
@@ -1042,7 +1057,7 @@
 <div class="meta"><div><b>Who</b>Hospitals, practices and recruiters; publishers and courses</div><div><b>Pays</b>Employers by contract; partners are paid by us</div><div><b>Status</b><span class="chip s-ok">Works today</span></div></div></div>
 
 <h3 class="ch">Employers: the school side, with one extra field</h3>
-<p>An employer is set up as an organisation, like a school, and runs real exams exactly as chapter 4 describes. The only difference is a second outcome on each decision: whether the candidate is hired, kept in reserve, not hired, withdrawn, or still pending. The table in chapter 4, stage 7 shows which go together.</p>
+<p>An employer is set up as an organisation, like a school, and runs real exams exactly as chapter 4 describes, in its own words: assessments instead of sittings, candidates instead of trainees, assessors instead of supervisors. Its menu is Overview; Run (Assessments, Now running, Results); Organise (Candidates, Exams); Insight (Reporting); and Settings. A candidate sees only "My assessments". The other difference is a second outcome on each decision: whether the candidate is hired, kept in reserve, not hired, withdrawn, or still pending. The table in chapter 4, stage 7 shows which go together.</p>
 
 <h3 class="ch">Partners: sending people to us</h3>
 <figure><div class="flow">
@@ -1234,12 +1249,12 @@
 <tr><td class="k">Trial</td><td>Free practice: 3 stations finished, 3 set up in lists, 14 days.</td></tr>
 <tr><td class="k">Plan</td><td>Paid access to one exam for a fixed time.</td></tr>
 <tr><td class="k">Practice list</td><td>A person's own mock exam of chosen stations.</td></tr>
-<tr><td class="k">Programme</td><td>An exam a school runs.</td></tr>
-<tr><td class="k">Sitting</td><td>One occasion of a programme, as a training session or a real exam.</td></tr>
+<tr><td class="k">Exam (programme)</td><td>An exam a school runs, with the marking scheme it uses. The screens call it an exam; its on/off switch is "Available for scheduling".</td></tr>
+<tr><td class="k">Sitting</td><td>One occasion of an exam, as a training session or a real exam. Employers call it an assessment.</td></tr>
 <tr><td class="k">Circuit</td><td>A group going round the stations together on a sitting.</td></tr>
 <tr><td class="k">Slot</td><td>One candidate at one station on a circuit.</td></tr>
 <tr><td class="k">Roster</td><td>A school's list of its trainees.</td></tr>
-<tr><td class="k">Cohort</td><td>A year group on the roster.</td></tr>
+<tr><td class="k">Cohort (year group)</td><td>A year group on the roster. A trainee is in at most one. A group is any other way of sorting people.</td></tr>
 <tr><td class="k">Review</td><td>A person's ratings of one recording.</td></tr>
 <tr><td class="k">Decision</td><td>A candidate's outcome on a real exam, signed off then released.</td></tr>
 <tr><td class="k">Partner</td><td>An outside organisation that sends people to us.</td></tr>
@@ -1251,7 +1266,9 @@
 <section class="stage" id="c9">
 <div class="stage-head"><div class="num">Chapter 9</div><h2>What is still rough</h2><p>The places we know are not finished. Each is tracked, and this list is taken from our own record of gaps.</p></div>
 <ul class="plain">
-<li><span class="chip s-rough">Rough</span> <b>One at a time.</b> Removing several team members, or resending or removing several trainees, has to be done one person at a time on screen, though the product could do it in one step.</li>
+<li><span class="chip s-rough">Rough</span> <b>Breaks.</b> An exam has no break length of its own; breaks are set on each circuit, and training sessions have none.</li>
+<li><span class="chip s-rough">Rough</span> <b>Home counts.</b> Home cannot yet say how many invited people have not joined, and the sittings list cannot yet flag a sitting that still needs circuits.</li>
+<li><span class="chip s-rough">Rough</span> <b>Live review.</b> A reviewer's page for a station does not update by itself when the candidate's attempt finishes, and it shows one combined review, not each reviewer's name.</li>
 <li><span class="chip s-gap">Open</span> <b>Undecided results.</b> The results screen shows how many decisions are undecided. Whether it should also show a score column is waiting for a walk-through on the test copy of the product.</li>
 <li><span class="chip s-gap">Open</span> <b>An examiner role.</b> Whether to add a separate role for examiners who only review, beside supervisor and administrator, is a product decision still to make.</li>
 <li><span class="chip s-gap">Open</span> <b>Remove, delete or wipe.</b> The roster offers three ways to deal with a leaver. Explanations are on screen; whether to fold the practice-access tab into each person's row is still to decide.</li>

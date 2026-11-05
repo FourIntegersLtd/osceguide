@@ -101,21 +101,40 @@ marked result) and `verify-attempt-engine` (the room itself). Gaps: T-7, C-1.
 
 ## ASSESS: the institution
 
+The admin's menu, in order: **Home**; **Run** (Sittings, Now running, Results);
+**Organise** (People, Exams); **Insight** (Reporting); **Settings**. A supervisor
+sees Home, Sittings, Now running, Results, People (read only) and Reporting. A
+trainee sees My training, Practice sessions and Self practice. Boards:
+`docs/institution-overhaul/design/`. The Schedule a sitting wizard, the Sitting
+page, the console and the live board are the overhaul's phase 3; the steps below
+describe them from `ScheduleSitting.md` and `Sitting.md`, and the specs move to the
+new labels when phase 3 merges.
+
 | ID | Journey | Local | Spec |
 |---|---|---|---|
-| ASSESS-1 | Admin schedules a sitting with a circuit and a candidate | yes | `assess/build-sitting.spec.ts` |
+| ASSESS-1 | Admin schedules a sitting with the Schedule a sitting wizard | yes | `assess/build-sitting.spec.ts` |
 | ASSESS-2 | Trainee waits; supervisor starts; the brief opens | yes | `assess/run-circuit.spec.ts` |
 | ASSESS-3 | No voice room: supervisor is told, can end the circuit | yes (is the seam) | `assess/run-circuit.spec.ts` |
 | ASSESS-4 | Reviewer marks, admin decides and signs off, releases, candidate reads | yes, marked slot seeded | `assess/mark-and-release.spec.ts` |
-| ASSESS-5 | Roles: supervisor, trainee and roster boundaries | yes | `assess/roles.spec.ts` |
+| ASSESS-5 | Roles: supervisor, trainee and People boundaries | yes | `assess/roles.spec.ts` |
 | ASSESS-6 | Candidate sits a station by voice | no, needs LiveKit | skipped |
 
 **ASSESS-1.** Actor: institution admin.
-1. Open Sittings, "New sitting", name it, choose a date.
-2. Add a circuit with one station and the roster trainee.
-3. The sitting is listed with the circuit assigned.
+1. Open Home. Until setup is done it shows one step at a time ("Step N of 5",
+   "Continue setup"); once it is done Home is "Today", with a "Schedule a sitting"
+   button. (The e2e organisation is already set up, so the journey starts at the
+   button.)
+2. Open "Schedule a sitting". The six steps unlock in order and nothing is made
+   until the last: Basics (name, an exam that is "Ready to schedule", kind,
+   date, year group), Stations, Candidates (people, groups or year groups), Timing
+   and breaks, Supervisor, Review and create.
+3. "Create sitting" shows "N candidates x M stations" and makes the sitting and its
+   circuits (a formal exam gets one circuit per candidate).
+4. The Sitting page opens, with one primary button that follows the next step; the
+   sitting is on Sittings with its circuits assigned.
 
-Outcome: a sitting a supervisor can run. Gaps: B-3, B-5, B-7.
+Outcome: a sitting a supervisor can run. Gaps: B-3, B-5, B-7, B-39 (open: the list
+cannot flag "Needs circuits"), B-40.
 
 **ASSESS-2.** Actor: trainee, then supervisor.
 1. The trainee opens their portal and sees the sitting is not started.
@@ -136,9 +155,12 @@ S-2, S-7 (open: nothing advances a due circuit when the worker is down).
 1. Circuit ended; (seam) the slot gets an evaluated exam-slot attempt.
 2. Before release the candidate sees "Not released yet", and the api returns
    them nothing for the slot review.
-3. The reviewer opens the slot review, rates every domain Green, completes it.
-4. The admin opens the results row, chooses Pass, writes a rationale, signs off.
-5. The admin presses "Release to the candidate" and confirms.
+3. The reviewer finds the slot (Results opens with "Needs your attention"; a
+   supervisor also has "Stations to review" on Home), rates every domain Green and
+   completes the review.
+4. The admin opens the sitting's results, chooses Pass, writes a rationale, signs
+   off (the row offers "Back to draft").
+5. The admin presses "Release 1 signed-off result" and confirms.
 6. The candidate's result page now shows the outcome.
 
 Outcome: release is the only door to the candidate. Gaps: R-1, R-4, R-6.
@@ -147,9 +169,11 @@ skipped and the sitting stays "0 of 1 stations marked" even after a human
 review is completed, so no outcome can be decided without the seam.
 
 **ASSESS-5.** Actors: supervisor, trainee, admin.
-1. A supervisor sees sittings but not the schedule control (5).
+1. A supervisor sees Sittings but not "Schedule a sitting" (5), and their Home is the
+   supervisor Home with "Stations to review".
 2. A trainee lands on their own portal, not the console (5b).
-3. The admin's People page lists the trainee and offers "Add people" (5c).
+3. The admin's People page (Trainees tab) lists the trainee and offers "Add people"
+   (5c); a supervisor sees People read only and no "Add people".
 
 Outcome: each role sees only what its capabilities grant. Gaps: B-5, R-2, R-6.
 
@@ -161,11 +185,12 @@ pieces by ASSESS-2/3 and ASSESS-4's seam. Gaps: S-1, S-2, R-5.
 
 | ID | Journey | Local | Spec |
 |---|---|---|---|
-| HIRE-1 | Employer admin sees the hiring menu (Assessments, Candidates, Now running, Exams), not the institution's wording | yes, `@staging` | `hire/employer.spec.ts` |
+| HIRE-1 | Employer admin sees the hiring menu (Overview; Run: Assessments, Now running, Results; Organise: Candidates, Exams; Insight: Reporting), not the institution's wording | yes, `@staging` | `hire/employer.spec.ts` |
 | HIRE-2 | A candidate is shown only "My assessments" | yes, `@staging` | `hire/employer.spec.ts` |
 
 Actors: an `employer` organisation's `institution_admin`, and a `trainee`
-member. Outcome: the Hire arm renders Assess's screens in employer wording and a
+member. The hire menu has the same sections as Assess, in hire words (Assessments,
+Candidates, Assessors); Exams and Reporting are reachable. Outcome: the Hire arm renders Assess's screens in employer wording and a
 candidate is never offered a staff read (403 for them). Gaps: B-5, R-2.
 
 ## PARTNER: the publishing partner
