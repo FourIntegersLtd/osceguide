@@ -27,11 +27,11 @@ class FakeRedis:
         self.expiries: list[tuple[str, int]] = []
         self.broken = broken
 
-    async def eval(self, script: str, numkeys: int, key: str, window: int) -> int:
+    async def eval(self, script: str, numkeys: int, key: str, window: str) -> int:
         if self.broken:
             raise ConnectionError("redis is down")
         if key not in self.counts:
-            self.expiries.append((key, window))
+            self.expiries.append((key, int(window)))
         self.counts[key] = self.counts.get(key, 0) + 1
         return self.counts[key]
 

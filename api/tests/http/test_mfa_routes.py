@@ -39,8 +39,8 @@ class CountingRedis:
         self.counts[key] = self.counts.get(key, 0) + 1
         return self.counts[key]
 
-    async def expire(self, key: str, seconds: int) -> bool:
-        return True
+    async def eval(self, script: str, numkeys: int, key: str, window: str) -> int:
+        return await self.incr(key)
 
     async def ttl(self, key: str) -> int:
         return 60
