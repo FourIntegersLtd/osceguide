@@ -81,7 +81,7 @@ function RenameForm({
   return (
     <Dialog
       open
-      title="Rename cohort"
+      title="Rename year group"
       lead="Everyone in this intake stays in it. Only the name changes."
       error={error}
       busy={busy}
@@ -201,11 +201,11 @@ function DeleteForm({
     <Dialog
       open
       tone="danger"
-      title="Delete cohort"
+      title="Delete year group"
       lead={lead}
       error={error}
       busy={busy}
-      commitLabel="Delete cohort"
+      commitLabel="Delete year group"
       busyLabel="Deleting…"
       onClose={onClose}
       onCommit={() => void commit()}

@@ -226,14 +226,14 @@ export function BulkImportDialog({
           ) : null}
           {unknownCohorts.length > 0 ? (
             <div className="mt-1 text-osce-caption text-b2b-warning-text/90">
-              <p>No cohort here is called {unknownCohorts.join(", ")}.</p>
+              <p>No year group here is called {unknownCohorts.join(", ")}.</p>
               <Checkbox
-                label={`Create ${unknownCohorts.length === 1 ? "that cohort" : "those cohorts"} when importing`}
+                label={`Create ${unknownCohorts.length === 1 ? "that year group" : "those year groups"} when importing`}
                 checked={createMissing}
                 onChange={() => setCreateMissing((on) => !on)}
               />
               {createMissing ? null : (
-                <p>Otherwise those people are added with no cohort.</p>
+                <p>Otherwise those people are added with no year group.</p>
               )}
             </div>
           ) : null}

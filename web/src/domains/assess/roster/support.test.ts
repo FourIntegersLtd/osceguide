@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Trainee } from "@/domains/assess/api";
 import { PlatformError } from "@/foundation/platform-client";
-import { cohortDeleteLead, cohortName, deleteLead, rosterErrorMessage, rosterTabs, traineeStatus } from "@/domains/assess/roster/support";
-import { INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
+import { cohortDeleteLead, cohortName, deleteLead, rosterErrorMessage, traineeStatus } from "@/domains/assess/roster/support";
 import { loadRoster, type RosterData, type RosterPart } from "@/domains/assess/roster/useRosterData";
 
 function trainee(over: Partial<Trainee> = {}): Trainee {
@@ -64,18 +63,13 @@ test("revoked access is flagged whatever step was reached", () => {
 });
 
 
-test("a supervisor is not offered the Exam access tab, which the API closes to admins", () => {
-  assert.deepEqual(rosterTabs(false, INSTITUTION_WORDS).map((t) => t.key), ["trainees", "add", "groups"]);
-  assert.deepEqual(rosterTabs(true, INSTITUTION_WORDS).map((t) => t.key), ["trainees", "add", "groups", "access"]);
-});
-
 test("the delete prompt says up front when Revoke is the option that will work", () => {
   assert.match(deleteLead("Ada", 3), /has sat 3 stations.*Revoke/);
   assert.doesNotMatch(deleteLead("Ada", 0), /has sat/);
 });
 
 test("the cohort delete prompt counts the sittings that detach", () => {
-  assert.match(cohortDeleteLead("2027 intake", 3), /3 sittings held for it are kept but no longer belong to any cohort/);
+  assert.match(cohortDeleteLead("2027 intake", 3), /3 sittings held for it are kept but no longer belong to any year group/);
   assert.match(cohortDeleteLead("2027 intake", 1), /1 sitting held for it is kept/);
   assert.match(cohortDeleteLead("2027 intake", 0), /No sittings are held for it/);
 });

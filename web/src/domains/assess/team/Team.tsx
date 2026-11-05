@@ -29,6 +29,7 @@ const TABS: readonly Tab<Section>[] = [
  * string on the membership row: the old B2B client kept its own copy of that
  * policy and offered actions the API then refused.
  */
+// Partner-only now: assess serves its team inside People. Kept for the partner surface.
 export function Team({ orgSlug }: { orgSlug: string }) {
   const { session } = useSession();
   const { hrefFor } = useSurface();
@@ -54,7 +55,7 @@ export function Team({ orgSlug }: { orgSlug: string }) {
       {section === "activity" ? (
         <ActivityPanel orgSlug={orgSlug} />
       ) : section === "members" ? (
-        <MembersPanel orgSlug={orgSlug} canManage={canManage} />
+        <MembersPanel orgSlug={orgSlug} canManage={canManage} onInviteStaff={() => setSection("invite")} />
       ) : (
         // The members list re-fetches on its own next mount, so nothing here
         // needs to be told a new person was added.

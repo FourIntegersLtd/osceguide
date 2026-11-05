@@ -26,8 +26,8 @@ export function ImportInstructions() {
             <span className="font-mono">lastName</span>, or one <span className="font-mono">name</span> column. Their name
           </li>
           <li>
-            <span className="font-mono">cohort</span> or <span className="font-mono">group</span>.
-            The name of a cohort that already exists here (e.g. &quot;June 2026&quot;)
+            <span className="font-mono">cohort</span> or <span className="font-mono">group</span>:
+            a year group that already exists here (e.g. &quot;June 2026&quot;)
           </li>
         </ul>
       </div>

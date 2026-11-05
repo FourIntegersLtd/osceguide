@@ -152,7 +152,7 @@ function Form({
           Cohort
         </label>
         <p className="mt-0.5 text-osce-caption text-b2b-mid">
-          An intake. Choose an existing one; cohorts are created under Groups.
+          An intake. Choose an existing one; year groups are created under Groups and year groups.
         </p>
         <select
           id="assess-trainee-edit-cohort"
@@ -160,7 +160,7 @@ function Form({
           onChange={(event) => setCohortId(event.target.value)}
           className={`mt-1 ${b2bTokens.b2bInputBase}`}
         >
-          <option value="">No cohort</option>
+          <option value="">No year group</option>
           {cohorts.map((cohort) => (
             <option key={cohort.id} value={cohort.id}>
               {cohort.name}

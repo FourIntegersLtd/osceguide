@@ -9,7 +9,9 @@ export {
   SelfPracticeStation,
   StationRecord,
 } from "@/domains/assess/trainee";
-export { Trainees } from "@/domains/assess/roster";
+export { People } from "@/domains/assess/people/People";
+export { initialPeopleTab } from "@/domains/assess/people/support";
+// Team is the partner surface's only: assess shows its staff inside People.
 export { Team } from "@/domains/assess/team";
 export { NewSitting } from "@/domains/assess/NewSitting";
 export { SlotReview } from "@/domains/assess/SlotReview";

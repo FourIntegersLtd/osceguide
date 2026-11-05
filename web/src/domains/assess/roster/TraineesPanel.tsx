@@ -25,18 +25,23 @@ import {
   anonymiseTrainee,
   deleteTrainee,
   listTrainees,
+  readGroupMembers,
   resendInvitation,
   resendTraineeInvitations,
   revokeTrainees,
   setTraineeAccess,
+  setGroupMembers,
   setTraineesCohort,
   type Cohort,
+  type TraineeGroup,
 } from "@/domains/assess/roster/api";
 import { TraineeBulkBar } from "@/domains/assess/roster/TraineeBulkBar";
 import { TraineeEditDialog } from "@/domains/assess/roster/TraineeEditDialog";
 import { TraineeRowActions } from "@/domains/assess/roster/TraineeRowActions";
 import {
   accessActive,
+  addToGroupIds,
+  addToGroupSummary,
   awaitingInvitation,
   bulkSummary,
   cohortName,
@@ -82,12 +87,17 @@ type Message = { tone: "success" | "warning" | "danger"; text: string };
 export function TraineesPanel({
   orgSlug,
   cohorts,
+  groups,
   canManage,
+  onAddPeople,
   onChanged,
 }: {
   orgSlug: string;
   cohorts: Cohort[];
+  groups: TraineeGroup[];
   canManage: boolean;
+  /** Opens the Add people sheet from the empty state. */
+  onAddPeople: () => void;
   onChanged: () => void;
 }) {
   const w = useAssessWords();
@@ -130,16 +140,18 @@ export function TraineesPanel({
   /** Run one bulk call, say what it did, clear the selection and refresh. */
   const runBulk = useCallback(
     async (
-      call: () => Promise<{ results: { outcome: string }[] }>,
-      ok: string,
-      noun: string,
+      call: () => Promise<{ results: { outcome: string }[] } | string>,
+      ok?: string,
+      noun?: string,
     ) => {
       setBulkBusy(true);
       setError(null);
       setNotice(null);
       try {
-        const { results } = await call();
-        setNotice({ tone: "success", text: bulkSummary(results, ok, noun) });
+        const done = await call();
+        const text =
+          typeof done === "string" ? done : bulkSummary(done.results, ok ?? "done", noun ?? "people");
+        setNotice({ tone: "success", text });
         setSelected(new Set());
         setConfirmingBulkRevoke(false);
         pages.state.reload();
@@ -299,7 +311,7 @@ export function TraineesPanel({
         ),
       },
       {
-        header: "Group",
+        header: "Year group",
         key: "cohort_id" as keyof Trainee,
         render: (trainee: Trainee) => (
           <span className={cn(b2cTableCellText, "text-b2b-mid")}>
@@ -319,7 +331,7 @@ export function TraineesPanel({
         ),
       },
       {
-        header: "Stations sat",
+        header: "Sat",
         key: "stations_sat" as keyof Trainee,
         render: (trainee: Trainee) => (
           <span className={cn(b2cTableCellText, "tabular-nums text-b2b-mid")}>
@@ -442,6 +454,7 @@ export function TraineesPanel({
           rowIds={rows.map((row) => row.id)}
           selected={new Set(selectedIds)}
           cohorts={cohorts}
+          groups={groups}
           busy={bulkBusy}
           onSelect={setSelected}
           onResend={() =>
@@ -463,6 +476,16 @@ export function TraineesPanel({
               "people",
             )
           }
+          onAddToGroup={(groupId) =>
+            void runBulk(async () => {
+              // PUT replaces the list, so read who is in it first and keep them, then
+              // read it again: a concurrent edit can win, and the summary says so.
+              const current = await readGroupMembers(orgSlug, groupId);
+              await setGroupMembers(orgSlug, groupId, addToGroupIds(current, selectedIds));
+              const after = await readGroupMembers(orgSlug, groupId);
+              return addToGroupSummary(selectedIds, after);
+            })
+          }
           onRevoke={() => {
             setError(null);
             setConfirmingBulkRevoke(true);
@@ -472,7 +495,7 @@ export function TraineesPanel({
 
       {pages.state.error ? (
         <Alert tone="danger">
-          {pages.state.error.message}
+          Could not load {w.trainees}.
           <button
             type="button"
             className="ml-2 underline"
@@ -496,6 +519,13 @@ export function TraineesPanel({
           <EmptyState
             title={`No ${w.trainees} yet`}
             description={`Add ${w.trainees} so you can put them on an exam or training circuit.`}
+            action={
+              canManage ? (
+                <Button themeType="b2b" variant="commit" onClick={onAddPeople}>
+                  {w.addPeople}
+                </Button>
+              ) : undefined
+            }
           />
         )
       ) : (
@@ -510,7 +540,8 @@ export function TraineesPanel({
 
       {!canManage ? (
         <p className="text-osce-caption text-b2b-icon">
-          Contact an owner or admin to change who has access.
+          <span className="font-medium">Supervisor (read only)</span>. Contact an owner or admin to
+          change who has access.
         </p>
       ) : null}
 

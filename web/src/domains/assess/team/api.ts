@@ -129,6 +129,23 @@ export function resendInvitations(
   );
 }
 
+export type BulkRevokeResponse = components["schemas"]["BulkMembershipRevokeResponse"];
+
+/**
+ * Revoke several staff at once. Each row answers for itself (`revoked`, `already_revoked`,
+ * `not_found`). A batch that would remove the last admin is refused WHOLE with 409 `last_admin`,
+ * so the caller leaves that person out first (`revokableStaff`).
+ */
+export function revokeMemberships(
+  slug: string,
+  membershipIds: string[],
+): Promise<BulkRevokeResponse> {
+  return platformRequest<BulkRevokeResponse>(`${orgPath(slug)}/memberships/bulk/revoke`, {
+    method: "POST",
+    body: { membership_ids: membershipIds },
+  });
+}
+
 export interface AuditFilters {
   /** Exactly this person, any case. */
   actorEmail?: string | null;
