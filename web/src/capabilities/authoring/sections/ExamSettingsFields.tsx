@@ -49,10 +49,12 @@ export function ExamSettingsFields({
   value,
   onChange,
   title = "Exam settings",
+  description,
 }: {
   value: ExamSettings;
   onChange: (patch: Partial<ExamSettings>) => void;
   title?: string;
+  description?: string;
 }) {
   const generation: Partial<NonNullable<ExamSettings["generation"]>> =
     value.generation ?? {};
@@ -65,7 +67,7 @@ export function ExamSettingsFields({
     });
 
   return (
-    <FoldSection title={title} defaultOpen={false}>
+    <FoldSection title={title} description={description} defaultOpen={false}>
       <div className="space-y-4">
         <Field label="Date label">
           <input

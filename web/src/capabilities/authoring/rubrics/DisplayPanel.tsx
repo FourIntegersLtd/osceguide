@@ -66,9 +66,11 @@ export function DisplayPanel() {
         </FoldSection>
       ) : null}
 
-      <FoldSection title="Bands (optional)" description="Name ranges of the total, e.g. 0–4 “Not yet”, 5–7 “Borderline”.">
+      <FoldSection title="Bands (optional)" description="Name ranges of the total, e.g. Clear pass, Borderline, Fail, each from a score.">
         <BandList />
       </FoldSection>
+
+      <p className="text-osce-caption text-ink-muted">This was the feedback template. It now lives here, with the marking it describes.</p>
 
       <FoldSection title="What the candidate sees" description="Replace the default headings on the feedback page and dashboard.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-path="display.labels">
