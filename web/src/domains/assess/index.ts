@@ -23,5 +23,6 @@ export { OrgDiscussion } from "@/domains/assess/OrgDiscussion";
 export { Programmes } from "@/domains/assess/programmes";
 export { Reporting } from "@/domains/assess/reporting";
 export { WorkspaceSettings } from "@/domains/assess/settings/OrgSettings";
+export { InvoicesPage } from "@/domains/assess/settings/InvoicesPage";
 export { NewOrganisation } from "@/domains/assess/NewOrganisation";
 export * from "@/domains/assess/api";
