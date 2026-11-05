@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 import { LuPhoneOff } from "react-icons/lu";
 import { Alert, Button, Card, Spinner } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { AgentTile, VoiceRoom, useMicPreflight } from "@/foundation/livekit";
 import { ExamClock } from "@/capabilities/attempt-runner/ExamClock";
-import { useCountdown } from "@/capabilities/attempt-runner/useCountdown";
+import { countdownAnchor, useCountdown, type CountdownAnchor } from "@/capabilities/attempt-runner/useCountdown";
+import { readAttemptBrief } from "@/capabilities/attempt-runner/api";
 import { useAttemptSession, type AttemptSessionInput } from "@/capabilities/attempt-runner/useAttemptSession";
 import { WaitingInLine } from "@/capabilities/attempt-runner/WaitingInLine";
 
@@ -45,9 +46,30 @@ export function AttemptRunner(props: AttemptRunnerProps) {
     void session.startConsultation();
   });
 
-  const consultation = useCountdown(simulationSeconds, session.phase === "live" && session.patientJoined, () => {
-    void session.end();
-  });
+  // The server's start of the consultation, read once the room is live: the clock then shows
+  // what is really left after a reload, and is not the device's idea of when it began.
+  const [anchor, setAnchor] = useState<CountdownAnchor | undefined>(undefined);
+  const attemptId = session.attempt?.id;
+  // Not before the patient has joined: the server writes `started_at` when it bootstraps the
+  // patient, so an earlier read comes back without one and the anchor would never arrive.
+  const live = session.phase === "live" && session.patientJoined;
+  useEffect(() => {
+    if (!live || !attemptId) return;
+    const controller = new AbortController();
+    readAttemptBrief(attemptId, controller.signal)
+      .then((brief) => setAnchor(countdownAnchor(brief, Date.now())))
+      .catch(() => undefined); // the device clock still counts down
+    return () => controller.abort();
+  }, [live, attemptId]);
+
+  const consultation = useCountdown(
+    simulationSeconds,
+    session.phase === "live" && session.patientJoined,
+    () => {
+      void session.end();
+    },
+    anchor,
+  );
 
   // Give the patient a chance to close rather than being cut off mid-sentence.
   useEffect(() => {

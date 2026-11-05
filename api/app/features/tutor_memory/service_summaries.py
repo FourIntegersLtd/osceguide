@@ -13,6 +13,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.events import publish_after_commit, user_topic
 from app.core.logging import get_logger
 from app.core.ports import SummaryFailed, TranscriptSummariser
 from app.features.assistant import service_reads as assistant
@@ -133,17 +134,29 @@ async def summarise_debrief(
     *,
     summariser: TranscriptSummariser,
 ) -> bool:
-    """Write what a debrief concluded. One per attempt, enforced by the table."""
-    if await repository.debrief_summary_for_attempt(session, attempt_id) is not None:
-        return False
+    """Write what a debrief concluded. One per attempt, enforced by the table.
+
+    Tells the owner on `/me/events` (`debrief`) how it ended, so the Debriefs screen waits on the
+    event instead of asking: `ready` once a summary exists, `none` when none will come.
+    """
     ref = await attempts.attempt_ref(session, attempt_id)
     if ref is None:
         return False
 
-    transcript = await attempts.read_transcript(session, attempt_id, requester_id=ref.user_id, is_admin=False)
-    if not domain.should_summarise_attempt(kind=ref.kind, complete=transcript.complete):
+    def tell(state: str) -> None:
+        """Tell the learner on their open screen how their debrief summary turned out."""
+        publish_after_commit(
+            session, user_topic(ref.user_id), "debrief", {"attempt_id": str(attempt_id), "state": state}
+        )
+
+    if await repository.debrief_summary_for_attempt(session, attempt_id) is not None:
+        tell("ready")
         return False
-    if not transcript.messages:
+
+    transcript = await attempts.read_transcript(session, attempt_id, requester_id=ref.user_id, is_admin=False)
+    owed = domain.should_summarise_attempt(kind=ref.kind, complete=transcript.complete)
+    if not owed or not transcript.messages:
+        tell("none")
         return False
 
     summary = await summariser.summarise(
@@ -165,6 +178,7 @@ async def summarise_debrief(
         narrative=str(summary.get("narrative_summary") or "") or None,
         model_used=str(summary.get("model_used") or "") or None,
     )
+    tell("ready")
     return True
 
 
