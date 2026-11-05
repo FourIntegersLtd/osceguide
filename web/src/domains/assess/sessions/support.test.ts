@@ -10,6 +10,7 @@ import {
   runnerSteps,
   markable,
   slotProgress,
+  summariseCircuit,
 } from "@/domains/assess/sessions/support";
 
 function slot(over: Partial<ConsoleSlot> & { id: string; slot_index: number }): ConsoleSlot {
@@ -214,4 +215,26 @@ test("an override's seconds must be a whole number the server accepts", () => {
   assert.equal(validOverrideSeconds(Number.NaN), false);
   assert.equal(validOverrideSeconds(3601), false);
   assert.equal(validOverrideSeconds(1.5), false);
+});
+
+test("summariseCircuit counts candidates and who is still to review", () => {
+  const data = console_({
+    slots: [
+      slot({ id: "a", slot_index: 0, status: "completed", has_review: true }),
+      slot({ id: "b", slot_index: 1, status: "completed", trainee: { user_id: "u-b", name: "B", email: null, trainee_id: null } }),
+      slot({ id: "c", slot_index: 2, status: "scheduled", trainee: { user_id: "u-c", name: "C", email: null, trainee_id: null } }),
+    ],
+  });
+  const summary = summariseCircuit(data, { state: "draft" });
+  assert.equal(summary.candidates, 2);
+  assert.equal(summary.toReview, 1);
+  assert.equal(summary.unmarked.length, 1);
+  assert.equal(summary.readyToPublish, false);
+});
+
+test("summariseCircuit: all marked is ready to publish only when the review is read and unpublished", () => {
+  const data = console_({ slots: [slot({ id: "a", slot_index: 0, status: "completed", has_review: true })] });
+  assert.equal(summariseCircuit(data, { state: "draft" }).readyToPublish, true);
+  assert.equal(summariseCircuit(data, { state: "published" }).readyToPublish, false);
+  assert.equal(summariseCircuit(data, null).readyToPublish, false);
 });

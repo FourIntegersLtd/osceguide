@@ -1,40 +1,41 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useAsync, useEventStream } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import type { Surface } from "@/capabilities";
 import { liveBoardStreamPath, readLiveBoard, type LiveBoard } from "@/domains/assess/dashboard/api";
 import { attentionFromResults } from "@/domains/assess/dashboard/support";
 import { readResultsIndex } from "@/domains/assess/results/api";
-import { useStationsToReview } from "@/domains/assess/results/StationsToReview";
 import { INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
+import { navBadgeGate, navBadges, type NavBadges } from "@/surfaces/navBadges";
 
 /**
- * The count chips of an organisation's menu: "Now running 1 live" and "Results 5".
+ * The count chips of an organisation's menu: "Now running 1 live" and, for someone who signs
+ * results off, "Results 5".
  *
- * From reads the home screen already makes: the live board's stream (never polled) and the
- * results index, or for a supervisor who signs nothing off, their stations still to review.
- * A failed read shows no chip rather than a wrong one.
+ * Two reads and one stream, never polled: the live board (initial read, then its stream) and the
+ * results index (one request). The index is read again when the running count changes, which is
+ * what a circuit ending does, and when the screen changes. A supervisor who signs nothing off sees
+ * no Results chip: their count would take a console read per circuit. A failed read shows no chip.
  */
-export function useNavBadges(surface: Surface, orgSlug: string | null): { live?: string; results?: string } {
+export function useNavBadges(surface: Surface, orgSlug: string | null): NavBadges {
   const { session } = useSession();
-  const org = (surface === "assess" || surface === "hire") && orgSlug && can(session, "run_circuits") ? orgSlug : null;
-  const decides = can(session, "sign_off_results");
+  const pathname = usePathname();
+  const gate = navBadgeGate(surface, can(session, "run_circuits"), can(session, "sign_off_results"));
+  const org = gate.live ? orgSlug : null;
 
   const initial = useAsync((signal) => (org ? readLiveBoard(org, signal) : Promise.resolve(null)), [org]);
   const stream = useEventStream<LiveBoard>(org ? liveBoardStreamPath(org) : null, { enabled: org !== null });
   const running = (stream.data ?? initial.data)?.circuits?.length ?? 0;
 
+  const decides = org !== null && gate.results;
   const index = useAsync(
-    (signal) => (org && decides ? readResultsIndex(org, signal) : Promise.resolve(null)),
-    [org, decides],
+    (signal) => (decides && org ? readResultsIndex(org, signal) : Promise.resolve(null)),
+    [org, decides, running, pathname],
   );
-  const { stations } = useStationsToReview(org && !decides ? org : null);
-  const results = decides ? attentionFromResults(index.data?.rows ?? [], INSTITUTION_WORDS).length : stations.length;
+  const attention = index.data ? attentionFromResults(index.data.rows ?? [], INSTITUTION_WORDS).length : null;
 
-  if (!org) return {};
-  return {
-    live: running > 0 ? `${running} live` : undefined,
-    results: results > 0 ? String(results) : undefined,
-  };
+  if (!org) return { live: undefined, results: undefined };
+  return navBadges(running, attention);
 }

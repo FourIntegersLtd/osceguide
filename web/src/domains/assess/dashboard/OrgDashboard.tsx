@@ -22,10 +22,10 @@ import { humanise } from "@/foundation/format";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
-import { readOrgDashboard, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
+import { readOrgDashboard, readSupervisorCircuits, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
 import { LiveNow } from "@/domains/assess/dashboard/LiveNow";
 import { SetupAssistant } from "@/domains/assess/dashboard/SetupAssistant";
-import { SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
+import { NextCircuit, SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
 import {
   assistantSteps,
   attentionFromResults,
@@ -106,12 +106,14 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   const mayDecide = can(session, "sign_off_results");
   const results = useAsync((signal) => (mayDecide ? readResultsIndex(orgSlug, signal) : Promise.resolve(null)), [orgSlug, mayDecide]);
   const attention = attentionFromResults(results.data?.rows ?? [], w);
+  const circuits = useAsync((signal) => (runs ? readSupervisorCircuits(orgSlug, signal) : Promise.resolve(null)), [orgSlug, runs]);
+  const circuitRows = circuits.data?.items ?? [];
   const earlier = (data.recent_sittings ?? []).filter((sitting) => sitting.status !== "scheduled");
 
   return (
     <>
       {runs && !mayDecide ? (
-        <SupervisorHeader orgSlug={orgSlug} eyebrow="Supervisor" />
+        <SupervisorHeader orgSlug={orgSlug} eyebrow={w.Supervisor} />
       ) : (
       <B2CPageHeader
         className="!mb-0"
@@ -150,9 +152,11 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
       {mayDecide ? <NeedsAttention loading={results.loading} error={results.error} items={attention} /> : null}
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start [&>*]:min-w-0 [&>*]:flex-1">
-        {runs ? <SupervisorCircuits orgSlug={orgSlug} part="next" /> : null}
+        {runs && circuits.error ? <Alert tone="danger">{errorMessage(circuits.error)}</Alert> : null}
+        {runs && circuits.loading ? <Spinner /> : null}
+        {runs && !circuits.loading && !circuits.error ? <NextCircuit rows={circuitRows} /> : null}
         {runs ? <StationsToReview orgSlug={orgSlug} /> : null}
-        {runs ? <SupervisorCircuits orgSlug={orgSlug} sayWhenEmpty={!admin} /> : null}
+        {runs && !circuits.loading && !circuits.error ? <SupervisorCircuits rows={circuitRows} sayWhenEmpty={!admin} /> : null}
 
         <B2CGroupedSection
           eyebrow="Coming up"
@@ -168,7 +172,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
               meta={schedules ? <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={b2bTokens.b2bLink}>{w.scheduleSitting}</Link> : `An administrator can schedule one.`}
             />
           ) : (
-            upcoming.map((sitting) => <SittingRow key={sitting.id} sitting={sitting} tile />)
+            upcoming.map((sitting) => <SittingRow key={sitting.id} sitting={sitting} />)
           )}
         </B2CGroupedSection>
       </div>
@@ -186,8 +190,8 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   );
 }
 
-function SittingRow({ sitting, tile = false }: { sitting: NonNullable<Data["recent_sittings"]>[number]; tile?: boolean }) {
-  const date = tile ? dateTile(sitting.scheduled_for) : null;
+function SittingRow({ sitting }: { sitting: NonNullable<Data["recent_sittings"]>[number] }) {
+  const date = dateTile(sitting.scheduled_for);
   const { hrefFor } = useSurface();
   const w = useAssessWords();
   return (
@@ -207,8 +211,7 @@ function SittingRow({ sitting, tile = false }: { sitting: NonNullable<Data["rece
         sitting.scheduled_for && !date
           ? `${new Date(sitting.scheduled_for).toLocaleString()} · ${modeLabel(sitting.mode, w)}`
           : modeLabel(sitting.mode, w)
-      }
-      trailing={
+      }      trailing={
         <Badge variant="neutral" dot>
           {humanise(sitting.status)}
         </Badge>

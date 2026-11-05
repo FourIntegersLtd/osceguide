@@ -299,6 +299,16 @@ export function dateTile(iso: string | null): { month: string; day: string } | n
   };
 }
 
+/** "Thursday, 12 November, 09:30": a date with its time, for the next-circuit card. */
+export function longWhen(iso: string | null): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date
+    .toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+    .replace(" at ", ", ");
+}
+
 /** "12 Nov": a date without the time, for a circuit row. */
 export function shortDate(iso: string | null): string | null {
   if (!iso) return null;

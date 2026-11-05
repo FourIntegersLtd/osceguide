@@ -314,3 +314,29 @@ export function unmarkedStations(data: CircuitConsole): (UnmarkedStation & { tit
       position: slot.slot_index + 1,
     }));
 }
+
+/** One ended circuit as a supervisor's "still to review" prompt. */
+export type CircuitSummary = {
+  /** Candidates who sat a markable station. */
+  candidates: number;
+  /** Of those, candidates with a station still unmarked. */
+  toReview: number;
+  unmarked: ReturnType<typeof unmarkedStations>;
+  /** Every sat station is marked and the circuit's feedback is known not to be published. */
+  readyToPublish: boolean;
+};
+
+/**
+ * Pure summary of a circuit's console and its feedback review. `review` is null when that read
+ * failed: unknown is never "ready to publish".
+ */
+export function summariseCircuit(data: CircuitConsole, review: { state: string } | null): CircuitSummary {
+  const sat = orderedSlots(data).filter((slot) => markable(slot));
+  const unmarked = unmarkedStations(data);
+  return {
+    candidates: new Set(sat.map((slot) => slot.trainee.user_id)).size,
+    toReview: new Set(sat.filter((slot) => !slot.has_review).map((slot) => slot.trainee.user_id)).size,
+    unmarked,
+    readyToPublish: unmarked.length === 0 && sat.length > 0 && review !== null && review.state !== "published",
+  };
+}

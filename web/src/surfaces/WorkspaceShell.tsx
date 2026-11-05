@@ -68,13 +68,10 @@ export function WorkspaceShell({
         can: (permission: Permission) => hasPermission(session, permission),
         href,
       })
-      .map((item) =>
-        item.key === "live" && badges.live
-          ? { ...item, badge: badges.live }
-          : item.key === "results" && badges.results
-            ? { ...item, badge: badges.results }
-            : item,
-      );
+      .map((item) => {
+        const badge = badges[item.key as keyof typeof badges];
+        return badge ? { ...item, badge } : item;
+      });
     const mounted = capabilitiesFor(manifest.id, {
       can: session?.capabilities.can ?? {},
       basePath,

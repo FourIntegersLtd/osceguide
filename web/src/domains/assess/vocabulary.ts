@@ -31,6 +31,8 @@ export type AssessWords = {
   /** What a sitting's mode is called, so it never clashes with the "Exam" noun. */
   /** True in a hire workspace, where results are hiring decisions. */
   hiring: boolean;
+  /** The button to the live board from the running-now card. */
+  liveBoardLink: string;
   formalExam: string;
   training: string;
 };
@@ -60,6 +62,7 @@ export const INSTITUTION_WORDS: AssessWords = {
   YearGroup: "Year group",
   YearGroups: "Year groups",
   hiring: false,
+  liveBoardLink: "Open the live board",
   formalExam: "Formal exam",
   training: "Training",
 };
@@ -89,6 +92,7 @@ export const EMPLOYER_WORDS: AssessWords = {
   YearGroup: "Intake",
   YearGroups: "Intakes",
   hiring: true,
+  liveBoardLink: "Watch it",
   formalExam: "Formal exam",
   training: "Training",
 };
