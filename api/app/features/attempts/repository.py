@@ -532,15 +532,15 @@ async def fail_live_attempt_for_slot(
 
 async def fail_unfinished_for_user(
     session: AsyncSession, user_id: uuid.UUID, *, at: datetime, reason: str
-) -> int:
-    """Fail every attempt of this person that is still created or running. Returns how many."""
-    stmt = select(Attempt.id).where(
+) -> list[Attempt]:
+    """Fail every attempt of this person that is still created or running. Returns the ones failed."""
+    stmt = select(Attempt).where(
         Attempt.user_id == user_id, Attempt.status.in_([str(Status.CREATED), str(Status.RUNNING)])
     )
-    ids = list((await session.execute(stmt)).scalars())
-    for attempt_id in ids:
-        await set_status(session, attempt_id, status=Status.FAILED, at=at, reason=reason)
-    return len(ids)
+    failed = list((await session.execute(stmt)).scalars())
+    for attempt in failed:
+        await set_status(session, attempt.id, status=Status.FAILED, at=at, reason=reason)
+    return failed
 
 
 async def fail_stale_consumer_attempts(
@@ -560,6 +560,28 @@ async def fail_stale_consumer_attempts(
     for attempt_id in ids:
         await set_status(session, attempt_id, status=Status.FAILED, at=at, reason=reason)
     return ids
+
+
+async def running_attempts_started_before(
+    session: AsyncSession, *, started_before: datetime, kinds: Sequence[str]
+) -> list[Attempt]:
+    """Running attempts of these kinds started before the instant: candidates for a deadline check."""
+    stmt = select(Attempt).where(
+        Attempt.kind.in_(list(kinds)),
+        Attempt.status == str(Status.RUNNING),
+        Attempt.started_at < started_before,
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def attempts_by_ids(
+    session: AsyncSession, attempt_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, Attempt]:
+    """Each of these attempts by id, in one query. Missing ids are absent."""
+    if not attempt_ids:
+        return {}
+    stmt = select(Attempt).where(Attempt.id.in_(list(attempt_ids)))
+    return {attempt.id: attempt for attempt in (await session.execute(stmt)).scalars()}
 
 
 async def exam_for_slot_attempt(session: AsyncSession, slot_id: uuid.UUID) -> uuid.UUID | None:

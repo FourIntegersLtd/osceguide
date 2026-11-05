@@ -9,17 +9,28 @@ institution's exams are visible only to itself.
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import cache
 from app.core.exam_settings import ExamSettings
+from app.core.settings import get_settings
 from app.features.catalog import domain, repository
 from app.features.catalog.errors import ProgrammeNotActive, ProgrammeNotFound, UnknownExamError
 from app.features.catalog.models import Exam
 from app.features.catalog.schemas import ExamRead
+
+# The cache version every exam or programme write bumps; see `bump_catalog`.
+CATALOG_VERSION = "catalog"
+
+
+def bump_catalog(session: AsyncSession) -> None:
+    """Make the cached exam codes and per-organisation exam lists unreachable once this commits."""
+    cache.bump_after_commit(session, CATALOG_VERSION)
 
 
 async def count_live_exams_for_rubric_version(session: AsyncSession, rubric_version_id: uuid.UUID) -> int:
@@ -216,8 +227,22 @@ async def exam_ids_matching_code(session: AsyncSession, term: str) -> list[uuid.
 
 
 async def exam_codes(session: AsyncSession, org_id: uuid.UUID | None = None) -> list[str]:
-    """Every published exam's code this caller may see. Small enough not to page."""
-    return [exam.code for exam in await _published(session, org_id)]
+    """Every published exam's code this caller may see. Small enough not to page.
+
+    Cached for `library_cache_seconds` under the "catalog" version, which every exam or programme
+    write bumps once it commits (`bump_catalog`).
+    """
+
+    async def load() -> list[str]:
+        return [exam.code for exam in await _published(session, org_id)]
+
+    return await cache.get_or_load(
+        f"catalog:exam-codes:{org_id or 'platform'}:v{await cache.version(CATALOG_VERSION)}",
+        get_settings().library_cache_seconds,
+        load,
+        dump=json.dumps,
+        parse=json.loads,
+    )
 
 
 async def exam_refs(session: AsyncSession, org_id: uuid.UUID | None = None) -> list[ExamRef]:
@@ -257,8 +282,18 @@ async def count_programmes_with_markable_exam(session: AsyncSession, org_id: uui
 
 
 async def org_exam_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
-    """The exams this organisation offers, through its programmes."""
-    return await repository.org_exam_ids(session, org_id)
+    """The exams this organisation offers, through its programmes. Cached like `exam_codes`."""
+
+    async def load() -> list[uuid.UUID]:
+        return await repository.org_exam_ids(session, org_id)
+
+    return await cache.get_or_load(
+        f"catalog:org-exams:{org_id}:v{await cache.version(CATALOG_VERSION)}",
+        get_settings().library_cache_seconds,
+        load,
+        dump=lambda ids: json.dumps([str(exam_id) for exam_id in ids]),
+        parse=lambda raw: [uuid.UUID(exam_id) for exam_id in json.loads(raw)],
+    )
 
 
 async def has_published_exam(session: AsyncSession, org_id: uuid.UUID) -> bool:

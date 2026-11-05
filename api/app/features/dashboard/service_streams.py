@@ -68,13 +68,13 @@ def console_stream(
         # An ended circuit gets one last snapshot and then the stream closes.
         return Snapshot(console.model_dump_json(), final=console.circuit.ended_at is not None)
 
-    # A snapshot on every heartbeat: with the worker down nothing is announced, and a
-    # snapshot is what catches a due circuit up (S-7).
+    # No snapshot on the heartbeat: every write that changes the console announces itself
+    # (`sittings.announcements`). With the worker down nothing is announced, so a due circuit is
+    # caught up on the next reload or event, not on a timer.
     return event_stream(
         topics=[circuit_topic(circuit_id)],
         snapshot=snapshot,
         bus=bus,
-        snapshot_on_heartbeat=True,
         owner=principal.user_id,
     )
 
@@ -127,6 +127,5 @@ def live_board_stream(
         topics=[org_topic(org_id)],
         snapshot=snapshot,
         bus=bus,
-        snapshot_on_heartbeat=True,
         owner=principal.user_id,
     )

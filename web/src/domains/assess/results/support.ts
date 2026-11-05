@@ -321,3 +321,15 @@ export function releaseRefusal(code: string): string {
 export function countNote(done: number, total: number, word: string): string {
   return total === 0 ? "Not started" : `${done} of ${total} ${word}`;
 }
+
+export type ResultsTab = "needs_decision" | "ready_to_release" | "all";
+
+/** The results-index rows a tab shows: work still to decide, decisions waiting to go out, or everything. */
+export function filterResultsRows<T extends { not_decided: number; draft: number; signed_off: number }>(
+  rows: T[],
+  tab: ResultsTab,
+): T[] {
+  if (tab === "needs_decision") return rows.filter((row) => row.not_decided > 0 || row.draft > 0);
+  if (tab === "ready_to_release") return rows.filter((row) => row.signed_off > 0);
+  return rows;
+}

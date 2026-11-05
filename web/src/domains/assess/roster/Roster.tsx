@@ -1,5 +1,6 @@
 "use client";
 
+import type { AssessWords } from "@/domains/assess/vocabulary";
 import { useState } from "react";
 import { AsyncBoundary, Button, B2CHero, B2CPageHeader, LoadMore, TextLink } from "@/foundation/ui";
 import { can, useSession } from "@/foundation/session";
@@ -12,6 +13,7 @@ import { AccessPanel } from "@/domains/assess/roster/AccessPanel";
 import type { Trainee } from "@/domains/assess/api";
 import { rosterTabs, sectionSubtitle } from "@/domains/assess/roster/support";
 import { useRosterData } from "@/domains/assess/roster/useRosterData";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 type Section = "trainees" | "add" | "groups" | "access";
 
@@ -24,6 +26,7 @@ type Section = "trainees" | "add" | "groups" | "access";
  * visit — and a write reloads only the lists it changed (`useRosterData`).
  */
 export function Trainees({ orgSlug }: { orgSlug: string }) {
+  const w = useAssessWords();
   const { session } = useSession();
   const { hrefFor } = useSurface();
   const [section, setSection] = useState<Section>("trainees");
@@ -38,28 +41,28 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
         {(data) => (
           <>
             <B2CPageHeader
-              title="People"
-              subtitle={sectionSubtitle(section, {
+              title={w.People}
+              subtitle={sectionSubtitle(section, w, {
                 trainees: trainees.total,
                 groups: data.groups.length,
               })}
               action={
                 canManage && section === "trainees" ? (
                   <Button themeType="b2b" variant="commit" onClick={() => setSection("add")}>
-                    Add people
+                    {w.addPeople}
                   </Button>
                 ) : null
               }
             />
 
             {section === "trainees" && trainees.total > 0 ? (
-              <B2CHero title={rosterHeadline(trainees.rows, trainees.total, loadedAll)}>
+              <B2CHero title={rosterHeadline(trainees.rows, trainees.total, loadedAll, w)}>
                 {loadedAll ? rosterDetail(trainees.rows) : null}
               </B2CHero>
             ) : null}
 
             <TabStrip
-              tabs={rosterTabs(canManage).map((tab) =>
+              tabs={rosterTabs(canManage, w).map((tab) =>
                 tab.key === "trainees" ? { ...tab, count: trainees.total } : tab,
               )}
               active={section} onSelect={setSection}
@@ -102,7 +105,7 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
             {(section === "groups" || section === "access") && (hasMore || moreError) ? (
               <div className="flex flex-col items-center gap-1">
                 <p className="text-osce-caption text-b2b-mid">
-                  Showing {trainees.rows.length} of {trainees.total} trainees.
+                  Showing {trainees.rows.length} of {trainees.total} {w.trainees}.
                 </p>
                 <LoadMore hasMore={hasMore} busy={loadingMore} onLoad={loadMore} error={moreError} />
               </div>
@@ -129,8 +132,8 @@ function programmeCount(trainees: Trainee[]): number {
 }
 
 /** "N trainees across M programmes", counting only programmes someone is rostered on. */
-function rosterHeadline(trainees: Trainee[], total: number, loadedAll: boolean): string {
-  const people = `${total} ${total === 1 ? "trainee" : "trainees"}`;
+function rosterHeadline(trainees: Trainee[], total: number, loadedAll: boolean, words: AssessWords): string {
+  const people = `${total} ${total === 1 ? words.trainee : words.trainees}`;
   // Programmes are read off the rows, so they are only the whole truth once every row is here.
   if (!loadedAll) return people;
   const count = programmeCount(trainees);

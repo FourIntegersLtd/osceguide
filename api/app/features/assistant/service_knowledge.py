@@ -2,15 +2,15 @@
 
 import asyncio
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
+from typing import Protocol
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.db import SessionDep
+from app.core.db import SessionOpener, SessionOpenerDep
 from app.core.errors import AppError, InvalidInput
 from app.core.logging import get_logger
-from app.core.ports import GuidelineIndex, GuidelinePassage, MaterialIndex, Passage
-from app.core.settings import Settings
+from app.core.ports import GuidelineIndex, GuidelinePassage, Passage
+from app.core.settings import Settings, SettingsDep
 from app.features.assistant import service_llm
 from app.features.assistant.schemas import ChatMessage, KnowledgeChat, KnowledgeReply
 from app.features.catalog import service as catalog
@@ -38,11 +38,40 @@ class KnowledgeUnavailable(AppError):
     default_message = "Athena is temporarily unavailable. Please try again."
 
 
-def get_material_index(
-    session: SessionDep,
-) -> MaterialIndex | None:
-    """The dependency the router wires. Overridden in tests with a fake."""
-    return tutor_search.material_index(session)
+class MaterialSearch(Protocol):
+    """The one thing an answer asks of the material index: the nearest passages."""
+
+    async def search(
+        self, *, query: str, exam_ids: Sequence[str], corpus: str | Sequence[str] | None, limit: int
+    ) -> list[Passage]:
+        """The nearest passages to the question, within these exams."""
+        ...
+
+
+class _ShortSessionIndex:
+    """The material index, searching in a short session of its own.
+
+    The request session would stay open through the model call that follows the search; this
+    one is closed as soon as the nearest passages are back.
+    """
+
+    def __init__(self, opener: SessionOpener) -> None:
+        self._opener = opener
+
+    async def search(
+        self, *, query: str, exam_ids: Sequence[str], corpus: str | Sequence[str] | None, limit: int
+    ) -> list[Passage]:
+        """Search in a short session that is closed before the caller goes on to the model."""
+        async with self._opener() as session:
+            index = tutor_search.material_index(session)
+            if index is None:
+                return []
+            return await index.search(query=query, exam_ids=exam_ids, corpus=corpus, limit=limit)
+
+
+def get_material_index(opener: SessionOpenerDep, settings: SettingsDep) -> MaterialSearch | None:
+    """The dependency the router wires. Overridden in tests with a fake. `None` where nothing can embed."""
+    return _ShortSessionIndex(opener) if settings.openai_api_key else None
 
 
 def get_guideline_index() -> GuidelineIndex | None:
@@ -51,27 +80,29 @@ def get_guideline_index() -> GuidelineIndex | None:
 
 
 async def answer(
-    session: AsyncSession,
+    opener: SessionOpener,
     body: KnowledgeChat,
     *,
     user_id: uuid.UUID,
     now: datetime,
-    index: MaterialIndex | None,
+    index: MaterialSearch | None,
     guidelines: GuidelineIndex | None,
     settings: Settings,
 ) -> KnowledgeReply:
     """Answer the learner's question from their exam's stations and summaries, then guidelines."""
     if body.messages[-1].role != "user" or not body.messages[-1].content.strip():
         raise InvalidInput("Finish with a question for Athena.")
-    unlocked = await service_search.unlocked_exam_ids(session, user_id, now=now)
-    exams = await catalog.exam_refs(session)
+    # Short reads, closed before the search and the model call: neither needs a connection held.
+    async with opener() as session:
+        unlocked = await service_search.unlocked_exam_ids(session, user_id, now=now)
+        exams = await catalog.exam_refs(session)
     scoped = frozenset(exam.id for exam in exams if exam.code == body.exam_code and exam.id in unlocked)
     if not scoped:
         return KnowledgeReply(
             reply="Your study access for this exam has expired. Open Settings to review your plan."
         )
     query = _search_query(body.messages)
-    # Side by side: only the material search uses the database session, and the guideline
+    # Side by side: the material search opens its own short session, and the guideline
     # library is another service, so being the second line adds nothing to the wait.
     passages, guideline_passages = await asyncio.gather(
         _material(index, query, scoped), _guidelines(guidelines, query)
@@ -105,7 +136,7 @@ def _search_query(messages: list[ChatMessage]) -> str:
     return " ".join(part for part in asked[-2:] if part)[:_MAX_QUERY]
 
 
-async def _material(index: MaterialIndex | None, query: str, exams: frozenset[uuid.UUID]) -> list[Passage]:
+async def _material(index: MaterialSearch | None, query: str, exams: frozenset[uuid.UUID]) -> list[Passage]:
     """The nearest station and summary passages of this exam; the exam is filtered in the query."""
     if index is None:
         return []

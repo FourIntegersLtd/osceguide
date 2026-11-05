@@ -23,7 +23,7 @@ import {
   workflowTone,
 } from "@/domains/assess/results/support";
 import { candidateProgress } from "@/domains/assess/results/candidateProgress";
-import { OutcomePicker, RecruitmentField, ReleasedDecision, ReopenButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
+import { OutcomePicker, RecruitmentField, ReleasedDecision, ReopenButton, ResultPreviewButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
 
 /**
  * One candidate's outcome: draft, signed off, released.
@@ -147,7 +147,20 @@ function Form({
     }
   }, [onChanged]);
 
-  if (released) return <ReleasedDecision decision={decision} />;
+  const preview = decision ? (
+    <div>
+      <ResultPreviewButton orgSlug={orgSlug} sittingId={sittingId} traineeId={traineeId} />
+    </div>
+  ) : null;
+
+  if (released) {
+    return (
+      <div className="space-y-4">
+        <ReleasedDecision decision={decision} />
+        {preview}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -251,6 +264,8 @@ function Form({
           </>
         )}
       </div>
+
+      {preview}
 
       {signedOff && !canRelease ? (
         <Alert tone="warning">Cannot be released: {releaseRefusal("outcome_not_releasable")}.</Alert>

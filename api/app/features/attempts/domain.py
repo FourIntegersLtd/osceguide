@@ -13,7 +13,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
@@ -114,10 +114,11 @@ def should_freeze(*, render_degraded: bool, already_frozen: bool) -> bool:
     return not already_frozen and not render_degraded
 
 
-def should_store_chunk(message_id: str, seen: frozenset[str] | set[str]) -> bool:
-    """Chunks repeat. The worker posts them best-effort and never reads the
-    response, so the same turn can arrive more than once."""
-    return message_id not in seen
+def attempt_deadline(
+    started_at: datetime, reading_seconds: int, simulation_seconds: int, grace_seconds: int
+) -> datetime:
+    """The last instant a turn is still taken: both phases of the station plus a grace for latency."""
+    return started_at + timedelta(seconds=reading_seconds + simulation_seconds + grace_seconds)
 
 
 @dataclass(frozen=True)

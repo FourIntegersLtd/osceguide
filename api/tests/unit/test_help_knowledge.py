@@ -1,5 +1,6 @@
 """The help chat: this learner's stations and summaries first, clinical guidelines second."""
 
+import contextlib
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -45,7 +46,24 @@ def chat(monkeypatch):
             choices=[SimpleNamespace(message=SimpleNamespace(content="Grounded answer"))]
         )
     )
-    client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=completion)))
+    open_sessions: list[int] = []
+
+    @contextlib.asynccontextmanager
+    async def opener():
+        open_sessions.append(1)
+        try:
+            yield None
+        finally:
+            open_sessions.pop()
+
+    async def only_when_no_session_is_open(**kwargs):
+        assert open_sessions == [], "a database session was still open during the model call"
+        return await completion_result(**kwargs)
+
+    completion_result = completion
+    client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=only_when_no_session_is_open))
+    )
     manager = AsyncMock()
     manager.__aenter__.return_value = client
     # `answer` imports the SDK lazily inside the call, so ADR 0013 holds and
@@ -58,7 +76,7 @@ def chat(monkeypatch):
         monkeypatch.setattr(service.service_search, "unlocked_exam_ids", AsyncMock(return_value=held))
         completion.reset_mock()
         result = await service.answer(
-            None,
+            opener,
             KnowledgeChat(exam_code="sca", messages=[{"role": r, "content": c} for r, c in messages]),
             user_id=uuid4(),
             now=datetime.now(UTC),
@@ -133,3 +151,32 @@ async def test_an_exam_the_learner_does_not_hold_is_never_searched(chat):
     assert reply.startswith("Your study access for this exam has expired")
     assert prompt is None
     assert index.searches == [] and guidelines.searches == []
+
+
+def test_no_embedding_key_means_no_material_index():
+    opener = contextlib.asynccontextmanager(lambda: (yield None))
+    assert service.get_material_index(opener, SimpleNamespace(openai_api_key="")) is None
+    assert isinstance(
+        service.get_material_index(opener, SimpleNamespace(openai_api_key="k")), service._ShortSessionIndex
+    )
+
+
+@pytest.mark.asyncio
+async def test_the_material_search_opens_and_closes_its_own_session(monkeypatch):
+    opened: list[str] = []
+
+    @contextlib.asynccontextmanager
+    async def opener():
+        opened.append("open")
+        yield "session"
+        opened.append("closed")
+
+    class Inner:
+        async def search(self, **kwargs):
+            opened.append("search")
+            return []
+
+    monkeypatch.setattr(service.tutor_search, "material_index", lambda session: Inner())
+
+    assert await service._ShortSessionIndex(opener).search(query="q", exam_ids=[], corpus=None, limit=1) == []
+    assert opened == ["open", "search", "closed"]

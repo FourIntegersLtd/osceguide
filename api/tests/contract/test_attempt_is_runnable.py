@@ -178,6 +178,7 @@ async def test_an_attempt_runs_from_creation_to_a_scored_result(
     from app.features.attempts.jobs import policy_for, score_attempt_now
     from app.features.attempts.models import Attempt
     from tests.support.fakes import FakeEvaluator
+    from tests.support.sessions import opener_for
 
     token = await an_entitled_candidate(db_session, make_actor, "wholechain@example.com")
     station_version_id = await a_published_library_station(db_session)
@@ -251,7 +252,7 @@ async def test_an_attempt_runs_from_creation_to_a_scored_result(
     assert framework_id, "no framework on the attempt means it would never be marked"
 
     wrote = await score_attempt_now(
-        db_session,
+        opener_for(db_session),
         uuid.UUID(attempt_id),
         evaluator=FakeEvaluator(),
         policy_version=policy_version,

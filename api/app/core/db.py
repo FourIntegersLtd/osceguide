@@ -4,7 +4,7 @@
   a naming convention so constraints get stable names Alembic can drop later.
 - `get_session` is the FastAPI dependency: one session and one transaction per
   request. Routes take the session as `SessionDep` (function scope), so the
-  transaction commits and `flush_pending` runs before the response is sent. A
+  transaction commits and `flush_after_commit` runs before the response is sent. A
   default-scope `Depends(get_session)` would commit after the client already has
   its answer. Rolls back when the handler raises, so services never call commit
   themselves.
@@ -133,9 +133,16 @@ def get_engine() -> AsyncEngine:
     global _engine, _session_factory
     if _engine is None:
         settings = get_settings()
+        # No statement or idle timeouts here: PgBouncer rejects startup `options`. They are set per
+        # database by the exam-day migration, and a long job calls `allow_long_statement`.
+        connect_args: dict[str, object] = {"prepare_threshold": None} if settings.database_pgbouncer else {}
         _engine = create_async_engine(
             sqlalchemy_url(settings.database_url),
             pool_size=settings.database_pool_size,
+            max_overflow=settings.database_max_overflow,
+            pool_timeout=settings.database_pool_timeout_seconds,
+            pool_recycle=1800,
+            connect_args=connect_args,
             pool_pre_ping=True,
             echo=settings.database_echo,
         )
@@ -159,18 +166,26 @@ async def dispose_engine() -> None:
     _session_factory = None
 
 
+async def flush_after_commit(session: AsyncSession) -> None:
+    """Send the events and run the cache operations the committed transaction queued."""
+    from app.core.cache import flush_cache_ops  # avoids an import cycle
+    from app.core.events import flush_pending  # avoids an import cycle
+
+    await flush_pending(session)
+    await flush_cache_ops(session)
+
+
 async def get_session() -> AsyncIterator[AsyncSession]:
     """Request-scoped unit of work: commit on success, roll back on error.
 
     Routes take this as `SessionDep` (function scope), so the commit and
-    `flush_pending` run before the response is sent. A default-scope
+    `flush_after_commit` run before the response is sent. A default-scope
     `Depends(get_session)` would commit after the client already has its answer.
 
     The exception is an `AppError` marked `persist_effects`, which commits and
     still fails the request — see `AppError.persist_effects`.
     """
     from app.core.errors import AppError  # avoids an import cycle
-    from app.core.events import flush_pending  # avoids an import cycle
 
     factory = get_session_factory()
     async with factory() as session:
@@ -180,7 +195,7 @@ async def get_session() -> AsyncIterator[AsyncSession]:
         except AppError as exc:
             if exc.persist_effects:
                 await transaction.commit()
-                await flush_pending(session)
+                await flush_after_commit(session)
             else:
                 await transaction.rollback()
             raise
@@ -193,7 +208,7 @@ async def get_session() -> AsyncIterator[AsyncSession]:
             # service would wake a subscriber before the rows it is about to
             # read exist, and a rolled-back request would announce work that
             # never happened.
-            await flush_pending(session)
+            await flush_after_commit(session)
 
 
 @asynccontextmanager
@@ -203,12 +218,10 @@ async def job_session() -> AsyncIterator[AsyncSession]:
     The request dependency cannot serve here: a task has no request. Same
     rule though — commit on success, roll back on error.
     """
-    from app.core.events import flush_pending  # avoids an import cycle
-
     factory = get_session_factory()
     async with factory() as session, session.begin():
         yield session
-    await flush_pending(session)
+    await flush_after_commit(session)
 
 
 @asynccontextmanager
@@ -252,7 +265,7 @@ def get_session_opener() -> SessionOpener:
 
 SessionOpenerDep = Annotated[SessionOpener, Depends(get_session_opener)]
 
-# Function scope: the commit (and flush_pending) runs before the response is sent.
+# Function scope: the commit (and flush_after_commit) runs before the response is sent.
 # The default scope commits after it.
 SessionDep = Annotated[AsyncSession, Depends(get_session, scope="function")]
 

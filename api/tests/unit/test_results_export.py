@@ -15,7 +15,7 @@ from app.features.dashboard.schemas_report import (
     ReportTotals,
     SittingReport,
 )
-from app.features.dashboard.service_report_csv import render_sitting_results_csv
+from app.features.dashboard.service_report_csv import stream_sitting_results_csv
 from app.features.results.schemas import TraineeResultRead
 from app.features.results.service_result_pdf import download_filename, render_result_pdf
 
@@ -55,7 +55,7 @@ def test_a_formula_name_is_quoted_and_the_csv_is_exact() -> None:
         ],
     )
 
-    text = render_sitting_results_csv(report).decode("utf-8")
+    text = b"".join(stream_sitting_results_csv(report)).decode("utf-8")
     assert text == (
         "\ufeff"
         "name,email,user_id,trainee_id,stations,stations_marked,overall_rag,score,stations_passed,"

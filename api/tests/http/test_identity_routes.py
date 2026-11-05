@@ -29,6 +29,7 @@ from app.features.peer_practice import service_privacy as peer_practice_privacy
 from tests.http.test_attempt_material_routes import _entitled_attempt
 from tests.support.catalog import ensure_exam
 from tests.support.finished_consultation import finish_consultation
+from tests.support.sessions import opener_for
 from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db
@@ -639,13 +640,13 @@ async def test_a_suspended_account_cannot_change_its_password_for_a_fresh_sessio
     """Sign-in refuses a suspended account; change-password answers with a new
     pair, so it refuses one too rather than handing an access token minted
     before the suspension a session that outlives it."""
-    from app.features.identity.tokens import hash_password
+    from app.features.identity.tokens import _hash_sync
 
     user = await identity_repo.create_user(
         db_session,
         email="suspended@example.com",
         name="Suspended",
-        password_hash=hash_password("the current horse battery"),
+        password_hash=_hash_sync("the current horse battery"),
     )
     user.status = "suspended"
     await db_session.flush()
@@ -935,7 +936,7 @@ async def test_erasure_clears_the_exam_and_sign_in_links_and_confirms_by_email(
     from tests.support.fakes import RecordingEmailSender
 
     sender = RecordingEmailSender()
-    await notifications_service.deliver_due(db_session, sender=sender, now=datetime.now(UTC))
+    await notifications_service.deliver_due(opener_for(db_session), sender=sender, now=datetime.now(UTC))
     assert [m.to for m in sender.sent if m.subject.startswith("Your OSCE Guide account has been erased")] == [
         "confirm@example.com"
     ]
@@ -1160,10 +1161,10 @@ async def test_a_legacy_sign_in_still_goes_through_the_second_factor_gate(
 async def test_after_a_reset_the_old_legacy_password_no_longer_signs_in(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    from app.features.identity.tokens import hash_password
+    from app.features.identity.tokens import _hash_sync
 
     user = await _imported(db_session)
-    await identity_repo.set_password_hash(db_session, user.id, hash_password("a brand new horse battery"))
+    await identity_repo.set_password_hash(db_session, user.id, _hash_sync("a brand new horse battery"))
     await db_session.commit()
     await db_session.refresh(user)
     assert user.legacy_password_hash is None

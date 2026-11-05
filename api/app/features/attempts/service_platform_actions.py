@@ -22,6 +22,7 @@ from app.features.attempts.models import Attempt
 from app.features.attempts.schemas_platform import PlatformAttemptDetail, RescoreResult
 from app.features.attempts.service_render import render_definition
 from app.features.health import service_jobs
+from app.features.sittings import service_reads as sittings_reads
 from app.features.tenancy import service_audit
 
 
@@ -158,6 +159,7 @@ async def fail(
     await repository.set_status(
         session, attempt_id, status=domain.Status.FAILED, at=now, reason=f"admin:{reason}"[:200]
     )
+    await sittings_reads.attempt_progress(session, attempt)
     await service_audit.record(
         session,
         actor=actor,

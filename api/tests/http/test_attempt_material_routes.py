@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import domain
 from app.features.attempts import repository as attempts_repo
+from app.features.attempts.models import Attempt
 from app.features.entitlements import repository as ent_repo
 from app.features.identity import repository as identity_repo
 from app.features.stations import repository as stations_repo
@@ -372,6 +373,11 @@ async def test_my_attempts_lists_what_i_have_sat_newest_first(
 ) -> None:  # type: ignore[no-untyped-def]
     token = await make_actor("history@example.com")
     first = await _entitled_attempt(db_session, "history@example.com")
+    # Started, so the second is not another unstarted start of the same station (`uq_attempts_one_unstarted`).
+    sat = await db_session.get(Attempt, first.attempt_id)
+    assert sat is not None
+    sat.started_at = datetime.now(UTC)
+    await db_session.flush()
     exam = await ensure_exam(db_session, "sca")
     assert exam is not None
     second = await attempts_repo.create_attempt(

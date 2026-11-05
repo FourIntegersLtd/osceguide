@@ -36,6 +36,8 @@ catalogue (ADR 0017); do not build against an open decision in `web/docs/BACKLOG
 - Institution and hire are not consumers: no Payments/Referrals tabs, plan or trial copy, upgrade modal,
   "personal practice" link, Community, A to Z, Slides, Podcast or Athena (`athenaOffered` in
   `surfaces/jumpTo.ts`). Shared train screens take `surface !== "train"` and use the "ask your administrator" wording.
+- **The board and console are pushed, not polled by heartbeat.** `snapshot_on_heartbeat=True` is allowed only in `voice/service.py` and `health/service.py` (`test_no_heartbeat_snapshots`). Every write that changes what the console shows must announce: clock and sitting writes call `announcements.circuit_changed`; an attempt moving status on a slot calls `sittings_reads.attempt_progress(session, attempt)` (attempts cannot import `announcements`; it is re-exported by `service_reads`); ending a person's unstarted stations announces `candidate_absent`. A new write that changes a console fact without one leaves the screen stale. Time-derived alerts (`no_running_attempt` after 20 s, `clock_overdue`) only appear on the next event now.
+- **Reports are batched.** `sitting_detail` reads slots with one `slots_for_circuits`; report and cohort group slots by candidate once. The results CSV is a generator (`stream_sitting_results_csv`) and the audit row is written before the first byte. Roster import is `INSERT ... ON CONFLICT DO NOTHING` per row inside `begin_nested()`; any `AppError` skips that row with its code. `released_outcomes` tests released-ness on the current revision only (an older released revision never counts).
 
 ## What a failure looks like here
 - A candidate is locked out of, or dropped from, a sitting partway through.

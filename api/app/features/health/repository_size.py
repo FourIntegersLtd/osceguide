@@ -39,8 +39,17 @@ async def lock_alarm(session: AsyncSession) -> None:
     await session.execute(select(func.pg_advisory_xact_lock(func.hashtextextended("database_size_alarm", 0))))
 
 
+_PRIOR_TIMEOUT_KEY = "prior_statement_timeout"
+
+
 async def limit_statement_time(session: AsyncSession, *, seconds: float) -> None:
-    """Have the server cancel any statement of this transaction that runs longer than `seconds`."""
+    """Have the server cancel any statement of this transaction that runs longer than `seconds`.
+
+    The limit in force before is kept on the session so `restore_statement_time` can put it back
+    with `set_config(..., true)` alone: a session-level `RESET` does not belong behind PgBouncer.
+    """
+    prior = (await session.execute(text("select current_setting('statement_timeout')"))).scalar_one()
+    session.info[_PRIOR_TIMEOUT_KEY] = str(prior)
     await session.execute(
         text("select set_config('statement_timeout', :ms, true)"), {"ms": str(int(seconds * 1000))}
     )
@@ -48,7 +57,8 @@ async def limit_statement_time(session: AsyncSession, *, seconds: float) -> None
 
 async def restore_statement_time(session: AsyncSession) -> None:
     """Take the limit off again, so the rest of the request's transaction is not held to it."""
-    await session.execute(text("reset statement_timeout"))
+    prior = session.info.pop(_PRIOR_TIMEOUT_KEY, "0")
+    await session.execute(text("select set_config('statement_timeout', :v, true)"), {"v": prior})
 
 
 async def database_bytes(session: AsyncSession) -> int:

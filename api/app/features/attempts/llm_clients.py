@@ -22,7 +22,11 @@ def primary_client() -> Any | None:
         from openai import OpenAI  # optional dependency
     except ImportError:
         return None
-    return OpenAI(api_key=settings.openai_api_key)
+    return OpenAI(
+        api_key=settings.openai_api_key,
+        timeout=settings.marking_llm_timeout_seconds,
+        max_retries=settings.marking_llm_max_retries,
+    )
 
 
 def fallback_client() -> Any | None:
@@ -34,4 +38,8 @@ def fallback_client() -> Any | None:
         from anthropic import Anthropic  # optional dependency
     except ImportError:
         return None
-    return Anthropic(api_key=settings.anthropic_api_key)
+    return Anthropic(
+        api_key=settings.anthropic_api_key,
+        timeout=settings.marking_llm_timeout_seconds,
+        max_retries=settings.marking_llm_max_retries,
+    )

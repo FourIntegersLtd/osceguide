@@ -11,6 +11,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jobs import defer_in_transaction
+from tests.support.sessions import opener_for
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -209,7 +210,7 @@ async def test_mail_abandoned_in_an_outage_is_listed_and_sent_again_on_retry(
     down = RecordingEmailSender(fail_times=domain.MAX_ATTEMPTS)
     at = datetime.now(UTC) + timedelta(seconds=1)
     for attempt in range(1, domain.MAX_ATTEMPTS + 1):
-        await notifications.deliver_due(db_session, sender=down, now=at)
+        await notifications.deliver_due(opener_for(db_session), sender=down, now=at)
         await db_session.flush()
         if attempt == 6:
             still = await outbox.by_idempotency_key(db_session, "s5-invite")
@@ -242,7 +243,9 @@ async def test_mail_abandoned_in_an_outage_is_listed_and_sent_again_on_retry(
     assert [tuple(entry) for entry in recorded] == [("notifications.message_retried", "root@osceguide.com")]
 
     back_up = RecordingEmailSender()
-    await notifications.deliver_due(db_session, sender=back_up, now=datetime.now(UTC) + timedelta(seconds=1))
+    await notifications.deliver_due(
+        opener_for(db_session), sender=back_up, now=datetime.now(UTC) + timedelta(seconds=1)
+    )
     assert [mail.to for mail in back_up.sent] == ["invitee@example.com"]
     listed_after = await client.get("/api/v1/platform/outbox/undelivered", headers=bearer(root))
     assert all(item["id"] != row["id"] for item in listed_after.json()["messages"])

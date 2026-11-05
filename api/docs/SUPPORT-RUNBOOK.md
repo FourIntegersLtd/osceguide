@@ -28,3 +28,30 @@ Billing queue, the Audit log and Machinery.
 Decisions behind this (ADR 0020): platform admins read anything and act only
 under `/platform/…`; they never inherit `OrgAdmin`. Refunds are record-only.
 `failed` is terminal. No impersonation. No generic job retry.
+
+## Database backups
+
+Railway's Backups tab does not cover our custom Postgres image, so a nightly logical dump is the
+only backup that survives losing the Railway project.
+
+- **What runs.** The `db-backup` Railway service (source `api/infra/db-backup/`) exists in staging
+  and production. It is a cron job (`0 2 * * *` UTC, restart policy never): `pg_dump -Fc
+  --no-owner --no-privileges` over the private network, checked with `pg_restore -l`, uploaded with
+  SSE-S3, size compared with the stored object, then dumps older than 30 days are deleted. Any failure
+  fails the deploy run (red in Railway).
+- **Where.** `s3://osceguide-platform/db-backups/nightly/<staging|production>/YYYY-MM-DD.dump`, one
+  per night, about 30 days kept (about 130 MB each in production). `db-backups/manual/` holds hand-made dumps and
+  is never pruned. The app signs only the folders `bucket_layout` lists, and `DB_BACKUPS` is reserved for this job.
+- **Restore.** Download a dump and restore it into a fresh database, never over the live one:
+  `aws s3 cp s3://osceguide-platform/db-backups/nightly/production/<date>.dump .`, then
+  `createdb restored && pg_restore --no-owner --no-privileges -d restored <date>.dump`. The server
+  needs pgvector (use `api/infra/postgres/Dockerfile`'s image, or `pgvector/pgvector:pg17` locally).
+  `pg_restore -l` lists what the dump holds. Use pg_restore 17.x.
+- **Run one by hand.** A deploy of a service that has a cron schedule does not run it; only the
+  schedule does. To run now: in Railway, service `db-backup` → Settings → Cron Schedule, clear it,
+  deploy (it runs once and stops), then put `0 2 * * *` back. Tested this way on 2026-11-04. Read the
+  deployment log: it prints `uploaded key=… bytes=…`. Settings and variables:
+  [ENVIRONMENT.md](ENVIRONMENT.md#database-backup-service).
+- **Is it working?** The latest object under the prefix should be today's or yesterday's date. A
+  failed night shows as a failed deployment of `db-backup`.
+

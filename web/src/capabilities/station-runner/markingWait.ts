@@ -1,25 +1,19 @@
 /**
  * Waiting for a marking to be stored, for the tab that ended the consultation.
  *
- * Two sources tell the wait to look again: a timer that backs off to a slow
- * ceiling and never stops, and a wake-up (an `attempt` event on `/me/events`,
- * or the stream reconnecting). Either way the answer comes from re-reading the
- * stored result, so an event sent before the stream connected, or while an
- * API restart had dropped it, costs a delay rather than the feedback: the
- * next check finds the result anyway.
+ * Nothing here polls. The wait reads the stored result once when it starts and once on each
+ * wake-up (an `attempt` event on `/me/events`, or the stream reconnecting or the tab being shown
+ * again, which the hook reports as `resync`). An event sent while no stream was open is therefore
+ * not lost: the reconnect asks for a re-read.
  *
- * It used to give up after ten polls (about three minutes); a marking that
- * took four left the modal saying "taking longer than usual" for good while
- * the feedback sat in the database. Being slow is now only a message.
+ * Being slow is only a message: one timer calls `onSlow` after `SLOW_AFTER_MS` and reads nothing.
  *
- * An attempt the scorer gave up on (`failed`) will never get a result, so each
- * check that finds no result also asks whether the attempt failed, and says so
- * instead of waiting for ever.
+ * An attempt the scorer gave up on (`failed`) will never get a result. The server announces that
+ * with the same `attempt` event, so each check that finds no result also asks whether the attempt
+ * failed, and says so instead of waiting for ever.
  */
 
 export const SLOW_AFTER_MS = 3 * 60 * 1000;
-const FIRST_DELAY_MS = 3_000;
-const CEILING_MS = 30_000;
 
 /**
  * Whether the attempt will never get a result without somebody acting: it failed outright, or
@@ -49,11 +43,6 @@ export interface MarkingWait {
   stop: () => void;
 }
 
-/** The delay before check number `tries` (0-based): 3 s, 6 s, ... up to 30 s, then 30 s forever. */
-export function delayBefore(tries: number): number {
-  return Math.min(CEILING_MS, FIRST_DELAY_MS * (tries + 1));
-}
-
 /** A check that rejects (a 502 during a restart) has simply not found anything yet. */
 async function orFalse(check: () => Promise<boolean>): Promise<boolean> {
   try {
@@ -78,21 +67,16 @@ export function watchMarking({
   onSlow: () => void;
   timers?: MarkingWaitTimers;
 }): MarkingWait {
-  const startedAt = timers.now();
-  let tries = 0;
   let stopped = false;
-  let slow = false;
   let checking = false;
   let wokenWhileChecking = false;
-  let timer: unknown = null;
+  const slowTimer = timers.setTimeout(() => {
+    if (!stopped) onSlow();
+  }, SLOW_AFTER_MS);
 
-  const schedule = () => {
-    if (stopped) return;
-    if (timer !== null) timers.clearTimeout(timer);
-    timer = timers.setTimeout(() => {
-      timer = null;
-      void check();
-    }, delayBefore(tries));
+  const finish = () => {
+    stopped = true;
+    timers.clearTimeout(slowTimer);
   };
 
   const check = async () => {
@@ -106,8 +90,7 @@ export function watchMarking({
     checking = false;
     if (stopped) return;
     if (marked) {
-      stopped = true;
-      if (timer !== null) timers.clearTimeout(timer);
+      finish();
       onReady();
       return;
     }
@@ -115,33 +98,21 @@ export function watchMarking({
       const failed = await orFalse(failure.check);
       if (stopped) return;
       if (failed) {
-        stopped = true;
-        if (timer !== null) timers.clearTimeout(timer);
+        finish();
         failure.onFailed();
         return;
       }
     }
-    tries += 1;
-    if (!slow && timers.now() - startedAt >= SLOW_AFTER_MS) {
-      slow = true;
-      onSlow();
-    }
     if (wokenWhileChecking) {
       wokenWhileChecking = false;
       void check();
-      return;
     }
-    schedule();
   };
 
-  schedule();
+  void check();
 
   return {
     wake: () => void check(),
-    stop: () => {
-      stopped = true;
-      if (timer !== null) timers.clearTimeout(timer);
-      timer = null;
-    },
+    stop: finish,
   };
 }

@@ -46,6 +46,9 @@ class StationRead(BaseModel):
     # normal reader once this is true. Always true for an org's own station, which the gate does
     # not apply to.
     approved: bool = True
+    # How many circuits, attempts, peer sessions and practice sets name the current version.
+    # Counted on the staff station lists (organisation and platform); null for trainees and every other route.
+    used_by_count: int | None = None
 
 
 class LibraryStationRead(BaseModel):

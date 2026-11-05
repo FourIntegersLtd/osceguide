@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Collection, Mapping, Sequence
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -382,6 +382,26 @@ async def released_outcomes_by_sitting(
     for sitting_id, outcome in await repository.released_outcomes(session, org_id):
         grouped.setdefault(sitting_id, []).append(outcome)
     return grouped
+
+
+async def decision_counts(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    candidates: Mapping[uuid.UUID, Collection[uuid.UUID]],
+) -> dict[uuid.UUID, dict[str, int]]:
+    """Per sitting, the given candidates (roster ids) by the workflow state of their current decision.
+
+    A decision outlives its candidate's place on a circuit, so only `candidates` are counted.
+    For the results index.
+    """
+    counts: dict[uuid.UUID, dict[str, int]] = {}
+    for sitting_id, trainee_id, state in await repository.current_decision_states(
+        session, org_id, list(candidates)
+    ):
+        if trainee_id in candidates[sitting_id]:
+            stages = counts.setdefault(sitting_id, {})
+            stages[state] = stages.get(state, 0) + 1
+    return counts
 
 
 async def erase_text_for_user(session: AsyncSession, *, user_id: uuid.UUID) -> int:

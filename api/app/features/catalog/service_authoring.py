@@ -30,7 +30,7 @@ from app.features.catalog.errors import (
 )
 from app.features.catalog.models import Exam
 from app.features.catalog.schemas import ExamRead
-from app.features.catalog.service import exam_read, exam_row
+from app.features.catalog.service import bump_catalog, exam_read, exam_row
 from app.features.rubrics import service_marking as rubrics
 from app.features.tenancy import service_audit
 
@@ -113,6 +113,7 @@ async def create_exam(
         partner_pilot=partner_pilot and org_id is None,
         settings=stored_settings,
     )
+    bump_catalog(session)
     return exam_read(exam)
 
 
@@ -145,6 +146,7 @@ async def update_exam(
         # Partner attribution is a consumer funnel; an org exam is never in it.
         changes.pop("partner_pilot", None)
     await repository.update_exam(session, exam.id, **changes)
+    bump_catalog(session)
     return exam_read(await exam_row(session, exam_id))
 
 
@@ -158,6 +160,7 @@ async def publish_exam(
     except domain.NotPublishable as exc:
         raise ExamNotPublishable(str(exc)) from exc
     await repository.update_exam(session, exam.id, status=status)
+    bump_catalog(session)
     return exam_read(await exam_row(session, exam_id))
 
 
@@ -175,6 +178,7 @@ async def retire_exam(
     except domain.NotRetirable as exc:
         raise ExamNotPublishable(str(exc)) from exc
     await repository.update_exam(session, exam.id, status=status)
+    bump_catalog(session)
     await service_audit.record_for_owner(
         session,
         org_id=org_id,
@@ -205,6 +209,7 @@ async def delete_exam(
         await repository.delete_exam(session, exam.id)
     except IntegrityError as exc:
         raise ExamInUse() from exc
+    bump_catalog(session)
     await service_audit.record_for_owner(
         session,
         org_id=org_id,

@@ -15,6 +15,7 @@ describe("hire navigation", () => {
     assert.deepEqual(navFor(["run_circuits"]), [
       "/app/acme/dashboard",
       "/app/acme/sittings",
+      "/app/acme/results",
       "/app/acme/live",
       "/app/acme/trainees",
       "/app/acme/authoring",

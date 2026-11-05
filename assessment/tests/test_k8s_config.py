@@ -301,3 +301,12 @@ def test_production_rollout_refuses_when_no_node_is_labelled(tmp_path) -> None:
     assert result.returncode != 0
     assert "livekit-worker=true" in result.stderr
     assert not applied.exists()
+
+
+@pytest.mark.parametrize("deployment", ("deployment.yaml", "deployment-assistant.yaml"))
+def test_rollouts_surge_a_replacement_before_removing_a_worker(deployment) -> None:
+    """maxUnavailable 0 + maxSurge 1: a rollout never takes a seat away, the old pod drains afterwards."""
+    text = (K8S / deployment).read_text()
+    assert re.search(r"^\s+maxUnavailable: 0$", text, re.MULTILINE)
+    assert re.search(r"^\s+maxSurge: 1$", text, re.MULTILINE)
+    assert "terminationGracePeriodSeconds: 900" in text

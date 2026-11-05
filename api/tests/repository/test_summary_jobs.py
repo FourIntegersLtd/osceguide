@@ -246,3 +246,92 @@ async def test_a_consultation_is_not_summarised_as_a_debrief(db_session: AsyncSe
     assert not await service_summaries.summarise_debrief(
         db_session, attempt.id, summariser=FakeTranscriptSummariser(payload=DEBRIEF_PAYLOAD)
     )
+
+
+def _debrief_events(session: AsyncSession) -> list[tuple[str, str, dict[str, object]]]:
+    from app.core.events import PENDING_KEY
+
+    return [event for event in session.info.get(PENDING_KEY, []) if event[1] == "debrief"]
+
+
+async def test_a_summarised_debrief_tells_its_owner_it_is_ready(db_session: AsyncSession) -> None:
+    from app.core.events import user_topic
+
+    attempt_id, user_id = await a_debrief(db_session, "sum-debrief-event@example.com")
+
+    await service_summaries.summarise_debrief(
+        db_session, attempt_id, summariser=FakeTranscriptSummariser(payload=DEBRIEF_PAYLOAD)
+    )
+
+    assert _debrief_events(db_session) == [
+        (user_topic(user_id), "debrief", {"attempt_id": str(attempt_id), "state": "ready"})
+    ]
+
+
+async def test_an_already_summarised_debrief_says_ready_again(db_session: AsyncSession) -> None:
+    attempt_id, _ = await a_debrief(db_session, "sum-debrief-event2@example.com")
+    summariser = FakeTranscriptSummariser(payload=DEBRIEF_PAYLOAD)
+    await service_summaries.summarise_debrief(db_session, attempt_id, summariser=summariser)
+    db_session.info.clear()
+
+    await service_summaries.summarise_debrief(db_session, attempt_id, summariser=summariser)
+
+    assert [event[2]["state"] for event in _debrief_events(db_session)] == ["ready"]
+
+
+async def test_a_consultation_says_none_because_no_debrief_summary_will_come(
+    db_session: AsyncSession,
+) -> None:
+    from app.features.attempts import repository as attempts_repo
+    from app.features.attempts import repository_transcript as transcripts
+    from tests.support.catalog import ensure_exam
+
+    user = await identity_repo.create_user(
+        db_session, email="sum-none@example.com", name="n", password_hash=None, is_platform_admin=False
+    )
+    await db_session.flush()
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    attempt = await attempts_repo.create_attempt(
+        db_session, kind="practice", user_id=user.id, exam_id=exam.id
+    )
+    await transcripts.add_chunk(
+        db_session, attempt.id, message_id="p0", seq=0, role="user", message="hi", spoken_at=NOW
+    )
+    await transcripts.mark_transcript_complete(db_session, attempt.id, runtime_label="t", at=NOW)
+
+    await service_summaries.summarise_debrief(
+        db_session, attempt.id, summariser=FakeTranscriptSummariser(payload=DEBRIEF_PAYLOAD)
+    )
+
+    assert [event[2]["state"] for event in _debrief_events(db_session)] == ["none"]
+
+
+async def test_a_failed_debrief_summary_tells_its_owner_and_still_raises(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+    import contextlib
+    import json
+
+    from app.core.events import InProcessEventBus, user_topic
+    from app.features.tutor_memory import jobs
+
+    attempt_id, user_id = await a_debrief(db_session, "sum-debrief-failed@example.com")
+    bus = InProcessEventBus()
+    monkeypatch.setattr(jobs, "get_event_bus", lambda: bus)
+
+    @contextlib.asynccontextmanager
+    async def same_session():  # type: ignore[no-untyped-def]
+        yield db_session
+
+    monkeypatch.setattr(jobs, "job_session", same_session)
+
+    async with bus.subscription([user_topic(user_id)]) as stream:
+        with pytest.raises(SummaryFailed):
+            await jobs.run_debrief_summary(attempt_id, summariser=FakeTranscriptSummariser(fail_times=1))
+        message = await asyncio.wait_for(anext(stream), 1)
+    assert json.loads(message) == {
+        "event": "debrief",
+        "data": {"attempt_id": str(attempt_id), "state": "failed"},
+    }

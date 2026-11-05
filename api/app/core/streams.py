@@ -169,7 +169,7 @@ async def get_active_stream_principal(
     the stream does not hold a transaction open for as long as it runs.
     """
     async with open_session() as session:
-        await refuse_if_deactivated(session, principal.user_id)
+        await refuse_if_deactivated(session, principal.user_id, fresh=principal.is_platform_admin)
     return principal
 
 

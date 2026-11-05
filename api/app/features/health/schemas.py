@@ -86,6 +86,14 @@ class DatabaseSizeRead(BaseModel):
     forecast: SizeForecastRead
 
 
+class DatabasePoolRead(BaseModel):
+    """This api process's connection pool: how many connections are lent out, against its ceiling."""
+
+    checked_out: int
+    overflow: int
+    ceiling: int
+
+
 class PlatformHealth(HealthResponse):
     """The liveness report plus what only the console needs: the queue, the worker and the database's size."""
 
@@ -93,6 +101,8 @@ class PlatformHealth(HealthResponse):
     worker_seen_at: datetime | None
     # None when the size could not be read: the rest of the report is still true.
     database_size: DatabaseSizeRead | None = None
+    # None when the pool keeps no count (a test engine). One process's view, not the fleet's.
+    database_pool: DatabasePoolRead | None = None
 
 
 class MachineryCapacity(BaseModel):

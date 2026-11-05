@@ -95,7 +95,7 @@ def test_policy_keeps_model_choice_as_data() -> None:
     assert b2c.framework_id == b2b.framework_id
     assert (b2c.openai_model, b2c.openai_reasoning_effort) == ("gpt-5-mini", "low")
     assert (b2b.openai_model, b2b.openai_reasoning_effort) == ("gpt-4o", None)
-    assert b2c.timeout_s == b2b.timeout_s == 480
+    assert b2c.timeout_s == b2b.timeout_s == 180
 
 
 def test_policy_rejects_non_positive_timeout() -> None:

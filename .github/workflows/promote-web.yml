@@ -34,6 +34,10 @@ on:
         description: Commit to promote. Empty = whatever staging is serving now.
         required: false
         default: ""
+      override_freeze_reason:
+        description: During an exam freeze window only, why this promotion cannot wait. Leave empty normally.
+        required: false
+        default: ""
 
 # Each job asks for exactly what it needs below.
 permissions: {}
@@ -80,6 +84,12 @@ jobs:
 
       # Turn the input (or, when empty, the commit staging serves) into a full sha
       # that exists in this repository.
+      - name: Exam freeze
+        uses: ./.github/actions/exam-freeze
+        with:
+          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
+          override-reason: ${{ inputs.override_freeze_reason }}
+
       - name: Work out which commit to ship
         id: target
         env:
@@ -184,6 +194,12 @@ jobs:
       # A plain push, so git itself refuses anything but a fast-forward. Vercel's
       # GitHub App sees the push (pushes made with GITHUB_TOKEN skip other
       # workflows, not app webhooks) and starts the production build.
+      - name: Exam freeze
+        uses: ./.github/actions/exam-freeze
+        with:
+          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
+          override-reason: ${{ inputs.override_freeze_reason }}
+
       - name: Move the production-web branch to the commit
         env:
           COMMIT_SHA: ${{ needs.check.outputs.commit_sha }}

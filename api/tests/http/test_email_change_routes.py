@@ -153,14 +153,14 @@ async def test_a_pending_link_dies_when_the_password_is_reset(
 ) -> None:
     """A reset is what a person does on suspecting the account; it must void a link already in flight."""
     from app.features.identity import repository as identity_repo
-    from app.features.identity.tokens import hash_password
+    from app.features.identity.tokens import _hash_sync
 
     pair = await signed_up(client)
     await ask(client, pair, "reset@example.com")
     token = await queued_token(db_session, "reset@example.com")
     assert token
     me = (await client.get("/api/v1/me", headers=bearer(pair["access_token"]))).json()
-    await identity_repo.set_password_hash(db_session, me["id"], hash_password("a brand new passphrase"))
+    await identity_repo.set_password_hash(db_session, me["id"], _hash_sync("a brand new passphrase"))
     await db_session.flush()
 
     refused = await client.post("/api/v1/auth/email-change/confirm", json={"token": token})

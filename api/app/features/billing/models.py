@@ -76,6 +76,13 @@ class Payment(Base, UUIDPrimaryKey, Timestamps):
     """
 
     __tablename__ = "payments"
+    __table_args__ = (
+        Index(
+            "ix_payments_user_id",
+            "user_id",
+            postgresql_concurrently=True,
+        ),
+    )
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     plan_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"))

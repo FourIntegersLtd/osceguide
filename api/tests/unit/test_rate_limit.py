@@ -27,14 +27,13 @@ class FakeRedis:
         self.expiries: list[tuple[str, int]] = []
         self.broken = broken
 
-    async def incr(self, key: str) -> int:
+    async def eval(self, script: str, numkeys: int, key: str, window: str) -> int:
         if self.broken:
             raise ConnectionError("redis is down")
+        if key not in self.counts:
+            self.expiries.append((key, int(window)))
         self.counts[key] = self.counts.get(key, 0) + 1
         return self.counts[key]
-
-    async def expire(self, key: str, seconds: int) -> None:
-        self.expiries.append((key, seconds))
 
     async def ttl(self, key: str) -> int:
         return 42
@@ -244,3 +243,51 @@ async def test_resending_has_its_own_hourly_allowance(redis: FakeRedis) -> None:
         await check(rate_limit.OUTBOUND_RESEND, "admin")
     with pytest.raises(TooManyRequests):
         await check(rate_limit.OUTBOUND_RESEND, "admin")
+
+
+async def test_a_counted_key_always_has_its_expiry(redis: FakeRedis) -> None:
+    """The counter is created with its TTL in one atomic script with the increment, so a
+    process dying mid-check cannot leave a key that never expires (a caller locked out for good)."""
+    await check(LIMIT, "caller")
+    assert redis.expiries == [("ratelimit:test:caller", 60)]
+
+
+async def test_with_redis_off_the_eleventh_sign_in_for_one_account_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Redis switched off no longer means unlimited guesses at an account: sign-in counts in process."""
+    monkeypatch.setattr(rate_limit, "get_redis", lambda: None)
+    monkeypatch.setattr(rate_limit, "_local_windows", {})
+    ward = Request(host="198.51.100.9")
+    for _ in range(10):
+        await check_sign_in(ward, "guessed@example.com")  # type: ignore[arg-type]
+    with pytest.raises(TooManyRequests) as raised:
+        await check_sign_in(ward, "guessed@example.com")  # type: ignore[arg-type]
+    assert raised.value.details["limit"] == "sign-in"
+    await check_sign_in(ward, "someone-else@example.com")  # type: ignore[arg-type]
+
+
+async def test_a_cohort_of_1500_behind_one_address_signs_in_inside_a_minute(redis: FakeRedis) -> None:
+    """Item 34: the per-address ceiling used to be 300 a minute, so a hospital NAT got 429s at 09:00."""
+    ward = Request(host="198.51.100.9")
+    for n in range(1500):
+        await check_sign_in(ward, f"trainee{n}@example.com")  # type: ignore[arg-type]
+
+
+async def test_the_address_ceiling_follows_the_setting(
+    redis: FakeRedis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.core.settings import get_settings
+
+    monkeypatch.setenv("SIGN_IN_PER_ADDRESS_PER_MINUTE", "2")
+    get_settings.cache_clear()
+    try:
+        ward = Request(host="203.0.113.5")
+        await check_sign_in(ward, "a@example.com")  # type: ignore[arg-type]
+        await check_sign_in(ward, "b@example.com")  # type: ignore[arg-type]
+        with pytest.raises(TooManyRequests) as raised:
+            await check_sign_in(ward, "c@example.com")  # type: ignore[arg-type]
+        assert raised.value.details["limit"] == "sign-in-address"
+    finally:
+        monkeypatch.undo()
+        get_settings.cache_clear()

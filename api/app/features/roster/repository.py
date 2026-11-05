@@ -5,11 +5,12 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Select, delete, func, or_, select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
@@ -26,19 +27,41 @@ async def create_trainee(
     first_name: str | None,
     last_name: str | None,
     cohort_id: uuid.UUID | None,
-) -> Trainee:
-    """Add a trainee to an organisation's roster."""
-    trainee = Trainee(
-        org_id=org_id,
-        email=normalize_email(email),
-        first_name=first_name,
-        last_name=last_name,
-        cohort_id=cohort_id,
+) -> Trainee | None:
+    """Add a trainee to an organisation's roster, or None when that address is already on it.
+
+    One statement decides: a duplicate leaves no failed flush behind, so a bulk import
+    can carry on to its next row.
+    """
+    stmt = (
+        insert(Trainee)
+        .values(
+            org_id=org_id,
+            email=normalize_email(email),
+            first_name=first_name,
+            last_name=last_name,
+            cohort_id=cohort_id,
+        )
+        .on_conflict_do_nothing(constraint="uq_trainees_org_email")
+        .returning(Trainee)
     )
-    session.add(trainee)
-    await session.flush()
-    await session.refresh(trainee)
-    return trainee
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def trainees_by_ids(
+    session: AsyncSession, org_id: uuid.UUID, trainee_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, Trainee]:
+    """The trainees at this organisation with these roster ids, keyed by id; unknown ids are absent."""
+    if not trainee_ids:
+        return {}
+    stmt = select(Trainee).where(Trainee.org_id == org_id, Trainee.id.in_(list(trainee_ids)))
+    return {trainee.id: trainee for trainee in (await session.execute(stmt)).scalars()}
+
+
+async def trainee_by_email(session: AsyncSession, org_id: uuid.UUID, email: str) -> Trainee | None:
+    """Find a trainee at this organisation by their email address."""
+    stmt = select(Trainee).where(Trainee.org_id == org_id, Trainee.email == normalize_email(email))
+    return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def trainee_by_id(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> Trainee | None:
@@ -66,12 +89,6 @@ async def trainee_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> lis
     """
     stmt = select(Trainee.id).where(Trainee.user_id == user_id)
     return list((await session.execute(stmt)).scalars())
-
-
-async def trainee_by_email(session: AsyncSession, org_id: uuid.UUID, email: str) -> Trainee | None:
-    """Find a trainee at this organisation by their email address."""
-    stmt = select(Trainee).where(Trainee.org_id == org_id, Trainee.email == normalize_email(email))
-    return (await session.execute(stmt)).scalar_one_or_none()
 
 
 def _matching(

@@ -16,8 +16,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.composition import bind_seams
+from app.core.body_limit import BodyLimitMiddleware
 from app.core.db import dispose_engine
 from app.core.errors import register_error_handlers
+from app.core.events import close_event_bus
 from app.core.logging import RequestContextMiddleware, configure_logging, get_logger
 from app.core.observability import configure_sentry
 from app.core.openapi import (
@@ -105,6 +107,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     get_logger(__name__).info("starting", env=settings.app_env.value, version=__version__)
     yield
+    await close_event_bus()
     await close_redis()
     await dispose_engine()
 
@@ -205,6 +208,8 @@ def create_app() -> FastAPI:
         # published to an unauthenticated caller.
         openapi_url=None if settings.is_deployed else "/openapi.json",
     )
+    # Innermost, so the 413 still carries the CORS headers and request id the browser needs to read it.
+    app.add_middleware(BodyLimitMiddleware, max_bytes=settings.max_request_body_bytes)
     app.add_middleware(SecurityHeadersMiddleware, deployed=settings.is_deployed)
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(

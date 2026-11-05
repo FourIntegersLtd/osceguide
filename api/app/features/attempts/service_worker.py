@@ -14,9 +14,10 @@ from app.features.attempts.jobs import enqueue_scoring
 from app.features.attempts.jobs_coverage import enqueue_coverage
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import TranscriptIn, TranscriptMessageIn, WorkerBootstrap
-from app.features.attempts.service import ensure_entitled_to_begin
+from app.features.attempts.service import attempt_deadline, ensure_entitled_to_begin
 from app.features.attempts.service_render import render_definition
 from app.features.catalog import service as catalog
+from app.features.sittings import service_reads as sittings_reads
 from app.features.station_sets import service as station_sets
 from app.features.tutor_memory import jobs as tutor_jobs
 
@@ -86,8 +87,10 @@ async def bootstrap(
             await repository.set_status(
                 session, attempt_id, status=domain.Status.FAILED, at=now, reason="not_entitled"
             )
+            await sittings_reads.attempt_progress(session, attempt)
             raise errors.NotEntitledToBegin(details=exc.details) from exc
         await repository.set_status(session, attempt_id, status=domain.Status.RUNNING, at=now)
+        await sittings_reads.attempt_progress(session, attempt)
         await _credit_practice_set_entry(session, attempt, at=now)
 
     return WorkerBootstrap(
@@ -160,8 +163,20 @@ async def _credit_practice_set_entry(session: AsyncSession, attempt: Attempt, *,
         raise errors.SetEntryAttemptLimitReached()
 
 
+def _log_turn(event: str, attempt_id: uuid.UUID, message: TranscriptMessageIn) -> None:
+    """Log that a spoken turn was not kept, so a missing line can be explained."""
+    log.warning(
+        event, attempt_id=str(attempt_id), message_id=message.message_id, seq=message.seq, role=message.role
+    )
+
+
 async def accept_chunk(
-    session: AsyncSession, attempt_id: uuid.UUID, *, body_attempt_id: str, message: TranscriptMessageIn
+    session: AsyncSession,
+    attempt_id: uuid.UUID,
+    *,
+    body_attempt_id: str,
+    message: TranscriptMessageIn,
+    now: datetime,
 ) -> None:
     """Store one turn as it is spoken, and nudge live coverage if it was the candidate's."""
     _same_attempt(attempt_id, body_attempt_id)
@@ -172,20 +187,16 @@ async def accept_chunk(
         # a repeat that loses nothing; the final transcript this chunk would have preceded was
         # delivered long ago. A genuinely new turn is lost, though (a salvaged attempt had no final
         # delivery to cover it), so say so rather than look like a repeat.
-        known = await transcripts.seen_message_ids(session, attempt_id)
-        if domain.should_store_chunk(message.message_id, known):
-            log.warning(
-                "transcript.late_turn_dropped",
-                attempt_id=str(attempt_id),
-                message_id=message.message_id,
-                seq=message.seq,
-                role=message.role,
-            )
+        # Compacted attempts are finished and rare, so reading their ids here is off the hot path.
+        if message.message_id not in await transcripts.seen_message_ids(session, attempt_id):
+            _log_turn("transcript.late_turn_dropped", attempt_id, message)
         return
-    seen = await transcripts.seen_message_ids(session, attempt_id)
-    if not domain.should_store_chunk(message.message_id, seen):
+    deadline = await attempt_deadline(session, attempt)
+    if deadline is not None and now > deadline:
+        # The station is over on the server's clock. Not an error: the worker must not retry or fail.
+        _log_turn("transcript.late_turn_refused", attempt_id, message)
         return
-    await transcripts.add_chunk(
+    stored = await transcripts.add_chunk(
         session,
         attempt_id,
         message_id=message.message_id,
@@ -194,7 +205,7 @@ async def accept_chunk(
         message=message.message,
         spoken_at=message.timestamp,
     )
-    if message.role in {"user", "doctor", "candidate"}:
+    if stored and message.role in {"user", "doctor", "candidate"}:
         await enqueue_coverage(session, attempt)
 
 
@@ -220,19 +231,16 @@ async def accept_transcript(
     if not domain.should_accept_transcript(already_complete=bool(existing and existing.complete)):
         return
 
-    seen = await transcripts.seen_message_ids(session, attempt_id)
     for message in transcript.messages:
-        if domain.should_store_chunk(message.message_id, seen):
-            await transcripts.add_chunk(
-                session,
-                attempt_id,
-                message_id=message.message_id,
-                seq=message.seq,
-                role=message.role,
-                message=message.message,
-                spoken_at=message.timestamp,
-            )
-            seen.add(message.message_id)
+        await transcripts.add_chunk(
+            session,
+            attempt_id,
+            message_id=message.message_id,
+            seq=message.seq,
+            role=message.role,
+            message=message.message,
+            spoken_at=message.timestamp,
+        )
 
     await transcripts.mark_transcript_complete(
         session, attempt_id, runtime_label=transcript.runtime_label, at=now
@@ -251,6 +259,7 @@ async def accept_transcript(
             await repository.set_status(
                 session, attempt_id, status=target, at=now, reason="incomplete_transcript"
             )
+            await sittings_reads.attempt_progress(session, attempt)
 
 
 async def complete_interaction(session: AsyncSession, attempt: Attempt, *, now: datetime) -> None:
@@ -261,6 +270,7 @@ async def complete_interaction(session: AsyncSession, attempt: Attempt, *, now: 
     salvage cannot forget a step the delivery takes.
     """
     await repository.set_status(session, attempt.id, status=domain.Status.INTERACTION_COMPLETE, at=now)
+    await sittings_reads.attempt_progress(session, attempt)
     # Enqueued in this transaction, so the work and the record of it being
     # owed commit together. b2c spawned a thread and b2b a daemon thread, so a
     # deploy mid-generation stranded the attempt forever.

@@ -21,6 +21,7 @@ import {
   ImportInstructions,
   ImportOutcome,
 } from "@/domains/assess/roster/ImportParts";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * The spreadsheet import.
@@ -45,6 +46,7 @@ export function BulkImportDialog({
   onClose: () => void;
   onImported: () => void;
 }) {
+  const w = useAssessWords();
   const [file, setFile] = useState<File | null>(null);
   const [parsed, setParsed] = useState<CsvParse | null>(null);
   const [busy, setBusy] = useState(false);
@@ -149,16 +151,16 @@ export function BulkImportDialog({
   return (
     <Dialog
       open={open}
-      title="Import trainees"
-      lead="One spreadsheet of trainees, saved as .csv. The first row must name the columns."
+      title={`Import ${w.trainees}`}
+      lead={`One spreadsheet of ${w.trainees}, saved as .csv. The first row must name the columns.`}
       error={error}
       busy={busy}
       commitLabel={
         result
           ? "Done"
           : ready
-            ? `Import ${parsed.rows.length} trainee${parsed.rows.length === 1 ? "" : "s"}`
-            : "Import trainees"
+            ? `Import ${parsed.rows.length} ${parsed.rows.length === 1 ? w.trainee : w.trainees}`
+            : `Import ${w.trainees}`
       }
       busyLabel="Importing…"
       commitDisabled={!ready && !result}

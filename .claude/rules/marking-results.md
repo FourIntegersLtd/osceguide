@@ -65,6 +65,15 @@ are `institution-owner`'s; this is how a mark and an outcome are computed.
   the same conversation with its own errors (`tool_result`, `is_error`), up to twice; the system
   prompt carries `cache_control`.
 
+- **Scoring holds no DB line during the model call** (`jobs.py`): `prepare_scoring` (short session) ->
+  `evaluator.evaluate` (none open) -> `record_scoring` (new session, re-checks `should_score` and
+  MARKABLE). `score_attempt_now` takes a session *opener*, not a session; `PreparedScoring` carries
+  plain values, never ORM rows. Jobs queue with `lock=score:<attempt>` and `priority=10`; retry is
+  `max_attempts=4, exponential_wait=8`. Clients take `marking_llm_timeout_seconds`/`_max_retries`, the
+  engine's per-request `timeout_s` defaults to 180 (a per-request value overrides the client's), and
+  markings run on `evaluator._marking_pool()` (`worker_concurrency` threads), not `asyncio.to_thread`.
+  `save_result` may return a bool (C1.3): `False` means another run stored it, so do nothing more.
+
 ## What a failure looks like here
 - A wrong score with no error: a rule never called, a v1 rubric read as v2, a field silently dropped.
 - A result changed in place instead of appended, or shown before it was released.

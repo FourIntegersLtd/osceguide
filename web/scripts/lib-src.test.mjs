@@ -14,6 +14,7 @@ import {
   sourceFiles,
   templatePath,
 } from "./lib-src.mjs";
+import { pollingHits } from "./check-no-polling.mjs";
 
 test("allowList counts, remembers use, and reports unused entries", () => {
   const list = allowList({ a: "x", b: "y" }, 2);
@@ -82,4 +83,15 @@ test("pathMatches lets a run-time segment stand for any one segment", () => {
   assert.equal(pathMatches("/api/v1/orgs/{}/trainees", "/api/v1/orgs/{}/trainees/bulk"), false);
   assert.equal(pathMatches("/trainees/bulk", "/api/v1/orgs/{}/trainees/bulk", false), true);
   assert.equal(pathMatches("/members/bulk", "/api/v1/orgs/{}/trainees/bulk", false), false);
+});
+
+test("pollingHits flags an interval and a self-rescheduling api read, and passes a display timer", () => {
+  assert.deepEqual(pollingHits("useEffect(() => { const t = setInterval(() => load(), 4000); }, []);"), ["setInterval("]);
+  const loop = `import { readResults } from "@/capabilities/feedback/api";
+const tick = async () => { await readResults(id); setTimeout(() => void tick(), 5000); };`;
+  assert.deepEqual(pollingHits(loop), ["setTimeout( that re-calls tick()"]);
+  const viaApi = `import { readAttempt } from "@/capabilities/attempt-runner/api";
+setTimeout(() => readAttempt(id), 3000);`;
+  assert.deepEqual(pollingHits(viaApi), ["setTimeout( that calls readAttempt() from an api module"]);
+  assert.deepEqual(pollingHits("setTimeout(() => setCopied(false), 2000);"), []);
 });

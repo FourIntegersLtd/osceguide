@@ -17,7 +17,9 @@ from app.core.db import AUTOGENERATE_FILTERS, Base, import_all_models, sqlalchem
 from app.core.settings import get_settings
 
 config = context.config
-config.set_main_option("sqlalchemy.url", sqlalchemy_url(get_settings().database_url))
+config.set_main_option(
+    "sqlalchemy.url", sqlalchemy_url(get_settings().database_direct_url or get_settings().database_url)
+)
 
 import_all_models()
 target_metadata = Base.metadata
@@ -36,6 +38,13 @@ def run_migrations_offline() -> None:
 
 
 def _run_sync(connection: Connection) -> None:
+    # The database default statement_timeout (15s) would cancel a long index build; a lock wait
+    # of more than 5s means a migration is queued behind live traffic, so fail rather than stall it.
+    connection.exec_driver_sql("SET lock_timeout = '5s'")
+    connection.exec_driver_sql("SET statement_timeout = 0")
+    # Session-level, so they outlive this commit. Committing here keeps the connection out of an
+    # autobegun transaction, which alembic would treat as external and refuse `autocommit_block` in.
+    connection.commit()
     context.configure(connection=connection, target_metadata=target_metadata, **AUTOGENERATE_FILTERS)
     with context.begin_transaction():
         context.run_migrations()

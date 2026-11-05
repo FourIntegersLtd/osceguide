@@ -27,6 +27,8 @@ STATIONS = "stations/"
 PEER_PRACTICE = "peer_practice/"
 AVATARS = "avatars/"
 ARCHIVE = "archive/"
+# Nightly database dumps written by infra/db-backup, never signed or served by the app.
+DB_BACKUPS = "db-backups/"
 
 
 def exam_folder(root: str, exam_code: str | None, *, fallback: str = "general") -> str:

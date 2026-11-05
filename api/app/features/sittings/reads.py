@@ -6,7 +6,14 @@ from typing import Any
 
 from app.features.sittings import domain, domain_run
 from app.features.sittings.models import Circuit, Sitting, Slot
-from app.features.sittings.schemas import CircuitRead, SittingRead, SlotRead, TimingRead
+from app.features.sittings.schemas import (
+    BreakLength,
+    CircuitRead,
+    SittingRead,
+    SlotRead,
+    TimingIn,
+    TimingRead,
+)
 
 
 def state(circuit: Circuit, *, has_feedback: bool) -> domain.CircuitState:
@@ -50,6 +57,20 @@ def slot_phase(circuit: Circuit, slot: Slot) -> str | None:
     return circuit.phase
 
 
+def timing_input(timing: TimingIn) -> dict[str, Any]:
+    """A request's timing as the raw blob `domain.normalise_timing` reads."""
+    own = {length.after_station: length.minutes for length in timing.break_lengths}
+    return {
+        "reading_minutes": timing.reading_minutes,
+        "simulation_minutes": timing.simulation_minutes,
+        "break_minutes": timing.break_minutes,
+        "breaks": [
+            {"after_station": after, **({"minutes": own[after]} if after in own else {})}
+            for after in timing.breaks
+        ],
+    }
+
+
 def timing_json(timing: domain.Timing) -> dict[str, Any]:
     """`timing` as the plain dict stored on the circuit row."""
     return {
@@ -57,6 +78,12 @@ def timing_json(timing: domain.Timing) -> dict[str, Any]:
         "simulation_minutes": timing.simulation_minutes,
         "break_minutes": timing.break_minutes,
         "breaks": [entry.after_station for entry in timing.breaks],
+        # Only the breaks that differ from `break_minutes`; keyed by station as JSON needs string keys.
+        "break_lengths": {
+            str(entry.after_station): entry.minutes
+            for entry in timing.breaks
+            if entry.minutes is not None and entry.minutes != timing.break_minutes
+        },
     }
 
 
@@ -68,6 +95,12 @@ def timing_read(raw: dict[str, Any] | None) -> TimingRead:
         simulation_minutes=int(timing.get("simulation_minutes", domain.DEFAULT_SIMULATION_MINUTES)),
         break_minutes=int(timing.get("break_minutes", domain.DEFAULT_BREAK_MINUTES)),
         breaks=list(timing.get("breaks") or []),
+        break_lengths=[
+            BreakLength(after_station=int(after), minutes=int(minutes))
+            for after, minutes in sorted(
+                (timing.get("break_lengths") or {}).items(), key=lambda entry: int(entry[0])
+            )
+        ],
     )
 
 
@@ -78,11 +111,15 @@ def timing_domain(raw: dict[str, Any] | None) -> domain.Timing:
     the same default here as it does on a screen.
     """
     read = timing_read(raw)
+    own = {length.after_station: length.minutes for length in read.break_lengths}
     return domain.Timing(
         reading_minutes=read.reading_minutes,
         simulation_minutes=read.simulation_minutes,
         break_minutes=read.break_minutes,
-        breaks=tuple(domain.Break(after_station=after_station) for after_station in read.breaks),
+        breaks=tuple(
+            domain.Break(after_station=after_station, minutes=own.get(after_station))
+            for after_station in read.breaks
+        ),
     )
 
 

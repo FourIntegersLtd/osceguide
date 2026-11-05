@@ -147,7 +147,7 @@ def _minutes_for(step: Step, timing: Timing) -> int:
         case Simulation():
             return timing.simulation_minutes
         case BreakStep():
-            return timing.break_minutes
+            return timing.minutes_after(step.after_station)
         case _:
             raise InvalidCircuit("A finished circuit is not counting anything down.")
 

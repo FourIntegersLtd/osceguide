@@ -5,9 +5,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import SessionDep
+from app.core.db import SessionOpenerDep
 from app.core.errors import NotFound, Unauthenticated, error_responses
-from app.core.ports import ClockDep, GuidelineIndex, MaterialIndex
+from app.core.ports import ClockDep, GuidelineIndex
 from app.core.rate_limit import AI_SPEND, TooManyRequests, per_user
 from app.core.settings import SettingsDep
 from app.features.assistant import schemas as schemas
@@ -67,14 +67,14 @@ async def article(
 async def knowledge_chat(
     body: schemas.KnowledgeChat,
     principal: CurrentPrincipal,
-    session: SessionDep,
+    opener: SessionOpenerDep,
     clock: ClockDep,
     settings: SettingsDep,
-    index: Annotated[MaterialIndex | None, Depends(service_knowledge.get_material_index)],
+    index: Annotated[service_knowledge.MaterialSearch | None, Depends(service_knowledge.get_material_index)],
     guidelines: Annotated[GuidelineIndex | None, Depends(service_knowledge.get_guideline_index)],
 ) -> schemas.KnowledgeReply:
     return await service_knowledge.answer(
-        session,
+        opener,
         body,
         user_id=principal.user_id,
         now=clock.now(),

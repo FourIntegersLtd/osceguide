@@ -85,7 +85,7 @@ async def confirm_password_reset(session: AsyncSession, *, token: str, password:
         # accounts too — SEC-011).
         raise InvalidResetToken()
     await repository.mark_reset_token_used(session, token_id=record.id, at=now)
-    await repository.set_password_hash(session, record.user_id, hash_password(password))
+    await repository.set_password_hash(session, record.user_id, await hash_password(password))
     # A password change ends every existing session: whoever prompted the reset
     # may be holding one.
     await repository.revoke_all_chains_for_user(
@@ -127,11 +127,11 @@ async def change_password(
         raise PasswordLoginDisabled()
     if user.password_hash is None:
         raise PasswordNotSet()
-    if not verify_password(user.password_hash, current):
+    if not await verify_password(user.password_hash, current):
         raise InvalidCredentials()
     if user.status != "active":
         raise AccountSuspended()
-    await repository.set_password_hash(session, user_id, hash_password(new))
+    await repository.set_password_hash(session, user_id, await hash_password(new))
     await repository.revoke_all_chains_for_user(session, user_id=user_id, at=now, reason="password_change")
     # `set_password_hash` also cleared `must_change_password`; the new token is
     # minted from the row as it now stands.

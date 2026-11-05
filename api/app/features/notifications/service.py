@@ -2,25 +2,24 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from html import escape
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import SessionOpener, savepoint
 from app.core.logging import get_logger
-from app.core.ports import EmailDeliveryFailed, EmailSender
+from app.core.ports import EmailSender
 from app.core.settings import get_settings
 from app.features.notifications import domain, repository
 from app.features.notifications.models import OutboundMessage
 
 log = get_logger(__name__)
-
-# Messages sent per minute-run. 20 meant 500 invitations took 25 minutes (S-25).
-DELIVERY_BATCH = 100
-
 
 # What a recipient becomes once the person behind it is erased.
 ERASED_RECIPIENT = "erased@anonymised.invalid"
@@ -70,56 +69,123 @@ async def queued_under(session: AsyncSession, idempotency_key: str) -> tuple[str
     return message.template_key, dict(message.payload or {})
 
 
+@dataclass(frozen=True)
+class _Claimed:
+    """A claimed message as plain data, so sending needs no open session or loaded row."""
+
+    id: uuid.UUID
+    recipient: str
+    subject: str
+    template_key: str
+    payload: dict[str, Any] | None
+    attempts: int
+
+
+@dataclass(frozen=True)
+class _Outcome:
+    """What happened to one claimed message: how it ends, and why when it did not send."""
+
+    message: _Claimed
+    error: str | None = None
+    abandon: bool = False  # retrying cannot help (unknown template)
+
+
 async def deliver_due(
-    session: AsyncSession, *, sender: EmailSender, now: datetime, limit: int = DELIVERY_BATCH
+    open_session: SessionOpener,
+    *,
+    sender: EmailSender,
+    now: datetime,
+    limit: int | None = None,
 ) -> tuple[int, int]:
     """Send whatever is due. Returns (sent, deferred).
 
-    Each message is attempted independently: one bad address must not stop the
-    rest of the queue.
+    Three steps, so no database connection or lock is held while the provider answers: one
+    session claims a batch (`processing`) and commits; the sends run side by side, a few at a time;
+    a second session records each outcome. A worker that dies between the steps leaves its claims
+    `processing`, and `reclaim_stale` returns them to the queue. Each message is attempted
+    independently: one bad address must not stop the rest of the queue.
     """
-    reclaimed = await repository.reclaim_stale(session, before=domain.stale_claim_cutoff(now))
-    if reclaimed:
-        log.warning("reclaimed stranded messages", count=reclaimed)
+    settings = get_settings()
+    async with open_session() as session:
+        reclaimed = await repository.reclaim_stale(session, before=domain.stale_claim_cutoff(now))
+        if reclaimed:
+            log.warning("reclaimed stranded messages", count=reclaimed)
+        claimed = [
+            _Claimed(row.id, row.recipient, row.subject, row.template_key, row.payload, row.attempts + 1)
+            for row in await repository.claim_due(
+                session, now=now, limit=limit or settings.outbox_delivery_batch
+            )
+        ]
+    if not claimed:
+        return 0, 0
+
+    slots = asyncio.Semaphore(settings.outbox_send_concurrency)
+
+    async def attempt(message: _Claimed) -> _Outcome:
+        """Send one claimed message and say how it went; never raises, so one failure stays one."""
+        try:
+            html = _render(message.template_key, message.payload)
+        except Exception as exc:  # noqa: BLE001 - unknown template or a template that cannot render
+            # Retrying cannot help: the code that queued it is wrong. Failed, so the console
+            # lists it, rather than a debug-style email to a real person.
+            return _Outcome(message, error=str(exc) or type(exc).__name__, abandon=True)
+        async with slots:
+            try:
+                await sender.send(to=message.recipient, subject=message.subject, html=html)
+            except Exception as exc:  # noqa: BLE001 - whatever one send raises is that message's retry
+                return _Outcome(message, error=str(exc) or type(exc).__name__)
+        return _Outcome(message)
+
+    outcomes = await asyncio.gather(*(attempt(message) for message in claimed))
 
     sent = 0
     deferred = 0
-    for message in await repository.claim_due(session, now=now, limit=limit):
-        attempts = message.attempts + 1
-        try:
-            html = _render(message.template_key, message.payload)
-        except UnknownTemplate as exc:
-            # Retrying cannot help: the code that queued it is wrong. Failed, so the console
-            # lists it, rather than a debug-style email to a real person.
-            log.error(
-                "message names no template", message_id=str(message.id), template_key=message.template_key
-            )
-            await repository.mark_failed(session, message.id, attempts=attempts, error=str(exc))
-            continue
-        try:
-            await sender.send(to=message.recipient, subject=message.subject, html=html)
-        except EmailDeliveryFailed as exc:
-            if domain.should_retry(attempts=attempts):
-                await repository.mark_retry(
-                    session,
-                    message.id,
-                    attempts=attempts,
-                    available_at=domain.next_available(attempts=attempts, now=now),
-                    error=str(exc),
-                )
-                deferred += 1
-            else:
-                # Abandoned rather than retried forever, so somebody can see
-                # that this one needs a person: an error, so it reaches Sentry,
-                # and a `failed` row, which the console lists with a retry.
-                log.error("message abandoned", message_id=str(message.id), attempts=attempts)
-                await repository.mark_failed(session, message.id, attempts=attempts, error=str(exc))
-            continue
+    unrecorded = 0
+    async with open_session() as session:
+        for outcome in outcomes:
+            try:
+                # A savepoint per message: one bad write undoes only itself, not the batch's record.
+                async with savepoint(session):
+                    ended = await _record_outcome(session, outcome, now=now)
+            except Exception:  # noqa: BLE001 - the rest of the batch must still be recorded
+                # Left `processing`: `reclaim_stale` sends it again, once, rather than all of them.
+                log.exception("outbox outcome not recorded", message_id=str(outcome.message.id))
+                unrecorded += 1
+                continue
+            sent += ended == "sent"
+            deferred += ended == "retry"
+    if unrecorded:
+        log.error("outbox outcomes not recorded", count=unrecorded)
+    return sent, deferred
+
+
+async def _record_outcome(session: AsyncSession, outcome: _Outcome, *, now: datetime) -> str:
+    """Write how one send ended and say which way: `sent`, `retry` or `failed`."""
+    message = outcome.message
+    if outcome.error is None:
         await repository.mark_sent(session, message.id, at=now)
         if message.template_key in SCRUB_RECIPIENT_ON_SEND:
             await repository.scrub_recipient(session, message.id, placeholder=ERASED_RECIPIENT)
-        sent += 1
-    return sent, deferred
+        return "sent"
+    if not outcome.abandon and domain.should_retry(attempts=message.attempts):
+        await repository.mark_retry(
+            session,
+            message.id,
+            attempts=message.attempts,
+            available_at=domain.next_available(attempts=message.attempts, now=now),
+            error=outcome.error,
+        )
+        return "retry"
+    # Abandoned rather than retried forever, so somebody can see that this one needs a person:
+    # an error, so it reaches Sentry, and a `failed` row, which the console lists with a retry.
+    log.error(
+        "message abandoned",
+        message_id=str(message.id),
+        template_key=message.template_key,
+        attempts=message.attempts,
+    )
+    await repository.mark_failed(session, message.id, attempts=message.attempts, error=outcome.error)
+    return "failed"
 
 
 async def erase_recipients(session: AsyncSession, emails: list[str]) -> None:

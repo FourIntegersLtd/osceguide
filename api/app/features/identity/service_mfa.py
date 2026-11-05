@@ -249,7 +249,7 @@ async def _confirm_secret(
     await repository.confirm_mfa(session, user.id, at=now, step=step)
     codes = [_new_recovery_code() for _ in range(RECOVERY_CODE_COUNT)]
     await repository.replace_recovery_codes(
-        session, user.id, [hash_password(code_text) for code_text in codes]
+        session, user.id, [await hash_password(code_text) for code_text in codes]
     )
     await _audit(session, actor=user, action="mfa.enrolled", now=now, summary="Enrolled an authenticator")
     return codes
@@ -287,7 +287,7 @@ async def _spend_recovery_code(
     """Mark one matching unused recovery code used. False when none matches."""
     normalized = presented.strip().lower().replace(" ", "")
     for stored in await repository.unused_recovery_codes(session, user_id):
-        if verify_password(stored.code_hash, normalized):
+        if await verify_password(stored.code_hash, normalized):
             await repository.mark_recovery_code_used(session, stored.id, at=now)
             return True
     return False
@@ -409,7 +409,7 @@ async def regenerate_recovery_codes(
     await repository.set_mfa_last_used_step(session, user.id, step)
     codes = [_new_recovery_code() for _ in range(RECOVERY_CODE_COUNT)]
     await repository.replace_recovery_codes(
-        session, user.id, [hash_password(code_text) for code_text in codes]
+        session, user.id, [await hash_password(code_text) for code_text in codes]
     )
     await _audit(
         session,

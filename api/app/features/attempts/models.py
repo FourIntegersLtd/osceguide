@@ -84,6 +84,42 @@ class Attempt(Base, UUIDPrimaryKey, Timestamps):
             unique=True,
             postgresql_where=text("legacy_ref IS NOT NULL"),
         ),
+        Index(
+            "ix_attempts_set_entry_id",
+            "set_entry_id",
+            postgresql_where=text("set_entry_id IS NOT NULL"),
+            postgresql_concurrently=True,
+        ),
+        Index(
+            "ix_attempts_peer_session_id",
+            "peer_session_id",
+            postgresql_where=text("peer_session_id IS NOT NULL"),
+            postgresql_concurrently=True,
+        ),
+        Index(
+            "ix_attempts_source_attempt_id",
+            "source_attempt_id",
+            postgresql_where=text("source_attempt_id IS NOT NULL"),
+            postgresql_concurrently=True,
+        ),
+        # One unstarted practice start per person and station: a double click or retry makes one row.
+        Index(
+            "uq_attempts_one_unstarted",
+            "user_id",
+            "kind",
+            "exam_id",
+            "org_id",
+            "station_version_id",
+            "set_entry_id",
+            unique=True,
+            postgresql_where=text(
+                "status = 'created' AND started_at IS NULL AND definition_frozen_at IS NULL "
+                "AND room_name IS NULL AND station_version_id IS NOT NULL "
+                "AND kind IN ('practice', 'set_station', 'self_practice')"
+            ),
+            postgresql_nulls_not_distinct=True,
+            postgresql_concurrently=True,
+        ),
     )
 
     kind: Mapped[str] = mapped_column(String(32), nullable=False)

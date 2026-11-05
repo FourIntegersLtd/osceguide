@@ -263,6 +263,7 @@ async def release_slots_for_user(
     circuit itself carries on. Returns how many stations were given up.
     """
     given_up = 0
+    announced: set[uuid.UUID] = set()
     for org_id, circuit_id, slot_id in await repository_run.open_slots_for_user_in_live_circuits(
         session, user_id, statuses=domain.UNSAT_SLOT_STATUSES
     ):
@@ -274,4 +275,7 @@ async def release_slots_for_user(
         await attempts_service.fail_live_for_slot(session, slot_id=slot_id, now=now, reason=reason)
         await repository.update_slot(session, org_id, slot_id, status=domain.SlotStatus.SKIPPED, ended_at=now)
         given_up += 1
+        if circuit_id not in announced:
+            announced.add(circuit_id)
+            await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.ABSENT)
     return given_up

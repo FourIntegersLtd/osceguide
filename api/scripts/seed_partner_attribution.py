@@ -112,7 +112,7 @@ async def _ensure_reporter(session: AsyncSession) -> str | None:
             session,
             email=SEED_REPORTER_EMAIL,
             name="BMJ Reporter",
-            password_hash=hash_password(password),
+            password_hash=await hash_password(password),
         )
     if not await growth_repository.is_reporter(session, partner=SEED_PARTNER, email=SEED_REPORTER_EMAIL):
         await growth_repository.add_reporter(session, partner=SEED_PARTNER, email=SEED_REPORTER_EMAIL)

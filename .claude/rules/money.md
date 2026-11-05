@@ -13,7 +13,9 @@ Owner: `access-owner` (partner screens: `institution-owner`; staff queues: `staf
 Proof: `verify-access`. Anything that moves money also gets the `reviewer` agent (opus) and `/security-review`; the Stop hook asks for both.
 
 - **Entitlement grants are not live grants.** `entitlements.list_for_user` returns revoked and
-  expired rows too. A gate must filter on `live` and fail closed. Entitlement is not payment
+  expired rows too. A gate must filter on `live` and fail closed. It is read once per session and
+  `now` (memo in `session.info["entitlements_memo"]`); every write in `entitlements/repository.py`
+  clears it, so a new write path must go through that repository, never mutate a row directly. Entitlement is not payment
   (ADR 0012): a grant can come from a plan, a partner, a referral or staff.
 - Billing: plans, the Stripe webhook ledger, invoices and receipts. The webhook is a ledger
   that records failures (migration `billing_event_failure`); checkout carries the price id

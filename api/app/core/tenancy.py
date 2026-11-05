@@ -19,11 +19,13 @@ from typing import Annotated, Protocol
 from fastapi import Depends, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import cache
 from app.core.auth import CurrentPrincipal, Principal
 from app.core.db import SessionDep
 from app.core.errors import Forbidden, NotFound
 from app.core.ports import ClockDep
 from app.core.role_policy import Policy, RolePredicate, policy
+from app.core.settings import get_settings
 
 
 class OrgNotFound(NotFound):
@@ -138,13 +140,61 @@ async def resolve_workspace(
     # lives 15 minutes, and a suspension that takes a quarter of an hour to
     # bite is not a suspension. One indexed read per org-scoped request is
     # the price of it taking effect now.
-    org = await _bound_org_lookup()(session, org_slug, now=now)
-    if org is None:
+    if not allow_suspended and not principal.is_platform_admin:
+        await _refuse_if_org_inactive(session, org_slug, now=now)
+    elif await _bound_org_lookup()(session, org_slug, now=now) is None:
         raise OrgNotFound()
-    if not allow_suspended and not org.active and not principal.is_platform_admin:
-        raise OrgSuspended()
 
     return Workspace(org_id=membership.org_id, org_slug=org_slug, role=membership.role, principal=principal)
+
+
+def org_active_key(org_slug: str) -> str:
+    """The cache key holding this organisation's "active" answer."""
+    return f"org-active:{org_slug}"
+
+
+def forget_org_active(session: AsyncSession, org_slug: str) -> None:
+    """Drop the cached answer once this transaction commits. Call it wherever an organisation's
+    status or contract end is written."""
+    cache.forget_after_commit(session, org_active_key(org_slug))
+
+
+class _OrgNotCacheable(Exception):  # noqa: N818 - control flow out of `get_or_load`, never an error
+    """Raised by a load whose answer must not be stored: the organisation is missing or not active."""
+
+    def __init__(self, org: OrgRef | None) -> None:
+        self.org = org
+
+
+async def _refuse_if_org_inactive(session: AsyncSession, org_slug: str, *, now: datetime) -> None:
+    """Raise `OrgNotFound` or `OrgSuspended` unless the organisation may act now.
+
+    One read per org-scoped request, so at exam start the answer "active" (only that, never a
+    refusal) is kept in `core.cache` for `auth_status_cache_seconds`. Anything that changes the
+    status or the contract end calls `forget_org_active`; with Redis off or erroring every request
+    reads the database. A contract that lapses by the clock alone is seen within the cache window.
+    """
+    lookup = _bound_org_lookup()
+    ttl = get_settings().auth_status_cache_seconds
+
+    async def load() -> str:
+        """Read the organisation, refusing to hand back anything but "active" for storing."""
+        org = await lookup(session, org_slug, now=now)
+        if org is None or not org.active:
+            raise _OrgNotCacheable(org)  # a raised load is never stored
+        return "active"
+
+    try:
+        if (
+            ttl > 0
+            and await cache.get_or_load(org_active_key(org_slug), ttl, load, dump=str, parse=str) == "active"
+        ):
+            return
+        await load()
+    except _OrgNotCacheable as inactive:
+        if inactive.org is None:
+            raise OrgNotFound() from None
+        raise OrgSuspended() from None
 
 
 class OrgGate:

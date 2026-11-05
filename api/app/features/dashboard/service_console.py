@@ -16,6 +16,7 @@ from app.features.attempts import service_reads as attempts
 from app.features.dashboard.errors import CircuitNotFound
 from app.features.dashboard.schemas_org import (
     CircuitConsole,
+    ConsoleBreakLength,
     ConsoleCircuit,
     ConsolePerson,
     ConsoleSitting,
@@ -79,6 +80,10 @@ async def build_console(
             simulation_minutes=detail.circuit.timing.simulation_minutes,
             break_minutes=detail.circuit.timing.break_minutes,
             breaks=list(detail.circuit.timing.breaks),
+            break_lengths=[
+                ConsoleBreakLength(after_station=length.after_station, minutes=length.minutes)
+                for length in detail.circuit.timing.break_lengths
+            ],
         ),
         active_slot_id=detail.circuit.active_slot_id,
         room_name=detail.circuit.room_name,

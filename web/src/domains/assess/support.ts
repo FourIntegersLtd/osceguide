@@ -1,3 +1,4 @@
+import type { AssessWords } from "@/domains/assess/vocabulary";
 import { humanise } from "@/foundation/format";
 import { isAdminRole, isSupervisorRole } from "@/foundation/session/roles";
 import {
@@ -206,10 +207,10 @@ export function sittingsScopeNote(loaded: number, hasMore: boolean): string | nu
     : null;
 }
 
-export function sittingsEmptyDescription(canSchedule: boolean): string {
+export function sittingsEmptyDescription(canSchedule: boolean, words: AssessWords): string {
   return canSchedule
     ? "Schedule your first one to get started."
-    : "An administrator schedules sittings; they will appear here.";
+    : `An administrator schedules ${words.sittings}; they will appear here.`;
 }
 
 export function sittingStatusLabel(status: string): string {
@@ -222,4 +223,50 @@ export function toggleInSet<T>(set: ReadonlySet<T>, id: T): Set<T> {
   if (next.has(id)) next.delete(id);
   else next.add(id);
   return next;
+}
+
+type Expandable = { id: string; user_id: string | null };
+
+/**
+ * Turn group or cohort members (roster ids) into the user ids a circuit names.
+ * Members who have never signed in have no user and are counted, not added;
+ * members missing from the (active-only) list are revoked and skipped.
+ */
+export function expandToUsers(
+  memberTraineeIds: readonly string[],
+  trainees: readonly Expandable[],
+): { userIds: string[]; notSignedIn: number } {
+  const byId = new Map(trainees.map((trainee) => [trainee.id, trainee]));
+  const userIds: string[] = [];
+  let notSignedIn = 0;
+  for (const id of memberTraineeIds) {
+    const trainee = byId.get(id);
+    if (!trainee) continue;
+    if (trainee.user_id === null) notSignedIn += 1;
+    else userIds.push(trainee.user_id);
+  }
+  return { userIds, notSignedIn };
+}
+
+/** The one-line notice shown after a group or cohort is added. */
+export function groupNotice(result: { userIds: readonly string[]; notSignedIn: number }): string {
+  const added = `Added ${result.userIds.length}.`;
+  return result.notSignedIn > 0
+    ? `${added} ${result.notSignedIn} not signed in yet, so they were left out.`
+    : added;
+}
+
+/** Several exam candidates become one circuit each, made in one request. */
+export function isBulkExam(isExam: boolean, candidateCount: number): boolean {
+  return isExam && candidateCount > 1;
+}
+
+/** A copy of `list` with the item at `index` swapped with its neighbour; unchanged if that is out of bounds. */
+export function moveItem<T>(list: readonly T[], index: number, offset: -1 | 1): T[] {
+  const copy = [...list];
+  const target = index + offset;
+  if (index < 0 || index >= copy.length || target < 0 || target >= copy.length) return copy;
+  const [item] = copy.splice(index, 1);
+  copy.splice(target, 0, item as T);
+  return copy;
 }

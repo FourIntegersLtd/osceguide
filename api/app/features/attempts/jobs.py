@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 import procrastinate
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +24,7 @@ from app.core.ports import EvaluationFailed, Evaluator
 from app.features.attempts import domain, domain_definition, repository
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.models import Attempt
+from app.features.sittings import service_reads as sittings_reads
 
 log = get_logger(__name__)
 
@@ -31,11 +34,11 @@ SCORING_TASK = "score_attempt"
 COMPACTION_BATCH = 50
 
 # A model call fails for reasons that pass: a timeout, a rate limit, a malformed answer. procrastinate
-# retries while `job.attempts` (the failed runs so far) is under `max_attempts`, so a job runs 1 + 3
-# times, 4 s, 16 s then 64 s apart. The run it will not retry is the last try: whatever goes wrong
+# retries while `job.attempts` (the failed runs so far) is under `max_attempts`, so a job runs 1 + 4
+# times, 4 s, 16 s, 64 s then 256 s apart. The run it will not retry is the last try: whatever goes wrong
 # there is recorded on the attempt (`scoring_failed`) instead of raised, because a raise rolls the
 # job's writes back.
-SCORING_RETRY = procrastinate.RetryStrategy(max_attempts=3, exponential_wait=4)
+SCORING_RETRY = procrastinate.RetryStrategy(max_attempts=4, exponential_wait=4)
 
 # An attempt can be marked once its interaction finished, and marked again
 # afterwards under a different policy — a new org rubric, or a model change we
@@ -112,6 +115,7 @@ async def enqueue_scoring(
             publish_after_commit(
                 session, user_topic(attempt.user_id), "attempt", {"attempt_id": str(attempt.id)}
             )
+            await sittings_reads.attempt_progress(session, attempt)
         return
 
     await defer_in_transaction(
@@ -119,6 +123,9 @@ async def enqueue_scoring(
         queue=SCORING_QUEUE,
         task=SCORING_TASK,
         queueing_lock=f"score:{attempt.id}:{policy_version}",
+        # One attempt is marked by one run at a time, whatever the policies; marking goes before chores.
+        lock=f"score:{attempt.id}",
+        priority=10,
         args={
             "attempt_id": str(attempt.id),
             "policy_version": policy_version,
@@ -127,37 +134,42 @@ async def enqueue_scoring(
     )
 
 
-async def score_attempt_now(
-    session: AsyncSession,
-    attempt_id: uuid.UUID,
-    *,
-    evaluator: Evaluator,
-    policy_version: str,
-    framework_id: str,
-    now: datetime,
-) -> bool:
-    """Score once per policy version. Returns whether anything was written.
+@dataclass(frozen=True)
+class PreparedScoring:
+    """What the model call needs, read in a short session that is closed before the call.
 
-    A failed evaluation raises, and the queue retries; `score_attempt_job` records the last failure.
+    Plain values, not ORM rows: they outlive the session that loaded them.
+    """
 
-    Idempotent by design: the queue may deliver a job more than once, and a
-    retry after a partial failure must not produce a second result for the same
-    policy. Re-scoring under a *different* policy is a new row beside the old.
+    attempt_id: uuid.UUID
+    rubric: dict[str, Any]
+    transcript: list[dict[str, Any]]
+    policy_version: str
+    framework_id: str
+
+
+async def prepare_scoring(
+    session: AsyncSession, attempt_id: uuid.UUID, *, policy_version: str, framework_id: str, now: datetime
+) -> PreparedScoring | None:
+    """Decide whether to mark, and gather what marking needs. `None` means nothing to mark.
+
+    Also the home of the two outcomes that need no model: a mark already there (clear any stale
+    failure) and an empty transcript (fail the attempt, loudly).
     """
     attempt = await repository.attempt_by_id(session, attempt_id)
     if attempt is None:
         log.warning("scoring skipped, attempt gone", attempt_id=str(attempt_id))
-        return False
+        return None
     scored = await transcripts.scored_policy_versions(session, attempt_id)
     if not domain.should_score(scored_versions=scored, policy_version=policy_version):
         # A mark landed some other way (a re-run, a manual one) while a failure was still recorded.
         await _clear_scoring_failure(session, attempt)
-        return False
+        return None
     status = domain.Status(attempt.status)
     if status not in MARKABLE:
         # Nothing to mark yet, or the attempt failed. Not an error: a job can
         # arrive before the status settles, or after a later failure.
-        return False
+        return None
 
     # The rubric travels on the attempt rather than in the job's arguments: it
     # is the whole framework, its prompt and its clock, and reading it back
@@ -165,7 +177,7 @@ async def score_attempt_now(
     rubric = domain_definition.rubric_for(attempt.definition)
     if rubric is None:
         log.warning("scoring skipped, attempt has no frozen rubric", attempt_id=str(attempt_id))
-        return False
+        return None
 
     turns = await transcripts.chunks_for(session, attempt_id)
     if not turns:
@@ -176,34 +188,56 @@ async def score_attempt_now(
         # waiting for feedback, and a failure they are never told about is a
         # spinner that turns for ever.
         publish_after_commit(session, user_topic(attempt.user_id), "attempt", {"attempt_id": str(attempt_id)})
-        return False
+        await sittings_reads.attempt_progress(session, attempt)
+        return None
 
-    try:
-        marks = await evaluator.evaluate(
-            rubric=rubric,
-            policy_version=policy_version,
-            transcript=[{"role": turn.role, "message": turn.message, "seq": turn.seq} for turn in turns],
-        )
-    except EvaluationFailed as exc:
-        # The attempt stays at interaction_complete so a retry can mark it;
-        # failing it would discard a transcript we still hold.
-        log.warning("evaluation failed", attempt_id=str(attempt_id), error=str(exc))
-        raise
+    return PreparedScoring(
+        attempt_id=attempt_id,
+        rubric=rubric,
+        transcript=[{"role": turn.role, "message": turn.message, "seq": turn.seq} for turn in turns],
+        policy_version=policy_version,
+        framework_id=framework_id,
+    )
+
+
+async def record_scoring(
+    session: AsyncSession, prepared: PreparedScoring, marks: dict[str, Any], *, now: datetime
+) -> bool:
+    """Store the marks. Returns whether anything was written.
+
+    The model took a minute or two with no transaction open, so the attempt may have moved: another
+    run may have marked this policy, or the attempt may have failed. Both are checked again here.
+    """
+    attempt_id = prepared.attempt_id
+    attempt = await repository.attempt_by_id(session, attempt_id)
+    if attempt is None:
+        return False
+    scored = await transcripts.scored_policy_versions(session, attempt_id)
+    if not domain.should_score(scored_versions=scored, policy_version=prepared.policy_version):
+        await _clear_scoring_failure(session, attempt)
+        return False
+    status = domain.Status(attempt.status)
+    if status not in MARKABLE:
+        return False
 
     # The model is the row's own column, not a mark: left in the payload it is
     # a top-level key the rubric's derived schema forbids, so no stored result
     # validated against the schema it was marked with.
     marks = dict(marks)
     model_used = str(marks.pop("model_used", "") or "") or None
-    await transcripts.save_result(
+    # Typed loosely on purpose: it returns a row today and a bool once saving is insert-or-skip.
+    saved: object = await transcripts.save_result(
         session,
         attempt_id,
-        framework_id=str(rubric.get("framework", {}).get("id") or framework_id),
-        policy_version=policy_version,
+        framework_id=str(prepared.rubric.get("framework", {}).get("id") or prepared.framework_id),
+        policy_version=prepared.policy_version,
         payload=marks,
         model_used=model_used,
         at=now,
     )
+    if saved is False:
+        # Lost the race to another run that stored the same policy's mark; it did the rest.
+        return False
     if status is domain.Status.INTERACTION_COMPLETE:
         await repository.set_status(session, attempt_id, status=domain.Status.EVALUATED, at=now)
     await _clear_scoring_failure(session, attempt)
@@ -211,7 +245,46 @@ async def score_attempt_now(
     # it finished somehow. b2c polled; this says so once, after the commit,
     # and the poll goes.
     publish_after_commit(session, user_topic(attempt.user_id), "attempt", {"attempt_id": str(attempt_id)})
+    await sittings_reads.attempt_progress(session, attempt)
     return True
+
+
+async def score_attempt_now(
+    open_session: SessionOpener,
+    attempt_id: uuid.UUID,
+    *,
+    evaluator: Evaluator,
+    policy_version: str,
+    framework_id: str,
+    now: datetime,
+) -> bool:
+    """Score once per policy version. Returns whether anything was written.
+
+    Three steps, so no database connection is held while the model thinks: read in a short session,
+    call the model with none open, then write in another. A failed evaluation raises, and the queue
+    retries; `score_attempt_job` records the last failure.
+
+    Idempotent by design: the queue may deliver a job more than once, and a
+    retry after a partial failure must not produce a second result for the same
+    policy. Re-scoring under a *different* policy is a new row beside the old.
+    """
+    async with open_session() as session:
+        prepared = await prepare_scoring(
+            session, attempt_id, policy_version=policy_version, framework_id=framework_id, now=now
+        )
+    if prepared is None:
+        return False
+    try:
+        marks = await evaluator.evaluate(
+            rubric=prepared.rubric, policy_version=policy_version, transcript=prepared.transcript
+        )
+    except EvaluationFailed as exc:
+        # The attempt stays at interaction_complete so a retry can mark it;
+        # failing it would discard a transcript we still hold.
+        log.warning("evaluation failed", attempt_id=str(attempt_id), error=str(exc))
+        raise
+    async with open_session() as session:
+        return await record_scoring(session, prepared, marks, now=now)
 
 
 async def _clear_scoring_failure(session: AsyncSession, attempt: Attempt) -> None:
@@ -237,15 +310,14 @@ async def score_attempt_job(
     session rolls back, so the record is written in a session of its own.
     """
     try:
-        async with open_session() as session:
-            return await score_attempt_now(
-                session,
-                attempt_id,
-                evaluator=build_evaluator(),
-                policy_version=policy_version,
-                framework_id=framework_id,
-                now=now,
-            )
+        return await score_attempt_now(
+            open_session,
+            attempt_id,
+            evaluator=build_evaluator(),
+            policy_version=policy_version,
+            framework_id=framework_id,
+            now=now,
+        )
     except Exception:
         if not last_try:
             raise

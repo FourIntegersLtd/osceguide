@@ -42,20 +42,31 @@ export function DurationFields({
   );
 }
 
-/** An exam's breaks: one length for the circuit, and which gaps between stations take one. */
+/** An exam's breaks: a default length, which gaps between stations take one, and each break's own length. */
 export function BreaksPanel({
   stationCount,
   breakMinutes,
   setBreakMinutes,
   breaks,
   setBreaks,
+  breakLengths,
+  setBreakLengths,
 }: {
   stationCount: number;
   breakMinutes: number;
   setBreakMinutes: (minutes: number) => void;
   breaks: Set<number>;
   setBreaks: Dispatch<SetStateAction<Set<number>>>;
+  breakLengths: Record<number, number>;
+  setBreakLengths: Dispatch<SetStateAction<Record<number, number>>>;
 }) {
+  const toggle = (position: number) => {
+    // A break turned off forgets its own length, so turning it back on starts at the default.
+    if (breaks.has(position)) {
+      setBreakLengths(({ [position]: _dropped, ...rest }) => rest);
+    }
+    setBreaks((current) => toggleInSet(current, position));
+  };
   const gaps = breakPositions(stationCount);
   return (
     <Panel
@@ -65,7 +76,7 @@ export function BreaksPanel({
       <div className="flex flex-col gap-4">
         <div className="max-w-[13rem]">
           <Input
-            label="Break length (minutes)"
+            label="Default break length (minutes)"
             type="number"
             min={BREAK_MINUTES_BOUNDS.min}
             max={BREAK_MINUTES_BOUNDS.max}
@@ -74,17 +85,22 @@ export function BreaksPanel({
           />
         </div>
         {gaps.length === 0 ? (
-          <p className="text-sm text-ink-muted">Add a second station before adding a break.</p>
+          <p className="text-sm text-ink-muted">
+            Add a second station before adding a break.
+          </p>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {gaps.map((position) => {
               const on = breaks.has(position);
               return (
-                <li key={position}>
+                <li
+                  key={position}
+                  className="flex flex-col items-start gap-1.5"
+                >
                   <button
                     type="button"
                     aria-pressed={on}
-                    onClick={() => setBreaks((current) => toggleInSet(current, position))}
+                    onClick={() => toggle(position)}
                     className={cn(
                       "rounded-full border px-3 py-1.5 text-sm",
                       on
@@ -94,6 +110,22 @@ export function BreaksPanel({
                   >
                     After station {position}
                   </button>
+                  {on ? (
+                    <Input
+                      aria-label={`Break length after station ${position} (minutes)`}
+                      type="number"
+                      inputSize="sm"
+                      min={BREAK_MINUTES_BOUNDS.min}
+                      max={BREAK_MINUTES_BOUNDS.max}
+                      value={breakLengths[position] ?? breakMinutes}
+                      onChange={(event) =>
+                        setBreakLengths((current) => ({
+                          ...current,
+                          [position]: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  ) : null}
                 </li>
               );
             })}

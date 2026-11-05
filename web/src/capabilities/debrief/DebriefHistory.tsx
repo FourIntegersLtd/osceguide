@@ -5,10 +5,9 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { HiChevronRight, HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
 import { AsyncBoundary, Alert, B2CPageHeader, Button, cardScrollBody, productTokens } from "@/foundation/ui";
-import { useCursorPages } from "@/foundation/hooks";
+import { useCursorPages, useMeEvents } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { debriefDate, listDebriefs } from "@/capabilities/debrief/api";
-import { waitForDebrief } from "@/capabilities/debrief/waitForDebrief";
 
 const { b2cCard, b2cGroupedRow, b2cGroupedRowSubtitle, b2cGroupedRowTitle } = productTokens;
 
@@ -49,29 +48,36 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId, awaitingA
   const { hrefFor } = useSurface();
   const [settled, setSettled] = useState<{ attemptId: string; status: "arrived" | "failed" } | null>(null);
   const wait = !awaitingAttemptId ? null : settled?.attemptId === awaitingAttemptId ? settled.status : "waiting";
+  // The summary job publishes `debrief` ({attempt_id, state}) when it finishes: `ready` means the
+  // summary is listed, `none` and `failed` mean none is coming. `resync` (the stream reconnected,
+  // or the tab was shown again) re-reads once, because an event sent while no stream was open is
+  // not replayed. Nothing polls.
+  const settle = (status: "arrived" | "failed") => {
+    if (awaitingAttemptId) setSettled({ attemptId: awaitingAttemptId, status });
+  };
+  const isListed = async (signal: AbortSignal) =>
+    (
+      await listDebriefs(
+        { attemptId: attemptId ?? null, stationVersionId: stationVersionId ?? null, setEntryId: entryId ?? null, limit: 5 },
+        signal,
+      )
+    ).items.some((item) => item.attempt_id === awaitingAttemptId);
+  const recheck = () => {
+    void isListed(new AbortController().signal).then(
+      (listed) => listed && settle("arrived"),
+      () => undefined, // a failed read is not an outcome; the next event asks again
+    );
+  };
   useEffect(() => {
-    if (!awaitingAttemptId) return;
-    const controller = new AbortController();
-    void waitForDebrief(
-      async (signal) =>
-        (
-          await listDebriefs(
-            { attemptId: attemptId ?? null, stationVersionId: stationVersionId ?? null, setEntryId: entryId ?? null, limit: 5 },
-            signal,
-          )
-        ).items.map((item) => item.attempt_id),
-      awaitingAttemptId,
-      { signal: controller.signal },
-    )
-      .then(() => {
-        // Found or timed out, the list is read again and the notice goes.
-        if (!controller.signal.aborted) setSettled({ attemptId: awaitingAttemptId, status: "arrived" });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setSettled({ attemptId: awaitingAttemptId, status: "failed" });
-      });
-    return () => controller.abort();
-  }, [awaitingAttemptId, attemptId, stationVersionId, entryId]);
+    if (awaitingAttemptId) recheck();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per awaited debrief
+  }, [awaitingAttemptId]);
+  useMeEvents(["debrief"], (event) => {
+    if (!awaitingAttemptId || wait !== "waiting") return;
+    if (event.name === "resync") return recheck();
+    if (event.data.attempt_id !== awaitingAttemptId) return;
+    settle(event.data.state === "ready" ? "arrived" : "failed");
+  });
   const pages = useCursorPages(
     (cursor, signal) =>
       listDebriefs(
@@ -97,7 +103,7 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId, awaitingA
       ) : null}
       {wait === "failed" ? (
         <Alert tone="warning" className="mb-4">
-          We could not check whether your debrief summary is ready. Reload this page in a minute to look again.
+          We could not write a summary for this debrief. Reload this page in a minute to look again.
         </Alert>
       ) : null}
       <AsyncBoundary

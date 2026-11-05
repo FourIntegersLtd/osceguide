@@ -193,9 +193,17 @@ async def event_by_idempotency_key(
 
 
 async def released_outcomes(session: AsyncSession, org_id: uuid.UUID) -> list[tuple[uuid.UUID, str | None]]:
-    """(sitting id, assessment outcome) of every candidate's current revision that has been released."""
-    stmt = (
-        select(CandidateResultRevision)
+    """(sitting id, assessment outcome) of every candidate's current revision that has been released.
+
+    The current revision is picked first and released-ness is tested on it, so an older released
+    revision never counts once a later one has been recorded and not yet released.
+    """
+    current = (
+        select(
+            CandidateResultRevision.sitting_id,
+            CandidateResultRevision.assessment_outcome,
+            CandidateResultRevision.released_at,
+        )
         .where(CandidateResultRevision.org_id == org_id)
         .distinct(CandidateResultRevision.sitting_id, CandidateResultRevision.trainee_id)
         .order_by(
@@ -203,9 +211,44 @@ async def released_outcomes(session: AsyncSession, org_id: uuid.UUID) -> list[tu
             CandidateResultRevision.trainee_id,
             CandidateResultRevision.revision.desc(),
         )
+        .subquery()
     )
-    rows = (await session.execute(stmt)).scalars()
-    return [(row.sitting_id, row.assessment_outcome) for row in rows if row.released_at is not None]
+    stmt = select(current.c.sitting_id, current.c.assessment_outcome).where(
+        current.c.released_at.is_not(None)
+    )
+    return [(row.sitting_id, row.assessment_outcome) for row in await session.execute(stmt)]
+
+
+async def current_decision_states(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: Sequence[uuid.UUID]
+) -> list[tuple[uuid.UUID, uuid.UUID, str]]:
+    """(sitting, trainee, workflow state) of each candidate's current revision.
+
+    "Current" is the highest revision per (sitting, trainee), as in `released_outcomes`; a
+    candidate with no revision has no row. Decisions are append-only, so rows may name a
+    trainee no longer on any circuit: the caller decides who still counts.
+    """
+    stmt = (
+        select(
+            CandidateResultRevision.sitting_id,
+            CandidateResultRevision.trainee_id,
+            CandidateResultRevision.workflow_state,
+        )
+        .where(
+            CandidateResultRevision.org_id == org_id,
+            CandidateResultRevision.sitting_id.in_(list(sitting_ids)),
+        )
+        .distinct(CandidateResultRevision.sitting_id, CandidateResultRevision.trainee_id)
+        .order_by(
+            CandidateResultRevision.sitting_id,
+            CandidateResultRevision.trainee_id,
+            CandidateResultRevision.revision.desc(),
+        )
+    )
+    return [
+        (sitting_id, trainee_id, state)
+        for sitting_id, trainee_id, state in (await session.execute(stmt)).all()
+    ]
 
 
 async def scrub_text_for_trainees(session: AsyncSession, trainee_ids: Sequence[uuid.UUID]) -> int:

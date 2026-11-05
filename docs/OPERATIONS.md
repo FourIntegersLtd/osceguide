@@ -23,6 +23,19 @@ production events arrive. Notify: issue owners, falling back to active members.
 The last two depend on `log.exception`/`log.error` reaching Sentry through its
 logging integration, which happens when `SENTRY_DSN` is set on the api.
 
+## Exam freeze (promote workflows)
+
+`Promote api`, `Promote web` and `Promote workers to production` run the shared `.github/actions/exam-freeze` action (after main's checkout, before
+any gate, and again in the job that pushes, because an approval can come hours after the check). It reads the repository variable `EXAM_FREEZE_WINDOWS` (repository Settings, Secrets and
+variables, Actions, Variables): comma-separated `start/end` pairs in ISO UTC, for example
+`2026-12-03T07:00:00Z/2026-12-03T18:00:00Z,2026-12-10T07:00:00Z/2026-12-10T18:00:00Z`. While now falls
+inside a window the run fails and production is untouched. An unset or empty variable means no freeze. A
+malformed entry fails the run rather than being skipped.
+
+To promote during a window (a fix for the exam itself), run the workflow with `override_freeze_reason`
+filled in. The reason is written to the run log as a warning. A rollback follows the same rule: typing a
+reason is the only way through. Add the windows when a sitting is booked and remove them afterwards.
+
 ## Rollback in one step
 
 Roll back first, investigate second. Each path below reuses an artifact that

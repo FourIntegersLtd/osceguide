@@ -1,4 +1,5 @@
 import type { Trainee } from "@/domains/assess/api";
+import type { AssessWords } from "@/domains/assess/vocabulary";
 import type { Cohort } from "@/domains/assess/roster/api";
 import { errorMessage } from "@/foundation/hooks/useAsync";
 import { hasCode } from "@/foundation/platform-client";
@@ -45,6 +46,30 @@ export function invitationResendable(trainee: Trainee): boolean {
   );
 }
 
+/** Rows a bulk invitation would reach: the ones whose invitation can be resent. */
+export function awaitingInvitation(rows: Trainee[]): Trainee[] {
+  return rows.filter(invitationResendable);
+}
+
+/**
+ * One line for a bulk action: how many rows reached `okOutcome`, then each other
+ * outcome counted, e.g. "Sent 2 of 4 invitations. 1 already signed in."
+ */
+export function bulkSummary(
+  results: { outcome: string }[],
+  okOutcome: string,
+  noun: string,
+): string {
+  const ok = results.filter((result) => result.outcome === okOutcome).length;
+  const verb = okOutcome.charAt(0).toUpperCase() + okOutcome.slice(1);
+  const others = new Map<string, number>();
+  for (const { outcome } of results) {
+    if (outcome !== okOutcome) others.set(outcome, (others.get(outcome) ?? 0) + 1);
+  }
+  const rest = [...others].map(([outcome, count]) => ` ${count} ${outcome.replaceAll("_", " ")}.`);
+  return `${verb} ${ok} of ${results.length} ${noun}.${rest.join("")}`;
+}
+
 /**
  * Whether a roster row still has no account behind it.
  *
@@ -65,13 +90,14 @@ export function sortTrainees(trainees: Trainee[]): Trainee[] {
   });
 }
 
-export function traineeCountLabel(count: number): string {
-  return `${count} trainee${count === 1 ? "" : "s"}`;
+export function traineeCountLabel(count: number, words: AssessWords): string {
+  return `${count} ${count === 1 ? words.trainee : words.trainees}`;
 }
 
 /** The header subtitle, which changed with the tab in the old client. */
 export function sectionSubtitle(
   section: "trainees" | "add" | "groups" | "access",
+  words: AssessWords,
   counts: { trainees: number; groups: number },
 ): string {
   switch (section) {
@@ -79,14 +105,14 @@ export function sectionSubtitle(
       return "Everyone your organisation examines.";
     case "add":
       return counts.trainees === 0
-        ? "Add the people who will sit your exams or training sessions."
-        : "Add people one at a time, or import a spreadsheet.";
+        ? `Add the ${words.trainees} who will sit your exams or training sessions.`
+        : `Add ${words.trainees} one at a time, or import a spreadsheet.`;
     case "groups":
       return counts.groups === 0
-        ? "Sort trainees into groups like intakes or rotation teams."
+        ? `Sort ${words.trainees} into groups like intakes or rotation teams.`
         : "Cohorts are an intake; groups are who you put on a circuit.";
     case "access":
-      return "Give a trainee access to an exam they can practise between sittings.";
+      return `Give a ${words.trainee} access to an exam they can practise between ${words.sittings}.`;
   }
 }
 
@@ -136,10 +162,10 @@ export type RosterTabKey = "trainees" | "add" | "groups" | "access";
  * The roster's tabs. Exam access is the org admin's: its list and grants are closed to a
  * supervisor by the API, so the tab is not offered to one.
  */
-export function rosterTabs(canManage: boolean): { key: RosterTabKey; label: string }[] {
+export function rosterTabs(canManage: boolean, words: AssessWords): { key: RosterTabKey; label: string }[] {
   const tabs: { key: RosterTabKey; label: string }[] = [
     { key: "trainees", label: "Everyone" },
-    { key: "add", label: "Add people" },
+    { key: "add", label: words.addPeople },
     { key: "groups", label: "Groups" },
   ];
   return canManage ? [...tabs, { key: "access", label: "Exam access" }] : tabs;

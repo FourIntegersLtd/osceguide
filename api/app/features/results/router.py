@@ -188,6 +188,23 @@ async def read_result_pdf(
     return _pdf_attachment(payload, filename)
 
 
+# What the candidate would see, readable before release. Never carries moderation notes.
+@router.get(
+    "/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/result-preview",
+    response_model=schemas.TraineeResultRead,
+    responses=error_responses(
+        Forbidden, errors.SittingNotFound, errors.TraineeNotFound, errors.ResultNotFound
+    ),
+)
+async def read_result_preview(
+    sitting_id: uuid.UUID,
+    trainee_id: uuid.UUID,
+    workspace: OrgInstitutionAdmin,
+    session: Session,
+) -> schemas.TraineeResultRead:
+    return await service_candidate.preview_result(session, workspace.org_id, sitting_id, trainee_id)
+
+
 # Registered before `/me/results/{sitting_id}`: that pattern would otherwise take `….pdf`
 # as the id and refuse it as an invalid UUID.
 @router.get(

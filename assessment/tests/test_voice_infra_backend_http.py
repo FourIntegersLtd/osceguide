@@ -54,3 +54,41 @@ def test_sync_requests_send_the_agent(monkeypatch, call: str) -> None:
     assert result.ok and result.data == {"ok": True}
     assert seen["user-agent"] == backend_http.USER_AGENT
     assert seen["x-secret"] == "s"
+
+
+def test_blocking_get_wrapped_in_to_thread_does_not_stall_the_event_loop() -> None:
+    """Workers call sync_get_json via asyncio.to_thread; a 2 s backend must not delay other coroutines."""
+    import asyncio
+    import threading
+    import time
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class Slow(BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            time.sleep(2)
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b'{"ok": true}')
+
+        def log_message(self, *_):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Slow)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+
+    async def scenario() -> tuple[float, bool]:
+        start = time.monotonic()
+        call = asyncio.create_task(
+            asyncio.to_thread(backend_http.sync_get_json, f"http://127.0.0.1:{server.server_port}", "/x", timeout=10)
+        )
+        await asyncio.sleep(0.1)
+        ticked_after = time.monotonic() - start  # a blocked loop would resume only after ~2 s
+        result = await call
+        return ticked_after, result.ok
+
+    try:
+        ticked_after, ok = asyncio.run(scenario())
+    finally:
+        server.shutdown()
+    assert ok
+    assert ticked_after < 0.5

@@ -22,6 +22,8 @@ from typing import Any
 from app.core import bucket_layout
 
 MAX_BYTES = 10 * 1024 * 1024
+# Per upload request, as the retiring uploader allowed: more is refused whole, not trimmed.
+MAX_FILES = 10
 ALLOWED_SUFFIXES = frozenset({".png", ".jpg", ".jpeg"})
 
 # SEC-013: the leading bytes that make a file a PNG or a JPEG. The extension is

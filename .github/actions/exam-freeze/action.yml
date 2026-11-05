@@ -1,0 +1,45 @@
+name: Exam freeze
+description: >-
+  Fails inside a freeze window listed in the repo variable EXAM_FREEZE_WINDOWS unless an override
+  reason is given. Run it after main's checkout, in the job that checks and again in the job that
+  pushes, because a deploy job can be approved hours after the check job ran.
+inputs:
+  windows:
+    description: 'Comma-separated "start/end" ISO-UTC pairs, for example 2026-11-14T06:00Z/2026-11-14T20:00Z.'
+    required: false
+    default: ""
+  override-reason:
+    description: Why this promotion cannot wait. Leave empty normally.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Exam freeze
+      shell: bash
+      env:
+        WINDOWS: ${{ inputs.windows }}
+        OVERRIDE_REASON: ${{ inputs.override-reason }}
+      run: |
+        now=$(date -u +%s)
+        IFS=',' read -ra pairs <<< "${WINDOWS}"
+        for pair in "${pairs[@]}"; do
+          pair="${pair// /}"
+          [ -z "${pair}" ] && continue
+          bad="::error::Bad EXAM_FREEZE_WINDOWS entry (want start/end): ${pair}"
+          [[ "${pair}" =~ ^[^/]+/[^/]+$ ]] || { echo "${bad}"; exit 1; }
+          start="${pair%%/*}"
+          end="${pair##*/}"
+          s=$(date -u -d "${start}" +%s) || { echo "${bad}"; exit 1; }
+          e=$(date -u -d "${end}" +%s) || { echo "${bad}"; exit 1; }
+          [ "${e}" -gt "${s}" ] || { echo "${bad}"; exit 1; }
+          if [ "${now}" -ge "${s}" ] && [ "${now}" -lt "${e}" ]; then
+            if [ -n "${OVERRIDE_REASON}" ]; then
+              echo "::warning::Exam freeze (${pair}) overridden: ${OVERRIDE_REASON}"
+              exit 0
+            fi
+            echo "::error::Exam freeze in force until ${end}. Re-run with override_freeze_reason to promote anyway."
+            exit 1
+          fi
+        done
+        echo "No exam freeze in force."

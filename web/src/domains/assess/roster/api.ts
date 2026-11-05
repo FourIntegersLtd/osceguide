@@ -8,7 +8,12 @@
  * across instead. Both spellings are live in the same API and the schema is
  * the only place that says which is which.
  */
-import { PlatformError, collectPages, platformRequest, type components } from "@/foundation/platform-client";
+import {
+  PlatformError,
+  collectPages,
+  platformRequest,
+  type components,
+} from "@/foundation/platform-client";
 import {
   orgPath,
   pageQuery,
@@ -50,7 +55,11 @@ export async function readTraineeSlice(
   cursor?: string | null,
 ): Promise<TraineeSlice> {
   const page = await listTrainees(slug, signal, { cursor });
-  return { rows: page.items, total: page.total_count ?? page.items.length, cursor: page.next_cursor ?? null };
+  return {
+    rows: page.items,
+    total: page.total_count ?? page.items.length,
+    cursor: page.next_cursor ?? null,
+  };
 }
 
 export interface TraineeInput {
@@ -84,17 +93,19 @@ export function addTrainee(
     method: "POST",
     body: {
       ...traineeBody(input),
-      ...(input.temporaryPassword ? { temporary_password: input.temporaryPassword } : {}),
+      ...(input.temporaryPassword
+        ? { temporary_password: input.temporaryPassword }
+        : {}),
     },
   });
 }
 
 /** Rows one import request takes; the server refuses more (`too_many_trainees`). */
 // Must stay within MAX_BULK_TRAINEES in api/app/features/roster/schemas.py, the server limit.
-export const IMPORT_CHUNK = 500;
+export const BULK_CHUNK = 500;
 
 /**
- * A spreadsheet's worth of trainees, sent `IMPORT_CHUNK` rows at a time and
+ * A spreadsheet's worth of trainees, sent `BULK_CHUNK` rows at a time and
  * answered as one result.
  *
  * The browser parses the file and the API takes rows, so an import is an
@@ -105,21 +116,32 @@ export const IMPORT_CHUNK = 500;
  * `skipped` under the refusal's code, so the rows already added still read as
  * added. A refusal before anything was added is thrown.
  */
-export async function bulkAddTrainees(slug: string, rows: TraineeInput[]): Promise<BulkTraineesResult> {
+export async function bulkAddTrainees(
+  slug: string,
+  rows: TraineeInput[],
+): Promise<BulkTraineesResult> {
   const created: Trainee[] = [];
   const skipped: NonNullable<BulkTraineesResult["skipped"]> = [];
-  for (let start = 0; start < rows.length; start += IMPORT_CHUNK) {
+  for (let start = 0; start < rows.length; start += BULK_CHUNK) {
     try {
-      const part = await platformRequest<BulkTraineesResult>(`${orgPath(slug)}/trainees/bulk`, {
-        method: "POST",
-        body: { trainees: rows.slice(start, start + IMPORT_CHUNK).map(traineeBody) },
-      });
+      const part = await platformRequest<BulkTraineesResult>(
+        `${orgPath(slug)}/trainees/bulk`,
+        {
+          method: "POST",
+          body: {
+            trainees: rows.slice(start, start + BULK_CHUNK).map(traineeBody),
+          },
+        },
+      );
       created.push(...(part.created ?? []));
       skipped.push(...(part.skipped ?? []));
     } catch (cause) {
       if (start === 0) throw cause;
-      const code = cause instanceof PlatformError ? cause.code : "import_failed";
-      skipped.push(...rows.slice(start).map((row) => ({ email: row.email, code })));
+      const code =
+        cause instanceof PlatformError ? cause.code : "import_failed";
+      skipped.push(
+        ...rows.slice(start).map((row) => ({ email: row.email, code })),
+      );
       break;
     }
   }
@@ -149,9 +171,12 @@ export function setTraineeAccess(
  * for a row added by mistake, or one who left before anything ran.
  */
 export function deleteTrainee(slug: string, traineeId: string): Promise<void> {
-  return platformRequest<void>(`${orgPath(slug)}/trainees/${encodeURIComponent(traineeId)}`, {
-    method: "DELETE",
-  });
+  return platformRequest<void>(
+    `${orgPath(slug)}/trainees/${encodeURIComponent(traineeId)}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 /**
@@ -159,7 +184,10 @@ export function deleteTrainee(slug: string, traineeId: string): Promise<void> {
  * address and name are scrubbed, any decision recorded about them stays.
  * Idempotent — calling this twice is a no-op that still answers 200.
  */
-export function anonymiseTrainee(slug: string, traineeId: string): Promise<Trainee> {
+export function anonymiseTrainee(
+  slug: string,
+  traineeId: string,
+): Promise<Trainee> {
   return platformRequest<Trainee>(
     `${orgPath(slug)}/trainees/${encodeURIComponent(traineeId)}/anonymise`,
     { method: "POST" },
@@ -217,17 +245,79 @@ export function updateTrainee(
  * already chosen a password: mailing a set-password link to somebody who can
  * sign in is an invitation to take over their account. Branch on the code.
  */
-export function resendInvitation(slug: string, traineeId: string): Promise<Invitation> {
+export function resendInvitation(
+  slug: string,
+  traineeId: string,
+): Promise<Invitation> {
   return platformRequest<Invitation>(
     `${orgPath(slug)}/trainees/${encodeURIComponent(traineeId)}/resend-invitation`,
     { method: "POST" },
   );
 }
 
+export type BulkTraineeResult = { trainee_id: string; outcome: string };
+
+/**
+ * One bulk call per `BULK_CHUNK` ids (the server caps each request), answered
+ * as one list. A refused chunk throws: results already applied are not lost,
+ * they are simply not reported, and a reload shows the true state.
+ */
+async function inChunks(
+  slug: string,
+  action: "revoke" | "cohort" | "resend-invitation",
+  ids: string[],
+  extra: Record<string, unknown> = {},
+): Promise<{ results: BulkTraineeResult[] }> {
+  const results: BulkTraineeResult[] = [];
+  for (let start = 0; start < ids.length; start += BULK_CHUNK) {
+    const part = await platformRequest<{ results: BulkTraineeResult[] }>(
+      `${orgPath(slug)}/trainees/bulk/${action}`,
+      {
+        method: "POST",
+        body: { trainee_ids: ids.slice(start, start + BULK_CHUNK), ...extra },
+      },
+    );
+    results.push(...part.results);
+  }
+  return { results };
+}
+
+/** Revoke access for several trainees; each row answers `revoked`, `already_revoked` or `not_found`. */
+export function revokeTrainees(slug: string, ids: string[]) {
+  return inChunks(slug, "revoke", ids);
+}
+
+/** Put several trainees in a group, or in none with `null`; each row answers `updated` or `not_found`. */
+export function setTraineesCohort(
+  slug: string,
+  ids: string[],
+  cohortId: string | null,
+) {
+  return inChunks(slug, "cohort", ids, { cohort_id: cohortId });
+}
+
+/** The invitation link again for several; each row answers `sent`, `already_signed_in` or `not_found`. */
+export function resendTraineeInvitations(slug: string, ids: string[]) {
+  return inChunks(slug, "resend-invitation", ids);
+}
+
 export function listCohorts(slug: string, signal?: AbortSignal) {
-  return platformRequest<components["schemas"]["Page_CohortRead_"]>(`${orgPath(slug)}/cohorts`, {
-    signal,
-  });
+  return platformRequest<components["schemas"]["Page_CohortRead_"]>(
+    `${orgPath(slug)}/cohorts`,
+    {
+      signal,
+    },
+  );
+}
+
+/** Every intake, every page: the picker must not stop at the first page. */
+export function readAllCohorts(slug: string, signal?: AbortSignal) {
+  return collectPages((cursor) =>
+    platformRequest<components["schemas"]["Page_CohortRead_"]>(
+      `${orgPath(slug)}/cohorts`,
+      { signal, query: pageQuery({ cursor }) },
+    ),
+  );
 }
 
 export function addCohort(
@@ -268,9 +358,12 @@ export function renameCohort(
  * screen must say so and let the administrator move them first.
  */
 export function deleteCohort(slug: string, cohortId: string): Promise<void> {
-  return platformRequest<void>(`${orgPath(slug)}/cohorts/${encodeURIComponent(cohortId)}`, {
-    method: "DELETE",
-  });
+  return platformRequest<void>(
+    `${orgPath(slug)}/cohorts/${encodeURIComponent(cohortId)}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 export function listTraineeGroups(slug: string, signal?: AbortSignal) {
@@ -280,7 +373,20 @@ export function listTraineeGroups(slug: string, signal?: AbortSignal) {
   );
 }
 
-export function addTraineeGroup(slug: string, label: string): Promise<TraineeGroup> {
+/** Every group, every page: the picker must not stop at the first page. */
+export function readAllTraineeGroups(slug: string, signal?: AbortSignal) {
+  return collectPages((cursor) =>
+    platformRequest<components["schemas"]["Page_GroupRead_"]>(
+      `${orgPath(slug)}/trainee-groups`,
+      { signal, query: pageQuery({ cursor }) },
+    ),
+  );
+}
+
+export function addTraineeGroup(
+  slug: string,
+  label: string,
+): Promise<TraineeGroup> {
   return platformRequest<TraineeGroup>(`${orgPath(slug)}/trainee-groups`, {
     method: "POST",
     body: { label },
@@ -292,10 +398,17 @@ export function addTraineeGroup(slug: string, label: string): Promise<TraineeGro
  * to hold, where the retiring client matched a copied label and a rename
  * emptied the group out from under everybody in it.
  */
-export function renameGroup(slug: string, groupId: string, label: string): Promise<TraineeGroup> {
+export function renameGroup(
+  slug: string,
+  groupId: string,
+  label: string,
+): Promise<TraineeGroup> {
   return platformRequest<TraineeGroup>(
     `${orgPath(slug)}/trainee-groups/${encodeURIComponent(groupId)}`,
-    { method: "PATCH", body: { label } satisfies components["schemas"]["UpdateGroup"] },
+    {
+      method: "PATCH",
+      body: { label } satisfies components["schemas"]["UpdateGroup"],
+    },
   );
 }
 
@@ -363,7 +476,10 @@ export function resolveRoster(
 ): Promise<ResolvedRoster> {
   return platformRequest<ResolvedRoster>(`${orgPath(slug)}/roster/resolve`, {
     method: "POST",
-    body: { trainee_ids: input.traineeIds ?? [], group_ids: input.groupIds ?? [] },
+    body: {
+      trainee_ids: input.traineeIds ?? [],
+      group_ids: input.groupIds ?? [],
+    },
   });
 }
 
@@ -400,11 +516,18 @@ export function grantEntitlement(
 ): Promise<Entitlement> {
   return platformRequest<Entitlement>(`${orgPath(slug)}/entitlements`, {
     method: "POST",
-    body: { email: input.email, exam_code: input.examCode, ends_at: input.endsAt },
+    body: {
+      email: input.email,
+      exam_code: input.examCode,
+      ends_at: input.endsAt,
+    },
   });
 }
 
-export function revokeEntitlement(slug: string, entitlementId: string): Promise<void> {
+export function revokeEntitlement(
+  slug: string,
+  entitlementId: string,
+): Promise<void> {
   return platformRequest<void>(
     `${orgPath(slug)}/entitlements/${encodeURIComponent(entitlementId)}/revoke`,
     { method: "POST" },
@@ -413,7 +536,10 @@ export function revokeEntitlement(slug: string, entitlementId: string): Promise<
 
 /** This institution's own exams, plus the platform catalogue. */
 export function listExams(slug: string, signal?: AbortSignal) {
-  return platformRequest<components["schemas"]["Page_ExamRead_"]>(`${orgPath(slug)}/exams`, {
-    signal,
-  });
+  return platformRequest<components["schemas"]["Page_ExamRead_"]>(
+    `${orgPath(slug)}/exams`,
+    {
+      signal,
+    },
+  );
 }

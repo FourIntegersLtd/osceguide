@@ -131,23 +131,75 @@ always `staging`.
 
 ### Railway service settings
 
-These live in the Railway dashboard (service → Settings), not in a file. Railway
-ignores `railway.toml` for services that never used Config as Code, and Config as
-Code ends on 2026-12-01. Set them the same way in both environments; only the
-branch differs.
+`platform-api` is configured by `api/railway.json` (Railway "Config as Code"); point the service at it
+(Settings, Config-as-code, file path `/api/railway.json`) in both environments. The file sets the
+Dockerfile build and watch paths, the `alembic upgrade head` pre-deploy command, the `/health` check
+(60 s timeout), `drainingSeconds: 30` (requests in flight finish before the old copy is killed),
+`overlapSeconds: 20` (the old copy answers until the new one is serving) and `ON_FAILURE` restarts.
+All of these keys are in Railway's published schema (checked 2026-11-04). A value set in the file
+shows as locked in the dashboard and wins over a dashboard value.
+
+Not in the file, so set in the dashboard: the source branch, root directory and every `platform-worker`
+setting (the worker has no config file, so two migrators never race). Config as Code ends on 2026-12-01
+for services that never used it; re-check the file is still read after that date.
+
+If the file is not adopted, set `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=30` and
+`RAILWAY_DEPLOYMENT_OVERLAP_SECONDS=20` as service variables on `platform-api` (Ops 1). They are the same
+two settings as `drainingSeconds` and `overlapSeconds`; set them in one place only.
 
 | Setting | platform-api | platform-worker |
 |---|---|---|
-| Source → Branch | `main` on staging, `production-api` on production | same |
-| Source → Root directory | `/` (the engine sits outside `api/`) | `/` |
-| Build → Builder / Dockerfile path | Dockerfile, `/api/Dockerfile` | same |
-| Build → Watch paths | `/api/**`, `/assessment/packages/osce_assessment/**` | same |
-| Deploy → Custom start command | empty (the Dockerfile's `uvicorn`) | `python -m app.worker.main` |
-| Deploy → Pre-deploy command | `alembic upgrade head` | empty, so two migrators never race |
-| Deploy → Healthcheck path | `/health` | empty (the worker serves no HTTP) |
-| Deploy → Teardown → Overlap seconds | `20`, so the old copy answers until the new one is serving | default |
-| Deploy → Teardown → Draining seconds | `30`, so requests in flight finish before the old copy is killed | default |
+| Source branch | `main` on staging, `production-api` on production | same |
+| Source root directory | `/` (the engine sits outside `api/`) | `/` |
+| Builder / Dockerfile path / watch paths | `api/railway.json` | Dockerfile `/api/Dockerfile`, watch `/api/**`, `/assessment/packages/osce_assessment/**` |
+| Custom start command | empty (the Dockerfile's `uvicorn`) | `python -m app.worker.main` |
+| Pre-deploy command | `alembic upgrade head` (file) | empty |
+| Healthcheck path | `/health` (file) | empty (serves no HTTP) |
+| Overlap / draining seconds | `20` / `30` (file) | default |
+| `WEB_CONCURRENCY` | vCPUs of the container (see Processes) | not used |
+| `WORKER_QUEUES`, `WORKER_EXCLUDE_QUEUES` | not used | see Processes |
 
 Railway runs the pre-deploy command in its own step, and its output is not in the
 deploy log. After a deploy with a migration, check that the worker's jobs succeed
 and `/health` reports the new commit.
+
+### Processes
+
+- **API workers.** The image runs `uvicorn --workers ${WEB_CONCURRENCY:-1}`. Set `WEB_CONCURRENCY` to the
+  container's vCPU count. Every process has its own database pool, so the connections it can open are
+  `(pool_size + DATABASE_MAX_OVERFLOW) x WEB_CONCURRENCY x replicas`; keep that under Postgres's limit.
+- **Per-process state that stays correct with several workers**: the rate limiter's local fallback (it
+  only applies when Redis is off), `MAX_STREAMS_PER_ACCOUNT` (the stream cap is per process, so an
+  account may hold that many streams on each worker) and the cache single-flight (one load per key per
+  process, not per fleet). State that must be exact lives in Redis or Postgres.
+- **Live updates** use one Redis pub/sub connection per process, however many streams are open. A stream
+  that falls 100 events behind, or whose connection drops, is ended and the browser reconnects to a fresh
+  snapshot. An ended stream is noticed by the stream loop on its next heartbeat.
+- **Request body ceiling.** `MAX_REQUEST_BODY_BYTES` (default 26 MiB). A larger POST gets 413
+  `request_too_large` before any handler runs. Keep it above the largest upload route's own limit.
+- **Worker queues.** `WORKER_QUEUES=a,b` makes a worker take only those queues. Otherwise it takes every
+  queue its tasks declare, less `WORKER_EXCLUDE_QUEUES`. To keep a marking burst from starving the circuit
+  bell, run a second `platform-worker` service with `WORKER_QUEUES=scoring` and set
+  `WORKER_EXCLUDE_QUEUES=scoring` on the first. Periodic tasks are deduplicated by procrastinate, so both
+  workers running the deferrer is safe.
+- **Sentry.** `SENTRY_TRACES_SAMPLE_RATE` (default 0.05). An error from waiting too long for a pooled
+  connection carries the tag `db.pool_exhausted=true`. The console's health report shows the pool's
+  checked-out and overflow counts for the api process that answered.
+
+### Database backup service
+
+`db-backup` (staging and production) is a cron service built from `api/infra/db-backup/`. Its settings
+live in Railway, not in a `railway.json`: the file was not read for this service (checked
+2026-11-04; Config as Code ends 2026-12-01), so the cron schedule is set on the service.
+
+| Setting | Value |
+|---|---|
+| Source | none yet: deployed with `railway up` from `api/infra/db-backup/` (`--service db-backup --environment <env>`). Connect the repo, root `/api/infra/db-backup`, when you want a push to redeploy it |
+| Build → Dockerfile path | `Dockerfile` |
+| Deploy → Cron Schedule | `0 2 * * *` (UTC) |
+| Deploy → Restart policy | Never |
+| Variables | `DATABASE_URL=${{<postgres service>.DATABASE_URL}}` (`platform-postgres` / `platform-postgres-production`), `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` referenced from the api service (`platform-api-staging` / `platform-api`), `BACKUP_ENV=staging` or `production` |
+
+The bucket is versioned: a pruned nightly dump gets a delete marker and its bytes stay until a lifecycle
+rule expires old versions (the app's key cannot set one).
+

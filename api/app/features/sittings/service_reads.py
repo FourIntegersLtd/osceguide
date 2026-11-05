@@ -21,11 +21,12 @@ from app.features.sittings import (
     repository_reads,
     repository_run,
 )
-from app.features.sittings.models import Circuit, Sitting, Slot
-from app.features.sittings.reads import timing_read
 
 # Re-exported: a caller asks this module for a circuit and is handed a
 # `CircuitRef`, so it should not have to know which file the dataclass is in.
+from app.features.sittings.announcements import attempt_progress as attempt_progress
+from app.features.sittings.models import Circuit, Sitting, Slot
+from app.features.sittings.reads import timing_read
 from app.features.sittings.reads_types import CircuitDetail as CircuitDetail
 from app.features.sittings.reads_types import CircuitRef as CircuitRef
 from app.features.sittings.reads_types import CircuitRun as CircuitRun
@@ -151,10 +152,36 @@ async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:
     return await repository_reads.count_sittings(session, org_id)
 
 
-async def recent_sittings(session: AsyncSession, org_id: uuid.UUID, *, limit: int) -> list[SittingRef]:
-    """This organisation's most recently created sittings."""
-    sittings, _ = await repository.list_sittings(session, org_id, limit=limit, cursor=None)
-    return [_sitting_ref(sitting) for sitting in sittings]
+async def recent_sittings(
+    session: AsyncSession, org_id: uuid.UUID, *, limit: int, exclude_status: str | None = None
+) -> list[SittingRef]:
+    """This organisation's most recently created sittings, optionally leaving one status out."""
+    refs, _ = await recent_sittings_page(session, org_id, limit=limit, exclude_status=exclude_status)
+    return refs
+
+
+async def recent_sittings_page(
+    session: AsyncSession, org_id: uuid.UUID, *, limit: int, exclude_status: str | None = None
+) -> tuple[list[SittingRef], bool]:
+    """The most recent sittings, and whether older ones exist beyond `limit`."""
+    sittings, next_cursor = await repository.list_sittings(
+        session, org_id, limit=limit, cursor=None, exclude_status=exclude_status
+    )
+    return [_sitting_ref(sitting) for sitting in sittings], next_cursor is not None
+
+
+async def candidate_counts(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Distinct candidates rostered in each sitting, keyed by sitting id."""
+    return await repository_reads.candidate_counts_for_sittings(session, org_id, sitting_ids)
+
+
+async def candidate_user_ids(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, set[uuid.UUID]]:
+    """The accounts on each sitting's circuits now, keyed by sitting id."""
+    return await repository_reads.candidate_user_ids_for_sittings(session, org_id, sitting_ids)
 
 
 async def supervisor_circuits(
@@ -209,16 +236,18 @@ async def sitting_detail(
     sitting = await repository.sitting_by_id(session, org_id, sitting_id)
     if sitting is None:
         return None
-    circuits = []
-    for circuit in await repository.circuits_for_sitting(session, org_id, sitting_id):
-        slots = await repository.slots_for_circuit(session, org_id, circuit.id)
-        circuits.append(
-            CircuitDetail(
-                circuit=_circuit_ref(circuit),
-                sitting=_sitting_ref(sitting),
-                slots=[_slot_ref(slot) for slot in slots],
-            )
+    sitting_circuits = await repository.circuits_for_sitting(session, org_id, sitting_id)
+    slots_by_circuit = await repository.slots_for_circuits(
+        session, org_id, [circuit.id for circuit in sitting_circuits]
+    )
+    circuits = [
+        CircuitDetail(
+            circuit=_circuit_ref(circuit),
+            sitting=_sitting_ref(sitting),
+            slots=[_slot_ref(slot) for slot in slots_by_circuit[circuit.id]],
         )
+        for circuit in sitting_circuits
+    ]
     return SittingDetail(sitting=_sitting_ref(sitting), circuits=circuits)
 
 

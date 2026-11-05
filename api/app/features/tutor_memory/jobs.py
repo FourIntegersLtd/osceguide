@@ -17,9 +17,13 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import job_session
+from app.core.events import encode_message, get_event_bus, user_topic
 from app.core.jobs import defer_in_transaction, get_jobs_app
 from app.core.logging import get_logger
-from app.features.tutor_memory import domain
+from app.core.ports import TranscriptSummariser
+from app.features.attempts import service_reads as attempts
+from app.features.tutor_memory import domain, service_summaries
 
 log = get_logger(__name__)
 
@@ -44,6 +48,26 @@ REINDEX_CRON = "17 3 * * *"
 # transaction; the next run repairs whatever it had not reached. It cannot stop
 # code that never awaits, which is why the chunker's own loop is pinned by a test.
 REINDEX_TIMEOUT_SECONDS = 15 * 60
+
+
+async def run_debrief_summary(attempt_id: uuid.UUID, *, summariser: TranscriptSummariser) -> None:
+    """Summarise one debrief; if that fails, tell the owner it will not come, then re-raise.
+
+    The failed transaction rolled back, so nothing is queued for after a commit: the event goes
+    straight to the bus, and the owner is looked up in a fresh session.
+    """
+    try:
+        async with job_session() as session:
+            await service_summaries.summarise_debrief(session, attempt_id, summariser=summariser)
+    except Exception:
+        async with job_session() as session:
+            ref = await attempts.attempt_ref(session, attempt_id)
+        if ref is not None:
+            await get_event_bus().publish(
+                user_topic(ref.user_id),
+                encode_message("debrief", {"attempt_id": str(attempt_id), "state": "failed"}),
+            )
+        raise
 
 
 async def queue_reindex(session: AsyncSession) -> None:
@@ -142,11 +166,6 @@ def register() -> None:
     @app.task(name=DEBRIEF_SUMMARY_TASK, queue=SUMMARIES_QUEUE)
     async def summarise_debrief(attempt_id: str) -> None:
         """Write the debrief summary a finished debrief attempt is owed."""
-        from app.core.db import job_session
-        from app.features.tutor_memory import service_summaries
         from app.features.tutor_memory.summariser import build_summariser
 
-        async with job_session() as session:
-            await service_summaries.summarise_debrief(
-                session, uuid.UUID(attempt_id), summariser=build_summariser()
-            )
+        await run_debrief_summary(uuid.UUID(attempt_id), summariser=build_summariser())

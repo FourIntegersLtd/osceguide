@@ -180,10 +180,10 @@ async def test_a_late_turn_dropped_after_compaction_is_logged_but_a_duplicate_is
 
     with capture_logs() as logs:
         await service_worker.accept_chunk(
-            db_session, attempt_id, body_attempt_id=str(attempt_id), message=post("m1")
+            db_session, attempt_id, body_attempt_id=str(attempt_id), message=post("m1"), now=NOW
         )
         await service_worker.accept_chunk(
-            db_session, attempt_id, body_attempt_id=str(attempt_id), message=post("late")
+            db_session, attempt_id, body_attempt_id=str(attempt_id), message=post("late"), now=NOW
         )
 
     dropped = [entry for entry in logs if entry["event"] == "transcript.late_turn_dropped"]

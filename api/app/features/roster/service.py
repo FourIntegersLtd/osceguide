@@ -56,8 +56,6 @@ async def add_trainee(
     Every trainee ends up linked to an account: a slot names a `users.id`, so an
     unlinked trainee could be rostered and never scheduled.
     """
-    if await repository.trainee_by_email(session, org_id, email) is not None:
-        raise errors.TraineeExists()
     trainee = await repository.create_trainee(
         session,
         org_id,
@@ -66,6 +64,8 @@ async def add_trainee(
         last_name=last_name,
         cohort_id=cohort_id,
     )
+    if trainee is None:
+        raise errors.TraineeExists()
     # A slot names a `users.id`, so a trainee without a linked account could be
     # rostered and never scheduled. Invite and link now, so every trainee has one.
     existing = await identity.user_ref_by_email(session, email)
@@ -289,6 +289,17 @@ async def trainees_by_user_id(
     """Roster entries keyed by user id, for a caller holding slots (which name a `users.id`)."""
     trainees = await repository.trainees_for_users(session, org_id, list(user_ids))
     return {trainee.user_id: _trainee_read(trainee) for trainee in trainees if trainee.user_id is not None}
+
+
+async def names_for_users(
+    session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """The name to show for each rostered user id: first and last name, else the email."""
+    known = await trainees_by_user_id(session, org_id, user_ids)
+    return {
+        user_id: _display_name(trainee.first_name, trainee.last_name, trainee.email)
+        for user_id, trainee in known.items()
+    }
 
 
 async def claim_roster_entries(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:

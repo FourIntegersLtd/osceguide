@@ -83,6 +83,23 @@ async def candidate_counts_for_sittings(
     return {sitting_id: int(count) for sitting_id, count in (await session.execute(stmt)).all()}
 
 
+async def candidate_user_ids_for_sittings(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, set[uuid.UUID]]:
+    """The accounts rostered across each sitting's circuits now, keyed by sitting id."""
+    if not sitting_ids:
+        return {}
+    stmt = (
+        select(Circuit.sitting_id, CircuitTrainee.trainee_id)
+        .join(Circuit, Circuit.id == CircuitTrainee.circuit_id)
+        .where(Circuit.org_id == org_id, Circuit.sitting_id.in_(list(sitting_ids)))
+    )
+    found: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for sitting_id, user_id in (await session.execute(stmt)).all():
+        found.setdefault(sitting_id, set()).add(user_id)
+    return found
+
+
 async def circuits_led_counts(
     session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, int]:

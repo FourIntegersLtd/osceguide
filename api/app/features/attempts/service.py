@@ -6,9 +6,13 @@ import uuid
 from dataclasses import replace
 from datetime import datetime, timedelta
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import savepoint
+from app.core.settings import get_settings
 from app.features.attempts import domain, errors, repository, service_render
+from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import (
     AttemptRead,
@@ -16,10 +20,12 @@ from app.features.attempts.schemas import (
 from app.features.attempts.service_debrief import start_debrief_attempt as start_debrief_attempt
 from app.features.attempts.service_reads import _attempt_read, _ensure_visible, _require
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
-from app.features.catalog.service import resolve_exam
+from app.features.catalog.service import exam_for_attempt, resolve_exam
 from app.features.entitlements import service as entitlements
 from app.features.entitlements.errors import NotEntitled
 from app.features.identity import service as identity
+from app.features.identity import service_platform as identity_accounts
+from app.features.sittings import service_reads as sittings_reads
 from app.features.stations import service as stations
 from app.features.stations import service_plan_window
 from app.features.stations import service_reads as stations_reads
@@ -102,19 +108,38 @@ async def start_attempt(
         if unstarted is not None:
             return _attempt_read(unstarted)
 
-    attempt = await repository.create_attempt(
-        session,
-        kind=kind,
-        user_id=user_id,
-        exam_id=exam.id,
-        org_id=org_id,
-        station_version_id=station_version_id,
-        slot_id=slot_id,
-        set_entry_id=set_entry_id,
-        peer_session_id=peer_session_id,
-        source_attempt_id=source_attempt_id,
-        room_name=room_name,
-    )
+    try:
+        # A savepoint, so losing the race below rolls back only this insert, not the caller's work.
+        async with savepoint(session):
+            attempt = await repository.create_attempt(
+                session,
+                kind=kind,
+                user_id=user_id,
+                exam_id=exam.id,
+                org_id=org_id,
+                station_version_id=station_version_id,
+                slot_id=slot_id,
+                set_entry_id=set_entry_id,
+                peer_session_id=peer_session_id,
+                source_attempt_id=source_attempt_id,
+                room_name=room_name,
+            )
+    except IntegrityError as exc:
+        # A double click or retry started the same station a moment ago: hand back that attempt.
+        if getattr(getattr(exc.orig, "diag", None), "constraint_name", None) != "uq_attempts_one_unstarted":
+            raise
+        winner = await repository.unstarted_attempt(
+            session,
+            kind=kind,
+            user_id=user_id,
+            exam_id=exam.id,
+            org_id=org_id,
+            station_version_id=station_version_id,
+            set_entry_id=set_entry_id,
+        )
+        if winner is None:
+            raise
+        return _attempt_read(winner)
     return _attempt_read(attempt)
 
 
@@ -255,21 +280,78 @@ async def abandon_attempt(
         raise errors.InvalidAttemptState(str(exc)) from exc
 
     await repository.set_status(session, attempt_id, status=domain.Status.FAILED, at=now, reason="abandoned")
+    await sittings_reads.attempt_progress(session, attempt)
     return _attempt_read(await _require(session, attempt_id))
 
 
 ABANDONED_AFTER = timedelta(hours=3)
 
 
-async def abandon_stale_attempts(session: AsyncSession, *, now: datetime) -> list[uuid.UUID]:
-    """Fail the consumer attempts left created or running for over three hours (S-25).
+async def attempt_deadline(session: AsyncSession, attempt: Attempt) -> datetime | None:
+    """When the server stops taking turns for this attempt, or None while it has no clock.
 
-    A candidate who closed the tab never called `abandon_attempt`, so the attempt would hold its
-    set entry or practice slot for ever. Returns the ids failed.
+    Only a started consumer station is timed here; an exam slot's circuit owns its own clock.
+    The person's own timers win over the exam's defaults, as on the station runner.
     """
-    return await repository.fail_stale_consumer_attempts(
+    if attempt.started_at is None or attempt.kind not in _RESUMABLE_KINDS:
+        return None
+    exam = await exam_for_attempt(session, attempt.exam_id)
+    person = await identity_accounts.user_by_id(session, attempt.user_id)
+    reading = exam.default_reading_seconds
+    simulation = exam.default_simulation_seconds
+    if person is not None and person.needs_extra_time:  # custom timers count only with extra time on
+        reading = person.custom_reading_seconds or reading
+        simulation = person.custom_simulation_seconds or simulation
+    return domain.attempt_deadline(
+        attempt.started_at, reading, simulation, get_settings().attempt_deadline_grace_seconds
+    )
+
+
+async def _close_overdue(session: AsyncSession, attempt_id: uuid.UUID, turns: int, *, now: datetime) -> bool:
+    """Close one overdue attempt under the transcript lock, unless the worker finished it meanwhile."""
+    from app.features.attempts import service_worker  # deferred: service_worker imports this module
+
+    await transcripts.lock_transcript(session, attempt_id)
+    attempt = await repository.attempt_by_id(session, attempt_id)
+    if attempt is None or domain.Status(attempt.status) is not domain.Status.RUNNING:
+        return False
+    if turns:
+        await transcripts.mark_transcript_complete(session, attempt_id, runtime_label="deadline", at=now)
+        await service_worker.complete_interaction(session, attempt, now=now)
+    else:
+        await repository.set_status(
+            session, attempt_id, status=domain.Status.FAILED, at=now, reason="abandoned"
+        )
+        await sittings_reads.attempt_progress(session, attempt)
+    return True
+
+
+async def abandon_stale_attempts(session: AsyncSession, *, now: datetime) -> list[uuid.UUID]:
+    """Close the consumer attempts nobody finished (S-25); returns the ids closed.
+
+    Over three hours created or running: failed `abandoned`, the tab was closed. A running station
+    past its own deadline (duration plus grace): its turns are marked as if the worker had delivered
+    them, or `abandoned` when there are none, so a dropped worker never strands a mark.
+    """
+    closed = await repository.fail_stale_consumer_attempts(
         session, started_before=now - ABANDONED_AFTER, at=now, reason="abandoned"
     )
+    grace = timedelta(seconds=get_settings().attempt_deadline_grace_seconds)
+    candidates = await repository.running_attempts_started_before(
+        session, started_before=now - grace, kinds=sorted(_RESUMABLE_KINDS)
+    )
+    overdue: list[Attempt] = []
+    for candidate in candidates:
+        deadline = await attempt_deadline(session, candidate)
+        if deadline is not None and deadline < now:
+            overdue.append(candidate)
+    turn_counts = await transcripts.chunk_counts_for(
+        session, [overdue_attempt.id for overdue_attempt in overdue]
+    )
+    for overdue_attempt in overdue:
+        if await _close_overdue(session, overdue_attempt.id, turn_counts.get(overdue_attempt.id, 0), now=now):
+            closed.append(overdue_attempt.id)
+    return closed
 
 
 async def restart_for_slot(
@@ -328,7 +410,10 @@ async def fail_unfinished_for_user(
 
     Failed with a reason rather than deleted, like an abandon, so what was recorded survives.
     """
-    return await repository.fail_unfinished_for_user(session, user_id, at=now, reason=reason)
+    failed = await repository.fail_unfinished_for_user(session, user_id, at=now, reason=reason)
+    for attempt in failed:
+        await sittings_reads.attempt_progress(session, attempt)
+    return len(failed)
 
 
 async def _exam_for_station(session: AsyncSession, station_version_id: uuid.UUID | None) -> uuid.UUID:

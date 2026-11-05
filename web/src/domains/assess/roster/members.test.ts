@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { readGroupMembers } from "@/domains/assess/roster/api";
+import {
+  readAllCohorts,
+  readAllTraineeGroups,
+  readGroupMembers,
+} from "@/domains/assess/roster/api";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -30,5 +34,26 @@ describe("a group's members", () => {
         status: 404,
       })) as typeof fetch;
     await assert.rejects(() => readGroupMembers("kings", "gone"));
+  });
+});
+
+describe("the groups and intakes a circuit can pick", () => {
+  it("are read across every page", async () => {
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const body = url.includes("cursor=next")
+        ? { items: [{ id: "second" }], next_cursor: null }
+        : { items: [{ id: "first" }], next_cursor: "next" };
+      return new Response(JSON.stringify(body), { status: 200 });
+    }) as typeof fetch;
+
+    assert.deepEqual(
+      (await readAllTraineeGroups("kings")).map((g) => g.id),
+      ["first", "second"],
+    );
+    assert.deepEqual(
+      (await readAllCohorts("kings")).map((c) => c.id),
+      ["first", "second"],
+    );
   });
 });

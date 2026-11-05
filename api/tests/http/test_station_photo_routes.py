@@ -173,7 +173,8 @@ async def test_a_block_with_no_stored_value_is_written_flat_under_its_id(
     assert first.status_code == 200, first.text
     radiographs = second.json()["version"]["content"]["radiograph"]
     assert len(radiographs) == 2
-    assert radiographs[0] == first.json()["version"]["content"]["radiograph"][0]
+    # Signed links differ by the second they were signed in; the stored file is the part before "?".
+    assert radiographs[0].split("?")[0] == first.json()["version"]["content"]["radiograph"][0].split("?")[0]
 
 
 async def test_a_block_that_does_not_take_images_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
@@ -261,3 +262,27 @@ async def test_a_trainee_may_not_put_images_on_a_station(client: AsyncClient, ma
     response = await client.post(photos_url(station), files={"files": png()}, headers=bearer(trainee))
 
     assert response.status_code == 403
+
+
+async def test_a_request_with_more_than_ten_images_is_refused_whole(
+    client: AsyncClient, make_actor, fake_s3: list[str]
+) -> None:  # type: ignore[no-untyped-def]
+    org = await seed_org(client, make_actor)
+    token = await admin_of(make_actor, org, "kings")
+    station = await a_station(client, token, "sca", CONTENT)
+
+    refused = await client.post(
+        photos_url(station),
+        files=[("files", png(f"{n}.png")) for n in range(11)],
+        headers=bearer(token),
+    )
+    allowed = await client.post(
+        photos_url(station),
+        files=[("files", png(f"{n}.png")) for n in range(10)],
+        headers=bearer(token),
+    )
+
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["code"] == "invalid_photo"
+    assert allowed.status_code == 200, allowed.text
+    assert allowed.json()["uploaded"] == 10

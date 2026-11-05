@@ -15,7 +15,7 @@ export { NewSitting } from "@/domains/assess/NewSitting";
 export { SlotReview } from "@/domains/assess/SlotReview";
 export { NewCircuit } from "@/domains/assess/NewCircuit";
 export { EditCircuit } from "@/domains/assess/EditCircuit";
-export { Results } from "@/domains/assess/results";
+export { Results, ResultsIndex } from "@/domains/assess/results";
 export { MyResult, MyReview } from "@/domains/assess/trainee";
 export { OrgDiscussion } from "@/domains/assess/OrgDiscussion";
 export { Programmes } from "@/domains/assess/programmes";
