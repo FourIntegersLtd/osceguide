@@ -102,6 +102,7 @@ export function EditCircuit({
                 subtitle={`${data.sitting.name} · ${data.sitting.mode}`}
               />
               <CircuitBuilder
+                orgSlug={orgSlug}
                 mode={data.sitting.mode}
                 scope={scope}
                 trainees={trainees}
@@ -112,7 +113,9 @@ export function EditCircuit({
                 above={
                   blocked ? (
                     <>
-                      <Alert tone="warning">{blocked}</Alert>
+                      <Alert tone="warning" title="This circuit cannot be changed right now">
+                        {blocked}
+                      </Alert>
                       <section className="rounded-panel bg-canvas p-5">
                         <h2 className="text-osce-subheading font-semibold text-b2b-headline">
                           While the circuit is locked

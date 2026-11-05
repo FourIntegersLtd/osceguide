@@ -368,9 +368,12 @@ export function CandidatePicker({
 export function TimingStep({
   draft,
   patch,
+  circuit = false,
 }: {
   draft: ScheduleDraft;
   patch: (change: Partial<ScheduleDraft>) => void;
+  /** A single circuit has no start time of its own: the sitting's clock starts it. */
+  circuit?: boolean;
 }) {
   const number = (value: string) => (value === "" ? Number.NaN : Number(value));
   const setBreak = (index: number, change: Partial<DraftBreak>) =>
@@ -379,7 +382,7 @@ export function TimingStep({
   const ends = endsAbout(draft);
   return (
     <div className="flex max-w-lg flex-col gap-4">
-      <p className="text-sm text-ink-muted">Taken from the exam. Change them for this sitting only.</p>
+      {circuit ? null : <p className="text-sm text-ink-muted">Taken from the exam. Change them for this sitting only.</p>}
       <Input
         label="Reading time (minutes)"
         type="number"
@@ -398,15 +401,32 @@ export function TimingStep({
         hint={`${CONSULTATION_BOUNDS.min} to ${CONSULTATION_BOUNDS.max} minutes.`}
         onChange={(event) => patch({ consultationMinutes: number(event.target.value) })}
       />
-      <Input
-        label="Start time"
-        type="time"
-        value={draft.startTime}
-        onChange={(event) => patch({ startTime: event.target.value })}
-      />
+      {circuit ? null : (
+        <Input
+          label="Start time"
+          type="time"
+          value={draft.startTime}
+          onChange={(event) => patch({ startTime: event.target.value })}
+        />
+      )}
       {draft.mode === "exam" ? (
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium text-ink">Breaks</p>
+          {circuit ? (
+            <>
+              <Input
+                label="Default break length (minutes)"
+                type="number"
+                min={BREAK_MINUTES_BOUNDS.min}
+                max={BREAK_MINUTES_BOUNDS.max}
+                value={Number.isNaN(draft.breakMinutes) ? "" : draft.breakMinutes}
+                onChange={(event) => patch({ breakMinutes: number(event.target.value) })}
+              />
+              <p className="text-sm text-ink-muted">
+                A break goes between two stations, never after the last one. Everyone on the circuit pauses during it.
+              </p>
+            </>
+          ) : null}
           {draft.breaks.map((item, index) => (
             <div key={item.after} className="flex items-end gap-2">
               <p className="w-32 pb-2 text-sm text-ink">After station {item.after}</p>
@@ -435,7 +455,7 @@ export function TimingStep({
               onClick={() =>
                 free !== null &&
                 patch({
-                  breaks: [...draft.breaks, { after: free, minutes: DEFAULT_BREAK_MINUTES }].sort(
+                  breaks: [...draft.breaks, { after: free, minutes: circuit ? draft.breakMinutes : DEFAULT_BREAK_MINUTES }].sort(
                     (a, b) => a.after - b.after,
                   ),
                 })
@@ -449,7 +469,7 @@ export function TimingStep({
           </p>
         </div>
       ) : null}
-      {ends ? <p className="text-sm text-ink-muted">Ends about {ends} for each candidate.</p> : null}
+      {ends && !circuit ? <p className="text-sm text-ink-muted">Ends about {ends} for each candidate.</p> : null}
     </div>
   );
 }
@@ -461,7 +481,10 @@ export function SupervisorStep({
   leads,
   candidateNames,
   inviteHref,
+  circuit = false,
 }: {
+  /** A circuit has one supervisor: splitting is for a sitting's several circuits. */
+  circuit?: boolean;
   draft: ScheduleDraft;
   patch: (change: Partial<ScheduleDraft>) => void;
   leads: { value: string; label: string }[];
@@ -469,7 +492,7 @@ export function SupervisorStep({
   inviteHref: string;
 }) {
   const options = [{ value: "", label: "Unassigned" }, ...leads];
-  const canSplit = draft.mode === "exam" && draft.candidateIds.length > 1;
+  const canSplit = !circuit && draft.mode === "exam" && draft.candidateIds.length > 1;
   return (
     <div className="flex max-w-lg flex-col gap-4">
       <p className="text-sm text-ink-muted">

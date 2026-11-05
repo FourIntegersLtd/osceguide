@@ -59,12 +59,14 @@ export function NewCircuit({
       const groups: PickerSet[] = groupPage.map((group) => ({
         id: group.id,
         label: group.label,
+        count: group.member_count,
         loadMemberIds: () => readGroupMembers(orgSlug, group.id, signal),
       }));
       // The api has no cohort filter, so a cohort's members are the loaded trainees tagged with it.
       const cohorts: PickerSet[] = cohortPage.map((cohort) => ({
         id: cohort.id,
         label: cohort.name,
+        count: trainees.filter((t) => t.cohort_id === cohort.id).length,
         loadMemberIds: async () =>
           trainees.filter((t) => t.cohort_id === cohort.id).map((t) => t.id),
       }));
@@ -156,6 +158,7 @@ function Builder({
 
   return (
     <CircuitBuilder
+      orgSlug={orgSlug}
       mode={mode}
       scope={scope}
       trainees={trainees}

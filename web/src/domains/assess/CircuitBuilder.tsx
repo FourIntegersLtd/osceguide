@@ -1,18 +1,16 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert, Button, Input, Spinner, Panel } from "@/foundation/ui";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import type { StationLibraryScope } from "@/capabilities/stations";
-import { StationOrder } from "@/domains/assess/ScheduleSteps";
+import { useSurface } from "@/capabilities";
+import { CandidatePicker, StationOrder, SupervisorStep, TimingStep } from "@/domains/assess/ScheduleSteps";
 import type { CircuitShape } from "@/domains/assess/api";
+import { EMPTY_DRAFT, type ScheduleDraft } from "@/domains/assess/scheduleSitting";
 import { circuitLeads, isBulkExam } from "@/domains/assess/support";
-import {
-  TraineePicker,
-  type PickerSet,
-  type TraineeRow,
-} from "@/domains/assess/TraineePicker";
-import { BreaksPanel, DurationFields } from "@/domains/assess/TimingFields";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
+import type { PickerSet, TraineeRow } from "@/domains/assess/TraineePicker";
 import {
   DEFAULT_BREAK_MINUTES,
   DEFAULT_READING_MINUTES,
@@ -67,6 +65,7 @@ export interface CircuitDraft extends CircuitShape {
 }
 
 export function CircuitBuilder({
+  orgSlug,
   mode,
   trainees,
   staff,
@@ -77,9 +76,10 @@ export function CircuitBuilder({
   disabled = false,
   scope,
   allowManyCandidates = false,
-  groups,
-  cohorts,
+  groups = [],
+  cohorts = [],
 }: {
+  orgSlug: string;
   mode: string;
   trainees: TraineeRow[];
   staff: StaffRow[];
@@ -88,9 +88,9 @@ export function CircuitBuilder({
   submitLabel: string;
   /** `bulk`: several exam candidates, so the caller sends one circuit per candidate. */
   onSubmit: (shape: CircuitShape, bulk: boolean) => Promise<void>;
-  /** Anything the caller needs said above the fields — a lock notice, chiefly. */
+  /** Anything the caller needs said above the fields: a lock notice, chiefly. */
   above?: React.ReactNode;
-  /** True when the caller already knows the submit will be refused — an edit lock, chiefly. */
+  /** True when the caller already knows the submit will be refused: an edit lock, chiefly. */
   disabled?: boolean;
   /** Whose stations the picker offers, and for which exam: the sitting's programme's. */
   scope: StationLibraryScope;
@@ -100,53 +100,48 @@ export function CircuitBuilder({
    */
   allowManyCandidates?: boolean;
   groups?: PickerSet[];
+  /** Year groups. */
   cohorts?: PickerSet[];
 }) {
+  const w = useAssessWords();
+  const { hrefFor } = useSurface();
   const [name, setName] = useState(initial?.name ?? "");
-  const [stations, setStations] = useState<PickedStation[]>(
-    initial?.stations ?? [],
-  );
-  const [picked, setPicked] = useState<Set<string>>(
-    () => new Set(initial?.traineeIds ?? []),
-  );
-  const [supervisor, setSupervisor] = useState(initial?.supervisorUserId ?? "");
-  const [reading, setReading] = useState(
-    initial?.timing.readingMinutes ?? DEFAULT_READING_MINUTES,
-  );
-  const [simulation, setSimulation] = useState(
-    initial?.timing.simulationMinutes ?? DEFAULT_SIMULATION_MINUTES,
-  );
-  const [breakMinutes, setBreakMinutes] = useState(
-    initial?.timing.breakMinutes ?? DEFAULT_BREAK_MINUTES,
-  );
-  const [breaks, setBreaks] = useState<Set<number>>(
-    () => new Set(initial?.timing.breaks ?? []),
-  );
-  const [breakLengths, setBreakLengths] = useState<Record<number, number>>(
-    () => ({ ...initial?.timing.breakLengths }),
-  );
+  // The same step components the Schedule-a-sitting wizard uses, over the same draft shape.
+  const [draft, setDraft] = useState<ScheduleDraft>(() => draftOf(initial, mode));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const patch = useCallback((change: Partial<ScheduleDraft>) => setDraft((current) => ({ ...current, ...change })), []);
+  const picked = draft.candidateIds;
+  const stations = draft.stations;
 
   // Only an examination has breaks: `normalise_timing` builds none for any
   // other mode, because a training group rotates without stopping between
   // stations. Offering the control where the server discards the answer is how
   // a save starts to look ignored.
   const isExam = modeSupportsBreaks(mode);
-  const candidateCap = allowManyCandidates
-    ? MAX_BULK_CANDIDATES
-    : MAX_EXAM_CANDIDATES;
-  const candidatesFull = isExam && picked.size >= candidateCap;
+  const candidateCap = allowManyCandidates ? MAX_BULK_CANDIDATES : MAX_EXAM_CANDIDATES;
   // The caller sends several candidates to the bulk route; the name is then a prefix.
-  const bulk = allowManyCandidates && isBulkExam(isExam, picked.size);
-  const tooManyCandidates = isExam && picked.size > candidateCap;
+  const bulk = allowManyCandidates && isBulkExam(isExam, picked.length);
+  const tooManyCandidates = isExam && picked.length > candidateCap;
   const tooManyStations = isExam && stations.length > MAX_EXAM_STATIONS;
+  const leads = useMemo(
+    () => circuitLeads(staff).map((member) => ({ value: member.user_id, label: `${member.email ?? member.user_id} (${member.role})` })),
+    [staff],
+  );
+  const names = useMemo(
+    () =>
+      Object.fromEntries(
+        trainees.flatMap((trainee) =>
+          trainee.user_id ? [[trainee.user_id, [trainee.first_name, trainee.last_name].filter(Boolean).join(" ") || trainee.email]] : [],
+        ),
+      ),
+    [trainees],
+  );
 
   const submit = useCallback(async () => {
-    const chosenBreaks = isExam
-      ? clampBreaks([...breaks], stations.length)
-      : [];
-    const defaultBreak = clampBreakMinutes(breakMinutes);
+    const chosenBreaks = isExam ? clampBreaks(draft.breaks.map((item) => item.after), stations.length) : [];
+    const defaultBreak = clampBreakMinutes(draft.breakMinutes);
+    const lengths = Object.fromEntries(draft.breaks.map((item) => [item.after, item.minutes]));
     setBusy(true);
     setError(null);
     try {
@@ -157,21 +152,17 @@ export function CircuitBuilder({
           // `trainee_ids` on the wire means *user* ids: a slot names a user, and
           // an organisation may examine somebody it has not rostered. A trainee
           // who has never signed in has no user row and cannot be put on one.
-          traineeIds: [...picked],
-          supervisorUserId: supervisor || null,
+          traineeIds: picked,
+          supervisorUserId: draft.supervisorId || null,
           timing: {
-            readingMinutes: clampReadingMinutes(reading),
-            simulationMinutes: simulation,
-            // Clamped here as well as on the server: the selection set can hold a
+            readingMinutes: clampReadingMinutes(draft.readingMinutes),
+            simulationMinutes: draft.consultationMinutes,
+            // Clamped here as well as on the server: a break can point at a
             // position that stopped existing when a station came off the circuit,
             // and a training circuit must not carry breaks at all.
             breakMinutes: defaultBreak,
             breaks: chosenBreaks,
-            breakLengths: pruneBreakLengths(
-              breakLengths,
-              chosenBreaks,
-              defaultBreak,
-            ),
+            breakLengths: pruneBreakLengths(lengths, chosenBreaks, defaultBreak),
           },
         },
         bulk,
@@ -182,22 +173,10 @@ export function CircuitBuilder({
       // made, and losing it to a 409 is a reason to start the evening again.
       setBusy(false);
     }
-  }, [
-    name,
-    stations,
-    picked,
-    supervisor,
-    reading,
-    simulation,
-    breakMinutes,
-    breaks,
-    breakLengths,
-    isExam,
-    bulk,
-    onSubmit,
-  ]);
+  }, [name, draft, stations, picked, isExam, bulk, onSubmit]);
 
-  const submitText = bulk ? `Create ${picked.size} circuits` : submitLabel;
+  const submitText = bulk ? `Create ${picked.length} circuits` : submitLabel;
+  const prefix = name.trim() || "Exam";
 
   return (
     <div className="flex flex-col gap-5">
@@ -205,69 +184,36 @@ export function CircuitBuilder({
       {error && <Alert tone="danger">{assessErrorMessage(error)}</Alert>}
       {tooManyCandidates && (
         <Alert tone="warning">
-          An exam run takes at most {candidateCap} candidates at a time.
-          Deselect {picked.size - candidateCap}.
+          An exam run takes at most {candidateCap} candidates at a time. Deselect {picked.length - candidateCap}.
         </Alert>
       )}
-      {tooManyStations && (
-        <Alert tone="warning">
-          An exam circuit takes at most {MAX_EXAM_STATIONS} stations.
-        </Alert>
-      )}
+      {tooManyStations && <Alert tone="warning">
+          Station {MAX_EXAM_STATIONS + 1} cannot be added: a circuit has at most {MAX_EXAM_STATIONS}.
+        </Alert>}
 
       <Panel title="Details">
-        <div className="flex max-w-lg flex-col gap-3">
+        <div className="max-w-lg">
           <Input
             label={bulk ? "Name prefix" : "Name"}
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder={bulk ? "Exam" : "Morning circuit"}
           />
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-ink">Supervisor</span>
-            <select
-              value={supervisor}
-              onChange={(event) => setSupervisor(event.target.value)}
-              className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
-            >
-              <option value="">Unassigned</option>
-              {circuitLeads(staff).map((member) => (
-                <option key={member.user_id} value={member.user_id}>
-                  {member.email ?? member.user_id} ({member.role})
-                </option>
-              ))}
-            </select>
-          </label>
-          <DurationFields
-            reading={reading}
-            setReading={setReading}
-            simulation={simulation}
-            setSimulation={setSimulation}
-          />
         </div>
       </Panel>
 
-      {isExam ? (
-        <BreaksPanel
-          stationCount={stations.length}
-          breakMinutes={breakMinutes}
-          setBreakMinutes={setBreakMinutes}
-          breaks={breaks}
-          setBreaks={setBreaks}
-          breakLengths={breakLengths}
-          setBreakLengths={setBreakLengths}
+      <Panel title="Candidates">
+        <CandidatePicker
+          orgSlug={orgSlug}
+          trainees={trainees}
+          picked={picked}
+          setPicked={(update) => setDraft((current) => ({ ...current, candidateIds: update(current.candidateIds) }))}
+          groups={groups}
+          yearGroups={cohorts}
+          single={isExam}
+          words={{ trainee: w.trainee, trainees: w.trainees }}
         />
-      ) : null}
-
-      <TraineePicker
-        trainees={trainees}
-        picked={picked}
-        setPicked={setPicked}
-        isExam={isExam}
-        candidatesFull={candidatesFull}
-        groups={groups}
-        cohorts={cohorts}
-      />
+      </Panel>
 
       <Panel
         title={`Stations (${stations.length})`}
@@ -275,39 +221,61 @@ export function CircuitBuilder({
       >
         <StationOrder
           stations={stations}
-          setStations={setStations}
+          setStations={(update) => setDraft((current) => ({ ...current, stations: update(current.stations) }))}
           scope={scope}
           examName={scope.examCode ?? "this exam"}
+        />
+      </Panel>
+
+      <Panel title="Timing">
+        <TimingStep draft={draft} patch={patch} circuit />
+      </Panel>
+
+      <Panel title="Supervisor">
+        <SupervisorStep
+          draft={draft}
+          patch={patch}
+          leads={leads}
+          candidateNames={names}
+          inviteHref={hrefFor("/team")}
+          circuit
         />
       </Panel>
 
       <div className="flex items-center justify-end gap-3">
         {bulk ? (
           <p className="text-sm text-ink-muted">
-            {picked.size} candidates make {picked.size} circuits, one each, named {name.trim() || "Exam"} 1 to{" "}
-            {name.trim() || "Exam"} {picked.size}.
+            {picked.length} candidates make {picked.length} circuits, one each, named {prefix} 1 to {prefix} {picked.length}.
           </p>
         ) : null}
         <Button
           themeType="b2b"
           variant="commit"
           onClick={submit}
-          disabled={
-            disabled ||
-            busy ||
-            stations.length === 0 ||
-            picked.size === 0 ||
-            tooManyStations ||
-            tooManyCandidates
-          }
+          disabled={disabled || busy || stations.length === 0 || picked.length === 0 || tooManyStations || tooManyCandidates}
         >
-          {busy ? (
-            <Spinner label={submitText} className="text-current" />
-          ) : (
-            submitText
-          )}
+          {busy ? <Spinner label={submitText} className="text-current" /> : submitText}
         </Button>
       </div>
     </div>
   );
+}
+
+/** A circuit's shape as the wizard's draft, so one set of step components edits both. */
+function draftOf(initial: CircuitDraft | undefined, mode: string): ScheduleDraft {
+  const timing = initial?.timing;
+  return {
+    ...EMPTY_DRAFT,
+    mode: mode === "exam" ? "exam" : "training",
+    stations: initial?.stations ?? [],
+    candidateIds: initial?.traineeIds ?? [],
+    readingMinutes: timing?.readingMinutes ?? DEFAULT_READING_MINUTES,
+    consultationMinutes: timing?.simulationMinutes ?? DEFAULT_SIMULATION_MINUTES,
+    breakMinutes: timing?.breakMinutes ?? DEFAULT_BREAK_MINUTES,
+    breaks: (timing?.breaks ?? []).map((after) => ({
+      after,
+      minutes: timing?.breakLengths?.[after] ?? timing?.breakMinutes ?? DEFAULT_BREAK_MINUTES,
+    })),
+    supervisorId: initial?.supervisorUserId ?? "",
+  };
 }

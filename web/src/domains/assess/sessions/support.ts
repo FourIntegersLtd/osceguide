@@ -37,7 +37,7 @@ export const ALERT_COPY: Record<string, string> = {
   attempt_failed:
     "This station's consultation failed. Resend the patient, or redo the station once it is safe to.",
   voice_fault:
-    "The voice service is not answering, so the patient cannot join. The circuit will try again by itself; resend the patient if it does not clear.",
+    "The voice service is not answering. New stations may not start. The circuit will try again by itself; resend the patient if it does not clear.",
   clock_overdue:
     "The clock has run past this phase and the circuit has not moved on by itself. Advance it by hand.",
 };
@@ -49,9 +49,23 @@ const CONSOLE_ALERT_COPY: Record<string, string> = {
   clock_overdue: "The clock is overdue. Move the circuit on by hand.",
 };
 
-export function alertCopy(code: string, where: "board" | "console" = "board"): string {
+/**
+ * The alert in words. `station` is the station's number when the room is on one
+ * (a formal exam: one candidate, so a slot's place is the station's number); the
+ * api's alert is a code with no station of its own.
+ */
+export function alertCopy(code: string, where: "board" | "console" = "board", station?: number | null): string {
+  if (station) {
+    if (code === "attempt_failed") return `Station ${station}'s attempt failed. Resend the patient or redo the station.`;
+    if (code === "no_running_attempt") return `The patient has not joined Station ${station}. Resend the patient if this does not clear.`;
+  }
   if (where === "console" && CONSOLE_ALERT_COPY[code]) return CONSOLE_ALERT_COPY[code];
   return ALERT_COPY[code] ?? code.replace(/_/g, " ");
+}
+
+/** The station a formal exam's room is on, counted from one; null for a training rotation or when none is running. */
+export function examStationNumber(mode: string, slotIndex: number | null | undefined): number | null {
+  return mode === "exam" && typeof slotIndex === "number" ? slotIndex + 1 : null;
 }
 
 /** A person's name, then their email, then something rather than nothing. */

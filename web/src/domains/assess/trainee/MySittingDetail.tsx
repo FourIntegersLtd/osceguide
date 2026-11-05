@@ -15,6 +15,7 @@ import {
   TextLink,
 } from "@/foundation/ui";
 import { useAsync, useEventStream } from "@/foundation/hooks";
+import { plural } from "@/foundation/format";
 import { useSurface } from "@/capabilities";
 import { useMicPreflight } from "@/foundation/livekit";
 import { JoinRoom } from "@/domains/assess/trainee/JoinRoom";
@@ -126,6 +127,8 @@ function Circuit({ sitting }: { sitting: MySitting }) {
             : modeLabel(sitting)
         }
         title={sitting.name}
+        back={{ href: hrefFor("/trainee"), label: `All ${w.sittings}` }}
+        subtitle={`${exam ? "Formal exam" : "Practice circuit"} · ${plural(total, "station")}`}
         action={
           <>
             {sitting.live ? (
@@ -167,6 +170,12 @@ function Circuit({ sitting }: { sitting: MySitting }) {
         >
           {activeSlot(sitting)?.station_title ?? null}
         </B2CHero>
+      ) : null}
+
+      {briefSlot?.status === "reading" ? (
+        <Alert tone="info" title="Joining during reading">
+          You join automatically while you read, so the patient is ready when it starts.
+        </Alert>
       ) : null}
 
       {briefSlot ? <SlotReadingBrief slot={briefSlot} /> : null}

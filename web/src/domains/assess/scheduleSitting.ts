@@ -10,6 +10,7 @@ import { plural } from "@/foundation/format";
 import type { SittingMode } from "@/domains/assess/api";
 import {
   BREAK_MINUTES_BOUNDS,
+  DEFAULT_BREAK_MINUTES,
   MAX_EXAM_STATIONS,
   READING_MINUTES_BOUNDS,
   breakPositions,
@@ -77,6 +78,8 @@ export interface ScheduleDraft {
   consultationMinutes: number;
   startTime: string;
   breaks: DraftBreak[];
+  /** What a new break lasts; each break can then be changed. */
+  breakMinutes: number;
   /** `""` is unassigned. */
   supervisorId: string;
   /** Formal exam only: a supervisor for each candidate's circuit instead of one for all. */
@@ -96,6 +99,7 @@ export const EMPTY_DRAFT: ScheduleDraft = {
   consultationMinutes: 10,
   startTime: DEFAULT_START_TIME,
   breaks: [],
+  breakMinutes: DEFAULT_BREAK_MINUTES,
   supervisorId: "",
   perCandidate: false,
   supervisorByCandidate: {},
