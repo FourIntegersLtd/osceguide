@@ -183,20 +183,26 @@ Ask few questions; record judgement calls below. Phase 6 (money) is merged after
 
 - (orchestrator) Browser verification runs after each merge, in the main tree, one at a time.
 - (2b) NewStation chooser is org-only; on an org, the AI card says a layout comes first (CreateStation.md: AI appears once a template is chosen).
-- (6) Invoices are a Settings tab; the board's "Open invoices" link card and separate page were not built.
-- (2a) Break time shown read-only in NewExam step 3 (api has no break field).
+- (6) Invoices: Settings tab holds the "Open invoices" link card; list and detail are on /settings/invoices.
+- (2a) No exam-level break field in the api: Break input, Timings summary break and ExamDetail break are not built; NewExam step 3 says the break is set per circuit. Station rows on ExamDetail do not show the layout name (needs a lookup per station). Marking schemes tab is not filtered by ?exam=.
+- (2c) Per-field Shown/Hidden switches and the Tone select are not built: no such data in the rubric or api.
+- (5) Per-reviewer names and "Reviewers agree." on SlotReview not built (review rows carry no reviewer name). "This page updates on its own." reworded: attempt events go only to the trainee's topic.
+- (3) Training-mode breaks not built (api has none); "Needs circuits" is approximated; Console overdue seconds not shown (alerts carry no payload); bulk create defaults the name prefix to "Exam".
+- (1) "N not joined" attention row skipped: no server count of invited-not-joined without paging the roster.
 
 ## Ledger (the orchestrator updates this)
 
 | Phase | Status | Proof | Notes |
 |---|---|---|---|
-| 0 Baseline | running | | |
-| 1 Words, menu, Home | not started | | |
-| 2a Exams and programmes | built, in review | npm run ci | Break time read-only (no api field) |
-| 2b Stations and layouts | merged to main (2f471167) | npm run ci, reviewer, quality-reviewer; browser verify pending | Chooser org-only; AI card says a layout comes first |
-| 2c Marking schemes | building | | |
-| 3 Scheduling and exam day | building | | |
-| 4 People | merged to main (3bdec4ec) | npm run ci, reviewer, quality-reviewer; browser verify pending | Menu: remove Team entry (Phase 1) |
-| 5 Results and review | building | | |
-| 6 Settings and Invoices | merged to main (279034ae) | npm run ci, security review clean; user to read (money); browser verify pending | Invoices as a tab; no link card |
+| 0 Baseline | done (b7ab963d) | inventory, e2e results | ASSESS-2 failing before our changes |
+| 1 Words, menu, Home | merged (eeb84b09) | npm run ci; review running | |
+| 2a Exams and programmes | merged | npm run ci, reviewer | see judgement calls |
+| 2b Stations and layouts | merged (2f471167) | npm run ci, reviewers | |
+| 2c Marking schemes | merged | npm run ci, reviewers | |
+| 3 Scheduling and exam day | built, in review | npm run ci | |
+| 4 People | merged (3bdec4ec) | npm run ci, reviewers | |
+| 5 Results and review | merged | npm run ci, reviewers | |
+| 6 Settings and Invoices | merged | npm run ci, security review clean; user to read (money) | |
 | 7 Docs | not started | | |
+| Browser verification | not started | | every merged phase |
+| Final 41-board audit | not started | | |
