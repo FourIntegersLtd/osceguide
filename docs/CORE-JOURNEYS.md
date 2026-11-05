@@ -161,7 +161,7 @@ pieces by ASSESS-2/3 and ASSESS-4's seam. Gaps: S-1, S-2, R-5.
 
 | ID | Journey | Local | Spec |
 |---|---|---|---|
-| HIRE-1 | Employer admin sees the hiring menu (Assessments, Candidates, Now running, Build), not the institution's wording | yes, `@staging` | `hire/employer.spec.ts` |
+| HIRE-1 | Employer admin sees the hiring menu (Assessments, Candidates, Now running, Exams), not the institution's wording | yes, `@staging` | `hire/employer.spec.ts` |
 | HIRE-2 | A candidate is shown only "My assessments" | yes, `@staging` | `hire/employer.spec.ts` |
 
 Actors: an `employer` organisation's `institution_admin`, and a `trainee`

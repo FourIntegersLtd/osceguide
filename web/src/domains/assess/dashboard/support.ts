@@ -31,13 +31,18 @@ export type AssistantStep = {
   permission: Permission;
 };
 
+/** "a supervisor", "an assessor". */
+const withArticle = (word: string) => `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
+
+/** Where the assistant sends "Set up an exam" (the New exam sheet's route). */
+export const NEW_EXAM_PATH = "/authoring/exams/new";
+/** Where the assistant sends "Schedule a sitting"; Phase 3 moves the wizard here, per ScheduleSitting.md. */
+export const SCHEDULE_SITTING_PATH = "/sittings/new";
+
 /**
  * The five steps to a first sitting, from the flags `/dashboard` already returns. The exam step
  * is done when an exam is published, has a marking scheme and a programme offers it.
  */
-/** "a supervisor", "an assessor". */
-const withArticle = (word: string) => `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
-
 export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[] {
   return [
     {
@@ -46,7 +51,7 @@ export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[]
       body: `An ${w.exam} is what you examine and how it is marked. Start from one of ours in one click, or make your own with your own marking scheme.`,
       whyTitle: "Why first",
       why: `Stations, ${w.sittings} and results all belong to an ${w.exam}. When it is ready it shows "Ready to schedule".`,
-      cta: `Set up an ${w.exam}`, href: "/authoring", alt: `Browse OSCE Guide ${w.exams}`, altHref: "/authoring",
+      cta: `Set up an ${w.exam}`, href: NEW_EXAM_PATH, alt: `Browse OSCE Guide ${w.exams}`, altHref: "/authoring",
       permission: "author_content",
     },
     {
@@ -82,7 +87,7 @@ export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[]
       body: `Pick the ${w.exam}, its stations and the people sitting it. We build the circuits for you.`,
       whyTitle: "Formal exam or training",
       why: "A formal exam is marked, signed off and released. Training gives feedback only.",
-      cta: w.scheduleSitting, href: "/sittings/new",
+      cta: w.scheduleSitting, href: SCHEDULE_SITTING_PATH,
       permission: "schedule_sittings",
     },
   ];
@@ -244,4 +249,13 @@ export function runsByDay<T extends { ended_at: string }>(
     group.runs.push(run);
   }
   return groups.map(({ label, runs: items }) => ({ label, runs: items }));
+}
+
+/** "One circuit is running and five things need you." */
+export function todaySentence(running: number, needs: number): string {
+  const words = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+  const count = (n: number) => words[n] ?? String(n);
+  const circuits = running === 1 ? "One circuit is running" : running === 0 ? "No circuit is running" : `${count(running)[0]?.toUpperCase()}${count(running).slice(1)} circuits are running`;
+  const things = needs === 0 ? "nothing needs you" : `${count(needs)} ${needs === 1 ? "thing needs" : "things need"} you`;
+  return `${circuits} and ${things}.`;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { LuCalendarDays, LuChevronRight, LuPlus } from "react-icons/lu";
 import {
   Alert,
@@ -31,6 +32,7 @@ import {
   comingUp,
   modeLabel,
   setupComplete,
+  todaySentence,
   type AttentionItem,
 } from "@/domains/assess/dashboard/support";
 import { readResultsIndex } from "@/domains/assess/results/api";
@@ -81,6 +83,10 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   const { session } = useSession();
   const schedules = can(session, "schedule_sittings");
   const upcoming = comingUp(data.recent_sittings ?? []);
+  const [running, setRunning] = useState(0);
+  const mayDecide = can(session, "sign_off_results");
+  const results = useAsync((signal) => (mayDecide ? readResultsIndex(orgSlug, signal) : Promise.resolve(null)), [orgSlug, mayDecide]);
+  const attention = attentionFromResults(results.data?.rows ?? [], w);
   const earlier = (data.recent_sittings ?? []).filter((sitting) => sitting.status !== "scheduled");
 
   return (
@@ -89,6 +95,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
         className="!mb-0"
         eyebrow={data.name}
         title={greetingFor(name, new Date())}
+        subtitle={todaySentence(running, attention.length)}
         action={
           schedules ? (
             data.setup.ready_to_run ? (
@@ -115,9 +122,9 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
 
       {/* What is happening now comes before what exists: on an examination morning it is the
           only thing anybody wants. */}
-      {runs ? <LiveNow orgSlug={orgSlug} /> : null}
+      {runs ? <LiveNow orgSlug={orgSlug} onCount={setRunning} /> : null}
 
-      {can(session, "sign_off_results") ? <NeedsAttention orgSlug={orgSlug} /> : null}
+      {mayDecide ? <NeedsAttention loading={results.loading} error={results.error} items={attention} /> : null}
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start [&>*]:min-w-0 [&>*]:flex-1">
         {/* SLOT (Phase 5): "Stations to review" for a supervisor, grouped by circuit, comes from a
@@ -180,16 +187,13 @@ function SittingRow({ sitting }: { sitting: NonNullable<Data["recent_sittings"]>
 
 /**
  * Decisions waiting and results ready to release, oldest first, from the results index.
- * Trainees who have not joined are not here: no existing read lists them without paging the
- * whole roster, so People carries that.
+ * Trainees who have not joined are not here: the roster can only be filtered by reading every
+ * page (`invitation_pending` is per row, with no server count), so People carries that.
  */
-function NeedsAttention({ orgSlug }: { orgSlug: string }) {
-  const w = useAssessWords();
+function NeedsAttention({ loading, error, items }: { loading: boolean; error: unknown; items: AttentionItem[] }) {
   const { hrefFor } = useSurface();
-  const state = useAsync((signal) => readResultsIndex(orgSlug, signal), [orgSlug]);
-  if (state.loading) return <Spinner />;
-  if (state.error) return <Alert tone="danger">{errorMessage(state.error)}</Alert>;
-  const items: AttentionItem[] = attentionFromResults(state.data?.rows ?? [], w);
+  if (loading) return <Spinner />;
+  if (error) return <Alert tone="danger">{errorMessage(error)}</Alert>;
 
   return (
     <B2CGroupedSection eyebrow="Needs your attention">

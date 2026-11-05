@@ -13,6 +13,7 @@ import {
   firstOpenStep,
   recordingMissing,
   setupComplete,
+  todaySentence,
   stepBlockedReason,
 } from "@/domains/assess/dashboard/support";
 
@@ -61,7 +62,7 @@ test("a fresh organisation sees the five steps, in order, none done, the supervi
   assert.deepEqual(
     assistantSteps(setup(), INSTITUTION_WORDS).map((step) => [step.id, step.label, step.done, step.optional, step.cta, step.href]),
     [
-      ["exam", "Set up an exam", false, false, "Set up an exam", "/authoring"],
+      ["exam", "Set up an exam", false, false, "Set up an exam", "/authoring/exams/new"],
       ["stations", "Add stations", false, false, "Add a station", "/authoring/stations"],
       ["trainees", "Add trainees", false, false, "Add trainees", "/trainees"],
       ["supervisor", "Invite a supervisor", false, true, "Invite staff", "/team"],
@@ -171,4 +172,10 @@ test("finished runs are headed by the day they ended, newest first", () => {
       ["Tuesday 22 September", ["last week"]],
     ],
   );
+});
+
+test("the Today sentence counts what runs and what needs you", () => {
+  assert.equal(todaySentence(1, 5), "One circuit is running and five things need you.");
+  assert.equal(todaySentence(0, 1), "No circuit is running and one thing needs you.");
+  assert.equal(todaySentence(2, 0), "Two circuits are running and nothing needs you.");
 });
