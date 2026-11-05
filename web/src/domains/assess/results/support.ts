@@ -1,3 +1,4 @@
+import { slotReviewPath, type UnmarkedStation } from "@/domains/assess/sessions/support";
 import type {
   CandidateReport,
   CohortCandidate,
@@ -337,14 +338,7 @@ export function filterResultsRows<T extends { not_decided: number; draft: number
 /** One line under "Needs your attention" on the results index. */
 export type AttentionItem = { key: string; text: string; action: "Decide" | "Release" | "Mark"; path: string };
 
-/** A station a supervisor sat and has not marked. */
-export type UnmarkedStation = { slotId: string; attemptId: string | null };
-
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
-/** The review page of a slot, with its attempt when it has one. */
-export const slotReviewPath = (station: UnmarkedStation): string =>
-  `/slots/${station.slotId}/review${station.attemptId ? `?attempt=${station.attemptId}` : ""}`;
 
 /**
  * Work waiting on this person: decisions to make, then decisions to release, then the stations the
@@ -354,33 +348,35 @@ export function attentionItems(
   rows: { sitting_id: string; name: string; not_decided: number; draft: number; signed_off: number }[],
   unmarked: UnmarkedStation[],
 ): AttentionItem[] {
-  const items: AttentionItem[] = [];
+  const decide: AttentionItem[] = [];
+  const release: AttentionItem[] = [];
   for (const row of rows) {
     const path = `/sittings/${row.sitting_id}/results`;
     if (row.not_decided > 0) {
-      items.push({
+      decide.push({
         key: `decide-${row.sitting_id}`,
         text: `${row.name}: ${count(row.not_decided, "candidate needs", "candidates need")} a decision`,
         action: "Decide",
         path,
       });
     } else if (row.draft > 0) {
-      items.push({
+      decide.push({
         key: `draft-${row.sitting_id}`,
         text: `${row.name}: ${count(row.draft, "decision is", "decisions are")} in draft, waiting to be signed off`,
         action: "Decide",
         path,
       });
     }
+    if (row.signed_off > 0) {
+      release.push({
+        key: `release-${row.sitting_id}`,
+        text: `${row.name}: ${count(row.signed_off, "result", "results")} signed off and not yet released`,
+        action: "Release",
+        path,
+      });
+    }
   }
-  for (const row of rows.filter((r) => r.signed_off > 0)) {
-    items.push({
-      key: `release-${row.sitting_id}`,
-      text: `${row.name}: ${count(row.signed_off, "result", "results")} signed off and not yet released`,
-      action: "Release",
-      path: `/sittings/${row.sitting_id}/results`,
-    });
-  }
+  const items = [...decide, ...release];
   if (unmarked[0]) {
     items.push({
       key: "mark",

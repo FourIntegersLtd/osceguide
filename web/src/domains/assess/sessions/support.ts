@@ -60,6 +60,13 @@ export function orderedSlots(data: CircuitConsole): ConsoleSlot[] {
   return (data.slots ?? []).slice().sort((a, b) => a.slot_index - b.slot_index);
 }
 
+/** A station a supervisor sat and has not marked. */
+export type UnmarkedStation = { slotId: string; attemptId: string | null };
+
+/** The review page of a slot, with its attempt when it has one. */
+export const slotReviewPath = (station: UnmarkedStation): string =>
+  `/slots/${station.slotId}/review${station.attemptId ? `?attempt=${station.attemptId}` : ""}`;
+
 export type SlotProgress = "waiting" | "reading" | "in_consultation" | "completed" | "skipped";
 
 export function slotProgress(slot: ConsoleSlot): SlotProgress {
@@ -272,4 +279,16 @@ export const MAX_EXTEND_SECONDS = 3600;
 /** `extend-clock` takes 1-3600 whole seconds. */
 export function validOverrideSeconds(seconds: number): boolean {
   return Number.isInteger(seconds) && seconds >= 1 && seconds <= MAX_EXTEND_SECONDS;
+}
+
+/** Stations sat and not yet marked, in the order they are sat. */
+export function unmarkedStations(data: CircuitConsole): (UnmarkedStation & { title: string; position: number })[] {
+  return orderedSlots(data)
+    .filter((slot) => !slot.has_review && markable(slot))
+    .map((slot) => ({
+      slotId: slot.id,
+      attemptId: slot.attempt_id ?? null,
+      title: stationLabel(slot),
+      position: slot.slot_index + 1,
+    }));
 }

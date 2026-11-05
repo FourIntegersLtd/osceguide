@@ -1,16 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { circuitReviewSteps, stationsToMark, type ReviewStation } from "@/domains/assess/results/circuitReviewSteps";
+import { circuitReviewSteps, stationsToMark, type ReviewStation } from "@/domains/assess/sessions/circuitReviewSteps";
 
-const st = (position: number, unmarked: boolean, marked: boolean): ReviewStation => ({
+const st = (position: number, state: ReviewStation["state"]): ReviewStation => ({
   slotId: `s${position}`,
   attemptId: null,
   position,
   title: `Station ${position}`,
-  unmarked,
-  marked,
+  state,
 });
-const four = [st(1, false, true), st(2, false, true), st(3, false, true), st(4, false, true), st(5, true, false), st(6, true, false)];
+const four = [st(1, "marked"), st(2, "marked"), st(3, "marked"), st(4, "marked"), st(5, "unmarked"), st(6, "unmarked")];
 
 describe("circuit review steps", () => {
   it("says what is left and that nothing is published", () => {
@@ -24,6 +23,6 @@ describe("circuit review steps", () => {
     assert.deepEqual(stationsToMark(four).map((s) => s.position), [5, 6, 1, 2, 3, 4]);
   });
   it("leaves out stations nobody sat", () => {
-    assert.equal(stationsToMark([st(1, false, false)]).length, 0);
+    assert.equal(stationsToMark([st(1, "not_sat")]).length, 0);
   });
 });

@@ -6,9 +6,8 @@ export type ReviewStation = {
   attemptId: string | null;
   position: number;
   title: string;
-  /** Sat and not yet marked: the supervisor's work. */
-  unmarked: boolean;
-  marked: boolean;
+  /** "unmarked" is the supervisor's work; "not_sat" is a station nobody has started. */
+  state: "unmarked" | "marked" | "not_sat";
 };
 
 export type CircuitReviewStepId = "mark" | "share" | "results";
@@ -21,8 +20,8 @@ export function circuitReviewSteps(
   stations: ReviewStation[],
   published: boolean,
 ): { steps: RailStep<CircuitReviewStepId>[]; line: string } {
-  const sat = stations.filter((s) => s.marked || s.unmarked);
-  const marked = sat.filter((s) => s.marked).length;
+  const sat = stations.filter((s) => s.state !== "not_sat");
+  const marked = sat.filter((s) => s.state === "marked").length;
   const left = sat.length - marked;
   const steps: RailStep<CircuitReviewStepId>[] = [
     {
@@ -50,6 +49,6 @@ export function circuitReviewSteps(
 
 /** Unmarked stations first, then the rest in order: what is left leads. */
 export function stationsToMark(stations: ReviewStation[]): ReviewStation[] {
-  const sat = stations.filter((s) => s.marked || s.unmarked);
-  return [...sat.filter((s) => s.unmarked), ...sat.filter((s) => !s.unmarked)];
+  const sat = stations.filter((s) => s.state !== "not_sat");
+  return [...sat.filter((s) => s.state === "unmarked"), ...sat.filter((s) => s.state === "marked")];
 }
