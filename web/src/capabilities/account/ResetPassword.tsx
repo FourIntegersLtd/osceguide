@@ -108,10 +108,10 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
       <AuthShell
         variant="card"
         icon="warning"
-        title="That link is incomplete"
+        title="This link is incomplete"
         subtitle={
           invitation
-            ? "Use the link in your invitation email. If you already chose a password, sign in; otherwise ask whoever invited you to send it again."
+            ? "Open the link from your email again, or ask your administrator to resend it."
             : "Use the most recent email, or ask for a new link."
         }
       >
@@ -166,9 +166,9 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
       icon={invitation ? "mail" : "key"}
       sidePanel={<AuthQuotePanel />}
       eyebrow={invitation ? "Invitation" : undefined}
-      title={invitation ? "Accept your invitation" : "Set a new password"}
+      title={invitation ? "Accept your invitation" : "Choose a new password"}
       subtitle={
-        invitation ? "Choose a password to finish setting up your account." : "Choose something you'll remember"
+        invitation ? "Choose a password to accept." : "Choose something you'll remember"
       }
     >
       <form className="space-y-5" method="post" onSubmit={handleFormSubmission} noValidate>
@@ -185,7 +185,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
           error={fieldErrors.password}
         />
         <AuthFormField
-          label="Confirm password"
+          label={invitation ? "Confirm password" : "Confirm it"}
           name="confirmPassword"
           type={formData.showPassword ? "text" : "password"}
           autoComplete="new-password"
@@ -207,7 +207,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
           </p>
         ) : null}
         <AuthButton isLoading={isSubmitting}>
-          {isSubmitting ? "Saving…" : invitation ? "Accept invitation" : "Save new password"}
+          {isSubmitting ? "Saving…" : invitation ? "Accept invitation" : "Reset password"}
         </AuthButton>
       </form>
     </AuthShell>

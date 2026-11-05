@@ -157,7 +157,7 @@ describe("staff bulk revoke", () => {
   it("explains the two roles together in the change-role box", () => {
     assert.equal(
       ROLE_CHOICE_HELP,
-      "Supervisor: Runs circuits and marks the candidates on them. Admin: Manages the team and the organisation's settings, and signs off results.",
+      "Supervisor: runs circuits and marks the candidates on them. Admin: also manages the team and the organisation's settings, and signs off results.",
     );
   });
 });

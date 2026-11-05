@@ -81,7 +81,8 @@ export function staffRevokeTitle(count: number): string {
 }
 
 /** The change-role box's one-line explanation of the two roles it offers. */
-export const ROLE_CHOICE_HELP = `Supervisor: ${ROLE_DESCRIPTIONS.supervisor} Admin: ${ROLE_DESCRIPTIONS.admin}`;
+const lower = (text: string | undefined) => (text ?? "").replace(/^./, (c) => c.toLowerCase());
+export const ROLE_CHOICE_HELP = `Supervisor: ${lower(ROLE_DESCRIPTIONS.supervisor)} Admin: also ${lower(ROLE_DESCRIPTIONS.admin)}`;
 
 /** "4 staff accounts" — the count the old members card carried. */
 export function staffCountLabel(count: number): string {

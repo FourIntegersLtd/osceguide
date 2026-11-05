@@ -48,7 +48,7 @@ export function CompetencyList({ domainPath }: { domainPath: JsonPath }) {
         );
       })}
       <AddButton
-        label="Add competency"
+        label="Add an area"
         onClick={() => edit((current) => appendAt(current, listPath, newCompetency(listAt(current, listPath))))}
       />
     </div>

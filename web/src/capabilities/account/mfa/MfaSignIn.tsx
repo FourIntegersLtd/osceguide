@@ -123,6 +123,7 @@ function MfaCodeStep({
         key={mode}
         label={mode === "code" ? "Authentication code" : "Recovery code"}
         name={mode === "code" ? "code" : "recovery_code"}
+        placeholder={mode === "code" ? "123 456" : undefined}
         inputMode={mode === "code" ? "numeric" : "text"}
         autoComplete={mode === "code" ? "one-time-code" : "off"}
         // The password form this replaced held focus; without this it falls to
@@ -135,7 +136,7 @@ function MfaCodeStep({
         className={cn(authInput, "pl-3.5", mode === "code" && "text-center font-landing-mono text-2xl font-semibold tracking-[0.4em]")}
       />
       <AuthButton isLoading={busy} disabled={!ready}>
-        {busy ? "Checking…" : "Verify"}
+        {busy ? "Checking…" : "Continue"}
       </AuthButton>
       <div className="flex flex-col items-center gap-2 text-osce-meta">
         <button

@@ -91,7 +91,7 @@ export function SsoCallback() {
         </div>
       ) : (
         <div className="flex justify-center">
-          <Spinner label="Signing you in" size="md" />
+          <Spinner label="Signing you in…" size="md" />
         </div>
       )}
     </AuthShell>

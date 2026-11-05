@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Panel, StepGuide } from "@/foundation/ui";
+import { Alert, Badge, Panel, StepGuide } from "@/foundation/ui";
 import { PlatformError } from "@/foundation/platform-client";
 import {
   draftRubricInstructions,
@@ -13,7 +13,7 @@ import {
   type TrialMarkRequest,
 } from "@/capabilities/authoring/api";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
-import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
+import { versionRows } from "@/capabilities/authoring/rubrics/versionRows";
 import { LeaveConfirmModal } from "@/foundation/ui";
 import { useLeaveGuard } from "@/foundation/hooks";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
@@ -171,14 +171,17 @@ export function RubricBuilder({
             {/* Read-only on purpose: publishing and archiving a version live on the versions page. */}
             <Panel title="Versions">
               <ul className="space-y-1.5">
-                {[...(rubric.versions ?? [])]
-                  .sort((a, b) => b.version - a.version)
-                  .map((item) => (
-                    <li key={item.id} className="flex items-center justify-between gap-2 text-osce-body text-ink">
-                      <span>v{item.version}</span>
-                      <StatusBadge status={item.status} />
-                    </li>
-                  ))}
+                {versionRows(rubric.versions ?? [], rubric.current_version_id).map((row) => (
+                  <li key={row.id} className="flex items-center justify-between gap-2 text-osce-body text-ink">
+                    <span>
+                      <span className="font-medium">v{row.version}</span>{" "}
+                      <span className="text-osce-caption text-ink-muted">{row.detail}</span>
+                    </span>
+                    <Badge tone={row.chip.tone} size="sm" dot>
+                      {row.chip.label}
+                    </Badge>
+                  </li>
+                ))}
               </ul>
             </Panel>
             <Panel title="Trial mark" description="Mark a real attempt or a pasted transcript with this draft, before anyone else does.">

@@ -181,6 +181,7 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
             {timings ? <Alert tone="danger">{timings}</Alert> : null}
             <ExamSettingsFields
               title="More settings"
+              description="Patient voice, feedback style and the AI writing setup. The same options as today's exam settings."
               value={draft.settings}
               onChange={(patch) => setDraft({ ...draft, settings: { ...draft.settings, ...patch } })}
             />
