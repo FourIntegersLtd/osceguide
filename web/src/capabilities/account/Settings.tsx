@@ -23,7 +23,7 @@ export interface ExtraSettingsTab {
   id: string;
   label: string;
   /** A panel that can hold unsaved edits takes the setter that arms the leave guard. */
-  panel: ReactNode | ((setDirty: (dirty: boolean) => void) => ReactNode);
+  panel: (setDirty: (dirty: boolean) => void) => ReactNode;
   /** Placed after the person's own tabs instead of before them. */
   after?: boolean;
 }
@@ -137,7 +137,7 @@ function SettingsFrame({
       {tab === "preferences" ? <PreferencesPanel /> : null}
       {tab === "payments" ? <PaymentsPanel /> : null}
       {tab === "referrals" ? <ReferralsPanel /> : null}
-      {extraTabs.map((entry) => (tab === entry.id ? <div key={entry.id}>{typeof entry.panel === "function" ? entry.panel(setDirty) : entry.panel}</div> : null))}
+      {extraTabs.map((entry) => (tab === entry.id ? <div key={entry.id}>{entry.panel(setDirty)}</div> : null))}
     </>
   );
 

@@ -8,3 +8,4 @@ export { useCursorPages, type CursorPage, type CursorPages } from "@/foundation/
 export { useSearchQuery } from "@/foundation/hooks/useSearchQuery";
 export { useLeaveGuard } from "@/foundation/hooks/useLeaveGuard";
 export { useHydrated } from "@/foundation/hooks/useHydrated";
+export { useDirtyGuard } from "@/foundation/hooks/useDirtyGuard";

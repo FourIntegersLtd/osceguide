@@ -1,9 +1,9 @@
 "use client";
 
 import { isOrgSurface } from "@/capabilities/surface";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, AsyncBoundary, Badge, Button, Input, Panel } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync, useDirtyGuard } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { Settings } from "@/capabilities/account";
@@ -35,8 +35,8 @@ export function WorkspaceSettings() {
         runsOrg
           ? [
               { id: "organisation", label: "Organisation", panel: (setDirty) => <OrganisationPanel orgSlug={orgSlug} setDirty={setDirty} /> },
-              { id: "sso", label: "Single sign-on", panel: <SignInPanel orgSlug={orgSlug} /> },
-              { id: "provisioning", label: "Provisioning", panel: <ScimTokens key={orgSlug} orgSlug={orgSlug} /> },
+              { id: "sso", label: "Single sign-on", panel: () => <SignInPanel orgSlug={orgSlug} /> },
+              { id: "provisioning", label: "Provisioning", panel: () => <ScimTokens key={orgSlug} orgSlug={orgSlug} /> },
               { id: "invoices", label: "Invoices", after: true, panel: (setDirty) => <InvoicesPanel key={orgSlug} orgSlug={orgSlug} setDirty={setDirty} /> },
             ]
           : []
@@ -62,10 +62,7 @@ function RenameForm({ org, onSaved, setDirty }: { org: Organization; onSaved: ()
   const changed = name.trim() !== "" && name.trim() !== org.name;
 
   // An edited, unsaved name arms the tab strip's "Leave without saving?" guard.
-  useEffect(() => {
-    setDirty(changed);
-    return () => setDirty(false);
-  }, [changed, setDirty]);
+  useDirtyGuard(changed, setDirty);
 
   async function save() {
     setBusy(true);

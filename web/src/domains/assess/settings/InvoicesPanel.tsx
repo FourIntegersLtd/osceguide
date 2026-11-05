@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, AsyncBoundary, Badge, Button, EmptyState, Input, LeaveConfirmModal, Panel } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync, useCursorPages, useDirtyGuard } from "@/foundation/hooks";
+import { formatMoney, formatShortDate } from "@/foundation/format";
 import { PlatformError } from "@/foundation/platform-client";
 import {
   listInvoices,
@@ -14,10 +15,7 @@ import {
 import {
   checkPoNumber,
   describeInvoiceStatus,
-  invoiceDate,
-  invoiceMoney,
   PO_NUMBER_MAX,
-  poNumberText,
 } from "@/domains/assess/settings/invoiceView";
 
 /**
@@ -42,32 +40,11 @@ export function InvoicesPanel({ orgSlug, setDirty }: { orgSlug: string; setDirty
 }
 
 function InvoiceList({ orgSlug, onOpen }: { orgSlug: string; onOpen: (id: string) => void }) {
-  const first = useAsync((signal) => listInvoices(orgSlug, signal), [orgSlug]);
-  const [more, setMore] = useState<Invoice[]>([]);
-  const [cursor, setCursor] = useState<string | null | undefined>(undefined);
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
-  const next = cursor === undefined ? first.data?.next_cursor : cursor;
-
-  async function loadMore() {
-    if (!next) return;
-    setBusy(true);
-    setFailure(null);
-    try {
-      const page = await listInvoices(orgSlug, undefined, { cursor: next });
-      setMore((current) => [...current, ...page.items]);
-      setCursor(page.next_cursor ?? null);
-    } catch (cause) {
-      setFailure(errorMessage(cause));
-    } finally {
-      setBusy(false);
-    }
-  }
+  const pages = useCursorPages((cursor, signal) => listInvoices(orgSlug, signal, { cursor }), [orgSlug]);
 
   return (
-    <AsyncBoundary state={first}>
-      {(page) => {
-        const items = [...page.items, ...more];
+    <AsyncBoundary state={pages.state}>
+      {(items) => {
         if (items.length === 0) {
           return (
             <EmptyState
@@ -79,7 +56,7 @@ function InvoiceList({ orgSlug, onOpen }: { orgSlug: string; onOpen: (id: string
         }
         return (
           <div className="flex flex-col gap-3">
-            {failure ? <Alert tone="danger">{failure}</Alert> : null}
+            {pages.moreError ? <Alert tone="danger">{errorMessage(pages.moreError)}</Alert> : null}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-osce-body">
                 <thead className="text-osce-caption uppercase text-ink-muted">
@@ -101,13 +78,13 @@ function InvoiceList({ orgSlug, onOpen }: { orgSlug: string; onOpen: (id: string
                     return (
                       <tr key={invoice.id} className="border-t border-border">
                         <td className="py-3 pr-4 font-medium text-ink">{invoice.invoice_number}</td>
-                        <td className="py-3 pr-4 text-ink-muted">{invoiceDate(invoice.issued_at)}</td>
-                        <td className="py-3 pr-4 text-ink-muted">{invoiceDate(invoice.due_at)}</td>
-                        <td className="py-3 pr-4">{invoiceMoney(invoice.total_pence, invoice.currency)}</td>
+                        <td className="py-3 pr-4 text-ink-muted">{formatShortDate(invoice.issued_at)}</td>
+                        <td className="py-3 pr-4 text-ink-muted">{formatShortDate(invoice.due_at)}</td>
+                        <td className="py-3 pr-4">{formatMoney(invoice.total_pence, invoice.currency)}</td>
                         <td className="py-3 pr-4">
                           <Badge variant={status.tone}>{status.label}</Badge>
                         </td>
-                        <td className="py-3 pr-4 text-ink-muted">{poNumberText(invoice.po_number)}</td>
+                        <td className="py-3 pr-4 text-ink-muted">{invoice.po_number ?? "Not set"}</td>
                         <td className="py-3">
                           <Button
                             variant="secondary"
@@ -124,10 +101,10 @@ function InvoiceList({ orgSlug, onOpen }: { orgSlug: string; onOpen: (id: string
                 </tbody>
               </table>
             </div>
-            {next ? (
+            {pages.hasMore ? (
               <div className="flex justify-center">
-                <Button variant="secondary" size="sm" disabled={busy} onClick={() => void loadMore()}>
-                  {busy ? "Loading…" : "Load more"}
+                <Button variant="secondary" size="sm" disabled={pages.loadingMore} onClick={pages.loadMore}>
+                  {pages.loadingMore ? "Loading…" : "Load more"}
                 </Button>
               </div>
             ) : null}
@@ -150,24 +127,27 @@ function InvoiceDetail({
   onBack: () => void;
 }) {
   const state = useAsync((signal) => readInvoice(orgSlug, invoiceId, signal), [orgSlug, invoiceId]);
-  const [dirty, setLocalDirty] = useState(false);
-  const [leaving, setLeaving] = useState(false);
-  // The tab strip's "Leave without saving?" guard follows an edited, unsaved PO number.
-  useEffect(() => {
-    setDirty(dirty);
-    return () => setDirty(false);
-  }, [dirty, setDirty]);
   return (
     <div className="flex flex-col gap-4">
       <AsyncBoundary state={state}>
-        {(invoice) => <InvoiceBody key={invoice.po_number ?? ""} orgSlug={orgSlug} invoice={invoice} onChanged={state.reload} onDirty={setLocalDirty} />}
+        {(invoice) => (
+          <InvoiceBody
+            key={invoice.po_number ?? ""}
+            orgSlug={orgSlug}
+            invoice={invoice}
+            onChanged={state.reload}
+            setDirty={setDirty}
+            onBack={onBack}
+          />
+        )}
       </AsyncBoundary>
-      <div>
-        <Button variant="ghost" size="sm" onClick={() => (dirty ? setLeaving(true) : onBack())}>
-          Back to invoices
-        </Button>
-      </div>
-      <LeaveConfirmModal isOpen={leaving} onStay={() => setLeaving(false)} onLeave={onBack} />
+      {state.data ? null : (
+        <div>
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            Back to invoices
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -176,12 +156,14 @@ function InvoiceBody({
   orgSlug,
   invoice,
   onChanged,
-  onDirty,
+  setDirty,
+  onBack,
 }: {
   orgSlug: string;
   invoice: Invoice;
   onChanged: () => void;
-  onDirty: (dirty: boolean) => void;
+  setDirty: (dirty: boolean) => void;
+  onBack: () => void;
 }) {
   const status = describeInvoiceStatus(invoice.status);
   const [po, setPo] = useState(invoice.po_number ?? "");
@@ -190,9 +172,9 @@ function InvoiceBody({
   const checked = checkPoNumber(po);
   const unchanged = checked.ok && checked.value === invoice.po_number;
   const edited = po !== (invoice.po_number ?? "");
-  useEffect(() => {
-    onDirty(edited);
-  }, [edited, onDirty]);
+  const [leaving, setLeaving] = useState(false);
+  // The tab strip's "Leave without saving?" guard follows an edited, unsaved PO number.
+  useDirtyGuard(edited, setDirty);
 
   async function save() {
     if (!checked.ok) return;
@@ -219,7 +201,7 @@ function InvoiceBody({
         <div>
           <h3 className="text-osce-data font-semibold text-ink">{invoice.invoice_number}</h3>
           <p className="text-osce-meta text-ink-muted">
-            {invoice.customer_name} · issued {invoiceDate(invoice.issued_at)} · due {invoiceDate(invoice.due_at)}
+            {invoice.customer_name} · issued {formatShortDate(invoice.issued_at)} · due {formatShortDate(invoice.due_at)}
           </p>
         </div>
         <Badge variant={status.tone}>{status.label}</Badge>
@@ -238,13 +220,13 @@ function InvoiceBody({
               <tr key={line.position} className="border-t border-border">
                 <td className="py-3 pr-4">{line.description}</td>
                 <td className="py-3 pr-4">{line.quantity}</td>
-                <td className="py-3">{invoiceMoney(line.amount_pence, invoice.currency)}</td>
+                <td className="py-3">{formatMoney(line.amount_pence, invoice.currency)}</td>
               </tr>
             ))}
             <tr className="border-t border-border font-semibold">
               <td className="py-3 pr-4">Total</td>
               <td className="py-3 pr-4" />
-              <td className="py-3">{invoiceMoney(invoice.total_pence, invoice.currency)}</td>
+              <td className="py-3">{formatMoney(invoice.total_pence, invoice.currency)}</td>
             </tr>
           </tbody>
         </table>
@@ -279,9 +261,15 @@ function InvoiceBody({
           </p>
         </form>
       ) : (
-        <p className="text-osce-body text-ink-muted">Purchase order number: {poNumberText(invoice.po_number)}</p>
+        <p className="text-osce-body text-ink-muted">Purchase order number: {invoice.po_number ?? "Not set"}</p>
       )}
       {invoice.notes ? <p className="text-osce-meta text-ink-muted">Notes from OSCE Guide: {invoice.notes}</p> : null}
+      <div>
+        <Button variant="ghost" size="sm" onClick={() => (edited ? setLeaving(true) : onBack())}>
+          Back to invoices
+        </Button>
+      </div>
+      <LeaveConfirmModal isOpen={leaving} onStay={() => setLeaving(false)} onLeave={onBack} />
     </div>
   );
 }

@@ -1,4 +1,3 @@
-import { formatMoney, parseApiDate } from "@/foundation/format";
 import type { BadgeTone } from "@/foundation/ui";
 
 /** The longest purchase order number the api accepts (`SetPoNumber.po_number`). */
@@ -17,18 +16,6 @@ export function describeInvoiceStatus(status: string): { label: string; tone: Ba
   if (status === "void") return { label: "Void", tone: "neutral", poEditable: false };
   return { label: status, tone: "neutral", poEditable: false };
 }
-
-/** "£4,800.00" from the invoice's pence, in the invoice's own currency. */
-export const invoiceMoney = (pence: number, currency: string): string => formatMoney(pence, currency);
-
-/** "1 Nov 2026", in UK time, as invoices are issued. "-" when there is no date. */
-export function invoiceDate(iso: string | null | undefined): string {
-  const date = parseApiDate(iso);
-  if (!date) return "-";
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London" });
-}
-
-export const poNumberText = (po: string | null): string => po ?? "Not set";
 
 /** The PO number to send, trimmed, or why it cannot be sent. */
 export function checkPoNumber(input: string): { ok: true; value: string } | { ok: false; reason: string } {
