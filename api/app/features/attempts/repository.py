@@ -532,15 +532,15 @@ async def fail_live_attempt_for_slot(
 
 async def fail_unfinished_for_user(
     session: AsyncSession, user_id: uuid.UUID, *, at: datetime, reason: str
-) -> int:
-    """Fail every attempt of this person that is still created or running. Returns how many."""
-    stmt = select(Attempt.id).where(
+) -> list[Attempt]:
+    """Fail every attempt of this person that is still created or running. Returns the ones failed."""
+    stmt = select(Attempt).where(
         Attempt.user_id == user_id, Attempt.status.in_([str(Status.CREATED), str(Status.RUNNING)])
     )
-    ids = list((await session.execute(stmt)).scalars())
-    for attempt_id in ids:
-        await set_status(session, attempt_id, status=Status.FAILED, at=at, reason=reason)
-    return len(ids)
+    failed = list((await session.execute(stmt)).scalars())
+    for attempt in failed:
+        await set_status(session, attempt.id, status=Status.FAILED, at=at, reason=reason)
+    return failed
 
 
 async def fail_stale_consumer_attempts(

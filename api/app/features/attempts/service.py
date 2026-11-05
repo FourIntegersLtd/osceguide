@@ -410,7 +410,10 @@ async def fail_unfinished_for_user(
 
     Failed with a reason rather than deleted, like an abandon, so what was recorded survives.
     """
-    return await repository.fail_unfinished_for_user(session, user_id, at=now, reason=reason)
+    failed = await repository.fail_unfinished_for_user(session, user_id, at=now, reason=reason)
+    for attempt in failed:
+        await sittings_reads.attempt_progress(session, attempt)
+    return len(failed)
 
 
 async def _exam_for_station(session: AsyncSession, station_version_id: uuid.UUID | None) -> uuid.UUID:
