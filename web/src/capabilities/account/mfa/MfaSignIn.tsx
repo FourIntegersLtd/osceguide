@@ -114,11 +114,11 @@ function MfaCodeStep({
 
   return (
     <form className="space-y-5" onSubmit={(event) => void submit(event)} noValidate>
-      {mode === "recovery" ? (
-        <p className="text-base text-site-muted">
-          Enter one of the recovery codes you saved when you set up two-factor sign-in. Each code works once.
-        </p>
-      ) : null}
+      <p className="text-base text-site-muted">
+        {mode === "code"
+          ? "Enter the six-digit code from your authenticator app."
+          : "Enter one of the recovery codes you saved when you set up two-factor sign-in. Each code works once."}
+      </p>
       <Input
         key={mode}
         label={mode === "code" ? "Authentication code" : "Recovery code"}

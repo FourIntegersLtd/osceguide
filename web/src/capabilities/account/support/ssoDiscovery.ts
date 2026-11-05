@@ -8,7 +8,8 @@ export interface SsoForRefusedPassword {
 }
 
 export const ORG_SIGN_IN_NOTICE = "This organisation signs in with its own sign-in. Use the button above.";
-export const NO_ORG_DOOR_NOTICE = "Your organisation has not set up single sign-on for this email.";
+export const NO_ORG_DOOR_NOTICE =
+  "This account signs in through your organisation, not with a password. Use the sign-in link your organisation gave you, or contact support.";
 export const ORG_DOOR_UNREACHABLE_NOTICE =
   "This account signs in through your organisation, but we couldn't reach its sign-in just now. Try again in a moment.";
 

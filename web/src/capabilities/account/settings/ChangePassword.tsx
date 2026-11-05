@@ -19,6 +19,7 @@ import {
 } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
 import { errorMessage, useToast } from "@/foundation/hooks";
+import type { PasswordCopy } from "@/capabilities/account/support/signInCopy";
 import {
   PASSWORD_HINT,
   passwordSchema,
@@ -52,12 +53,6 @@ const FIELDS: { name: PasswordField; label: string; hint?: string }[] = [
   { name: "confirmPassword", label: "Confirm New Password" },
 ];
 
-/** The forced screen's words (the sign-in board): the shell carries the heading. */
-const FORCED_LABELS: Record<PasswordField, string> = {
-  currentPassword: "Temporary password",
-  newPassword: "New password",
-  confirmPassword: "Confirm it",
-};
 
 /**
  * Change your own password, on whichever arm you are standing in.
@@ -74,11 +69,11 @@ const FORCED_LABELS: Record<PasswordField, string> = {
  */
 export default function ChangePassword({
   onChanged,
-  forced = false,
+  copy,
 }: {
   onChanged?: () => Promise<void>;
-  /** The required first change after a temporary password: board wording, no card heading. */
-  forced?: boolean;
+  /** Replaces the labels and button, and drops the card heading (the caller's shell carries it). */
+  copy?: PasswordCopy;
 }) {
   const [values, setValues] = useState({
     currentPassword: "",
@@ -150,7 +145,7 @@ export default function ChangePassword({
 
   return (
     <ModalContent>
-      {forced ? null : (
+      {copy ? null : (
         <ModalLead
           title="Update password"
           description="Choose a new password for your account"
@@ -168,7 +163,7 @@ export default function ChangePassword({
         <ModalSection title="Password details">
           <div className="space-y-4">
             {FIELDS.map(({ name, label, hint }) => (
-              <ModalField key={name} label={forced ? FORCED_LABELS[name] : label} htmlFor={name}>
+              <ModalField key={name} label={copy ? copy.labels[name] : label} htmlFor={name}>
                 <div className="relative">
                   <input
                     type={shown[name] ? "text" : "password"}
@@ -209,7 +204,7 @@ export default function ChangePassword({
                 <Spinner size="xs" className="text-current" label="Updating" /> Updating...
               </>
             ) : (
-              forced ? "Save password" : "Update password"
+              copy ? copy.submit : "Update password"
             )}
           </ModalPrimaryButton>
         </ModalFooterActions>

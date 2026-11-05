@@ -39,3 +39,14 @@ test("a failed lookup says the organisation could not be reached", async () => {
   });
   assert.deepEqual(outcome, { sso: null, notice: ORG_DOOR_UNREACHABLE_NOTICE });
 });
+
+test("the notices are the literal words a person reads", () => {
+  assert.equal(
+    NO_ORG_DOOR_NOTICE,
+    "This account signs in through your organisation, not with a password. Use the sign-in link your organisation gave you, or contact support.",
+  );
+  assert.equal(
+    ORG_DOOR_UNREACHABLE_NOTICE,
+    "This account signs in through your organisation, but we couldn't reach its sign-in just now. Try again in a moment.",
+  );
+});

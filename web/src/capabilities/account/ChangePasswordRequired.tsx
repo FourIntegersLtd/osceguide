@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthShell from "@/capabilities/account/AuthShell";
 import ChangePassword from "@/capabilities/account/settings/ChangePassword";
+import { FORCED_PASSWORD_COPY } from "@/capabilities/account/support/signInCopy";
 import { sanitizeReturnTo } from "@/foundation/session/returnTo";
 import { useSession } from "@/foundation/session";
 
@@ -34,7 +35,7 @@ export function ChangePasswordRequired() {
       icon="key"
     >
       <ChangePassword
-        forced
+        copy={FORCED_PASSWORD_COPY}
         onChanged={async () => {
           /*
            * The flag lives on `/me`, so the guard only stands down once the

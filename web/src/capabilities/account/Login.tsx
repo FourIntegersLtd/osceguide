@@ -25,6 +25,7 @@ import {
 import { mapAuthApiError } from "@/capabilities/account/support/mapAuthApiError";
 import { readAuthNotice, type AuthNoticeTone } from "@/capabilities/account/support/authNotices";
 import { MfaSignIn } from "@/capabilities/account/mfa/MfaSignIn";
+import { WRONG_DETAILS_MESSAGE } from "@/capabilities/account/support/signInCopy";
 import { ssoForRefusedPassword } from "@/capabilities/account/support/ssoDiscovery";
 
 type AuthResult = components["schemas"]["AuthResult"];
@@ -147,7 +148,7 @@ export default function Login() {
         );
         // The board's one sentence for a wrong email or password, shown once under the form.
         const wrongDetails = hasCode(error, "invalid_credentials");
-        setFormError(wrongDetails ? "That email or password is not right." : mapped.formError);
+        setFormError(wrongDetails ? WRONG_DETAILS_MESSAGE : mapped.formError);
         setFieldErrors(wrongDetails ? {} : mapped.fieldErrors);
       }
     }
@@ -320,34 +321,35 @@ export default function Login() {
         </div>
       ) : null}
 
-      <div className="space-y-3">
-        <p className={authFooterLink}>
-          {showPasswordForm ? (
-            <>
-              <Link href="/forgot-password" className={authLink}>
-                Forgot your password?
-              </Link>
-              {" · "}
-            </>
-          ) : null}
-          New organisation?{" "}
-          <Link href="/register/organisation" className={authLink}>
-            Register
-          </Link>
-          {" · "}Help:{" "}
-          <a href={`mailto:${SUPPORT_EMAIL}`} className={authLink}>
-            {SUPPORT_EMAIL}
-          </a>
-        </p>
+      <p className={authFooterLink}>
         {showPasswordForm ? (
-          <p className={authFooterLink}>
+          <>
+            <Link href="/forgot-password" className={authLink}>
+              Forgot your password?
+            </Link>
+            {" · "}
             Don&apos;t have an account?{" "}
             <Link href={examAuthHref("/register", examCode)} className={authLink}>
               Create account
             </Link>
-          </p>
+            {" · "}
+          </>
         ) : null}
-      </div>
+        {/* Institution sign-in only: a consumer exam link or an SSO-only host has no use for it. */}
+        {showPasswordForm && !examCode ? (
+          <>
+            New organisation?{" "}
+            <Link href="/register/organisation" className={authLink}>
+              Register
+            </Link>
+            {" · "}
+          </>
+        ) : null}
+        Help:{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`} className={authLink}>
+          {SUPPORT_EMAIL}
+        </a>
+      </p>
     </AuthShell>
   );
 }
