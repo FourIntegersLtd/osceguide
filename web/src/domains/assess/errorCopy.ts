@@ -17,7 +17,7 @@ const ASSESS_ERROR_COPY: Partial<Record<PlatformErrorCode, string>> = {
   result_not_released: "This result has not been released to the candidate yet.",
   result_not_found: "No decision has been recorded for this candidate yet.",
   // reviews
-  review_conflict: "Someone else changed this review while you had it open. Reload the page and make your changes again, so theirs are not lost.",
+  review_conflict: "Another reviewer saved since you opened this. Load theirs before saving.",
   review_incomplete: "Rate every required area before completing the review.",
   nothing_to_review: "Nobody took this station, so there is nothing to review.",
   invalid_review_status: "A review can only be saved as a draft or completed.",

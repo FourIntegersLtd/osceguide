@@ -106,6 +106,14 @@ function Report({
       />
       {downloadError ? <Alert tone="danger">{downloadError}</Alert> : null}
 
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-osce-body font-medium text-b2b-headline">Outcomes</h2>
+        {can(session, "export_results") ? (
+          <Button themeType="b2b" variant="ghost" size="sm" isLoading={downloading} disabled={downloading} onClick={() => downloadCsv()}>
+            Export CSV
+          </Button>
+        ) : null}
+      </div>
       <OutcomeTiles candidates={candidates} awaitingMarking={report.totals.awaiting_marking} />
       {candidates.length === 0 ? (
         <EmptyState title="Nobody has sat this yet." />

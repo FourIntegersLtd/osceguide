@@ -169,10 +169,13 @@ export function CandidateCard({
                   onChanged={onChanged}
                 />
               ) : (
-                <p className="text-osce-body text-b2b-mid">
-                  An institution administrator records, signs off and releases the decision. Its stage is shown in the
-                  row above.
-                </p>
+                <div className="space-y-1">
+                  <h3 className="text-osce-body font-medium text-b2b-headline">Supervisor view</h3>
+                  <p className="text-osce-body text-b2b-mid">
+                    An institution administrator records, signs off and releases the decision. Its stage is shown in
+                    the row above.
+                  </p>
+                </div>
               )}
             </FoldSection>
           </td>

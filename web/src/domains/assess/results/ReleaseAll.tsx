@@ -10,6 +10,7 @@ import { ReleaseButton } from "@/domains/assess/results/DecisionParts";
 import { sittingNext, sittingSteps, type SittingStepsInput } from "@/domains/assess/sittingSteps";
 import {
   UNLINKED_REASON,
+  outcomeLabel,
   releaseFailureLine,
   releaseRefusal,
   splitByAccount,
@@ -119,7 +120,13 @@ export function ReleaseAll({
                   disabled={busy}
                   onChange={() => toggle(candidate.user_id)}
                 />
-                {candidate.name ?? candidate.email ?? "Candidate"}
+                <span>
+                  {candidate.name ?? candidate.email ?? "Candidate"}
+                  <span className="block text-osce-meta font-normal text-b2b-mid">
+                    {candidate.decision?.assessment_outcome ? `${outcomeLabel(candidate.decision.assessment_outcome)} · ` : ""}
+                    signed off
+                  </span>
+                </span>
               </label>
             </li>
           ))}

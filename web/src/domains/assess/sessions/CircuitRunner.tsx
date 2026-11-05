@@ -9,6 +9,7 @@ import { useSurface } from "@/capabilities";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import { AddTraineesDialog } from "@/domains/assess/sessions/AddTraineesDialog";
+import { CircuitReviewStep } from "@/domains/assess/results/CircuitReviewStep";
 import { CircuitFeedbackCard } from "@/domains/assess/sessions/CircuitFeedbackCard";
 import { InterventionsLog } from "@/domains/assess/sessions/InterventionsLog";
 import { LiveMarkingSidebar } from "@/domains/assess/sessions/LiveMarkingSidebar";
@@ -180,6 +181,8 @@ function Runner({
       <ObserverPanel data={data} observer={observer} />
 
       <LiveMarkingSidebar data={data} orgSlug={orgSlug} />
+
+      {circuit.ended_at !== null ? <CircuitReviewStep data={data} orgSlug={orgSlug} circuitId={circuitId} /> : null}
 
       <CircuitFeedbackCard
         data={data}

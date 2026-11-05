@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useMeEvents } from "@/foundation/hooks";
 import { Alert, AsyncBoundary, Badge, Button, B2CPageHeader, FoldSection, Spinner, Panel, StepGuide } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
@@ -77,8 +78,8 @@ export function SlotReview({
         action={sittingId ? <CandidateStepper orgSlug={orgSlug} sittingId={sittingId} slotId={slotId} /> : undefined}
       />
       {state.data?.hidden ? (
-        <Alert tone="warning">
-          You are not named on this station&apos;s circuit, so its automatic marking is not shown to you.
+        <Alert tone="warning" title="Not your circuit">
+          You are not named on this station&apos;s circuit, so its marking is hidden from you.
         </Alert>
       ) : null}
       <AsyncBoundary state={state}>
@@ -149,6 +150,16 @@ function Editor({
     markingFailed: feedback?.marking_failed === true,
     failedReason: reviews.attempt_failed_reason,
   });
+  // The AI mark arrives on the attempt's own events: the page follows it rather than asking again.
+  useMeEvents(
+    marking === "pending" ? ["attempt"] : null,
+    useCallback(
+      (event) => {
+        if (event.name === "resync" || event.data.attempt_id === attemptId) onSaved();
+      },
+      [attemptId, onSaved],
+    ),
+  );
   const retryMarking = useCallback(async () => {
     setBusy("retry");
     setRetryError(null);

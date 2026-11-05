@@ -203,6 +203,7 @@ function Form({
 
       {!signedOff && blockers.length > 0 ? (
         <Alert tone="warning" title="Before this can be signed off">
+          <p className="mb-1">Every station marked · a rationale written</p>
           <ul className="list-inside list-disc space-y-1">
             {blockers.map((blocker) => (
               <li key={blocker}>{blocker}</li>

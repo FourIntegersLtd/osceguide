@@ -65,6 +65,7 @@ export function ReadoutExport({ orgSlug, sittingId }: { orgSlug: string; sitting
       >
         {busy ? "Exporting…" : "Export readout"}
       </Button>
+      <p className="text-osce-meta text-b2b-mid">Formal exam only.</p>
       {note ? (
         <Alert tone="warning" className="max-w-xs">
           {note}

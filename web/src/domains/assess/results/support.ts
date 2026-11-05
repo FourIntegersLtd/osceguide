@@ -305,7 +305,7 @@ export function releaseRefusal(code: string): string {
     case "evidence_changed":
       return "the marking changed after sign-off, so sign it off again";
     case "invalid_workflow":
-      return "not signed off, or already released";
+      return "not signed off yet, or already released";
     case "outcome_not_releasable":
       return "a withheld or inconclusive outcome is not sent to the candidate";
     case "decision_revised":
@@ -332,4 +332,62 @@ export function filterResultsRows<T extends { not_decided: number; draft: number
   if (tab === "needs_decision") return rows.filter((row) => row.not_decided > 0 || row.draft > 0);
   if (tab === "ready_to_release") return rows.filter((row) => row.signed_off > 0);
   return rows;
+}
+
+/** One line under "Needs your attention" on the results index. */
+export type AttentionItem = { key: string; text: string; action: "Decide" | "Release" | "Mark"; path: string };
+
+/** A station a supervisor sat and has not marked. */
+export type UnmarkedStation = { slotId: string; attemptId: string | null };
+
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** The review page of a slot, with its attempt when it has one. */
+export const slotReviewPath = (station: UnmarkedStation): string =>
+  `/slots/${station.slotId}/review${station.attemptId ? `?attempt=${station.attemptId}` : ""}`;
+
+/**
+ * Work waiting on this person: decisions to make, then decisions to release, then the stations the
+ * supervisor has not marked. Built from the index's own counts, so it needs no read of its own.
+ */
+export function attentionItems(
+  rows: { sitting_id: string; name: string; not_decided: number; draft: number; signed_off: number }[],
+  unmarked: UnmarkedStation[],
+): AttentionItem[] {
+  const items: AttentionItem[] = [];
+  for (const row of rows) {
+    const path = `/sittings/${row.sitting_id}/results`;
+    if (row.not_decided > 0) {
+      items.push({
+        key: `decide-${row.sitting_id}`,
+        text: `${row.name}: ${count(row.not_decided, "candidate needs", "candidates need")} a decision`,
+        action: "Decide",
+        path,
+      });
+    } else if (row.draft > 0) {
+      items.push({
+        key: `draft-${row.sitting_id}`,
+        text: `${row.name}: ${count(row.draft, "decision is", "decisions are")} in draft, waiting to be signed off`,
+        action: "Decide",
+        path,
+      });
+    }
+  }
+  for (const row of rows.filter((r) => r.signed_off > 0)) {
+    items.push({
+      key: `release-${row.sitting_id}`,
+      text: `${row.name}: ${count(row.signed_off, "result", "results")} signed off and not yet released`,
+      action: "Release",
+      path: `/sittings/${row.sitting_id}/results`,
+    });
+  }
+  if (unmarked[0]) {
+    items.push({
+      key: "mark",
+      text: `${count(unmarked.length, "station", "stations")} waiting for your marks`,
+      action: "Mark",
+      path: slotReviewPath(unmarked[0]),
+    });
+  }
+  return items;
 }
