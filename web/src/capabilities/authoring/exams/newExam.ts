@@ -8,7 +8,8 @@ export function resumeStep(exam: { rubric_version_id?: string | null } | null): 
   return exam.rubric_version_id ? 2 : 1;
 }
 
-type Minutes = { reading: string; simulation: string };
+/** `breakMin` is optional: an exam with no break set leaves the choice to each sitting. */
+type Minutes = { reading: string; simulation: string; breakMin?: string };
 
 function outside(value: string, max: number): boolean {
   const n = Number(value);
@@ -19,14 +20,18 @@ function outside(value: string, max: number): boolean {
 export const MAX_READING_MIN = 30;
 export const MAX_CONSULT_MIN = 180;
 
-export function timingProblem({ reading, simulation }: Minutes): string | null {
+export const MAX_BREAK_MIN = 60;
+
+export function timingProblem({ reading, simulation, breakMin }: Minutes): string | null {
   if (outside(reading, MAX_READING_MIN)) return `Reading time must be 1 to ${MAX_READING_MIN} minutes.`;
   if (outside(simulation, MAX_CONSULT_MIN)) return `Consultation must be 1 to ${MAX_CONSULT_MIN} minutes.`;
+  if (breakMin && outside(breakMin, MAX_BREAK_MIN)) return `Break must be 1 to ${MAX_BREAK_MIN} minutes.`;
   return null;
 }
 
-export function timingsLine({ reading, simulation }: Minutes): string {
-  return `${reading} min reading · ${simulation} min consultation`;
+export function timingsLine({ reading, simulation, breakMin }: Minutes): string {
+  const line = `${reading} min reading · ${simulation} min consultation`;
+  return breakMin ? `${line} · ${breakMin} min break` : line;
 }
 
 import type { PublishStep } from "@/capabilities/authoring/sections/examSteps";

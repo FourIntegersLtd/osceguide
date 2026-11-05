@@ -51,6 +51,8 @@ class LiveCircuit(BaseModel):
     # Time in this phase and time left in it, both excluding any pause.
     elapsed_seconds: int | None = None
     remaining_seconds: int | None = None
+    # How far past its end the phase has run; null while it is not late.
+    overdue_seconds: int | None = None
 
     stations_total: int
     stations_completed: int

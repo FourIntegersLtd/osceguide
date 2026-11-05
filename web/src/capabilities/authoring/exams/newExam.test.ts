@@ -27,6 +27,18 @@ describe("New exam sheet", () => {
   it("summarises timings", () => {
     assert.equal(timingsLine({ reading: "3", simulation: "10" }), "3 min reading · 10 min consultation");
   });
+  it("holds the break to 1 to 60 minutes, and lets it be left blank", () => {
+    assert.equal(timingProblem({ reading: "3", simulation: "10", breakMin: "5" }), null);
+    assert.equal(timingProblem({ reading: "3", simulation: "10", breakMin: "" }), null);
+    assert.equal(timingProblem({ reading: "3", simulation: "10", breakMin: "61" }), "Break must be 1 to 60 minutes.");
+    assert.equal(timingProblem({ reading: "3", simulation: "10", breakMin: "0.5" }), "Break must be 1 to 60 minutes.");
+  });
+  it("adds the break to the summary when the exam has one", () => {
+    assert.equal(
+      timingsLine({ reading: "3", simulation: "10", breakMin: "5" }),
+      "3 min reading · 10 min consultation · 5 min break",
+    );
+  });
   it("shows stored seconds as minutes", () => {
     assert.equal(toMinutes(180), 3);
     assert.equal(toMinutes("600"), 10);

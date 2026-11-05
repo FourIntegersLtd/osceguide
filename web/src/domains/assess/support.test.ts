@@ -4,6 +4,7 @@ import test from "node:test";
 import type { Programme, Sitting, SittingMode } from "@/domains/assess/api";
 import type { SittingFormValues } from "@/domains/assess/support";
 import {
+  sittingNeedsCircuits,
   moveItem,
   expandToUsers,
   isBulkExam,
@@ -337,5 +338,20 @@ test("an employer workspace's empty list says assessments", () => {
   assert.equal(
     sittingsEmptyDescription(false, EMPLOYER_WORDS),
     "An administrator schedules assessments; they will appear here.",
+  );
+});
+
+test("a scheduled sitting needs circuits until the server counts one", () => {
+  assert.equal(
+    sittingNeedsCircuits({ status: "scheduled", circuit_count: 0 }),
+    true,
+  );
+  assert.equal(
+    sittingNeedsCircuits({ status: "scheduled", circuit_count: 2 }),
+    false,
+  );
+  assert.equal(
+    sittingNeedsCircuits({ status: "in_progress", circuit_count: 0 }),
+    false,
   );
 });

@@ -9,6 +9,8 @@ from pydantic import BaseModel
 
 class ProgrammeReportRow(BaseModel):
     programme_id: uuid.UUID
+    # The exam behind the programme, so a row can open it.
+    exam_id: uuid.UUID
     exam_name: str
     sittings: int
     # Distinct people rostered onto the programme's circuits.

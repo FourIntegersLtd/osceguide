@@ -2,7 +2,10 @@
 
 import type { AssessWords } from "@/domains/assess/vocabulary";
 import { useState } from "react";
-import { AsyncBoundary, Button, B2CHero, B2CPageHeader, LoadMore } from "@/foundation/ui";
+import { AsyncBoundary, Button, B2CGroupedRow, B2CGroupedSection, B2CHero, B2CPageHeader, LoadMore } from "@/foundation/ui";
+import { useAsync } from "@/foundation/hooks";
+import { readOrgDashboard } from "@/domains/assess/dashboard/api";
+import { notJoinedItem } from "@/domains/assess/dashboard/support";
 import { can, useSession } from "@/foundation/session";
 import { TabStrip } from "@/domains/assess/team/chrome";
 import { MembersPanel } from "@/domains/assess/team/MembersPanel";
@@ -64,6 +67,8 @@ export function People({ orgSlug, initialTab }: { orgSlug: string; initialTab: P
           add {w.trainees}. Ask one of them to add the people you need on the roster.
         </p>
       ) : null}
+
+      {canManage ? <NotJoinedRow orgSlug={orgSlug} w={w} /> : null}
 
       <TabStrip
         tabs={tabs.map((entry) =>
@@ -170,6 +175,18 @@ function rosterHeadline(trainees: Trainee[], total: number, loadedAll: boolean, 
   if (!loadedAll) return people;
   const count = programmeCount(trainees);
   return `${people} across ${count} ${count === 1 ? "programme" : "programmes"}`;
+}
+
+/** The server's count of invited people who have not set a password, from the org counts. */
+function NotJoinedRow({ orgSlug, w }: { orgSlug: string; w: AssessWords }) {
+  const state = useAsync((signal) => readOrgDashboard(orgSlug, signal), [orgSlug]);
+  const item = state.data ? notJoinedItem(state.data.counts.invited_not_joined, w) : null;
+  if (!item) return null;
+  return (
+    <B2CGroupedSection eyebrow="Invitations">
+      <B2CGroupedRow title={item.tag} meta={`${item.title}. ${item.body}`} />
+    </B2CGroupedSection>
+  );
 }
 
 function rosterDetail(trainees: Trainee[]): string {

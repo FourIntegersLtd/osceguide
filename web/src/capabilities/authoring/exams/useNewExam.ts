@@ -37,7 +37,11 @@ export function useNewExam(first: Exam | null, firstProgramme: Programme | null)
   // Set once a create was sent: if it failed, the exam may still have been made, so the retry looks first.
   const [createSent, setCreateSent] = useState(false);
 
-  const minutes = { reading: String(toMinutes(draft.reading)), simulation: String(toMinutes(draft.simulation)) };
+  const minutes = {
+    reading: String(toMinutes(draft.reading)),
+    simulation: String(toMinutes(draft.simulation)),
+    breakMin: draft.settings.default_break_minutes != null ? String(draft.settings.default_break_minutes) : "",
+  };
   const timings = step === 2 ? timingProblem(minutes) : null;
   const nameProblem =
     draft.name.trim() === ""

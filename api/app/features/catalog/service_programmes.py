@@ -12,6 +12,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exam_settings import ExamSettings
 from app.features.catalog import repository
 from app.features.catalog.errors import ProgrammeExists, ProgrammeNotFound
 from app.features.catalog.models import Exam, Programme
@@ -61,4 +62,7 @@ def _programme_read(programme: Programme, exam: Exam) -> ProgrammeRead:
         exam_owner_kind=exam.owner_kind,
         status=programme.status,
         source=programme.source,
+        default_reading_seconds=exam.default_reading_seconds,
+        default_simulation_seconds=exam.default_simulation_seconds,
+        default_break_minutes=ExamSettings.model_validate(exam.settings or {}).default_break_minutes,
     )

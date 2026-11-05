@@ -40,6 +40,7 @@ import {
 } from "@/domains/assess/ScheduleSteps";
 import {
   EMPTY_DRAFT,
+  examTimings,
   SCHEDULE_STEPS,
   STEP_HELP,
   candidateNames,
@@ -159,7 +160,11 @@ function Wizard({
   );
   const ready = useMemo(() => programmes.filter((programme) => programme.status === "active"), [programmes]);
 
-  const [draft, setDraft] = useState<ScheduleDraft>({ ...EMPTY_DRAFT, programmeId: ready[0]?.id ?? "" });
+  const [draft, setDraft] = useState<ScheduleDraft>({
+    ...EMPTY_DRAFT,
+    programmeId: ready[0]?.id ?? "",
+    ...(ready[0] ? examTimings(ready[0]) : {}),
+  });
   const [step, setStep] = useState<ScheduleStepId>("basics");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -257,7 +262,17 @@ function Wizard({
             <FieldSelect
               label="Exam"
               value={draft.programmeId}
-              onChange={(value) => patch({ programmeId: value, stations: [] })}
+              onChange={(value) => {
+                const chosen = ready.find((item) => item.id === value);
+                patch({
+                  programmeId: value,
+                  stations: [],
+                  readingMinutes: EMPTY_DRAFT.readingMinutes,
+                  consultationMinutes: EMPTY_DRAFT.consultationMinutes,
+                  breakMinutes: EMPTY_DRAFT.breakMinutes,
+                  ...(chosen ? examTimings(chosen) : {}),
+                });
+              }}
               options={ready.map((item) => ({ value: item.id, label: `${item.exam_name} · Ready to schedule` }))}
             />
             <p className="text-sm text-ink-muted">

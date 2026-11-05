@@ -269,7 +269,7 @@ export function moveItem<T>(list: readonly T[], index: number, offset: -1 | 1): 
   return copy;
 }
 
-/** A scheduled sitting nobody is assigned to yet: its circuits are still to be built. */
-export function sittingNeedsCircuits(sitting: { status: string; candidate_count: number }): boolean {
-  return sitting.status === "scheduled" && sitting.candidate_count === 0;
+/** A scheduled sitting with no circuit yet: the server's count, not a guess from the candidates. */
+export function sittingNeedsCircuits(sitting: { status: string; circuit_count: number }): boolean {
+  return sitting.status === "scheduled" && sitting.circuit_count === 0;
 }

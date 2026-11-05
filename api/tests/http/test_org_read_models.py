@@ -136,6 +136,7 @@ async def test_the_org_dashboard_counts_without_listing(
     assert body["slug"] == "kings"
     assert body["counts"] == {
         "trainees": 1,
+        "invited_not_joined": 1,
         "stations": 1,
         "library_stations": 0,
         "staff": 1,

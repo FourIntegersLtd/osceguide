@@ -133,6 +133,25 @@ export const EMPTY_DRAFT: ScheduleDraft = {
 const inBounds = (value: number, bounds: { min: number; max: number }) =>
   Number.isInteger(value) && value >= bounds.min && value <= bounds.max;
 
+/**
+ * The lengths a new sitting starts from: the exam's own defaults, where it has any in range.
+ * A figure the exam leaves out keeps the usual default; the sitting can change them all.
+ */
+export function examTimings(exam: {
+  default_reading_seconds: number;
+  default_simulation_seconds: number;
+  default_break_minutes?: number | null;
+}): Partial<Pick<ScheduleDraft, "readingMinutes" | "consultationMinutes" | "breakMinutes">> {
+  const reading = Math.round(exam.default_reading_seconds / 60);
+  const consultation = Math.round(exam.default_simulation_seconds / 60);
+  const rest = exam.default_break_minutes;
+  return {
+    ...(inBounds(reading, READING_MINUTES_BOUNDS) ? { readingMinutes: reading } : {}),
+    ...(inBounds(consultation, CONSULTATION_BOUNDS) ? { consultationMinutes: consultation } : {}),
+    ...(rest != null && inBounds(rest, BREAK_MINUTES_BOUNDS) ? { breakMinutes: rest } : {}),
+  };
+}
+
 /** The step's blocking reason, or null when its answers are enough to go on. */
 export function stepBlock(step: ScheduleStepId, draft: ScheduleDraft): string | null {
   switch (step) {

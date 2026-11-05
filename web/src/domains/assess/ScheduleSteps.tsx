@@ -513,7 +513,7 @@ export function TimingStep({ draft, patch }: { draft: ScheduleDraft; patch: Patc
   const ends = endsAbout(draft);
   return (
     <div className="flex max-w-lg flex-col gap-4">
-      <p className="text-sm text-ink-muted">These start from the usual defaults. Change them for this sitting only.</p>
+      <p className="text-sm text-ink-muted">Taken from the exam. Change them for this sitting only.</p>
       <DurationInputs draft={draft} patch={patch} />
       <Input
         label="Start time"

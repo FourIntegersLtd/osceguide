@@ -68,6 +68,10 @@ class ProgrammeRead(BaseModel):
     exam_owner_kind: str = "platform"
     status: str
     source: str
+    # The exam's timing defaults, so scheduling starts from them.
+    default_reading_seconds: int = 0
+    default_simulation_seconds: int = 0
+    default_break_minutes: int | None = None
 
 
 class CreateProgramme(BaseModel):

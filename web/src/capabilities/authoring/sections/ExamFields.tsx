@@ -140,6 +140,18 @@ export function ExamFields({
             className={`mt-1 ${getInputClassName()}`}
           />
         </Field>
+        <Field label="Break between stations (minutes, formal exams)">
+          <input
+            type="number"
+            min={1}
+            max={60}
+            value={value.settings.default_break_minutes ?? ""}
+            onChange={(e) =>
+              setSettings({ default_break_minutes: e.target.value.trim() === "" ? null : Number(e.target.value) })
+            }
+            className={`mt-1 ${getInputClassName()}`}
+          />
+        </Field>
         <Field label="Attempts per station">
           <input
             type="number"

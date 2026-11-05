@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { HiOutlineChevronRight, HiOutlinePlusCircle } from "react-icons/hi2";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Alert } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
@@ -35,7 +35,8 @@ export function RubricsSection() {
   const scope = useAuthoringScope();
   const { hrefFor } = useSurface();
   const router = useRouter();
-  const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
+  const searchParams = useSearchParams();
+  const [examFilter, setExamFilter] = useState(searchParams.get("exam") ?? AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
   const query = useSearchQuery(search);

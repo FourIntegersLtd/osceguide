@@ -45,6 +45,7 @@ async def build_org_dashboard(session: AsyncSession, org_id: uuid.UUID) -> OrgDa
         staff=await memberships.count_staff(session, org_id),
         programmes_with_markable_exam=await catalog.count_programmes_with_markable_exam(session, org_id),
         sittings=await sittings.count_sittings(session, org_id),
+        invited_not_joined=await roster.count_invited_not_joined(session, org_id),
     )
     # A station is *available* if this organisation wrote it or the platform
     # published it for an exam the organisation runs. Only the first used to
@@ -72,6 +73,7 @@ async def build_org_dashboard(session: AsyncSession, org_id: uuid.UUID) -> OrgDa
         ),
     )
     recent = await sittings.recent_sittings(session, org_id, limit=RECENT_SITTINGS)
+    totals = await sittings.sitting_totals(session, org_id, [sitting.id for sitting in recent])
     return OrgDashboard(
         org_id=org.id,
         slug=org.slug,
@@ -85,6 +87,8 @@ async def build_org_dashboard(session: AsyncSession, org_id: uuid.UUID) -> OrgDa
                 mode=sitting.mode,
                 status=sitting.status,
                 scheduled_for=sitting.scheduled_for,
+                circuit_count=totals.get(sitting.id, (0, 0))[0],
+                candidate_count=totals.get(sitting.id, (0, 0))[1],
             )
             for sitting in recent
         ],

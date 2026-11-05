@@ -270,6 +270,13 @@ async def count_trainees(
     return await repository.count_trainees(session, org_id, search=search, access_revoked=access_revoked)
 
 
+async def count_invited_not_joined(session: AsyncSession, org_id: uuid.UUID) -> int:
+    """Trainees whose invitation is still unaccepted, counted for the whole roster rather than a page."""
+    return await identity.count_pending_invitations(
+        session, await repository.active_linked_user_ids(session, org_id)
+    )
+
+
 ANONYMISED_NAME = "Anonymised trainee"
 
 

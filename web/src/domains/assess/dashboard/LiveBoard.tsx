@@ -290,7 +290,7 @@ function Notices({ circuit }: { circuit: LiveCircuit }) {
       ) : null}
       {alerts.map((code) => (
         <Alert key={code} tone="warning">
-          {circuit.circuit_name}: {alertCopy(code, "board", station)}
+          {circuit.circuit_name}: {alertCopy(code, "board", station, circuit.overdue_seconds)}
         </Alert>
       ))}
     </div>

@@ -97,6 +97,8 @@ test("an alert code is shown as a sentence, never as the code", () => {
     "This station's attempt failed. Resend the patient or redo the station.",
   );
   assert.equal(alertCopy("clock_overdue", "console"), "The clock is overdue. Move the circuit on by hand.");
+  assert.equal(alertCopy("clock_overdue", "console", null, 40), "The clock is overdue by 40 s. Move the circuit on by hand.");
+  assert.equal(alertCopy("clock_overdue", "board", null, 95), "The clock is overdue by 1 min 35 s. Advance it by hand.");
 });
 
 test("a station the circuit skipped is not a completed one", () => {

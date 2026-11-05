@@ -7,6 +7,7 @@ import {
   eachCircuitJobs,
   freeBreakPositions,
   endsAbout,
+  examTimings,
   furthestStep,
   nextBreakPosition,
   peopleFormula,
@@ -130,4 +131,17 @@ test("a retry after a partial failure carries on from the next candidate, none t
     { number: 4, candidate: "d" },
   ]);
   assert.deepEqual(eachCircuitJobs(people, 4), []);
+});
+
+test("a sitting starts from its exam's timings", () => {
+  assert.deepEqual(
+    examTimings({ default_reading_seconds: 120, default_simulation_seconds: 480, default_break_minutes: 5 }),
+    { readingMinutes: 2, consultationMinutes: 8, breakMinutes: 5 },
+  );
+  // An exam with no break leaves the usual break.
+  assert.deepEqual(
+    examTimings({ default_reading_seconds: 180, default_simulation_seconds: 600, default_break_minutes: null }),
+    { readingMinutes: 3, consultationMinutes: 10 },
+  );
+  assert.deepEqual(examTimings({ default_reading_seconds: 0, default_simulation_seconds: 0 }), {});
 });

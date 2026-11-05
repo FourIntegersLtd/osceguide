@@ -28,6 +28,7 @@ async def build_org_reporting(session: AsyncSession, org_id: uuid.UUID) -> OrgRe
         rows.append(
             ProgrammeReportRow(
                 programme_id=programme.id,
+                exam_id=programme.exam_id,
                 exam_name=programme.exam_name,
                 sittings=figure.sittings,
                 candidates=figure.candidates,

@@ -2,6 +2,7 @@
 
 import type { AssessWords } from "@/domains/assess/vocabulary";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AsyncBoundary,
@@ -15,7 +16,7 @@ import Table, { type Column } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { useAsync, useCursorPages } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
-import { humanise, plural } from "@/foundation/format";
+import { humanise } from "@/foundation/format";
 import { useSurface } from "@/capabilities";
 import { SittingFilterBar } from "@/domains/assess/SittingFilterBar";
 import { listProgrammes, listSittings, type Sitting } from "@/domains/assess/api";
@@ -29,6 +30,7 @@ import {
   sittingsScopeNote,
   type SittingFilters,
 } from "@/domains/assess/support";
+import { sittingTally } from "@/domains/assess/dashboard/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /** The sitting running now, else the soonest one still to come; finished ones are never next. */
@@ -61,7 +63,7 @@ const columnsFor = (hrefFor: (path: string) => string, words: AssessWords): Colu
         <span className="block text-osce-meta font-normal text-b2b-mid">
           {[
             sitting.programme_name,
-            plural(sitting.candidate_count, "candidate"),
+            sittingTally(sitting, words),
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -108,7 +110,9 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
   const { session } = useSession();
   // Status, mode, name search, programme and date are the server's (R-31), so they reach every page.
-  const [filters, setFilters] = useState<SittingFilters>(NO_SITTING_FILTERS);
+  // `?exam=` is a programme id: an exam's page links here with it, so the list opens already narrowed.
+  const examFilter = useSearchParams().get("exam") ?? "";
+  const [filters, setFilters] = useState<SittingFilters>({ ...NO_SITTING_FILTERS, programmeId: examFilter });
   const query = sittingFilterQuery(filters);
   const queryKey = JSON.stringify(query);
   const pages = useCursorPages<Sitting>(
