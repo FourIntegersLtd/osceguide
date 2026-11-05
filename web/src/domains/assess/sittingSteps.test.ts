@@ -20,7 +20,7 @@ test("a new sitting is waiting for a date", () => {
   );
   assert.deepEqual(sittingNext(input), {
     id: "schedule",
-    line: "Set a date for this sitting.",
+    line: "Set a date so candidates know when to come.",
     actionable: true,
     waiting: 0,
   });

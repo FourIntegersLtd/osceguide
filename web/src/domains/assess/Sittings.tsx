@@ -15,7 +15,7 @@ import Table, { type Column } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { useAsync, useCursorPages } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
-import { humanise } from "@/foundation/format";
+import { humanise, plural } from "@/foundation/format";
 import { useSurface } from "@/capabilities";
 import { SittingFilterBar } from "@/domains/assess/SittingFilterBar";
 import { listProgrammes, listSittings, type Sitting } from "@/domains/assess/api";
@@ -23,6 +23,7 @@ import {
   filtersActive,
   NO_SITTING_FILTERS,
   sittingFilterQuery,
+  sittingNeedsCircuits,
   sittingRunning,
   sittingsEmptyDescription,
   sittingsScopeNote,
@@ -57,6 +58,14 @@ const columnsFor = (hrefFor: (path: string) => string, words: AssessWords): Colu
         className={`${b2cTableCellText} font-medium text-osce-ink-900 hover:underline`}
       >
         {sitting.name}
+        <span className="block text-osce-meta font-normal text-b2b-mid">
+          {[
+            sitting.programme_name,
+            plural(sitting.candidate_count, "candidate"),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
       </Link>
     ),
   },
@@ -83,8 +92,11 @@ const columnsFor = (hrefFor: (path: string) => string, words: AssessWords): Colu
     header: "Status",
     key: "status" as keyof Sitting,
     render: (sitting: Sitting) => (
-      <Badge variant={sittingRunning(sitting.status) ? "success" : "neutral"} dot>
-        {humanise(sitting.status)}
+      <Badge
+        variant={sittingRunning(sitting.status) ? "success" : sittingNeedsCircuits(sitting) ? "warning" : "neutral"}
+        dot
+      >
+        {sittingNeedsCircuits(sitting) ? "Needs circuits" : humanise(sitting.status)}
       </Badge>
     ),
   },
@@ -150,6 +162,11 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
         empty={{
           title: `No ${w.sittings} yet`,
           description: sittingsEmptyDescription(can(session, "schedule_sittings"), w),
+          action: can(session, "schedule_sittings") ? (
+            <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
+              {w.scheduleSitting}
+            </ButtonLink>
+          ) : undefined,
         }}
       >
         {(sittings) => {
@@ -190,7 +207,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                 themeType="b2b"
                 columns={columns}
                 idField="id"
-                empty={{ title: `No ${w.sittings} match.` }}
+                empty={{ title: `No ${w.sittings} match.`, description: "Clear a filter to see more." }}
               />
             </div>
           );

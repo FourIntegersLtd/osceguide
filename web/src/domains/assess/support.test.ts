@@ -216,14 +216,14 @@ test("the sittings list says when its filters cover only what has loaded", () =>
   assert.equal(sittingsScopeNote(25, false), null);
   assert.equal(
     sittingsScopeNote(25, true),
-    "Next up covers the 25 sittings loaded so far. Load more to include the rest.",
+    "Covers the sittings loaded so far.",
   );
 });
 
 test("only somebody who can schedule is told to schedule", () => {
   assert.equal(
     sittingsEmptyDescription(true, INSTITUTION_WORDS),
-    "Schedule your first one to get started.",
+    "Schedule your first one.",
   );
   assert.equal(
     sittingsEmptyDescription(false, INSTITUTION_WORDS),

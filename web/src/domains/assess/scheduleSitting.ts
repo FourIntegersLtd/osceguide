@@ -26,6 +26,34 @@ export const SCHEDULE_STEPS: { id: ScheduleStepId; label: string; title: string 
   { id: "review", label: "Review", title: "Review and create" },
 ];
 
+/** The words in the Help panel beside each step. */
+export const STEP_HELP: Record<ScheduleStepId, { title: string; body: string }> = {
+  basics: {
+    title: "What a sitting is",
+    body: "One occasion, such as the March mock. Its circuits are built for you when you create it. Only exams that are ready to schedule can be picked.",
+  },
+  stations: {
+    title: "Order matters",
+    body: "Drag a station, or use the arrows, to set the order every candidate goes round. A formal exam has at most 12 stations.",
+  },
+  people: {
+    title: "Who can be picked",
+    body: "Only people who have signed in. Someone who has not accepted their invitation cannot be scheduled until they do: resend it from here.",
+  },
+  timing: {
+    title: "Timing is for this sitting only",
+    body: "Reading time, consultation time and breaks start from the exam. Changing them here does not change the exam.",
+  },
+  supervisor: {
+    title: "The supervisor",
+    body: "They review and sign off the circuit afterwards. Any staff member can run the console on the day.",
+  },
+  review: {
+    title: "Nothing is created yet",
+    body: "Create sitting makes the sitting and its circuits. If the circuits fail, you land on the sitting with the error and a Try again button.",
+  },
+};
+
 export const CONSULTATION_BOUNDS = { min: 1, max: 180 } as const;
 export const DEFAULT_START_TIME = "09:00";
 

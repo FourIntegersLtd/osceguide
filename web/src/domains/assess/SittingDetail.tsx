@@ -16,11 +16,12 @@ import {
 import { useAsync, type AsyncState } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { can, useSession } from "@/foundation/session";
-import { readSitting, type Circuit, type Sitting } from "@/domains/assess/api";
+import { listActiveTrainees, readSitting, type Circuit, type Sitting } from "@/domains/assess/api";
 import { SittingActionDialog, type PendingSittingAction } from "@/domains/assess/SittingActions";
 import { SittingEditForm } from "@/domains/assess/SittingEditForm";
 import { readSittingReport, type SittingReport } from "@/domains/assess/results/api";
-import { readAllCohorts } from "@/domains/assess/roster/api";
+import { readAllCohorts, resendInvitation } from "@/domains/assess/roster/api";
+import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { TabStrip } from "@/domains/assess/team/chrome";
 import {
   circuitToOpen,
@@ -31,7 +32,7 @@ import {
   type SittingStepsInput,
 } from "@/domains/assess/sittingSteps";
 import { sittingModeLabel, sittingRunning, sittingStatusLabel } from "@/domains/assess/support";
-import { formatShortDateTime } from "@/foundation/format";
+import { formatShortDateTime, plural } from "@/foundation/format";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /** One sitting and its circuits, with the way into each console. */
@@ -146,7 +147,7 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
               ]}
             />
 
-            {tab === "candidates" ? <CandidatesTab report={report} /> : null}
+            {tab === "candidates" ? <CandidatesTab orgSlug={orgSlug} sitting={sitting} report={report} /> : null}
             {tab === "results" ? (
               <ResultsTab report={report} href={hrefFor(`/sittings/${sitting.id}/results`)} />
             ) : null}
@@ -167,9 +168,12 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                       title={circuit.name}
                       meta={[
                         circuitState(circuit),
+                        ...((circuit.slots ?? []).length > 0
+                          ? [plural(new Set((circuit.slots ?? []).map((slot) => slot.station_version_id)).size, "station")]
+                          : []),
                         `${circuit.trainee_count} ${circuit.trainee_count === 1 ? w.trainee : w.trainees}`,
                         circuit.supervisor_user_id
-                          ? `Led by ${circuit.supervisor_name ?? "another supervisor"}`
+                          ? `Supervisor ${circuit.supervisor_name ?? "another supervisor"}`
                           : "No supervisor assigned",
                       ].join(" · ")}
                       trailing={
@@ -177,6 +181,8 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                           <Badge variant="success" dot>Your circuit</Badge>
                         ) : circuit.started_at && !circuit.ended_at ? (
                           <Badge variant="success" dot>Running</Badge>
+                        ) : !circuit.started_at && circuit.supervisor_user_id && circuit.trainee_count > 0 ? (
+                          <Badge variant="neutral" dot>Ready</Badge>
                         ) : undefined
                       }
                     />
@@ -186,6 +192,9 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                   return (
                     <div key={circuit.id} className="flex items-center gap-2 pr-3">
                       {row}
+                      <ButtonLink themeType="b2b" size="sm" variant="secondary" href={hrefFor(`/circuits/${circuit.id}/edit`)}>
+                        Edit
+                      </ButtonLink>
                       <Button themeType="b2b" size="sm" variant="secondary" onClick={() => setPending({ kind: "delete", circuit })}>
                         Delete
                       </Button>
@@ -200,6 +209,11 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                   Add a circuit
                 </ButtonLink>
               </div>
+            ) : null}
+            {tab === "circuits" && manage ? (
+              <p className="text-sm text-ink-muted">
+                Cancel sitting is only before any circuit starts. A circuit can be deleted only if it never started.
+              </p>
             ) : null}
             {tab === "circuits" && (sitting.circuits ?? []).length > 1 ? (
               <p className="text-sm text-ink-muted">
@@ -233,38 +247,135 @@ function initials(name: string): string {
     .join("");
 }
 
-/** Everyone on the sitting, from the report: who they are and the circuit they sit. */
-function CandidatesTab({ report }: { report: AsyncState<SittingReport> }) {
+/**
+ * Everyone on the sitting: the people on its circuits (the report), each with their year group
+ * and whether they have signed in (the roster), then invited people of the sitting's year group
+ * who are not on a circuit yet, with the way to resend the invitation.
+ */
+function CandidatesTab({
+  orgSlug,
+  sitting,
+  report,
+}: {
+  orgSlug: string;
+  sitting: Sitting;
+  report: AsyncState<SittingReport>;
+}) {
+  const roster = useAsync(
+    async (signal) => ({
+      trainees: await listActiveTrainees(orgSlug, signal),
+      cohorts: await readAllCohorts(orgSlug, signal),
+    }),
+    [orgSlug],
+  );
+  const [sent, setSent] = useState<Record<string, string>>({});
+  const resend = async (traineeId: string) => {
+    try {
+      await resendInvitation(orgSlug, traineeId);
+      setSent((current) => ({ ...current, [traineeId]: "Invitation sent." }));
+    } catch (cause) {
+      setSent((current) => ({ ...current, [traineeId]: assessErrorMessage(cause) }));
+    }
+  };
   return (
-    <AsyncBoundary
-      state={report}
-      isEmpty={(data) => (data.candidates ?? []).length === 0}
-      empty={{ title: "No candidates yet", description: "Add a circuit to put people on this sitting." }}
-    >
-      {(data) => (
-        <B2CGroupedSection eyebrow="Candidates">
-          {(data.candidates ?? []).map((candidate) => {
-            const label = candidate.name ?? candidate.email ?? "Candidate";
-            const circuits = [...new Set((candidate.stations ?? []).map((station) => station.circuit_name))];
+    <AsyncBoundary state={roster}>
+      {({ trainees, cohorts }) => (
+        <AsyncBoundary state={report}>
+          {(data) => {
+            const byUser = new Map(trainees.filter((t) => t.user_id).map((t) => [t.user_id as string, t]));
+            const onCircuit = new Set((data.candidates ?? []).map((candidate) => candidate.user_id));
+            const yearOf = (cohortId: string | null | undefined) =>
+              cohorts.find((cohort) => cohort.id === cohortId)?.name ?? null;
+            const waiting = sitting.cohort_id
+              ? trainees.filter(
+                  (t) => t.cohort_id === sitting.cohort_id && !(t.user_id && onCircuit.has(t.user_id)),
+                )
+              : [];
+            if ((data.candidates ?? []).length === 0 && waiting.length === 0) {
+              return (
+                <B2CHero eyebrow="Candidates" title="No candidates yet">
+                  Add a circuit to put people on this sitting.
+                </B2CHero>
+              );
+            }
             return (
-              <div key={candidate.user_id} className="flex items-center gap-3 px-4 py-3 text-sm">
-                <span
-                  aria-hidden
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-canvas text-osce-meta font-medium text-ink"
-                >
-                  {initials(label)}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-ink">{label}</span>
-                  <span className="block truncate text-ink-muted">Signed in</span>
-                </span>
-                <span className="text-ink-muted">{circuits.join(", ")}</span>
-              </div>
+              <B2CGroupedSection eyebrow="Candidates">
+                {(data.candidates ?? []).map((candidate) => {
+                  const label = candidate.name ?? candidate.email ?? "Candidate";
+                  const trainee = byUser.get(candidate.user_id);
+                  const circuits = [...new Set((candidate.stations ?? []).map((station) => station.circuit_name))];
+                  return (
+                    <CandidateRow
+                      key={candidate.user_id}
+                      label={label}
+                      detail={[yearOf(trainee?.cohort_id), trainee?.invitation_pending ? "invited, not accepted" : "signed in"]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      resend={trainee?.invitation_pending ? () => void resend(trainee.id) : null}
+                      note={trainee ? sent[trainee.id] : undefined}
+                      circuits={circuits.join(", ")}
+                    />
+                  );
+                })}
+                {waiting.map((trainee) => (
+                  <CandidateRow
+                    key={trainee.id}
+                    label={[trainee.first_name, trainee.last_name].filter(Boolean).join(" ") || trainee.email}
+                    detail={[yearOf(trainee.cohort_id), trainee.invitation_pending ? "invited, not accepted" : "signed in"]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    resend={trainee.invitation_pending ? () => void resend(trainee.id) : null}
+                    note={sent[trainee.id]}
+                    circuits="Not on a circuit yet"
+                  />
+                ))}
+              </B2CGroupedSection>
             );
-          })}
-        </B2CGroupedSection>
+          }}
+        </AsyncBoundary>
       )}
     </AsyncBoundary>
+  );
+}
+
+function CandidateRow({
+  label,
+  detail,
+  resend,
+  note,
+  circuits,
+}: {
+  label: string;
+  detail: string;
+  resend: (() => void) | null;
+  note?: string;
+  circuits: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 text-sm">
+      <span
+        aria-hidden
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-canvas text-osce-meta font-medium text-ink"
+      >
+        {initials(label)}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium text-ink">{label}</span>
+        <span className="block truncate text-ink-muted">
+          {detail}
+          {resend ? (
+            <>
+              {" · "}
+              <button type="button" className="text-accent underline" onClick={resend}>
+                Resend invitation
+              </button>
+            </>
+          ) : null}
+          {note ? ` · ${note}` : null}
+        </span>
+      </span>
+      <span className="text-ink-muted">{circuits}</span>
+    </div>
   );
 }
 

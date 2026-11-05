@@ -86,7 +86,7 @@ export function SittingEditForm({
     <Dialog
       open
       title="Edit sitting"
-      lead="Only what you change is written. The name and the date can move for the life of the record; what the sitting examines cannot once anybody has been examined against it."
+      lead="Name, date and year group. Mode, exam and type lock once a circuit starts."
       error={failure}
       busy={busy}
       commitLabel="Save"

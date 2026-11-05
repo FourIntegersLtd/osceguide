@@ -30,7 +30,9 @@ export interface SittingCounts {
 export interface SittingStepsInput {
   scheduledFor: string | null;
   /** Null where the screen has only the report (the results page): candidates in it have sat. */
-  circuits: { started_at: string | null; ended_at: string | null }[] | null;
+  circuits:
+    | { started_at: string | null; ended_at: string | null; supervisor_user_id?: string | null; trainee_count?: number }[]
+    | null;
   /** Null while the report is unread. */
   counts: SittingCounts | null;
   /** A training sitting has no Decide or Release step. */
@@ -156,9 +158,9 @@ export function sittingNext(input: SittingStepsInput): SittingNext {
 
   switch (open?.id) {
     case "schedule":
-      return next("schedule", "Set a date for this sitting.", input.can.schedule);
+      return next("schedule", "Set a date so candidates know when to come.", input.can.schedule);
     case "circuits":
-      return next("circuits", "Add a circuit so candidates can take this sitting.", input.can.schedule);
+      return next("circuits", "No circuits yet. Add at least one circuit so candidates can take this sitting.", input.can.schedule);
     case "run": {
       // The results page has no circuits to link to; the sitting page links the console.
       const openable = circuits.length > 0;
@@ -166,15 +168,21 @@ export function sittingNext(input: SittingStepsInput): SittingNext {
         return next("run", "The circuit ended and nobody sat. Open it to see what happened, or add another circuit.", openable);
       }
       const running = circuits.some((circuit) => circuit.started_at !== null && circuit.ended_at === null);
-      return next(
-        "run",
-        running ? "A circuit is running. Follow it from its console." : "Start the circuit from its console when everyone is ready.",
-        openable,
-      );
+      const staffed = circuits.every((circuit) => circuit.supervisor_user_id && (circuit.trainee_count ?? 0) > 0);
+      const waitingLine = staffed
+        ? "Every circuit has a supervisor and candidates. Start the circuit from its console when everyone is ready."
+        : "Start the circuit from its console when everyone is ready.";
+      return next("run", running ? "A circuit is running. Follow it from its console." : waitingLine, openable);
     }
     case "mark":
       // Every staff role reads the results page and reviews the stations on it.
-      return next("mark", "Marking is not finished. Review each station on the results page.", true);
+      return next(
+        "mark",
+        circuits.length > 0 && circuits.every((circuit) => circuit.ended_at !== null)
+          ? "All circuits have ended. Review each station on the results page."
+          : "Marking is not finished. Review each station on the results page.",
+        true,
+      );
     case "decide":
       return signOff
         ? next("decide", "Record and sign off each candidate's outcome.", true)

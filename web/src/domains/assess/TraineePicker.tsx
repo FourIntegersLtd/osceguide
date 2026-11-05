@@ -14,7 +14,7 @@ export type TraineeRow = {
 };
 
 /** A named set of roster ids the picker can tick in one go. */
-export type PickerSet = { id: string; label: string; loadMemberIds: () => Promise<string[]> };
+export type PickerSet = { id: string; label: string; count?: number; loadMemberIds: () => Promise<string[]> };
 
 /** Who sits a circuit: the organisation's signed-in trainees, searchable, picked by user id. */
 export function TraineePicker({

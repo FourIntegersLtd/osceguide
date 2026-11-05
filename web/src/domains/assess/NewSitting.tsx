@@ -43,6 +43,7 @@ import {
 import {
   EMPTY_DRAFT,
   SCHEDULE_STEPS,
+  STEP_HELP,
   circuitPlan,
   furthestStep,
   peopleFormula,
@@ -83,12 +84,14 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
       const groups: PickerSet[] = groupPage.map((group) => ({
         id: group.id,
         label: group.label,
+        count: group.member_count,
         loadMemberIds: () => readGroupMembers(orgSlug, group.id, signal),
       }));
       // The api has no cohort filter, so a year group's members are the loaded trainees tagged with it.
       const yearGroups: PickerSet[] = cohortPage.map((cohort) => ({
         id: cohort.id,
         label: cohort.name,
+        count: trainees.filter((t) => t.cohort_id === cohort.id).length,
         loadMemberIds: async () => trainees.filter((t) => t.cohort_id === cohort.id).map((t) => t.id),
       }));
       return {
@@ -286,7 +289,7 @@ function Wizard({
   const leadLabel = (id: string) => leads.find((lead) => lead.value === id)?.label ?? "Unassigned";
 
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
+    <div className="flex max-w-5xl flex-col gap-5">
       <StepRail
         steps={railSteps}
         current={step}
@@ -305,6 +308,7 @@ function Wizard({
         </Alert>
       ) : null}
 
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
       <Panel title={SCHEDULE_STEPS[index]?.title}>
         {step === "basics" ? (
           <div className="flex max-w-lg flex-col gap-4">
@@ -432,6 +436,12 @@ function Wizard({
           </div>
         ) : null}
       </Panel>
+      <aside aria-label="Help" className="h-fit rounded-control border border-border bg-surface p-4 text-sm">
+        <p className="font-medium text-ink">Help</p>
+        <p className="mt-2 font-medium text-ink">{STEP_HELP[step].title}</p>
+        <p className="mt-1 text-ink-muted">{STEP_HELP[step].body}</p>
+      </aside>
+      </div>
 
       {block && step !== "review" ? <p className="text-sm text-ink-muted">{block}</p> : null}
 

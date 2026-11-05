@@ -1,10 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlineTrash } from "react-icons/hi2";
+import Link from "next/link";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlineBars3, HiOutlineTrash } from "react-icons/hi2";
+import { useSurface } from "@/capabilities";
 import { Badge, Button, ButtonLink, Input, Panel, cn } from "@/foundation/ui";
 import { StationLibrary, type LibraryStation, type StationLibraryScope } from "@/capabilities/stations";
 import { errorMessage } from "@/foundation/hooks";
+import { plural } from "@/foundation/format";
 import { resendInvitation } from "@/domains/assess/roster/api";
 import { moveItem } from "@/domains/assess/support";
 import type { PickedStation } from "@/domains/assess/CircuitBuilder";
@@ -31,6 +51,71 @@ import { BREAK_MINUTES_BOUNDS, DEFAULT_BREAK_MINUTES, READING_MINUTES_BOUNDS } f
 const iconButton =
   "rounded-control p-1.5 text-ink-subtle hover:bg-canvas hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent";
 
+/** One station in the order: drag the handle, or use the arrows and Remove for keyboard and touch. */
+function StationRow({
+  station,
+  index,
+  last,
+  setStations,
+}: {
+  station: PickedStation;
+  index: number;
+  last: boolean;
+  setStations: (update: (current: PickedStation[]) => PickedStation[]) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: station.version_id,
+  });
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "flex items-center gap-2 rounded-control border border-border bg-surface px-3 py-1.5 text-sm text-ink",
+        isDragging && "relative z-10 shadow-md",
+      )}
+    >
+      <button
+        type="button"
+        className={cn(iconButton, "cursor-grab touch-none")}
+        aria-label={`Drag ${station.title} to reorder`}
+        {...attributes}
+        {...listeners}
+      >
+        <HiOutlineBars3 className="h-4 w-4" aria-hidden />
+      </button>
+      <span className="w-6 text-ink-muted">{index + 1}.</span>
+      <span className="min-w-0 flex-1 truncate">{station.title}</span>
+      <button
+        type="button"
+        className={iconButton}
+        aria-label={`Move ${station.title} up`}
+        disabled={index === 0}
+        onClick={() => setStations((current) => moveItem(current, index, -1))}
+      >
+        <HiOutlineArrowUp className="h-4 w-4" aria-hidden />
+      </button>
+      <button
+        type="button"
+        className={iconButton}
+        aria-label={`Move ${station.title} down`}
+        disabled={last}
+        onClick={() => setStations((current) => moveItem(current, index, 1))}
+      >
+        <HiOutlineArrowDown className="h-4 w-4" aria-hidden />
+      </button>
+      <button
+        type="button"
+        className={iconButton}
+        aria-label={`Remove ${station.title}`}
+        onClick={() => setStations((current) => current.filter((item) => item.version_id !== station.version_id))}
+      >
+        <HiOutlineTrash className="h-4 w-4" aria-hidden />
+      </button>
+    </li>
+  );
+}
+
 /** The ordered stations of a circuit, with the library to add from. */
 export function StationOrder({
   stations,
@@ -45,51 +130,54 @@ export function StationOrder({
   examName: string;
   heading?: string;
 }) {
+  const { hrefFor } = useSurface();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
   return (
     <div className="flex flex-col gap-4">
       {heading ? <p className="text-sm text-ink-muted">{heading}</p> : null}
       {stations.length > 0 && (
-        <ol className="flex flex-col gap-1.5">
-          {stations.map((station, index) => (
-            <li
-              key={station.version_id}
-              className="flex items-center gap-2 rounded-control border border-border px-3 py-1.5 text-sm text-ink"
-            >
-              <span className="w-6 text-ink-muted">{index + 1}.</span>
-              <span className="min-w-0 flex-1 truncate">{station.title}</span>
-              <button
-                type="button"
-                className={iconButton}
-                aria-label={`Move ${station.title} up`}
-                disabled={index === 0}
-                onClick={() => setStations((current) => moveItem(current, index, -1))}
-              >
-                <HiOutlineArrowUp className="h-4 w-4" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={iconButton}
-                aria-label={`Move ${station.title} down`}
-                disabled={index === stations.length - 1}
-                onClick={() => setStations((current) => moveItem(current, index, 1))}
-              >
-                <HiOutlineArrowDown className="h-4 w-4" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={iconButton}
-                aria-label={`Remove ${station.title}`}
-                onClick={() =>
-                  setStations((current) => current.filter((item) => item.version_id !== station.version_id))
-                }
-              >
-                <HiOutlineTrash className="h-4 w-4" aria-hidden />
-              </button>
-            </li>
-          ))}
-        </ol>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event: DragEndEvent) => {
+            const { active, over } = event;
+            if (!over || active.id === over.id) return;
+            setStations((current) => {
+              const from = current.findIndex((item) => item.version_id === active.id);
+              const to = current.findIndex((item) => item.version_id === over.id);
+              return from < 0 || to < 0 ? current : arrayMove(current, from, to);
+            });
+          }}
+        >
+          <SortableContext items={stations.map((station) => station.version_id)} strategy={verticalListSortingStrategy}>
+            <ol className="flex flex-col gap-1.5">
+              {stations.map((station, index) => (
+                <StationRow
+                  key={station.version_id}
+                  station={station}
+                  index={index}
+                  last={index === stations.length - 1}
+                  setStations={setStations}
+                />
+              ))}
+            </ol>
+          </SortableContext>
+        </DndContext>
       )}
-      <p className="text-sm font-medium text-ink">Find a station for {examName}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium text-ink">Find a station for {examName}</p>
+        <Link
+          href={hrefFor("/authoring/stations/new")}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm text-accent underline"
+        >
+          Write a new station
+        </Link>
+      </div>
       <StationLibrary
         scope={scope}
         onPick={(station: LibraryStation) =>
@@ -257,8 +345,13 @@ export function CandidatePicker({
         <ul className="flex flex-col divide-y divide-border rounded-control border border-border">
           {sets.map((set) => (
             <li key={set.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-              <span className="min-w-0 flex-1 truncate font-medium text-ink">
-                {tab === "groups" ? "Group" : "Year group"}: {set.label}
+              <span className="min-w-0 flex-1 truncate">
+                <span className="block truncate font-medium text-ink">
+                  {tab === "groups" ? "Group" : "Year group"}: {set.label}
+                </span>
+                {set.count !== undefined ? (
+                  <span className="block text-ink-muted">{plural(set.count, words.trainee, words.trainees)}</span>
+                ) : null}
               </span>
               <Button themeType="b2b" variant="secondary" onClick={() => void addSet(set)}>
                 Add everyone
