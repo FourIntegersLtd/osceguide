@@ -60,7 +60,7 @@ export function RubricBuilderScreen({
             <>
               <B2CPageHeader
                 title={editable ? <RubricTitle rubric={data} onRenamed={rubric.reload} /> : data.title}
-                subtitle={`Marking scheme · version ${version}${owned ? "" : " · OSCE Guide catalogue"}`}
+                subtitle={`Exams › Marking schemes · version ${version}${owned ? "" : " · OSCE Guide catalogue"}. How a station is marked, and what the candidate's feedback looks like. Publishing makes a new version; sittings already marked keep the version they used.`}
                 back={{ href: rubricsListPath(hrefFor), label: "Marking schemes" }}
                 action={found ? <VersionActions rubric={data} version={version} status={found.status} owned={owned} examId={examId} /> : undefined}
                 className="mb-0"

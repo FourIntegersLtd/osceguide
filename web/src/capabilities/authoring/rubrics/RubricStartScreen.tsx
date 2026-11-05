@@ -96,7 +96,7 @@ function RubricStartScreenForm() {
             Cancel
           </AuthoringButton>
           <AuthoringButton variant="commit" isLoading={action.busy === "create"} disabled={action.busy !== null || !picked} onClick={create}>
-            {picked?.kind === "blank" ? "Start blank" : "Copy and edit"}
+            Copy and edit
           </AuthoringButton>
         </div>
       </div>

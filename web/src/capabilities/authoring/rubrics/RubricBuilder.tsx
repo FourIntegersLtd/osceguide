@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Alert, B2CSegmentedTabs, Panel, StepGuide } from "@/foundation/ui";
+import { Alert, Panel, StepGuide } from "@/foundation/ui";
 import { PlatformError } from "@/foundation/platform-client";
 import {
   draftRubricInstructions,
@@ -23,7 +23,7 @@ import { applyInstructionSuggestions } from "@/capabilities/authoring/rubrics/dr
 import { MarkingPanel } from "@/capabilities/authoring/rubrics/MarkingPanel";
 import { PreviewPane } from "@/capabilities/authoring/rubrics/PreviewPane";
 import { ProblemList, revealPath } from "@/capabilities/authoring/rubrics/ProblemList";
-import { problemsFromDetails, tabFor, type BuilderTab, type Problem } from "@/capabilities/authoring/rubrics/problems";
+import { problemsFromDetails, type Problem } from "@/capabilities/authoring/rubrics/problems";
 import { previewInputs, trialInputs } from "@/capabilities/authoring/rubrics/previewModel";
 import { rubricNextAction, rubricSteps } from "@/capabilities/authoring/rubrics/rubricSteps";
 import { RatingPanel } from "@/capabilities/authoring/rubrics/RatingPanel";
@@ -31,8 +31,6 @@ import { SectionList } from "@/capabilities/authoring/rubrics/SectionEditor";
 import { TrialPanel } from "@/capabilities/authoring/rubrics/TrialPanel";
 import { useRubricDraft } from "@/capabilities/authoring/rubrics/useRubricDraft";
 import { useTrialMark } from "@/capabilities/authoring/rubrics/useTrialMark";
-
-type EditorTab = BuilderTab | "marking";
 
 /**
  * One rubric version, edited with its preview beside it.
@@ -68,7 +66,6 @@ export function RubricBuilder({
   const trial = useTrialMark(scope, rubric.id);
   const action = useAction();
   const router = useRouter();
-  const [tab, setTab] = useState<EditorTab>("structure");
   const [note, setNote] = useState<string | null>(null);
 
   const valid = draft.preview?.valid === true && !draft.checking;
@@ -83,18 +80,8 @@ export function RubricBuilder({
   const next = rubricNextAction(state);
   const publishBlocked = readOnly || next.id === "publish" ? null : next.line;
 
-  const counts = useMemo(() => {
-    const byTab: Record<BuilderTab, number> = { structure: 0, rating: 0, display: 0 };
-    for (const problem of draft.problems) byTab[tabFor(problem)] += 1;
-    return byTab;
-  }, [draft.problems]);
-  const withCount = (label: string, count: number) => (count > 0 ? `${label} · ${count}` : label);
-
-  const pick = (problem: Problem) => {
-    setTab(tabFor(problem));
-    // Wait a frame so the tab's inputs exist before scrolling to one.
-    window.requestAnimationFrame(() => revealPath(problem.path));
-  };
+  // A problem lives on one page now: scroll to its input.
+  const pick = (problem: Problem) => revealPath(problem.path);
 
   const publish = (thenBack: boolean) =>
     action.run("publish", async () => {
@@ -125,22 +112,12 @@ export function RubricBuilder({
       await trial.start(version.version, body);
     });
 
-  const editorTabs: { id: EditorTab; label: string }[] = [
-    { id: "structure", label: withCount("Structure", counts.structure) },
-    { id: "rating", label: withCount("Rating", counts.rating) },
-    { id: "display", label: withCount("Results & dashboard", counts.display) },
-    { id: "marking", label: "Marking" },
-  ];
-
   return (
     <RubricBuilderProvider value={{ structure: draft.structure, edit: draft.edit, problems: draft.problems, readOnly }}>
       <div className="space-y-4">
         <StepGuide steps={rubricSteps(state)} line={readOnly ? "This version is read-only. Start a new draft to change it." : next.line} working={next.id === "wait"}>
           {readOnly ? null : (
             <div className="flex flex-wrap gap-2">
-              <AuthoringButton variant="ghost" size="sm" isLoading={action.busy === "draft"} disabled={action.busy !== null || !valid} onClick={() => fillInstructions()}>
-                Draft instructions
-              </AuthoringButton>
               <AuthoringButton variant="secondary" size="sm" isLoading={action.busy === "save"} disabled={action.busy !== null || !draft.dirty || promptMissing} onClick={() => action.run("save", draft.save)}>
                 Save draft
               </AuthoringButton>
@@ -162,33 +139,41 @@ export function RubricBuilder({
 
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,460px)]">
           <div className="min-w-0 space-y-4">
-            <B2CSegmentedTabs items={editorTabs} value={tab} onChange={setTab} compact aria-label="Marking scheme editor" />
-            {tab === "structure" ? <SectionList /> : null}
-            {tab === "rating" ? <RatingPanel /> : null}
-            {tab === "display" ? <DisplayPanel /> : null}
-            {tab === "marking" ? (
-              <MarkingPanel
-                systemPrompt={draft.systemPrompt}
-                onSystemPrompt={draft.setSystemPrompt}
-                pacing={draft.pacing}
-                onPacing={draft.setPacing}
-                markingLayout={draft.markingLayout}
-                onMarkingLayout={draft.setMarkingLayout}
-                title={rubric.title}
-                readOnly={readOnly}
-                layoutRequired={scope.kind === "platform"}
-              />
-            ) : null}
+            <BoardSection title="Areas marked" note="Each domain is rated on its own">
+              <SectionList />
+            </BoardSection>
+            <MarkingPanel
+              systemPrompt={draft.systemPrompt}
+              onSystemPrompt={draft.setSystemPrompt}
+              pacing={draft.pacing}
+              onPacing={draft.setPacing}
+              markingLayout={draft.markingLayout}
+              onMarkingLayout={draft.setMarkingLayout}
+              title={rubric.title}
+              readOnly={readOnly}
+              layoutRequired={scope.kind === "platform"}
+              onDraft={() => void fillInstructions()}
+              drafting={action.busy === "draft"}
+              canDraft={valid && action.busy === null}
+            />
+            <BoardSection title="Grades">
+              <RatingPanel />
+            </BoardSection>
+            <BoardSection title="Station total and pass line">
+              <DisplayPanel />
+            </BoardSection>
           </div>
 
           <aside className="min-w-0 space-y-4 xl:sticky xl:top-4">
-            {readOnly ? null : <ProblemList problems={draft.problems} structure={draft.structure} checking={draft.checking} onPick={pick} />}
-            <Panel title="Preview" description="What a candidate sees, from a made-up result.">
+            <Panel title="Preview: candidate feedback" description="What a candidate sees, from a made-up result.">
               <PreviewPane
                 inputs={previewInputs(draft.preview, draft.structure)}
                 dashboard={dashboardPreview}
                 emptyMessage={draft.checking ? "Checking the draft…" : "Fix the problems to see the preview."}
               />
+            </Panel>
+            <Panel title="Problems">
+              {readOnly ? <p className="text-osce-meta text-ink-muted">Read-only.</p> : <ProblemList problems={draft.problems} structure={draft.structure} checking={draft.checking} onPick={pick} />}
             </Panel>
             <Panel title="Versions">
               <ul className="space-y-1.5">
@@ -202,7 +187,7 @@ export function RubricBuilder({
                   ))}
               </ul>
             </Panel>
-            <Panel title="Trial mark" description="Mark a real conversation against this version. Nothing is saved.">
+            <Panel title="Trial mark" description="Mark a real attempt or a pasted transcript with this draft, before anyone else does.">
               <TrialPanel
                 trial={trial}
                 inputs={trialInputs(trial.snapshot, draft.preview, draft.structure)}
@@ -214,5 +199,17 @@ export function RubricBuilder({
         </div>
       </div>
     </RubricBuilderProvider>
+  );
+}
+
+function BoardSection({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
+  return (
+    <section className="space-y-2">
+      <div>
+        <h2 className="text-osce-body font-semibold text-ink">{title}</h2>
+        {note ? <p className="text-osce-caption text-ink-muted">{note}</p> : null}
+      </div>
+      {children}
+    </section>
   );
 }
