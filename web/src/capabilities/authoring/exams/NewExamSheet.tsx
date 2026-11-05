@@ -17,7 +17,8 @@ import { useSurface } from "@/capabilities";
 import type { Exam, Programme } from "@/capabilities/authoring/api";
 import { LoadError } from "@/capabilities/authoring/parts/LoadError";
 import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
-import { examsListPath } from "@/capabilities/authoring/exams/paths";
+import Link from "next/link";
+import { examNewPath, examsListPath } from "@/capabilities/authoring/exams/paths";
 import {
   NEW_EXAM_STEPS,
   MAX_CONSULT_MIN,
@@ -40,14 +41,29 @@ const SCHEME_WAYS: { id: SchemeWay; title: string; body?: string }[] = [
 /** "New exam": one sheet that makes the exam, picks its marking scheme, sets timings, then publishes and offers it. */
 export function NewExamSheet() {
   const examId = useSearchParams().get("exam");
-  // A saved draft is read back so the sheet resumes where it stopped.
-  const saved = useExam(examId);
   return (
     <RequireAuthor>
-      <AsyncBoundary state={saved}>
-        {(found) => <Sheet key={found?.exam.id ?? "new"} first={found?.exam ?? null} firstProgramme={found?.programme ?? null} />}
-      </AsyncBoundary>
+      {/* No exam id: the sheet starts at the Name step. AsyncBoundary renders nothing for a null result. */}
+      {examId ? <ResumedSheet examId={examId} /> : <Sheet first={null} firstProgramme={null} />}
     </RequireAuthor>
+  );
+}
+
+/** A saved draft is read back so the sheet resumes where it stopped. */
+function ResumedSheet({ examId }: { examId: string }) {
+  const saved = useExam(examId);
+  const { hrefFor } = useSurface();
+  return (
+    <AsyncBoundary
+      state={saved}
+      empty={{
+        title: "That exam was not found",
+        description: "It may have been deleted, or it belongs to another organisation.",
+        action: <Link href={examNewPath(hrefFor)} className="text-osce-body font-medium text-accent underline">Start a new exam</Link>,
+      }}
+    >
+      {(found) => <Sheet key={found?.exam.id ?? "new"} first={found?.exam ?? null} firstProgramme={found?.programme ?? null} />}
+    </AsyncBoundary>
   );
 }
 
