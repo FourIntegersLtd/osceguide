@@ -7,7 +7,7 @@ export interface SsoForRefusedPassword {
   notice: string;
 }
 
-export const ORG_SIGN_IN_NOTICE = "This account signs in through your organisation. Use the button below.";
+export const ORG_SIGN_IN_NOTICE = "This organisation signs in with its own sign-in. Use the button above.";
 export const NO_ORG_DOOR_NOTICE =
   "This account signs in through your organisation, not with a password. Use the sign-in link your organisation gave you, or contact support.";
 export const ORG_DOOR_UNREACHABLE_NOTICE =

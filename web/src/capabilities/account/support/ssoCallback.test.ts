@@ -21,7 +21,7 @@ test("a cancelled Entra sign-in says so instead of posting nothing", () => {
   const params = new URLSearchParams("org_slug=riverside&error=access_denied&state=s");
   assert.deepEqual(readSsoCallback(params), {
     ok: false,
-    message: "Your organisation's sign-in did not complete. Please try again.",
+    message: "Your sign-in provider refused this sign-in. Try again or ask your administrator.",
     loginNotice: "cancelled",
   });
 });
@@ -56,4 +56,14 @@ test("a cancelled Entra sign-in is handed to the sign-in page as its own notice"
   const params = new URLSearchParams("org_slug=riverside&error=access_denied&state=s");
   const outcome = readSsoCallback(params);
   assert.equal(outcome.ok === false && outcome.loginNotice, "cancelled");
+});
+
+test("only a refusal reads as refused; other provider errors say it did not complete", () => {
+  for (const code of ["server_error", "temporarily_unavailable", "invalid_request"]) {
+    const result = readSsoCallback(new URLSearchParams(`org_slug=riverside&error=${code}`));
+    assert.deepEqual(result, {
+      ok: false,
+      message: "Your organisation's sign-in did not complete. Please try again.",
+    });
+  }
 });

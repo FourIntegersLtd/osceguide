@@ -730,9 +730,9 @@
 <li><b>Closing an account.</b> Sign-in stops at once and every device is signed out. Signing in again with the password within 30 days reopens the account, and an email confirms it. After 30 days the account is wiped: name, email, roster entries, the text of results, and what was said in recordings. An email confirms that too.</li>
 </ol>
 <div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
-<li data-code="invalid_credentials"><b>A wrong password, or an address we do not know.</b> Both get the same answer, so nobody can test which addresses have accounts: <span class="says">"Email or password is incorrect."</span></li>
+<li data-code="invalid_credentials"><b>A wrong password, or an address we do not know.</b> Both get the same answer, so nobody can test which addresses have accounts: <span class="says">"That email or password is not right."</span></li>
 <li data-code="too_many_requests"><b>Too many tries in a short time.</b> You read: <span class="says">"Too many attempts. Wait a moment and try again."</span></li>
-<li data-code="password_login_disabled"><b>A member of an organisation that uses its own sign-in, trying a password.</b> You read: <span class="says">"This account signs in through your organisation. Use your organisation's sign-in instead."</span></li>
+<li data-code="password_login_disabled"><b>A member of an organisation that uses its own sign-in, trying a password.</b> You read: <span class="says">"This organisation signs in with its own sign-in. Use the button above."</span></li>
 <li data-code="account_suspended"><b>An account that has been closed or switched off.</b> You read: <span class="says">"This account is not active."</span></li>
 <li data-code="account_not_found"><b>Still signed in on a device after the account was wiped.</b> You read: <span class="says">"Sign in again."</span></li>
 <li data-code="invalid_refresh_token"><b>A sign-in that has expired or was ended elsewhere.</b> You read: <span class="says">"Sign in again."</span></li>

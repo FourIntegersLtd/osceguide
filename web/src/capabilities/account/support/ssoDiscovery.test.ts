@@ -25,7 +25,7 @@ test("a refused password swaps the form for the organisation's button", async ()
   assert.deepEqual(asked, ["gp@riverside.example.com"]);
   assert.equal(outcome.sso?.sign_in_label, "Sign in with Riverside");
   assert.equal(outcome.sso?.sso_only, true, "the password form is hidden for this account");
-  assert.equal(outcome.notice, "This account signs in through your organisation. Use the button below.");
+  assert.equal(outcome.notice, "This organisation signs in with its own sign-in. Use the button above.");
 });
 
 test("an account with no discoverable organisation is told where to go, not refused again", async () => {
@@ -38,4 +38,15 @@ test("a failed lookup says the organisation could not be reached", async () => {
     throw new Error("Gateway timeout");
   });
   assert.deepEqual(outcome, { sso: null, notice: ORG_DOOR_UNREACHABLE_NOTICE });
+});
+
+test("the notices are the literal words a person reads", () => {
+  assert.equal(
+    NO_ORG_DOOR_NOTICE,
+    "This account signs in through your organisation, not with a password. Use the sign-in link your organisation gave you, or contact support.",
+  );
+  assert.equal(
+    ORG_DOOR_UNREACHABLE_NOTICE,
+    "This account signs in through your organisation, but we couldn't reach its sign-in just now. Try again in a moment.",
+  );
 });
