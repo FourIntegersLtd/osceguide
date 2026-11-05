@@ -40,14 +40,21 @@ const SCHEME_WAYS: { id: SchemeWay; title: string; body?: string }[] = [
 /** "New exam": one sheet that makes the exam, picks its marking scheme, sets timings, then publishes and offers it. */
 export function NewExamSheet() {
   const examId = useSearchParams().get("exam");
-  // A saved draft is read back so the sheet resumes where it stopped.
-  const saved = useExam(examId);
   return (
     <RequireAuthor>
-      <AsyncBoundary state={saved}>
-        {(found) => <Sheet key={found?.exam.id ?? "new"} first={found?.exam ?? null} firstProgramme={found?.programme ?? null} />}
-      </AsyncBoundary>
+      {/* No exam id: the sheet starts at the Name step. AsyncBoundary renders nothing for a null result. */}
+      {examId ? <ResumedSheet examId={examId} /> : <Sheet first={null} firstProgramme={null} />}
     </RequireAuthor>
+  );
+}
+
+/** A saved draft is read back so the sheet resumes where it stopped. */
+function ResumedSheet({ examId }: { examId: string }) {
+  const saved = useExam(examId);
+  return (
+    <AsyncBoundary state={saved}>
+      {(found) => <Sheet key={found?.exam.id ?? "new"} first={found?.exam ?? null} firstProgramme={found?.programme ?? null} />}
+    </AsyncBoundary>
   );
 }
 
