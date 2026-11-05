@@ -21,7 +21,7 @@ test("a cancelled Entra sign-in says so instead of posting nothing", () => {
   const params = new URLSearchParams("org_slug=riverside&error=access_denied&state=s");
   assert.deepEqual(readSsoCallback(params), {
     ok: false,
-    message: "Your organisation's sign-in did not complete. Please try again.",
+    message: "Your sign-in provider refused this sign-in. Try again or ask your administrator.",
     loginNotice: "cancelled",
   });
 });

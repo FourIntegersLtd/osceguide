@@ -29,11 +29,12 @@ export function ChangePasswordRequired() {
   return (
     <AuthShell
       title="Choose a new password"
-      subtitle="This account was set up for you. Choose a password only you know before continuing."
+      subtitle="You signed in with a temporary password. Choose your own before you carry on."
       variant="card"
       icon="key"
     >
       <ChangePassword
+        forced
         onChanged={async () => {
           /*
            * The flag lives on `/me`, so the guard only stands down once the

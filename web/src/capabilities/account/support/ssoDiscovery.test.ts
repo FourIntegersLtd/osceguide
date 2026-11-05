@@ -25,7 +25,7 @@ test("a refused password swaps the form for the organisation's button", async ()
   assert.deepEqual(asked, ["gp@riverside.example.com"]);
   assert.equal(outcome.sso?.sign_in_label, "Sign in with Riverside");
   assert.equal(outcome.sso?.sso_only, true, "the password form is hidden for this account");
-  assert.equal(outcome.notice, "This account signs in through your organisation. Use the button below.");
+  assert.equal(outcome.notice, "This organisation signs in with its own sign-in. Use the button above.");
 });
 
 test("an account with no discoverable organisation is told where to go, not refused again", async () => {

@@ -42,7 +42,7 @@ export function readSsoCallback(params: URLSearchParams, { signedIn = false } = 
   if (error) {
     return {
       ok: false,
-      message: "Your organisation's sign-in did not complete. Please try again.",
+      message: "Your sign-in provider refused this sign-in. Try again or ask your administrator.",
       // The sign-in page words a cancellation itself (`sso_error=cancelled`).
       ...(error === "access_denied" ? { loginNotice: "cancelled" as const } : {}),
     };

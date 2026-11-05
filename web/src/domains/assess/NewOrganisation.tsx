@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, Checkbox, Input, Select, Textarea, FoldSection } from "@/foundation/ui";
+import { Alert, Checkbox, Input, Select, Textarea } from "@/foundation/ui";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import { AuthShell, AuthButton } from "@/capabilities/account";
 import { sendSiteMessage } from "@/capabilities/help";
@@ -12,17 +12,16 @@ import { setupRequestBody } from "@/domains/assess/newOrganisationRequest";
  * What an organisation can use the platform for. Product copy, not data: the
  * backend has no `purpose` column yet, so the choice travels in the request text.
  */
-type ProgrammePurpose = "exam_preparation" | "placement" | "recruitment" | "onboarding" | "cpd";
+type ProgrammePurpose = "mock_osces" | "formal_exams" | "self_practice" | "recruitment";
 
 const PURPOSES: readonly { id: ProgrammePurpose; label: string }[] = [
-  { id: "exam_preparation", label: "Exam preparation" },
-  { id: "placement", label: "Placement preparation" },
+  { id: "mock_osces", label: "Mock OSCEs" },
+  { id: "formal_exams", label: "Formal exams" },
+  { id: "self_practice", label: "Self practice" },
   { id: "recruitment", label: "Recruitment" },
-  { id: "onboarding", label: "Onboarding" },
-  { id: "cpd", label: "Continuous development" },
 ];
 
-const ORG_TYPES = ["Training programme", "Medical school", "Deanery", "Employer"] as const;
+const ORG_TYPES = ["Medical school", "Training programme", "Deanery", "Employer"] as const;
 
 function toggled<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
@@ -79,13 +78,12 @@ export function NewOrganisation() {
       <AuthShell
         variant="card"
         icon="done"
-        eyebrow="For institutions"
         title="Request received"
-        subtitle={`Thank you. We will set up ${name} and email ${email} with the next steps, usually within one working day.`}
+        subtitle="We will email you at the address you gave once your organisation is ready. Then sign in and the setup assistant takes you through it, step by step."
       >
         <p className={authFooterLink}>
           <Link href="/login" className={authLink}>
-            Back to sign in
+            Go to sign in
           </Link>
         </p>
       </AuthShell>
@@ -97,9 +95,8 @@ export function NewOrganisation() {
       variant="card"
       wide
       icon="building"
-      eyebrow="For institutions"
-      title="Set up your organisation"
-      subtitle="Tell us about your programme or team. We create your organisation and make you its first admin, then you invite your faculty and trainees."
+      title="Register your organisation"
+      subtitle="Tell us who you are. We set your organisation up and email you a link to sign in, usually within a working day."
     >
       <form
         className="space-y-5"
@@ -108,24 +105,22 @@ export function NewOrganisation() {
           void send();
         }}
       >
-        <FoldSection number={1} title="Organisation">
-        <div className="space-y-5">
         <Input label="Organisation name" required value={name} onChange={(event) => setName(event.target.value)} />
-        <Select label="Type" value={orgType} onChange={(event) => setOrgType(event.target.value)}>
+        <Select
+          label="Type"
+          hint="Employer sets you up for hiring: candidates and assessments instead of trainees and sittings."
+          value={orgType}
+          onChange={(event) => setOrgType(event.target.value)}
+        >
           {ORG_TYPES.map((type) => (
             <option key={type} value={type}>
               {type}
             </option>
           ))}
         </Select>
-        </div>
-        </FoldSection>
 
-        <FoldSection number={2} title="Purpose">
-        <div className="space-y-5">
         <fieldset className="space-y-2">
-          <legend className="text-osce-meta font-medium text-ink">What will you use OSCE Guide for?</legend>
-          <p className="text-osce-caption text-ink-muted">Tick at least one.</p>
+          <legend className="text-osce-meta font-medium text-ink">What you will use it for</legend>
           {PURPOSES.map((purpose) => (
             <Checkbox
               key={purpose.id}
@@ -139,16 +134,10 @@ export function NewOrganisation() {
               Tick at least one.
             </p>
           ) : (
-            <p className="text-osce-caption text-ink-muted">
-              This decides which features your organisation gets. To change it later, contact support.
-            </p>
+            <p className="text-osce-caption text-ink-muted">You can tell us more when we contact you.</p>
           )}
         </fieldset>
-        </div>
-        </FoldSection>
 
-        <FoldSection number={3} title="Your account">
-        <div className="space-y-5">
         <Input
           label="Your name"
           required
@@ -165,15 +154,11 @@ export function NewOrganisation() {
           onChange={(event) => setEmail(event.target.value)}
         />
         <Textarea
-          label="Notes (optional)"
-          hint="Anything we should know, such as cohort size, timelines or the exams you run."
+          label="Anything else (optional)"
           maxLength={1000}
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
         />
-        </div>
-        </FoldSection>
-
         {error ? <Alert tone="danger">{error}</Alert> : null}
 
         <AuthButton isLoading={sending}>{sending ? "Sending…" : "Request set-up"}</AuthButton>

@@ -145,8 +145,10 @@ export default function Login() {
           error,
           "We couldn't sign you in. Check your details and try again.",
         );
-        setFormError(mapped.formError);
-        setFieldErrors(mapped.fieldErrors);
+        // The board's one sentence for a wrong email or password, shown once under the form.
+        const wrongDetails = hasCode(error, "invalid_credentials");
+        setFormError(wrongDetails ? "That email or password is not right." : mapped.formError);
+        setFieldErrors(wrongDetails ? {} : mapped.fieldErrors);
       }
     }
     setIsSubmitting(false);
@@ -174,10 +176,10 @@ export default function Login() {
       <AuthShell
         variant="split"
         icon="shield"
-        title="Two-factor sign-in"
+        title="Two-step sign-in"
         subtitle={
           challenge.status === "mfa_required"
-            ? "One more step to confirm it is you"
+            ? "Enter the 6-digit code from your authenticator app, or a recovery code."
             : "This account requires a second factor"
         }
         sidePanel={<AuthQuotePanel />}
@@ -222,8 +224,7 @@ export default function Login() {
   return (
     <AuthShell
       variant="split"
-      title="Welcome back"
-      subtitle="Sign in to your account"
+      title="Sign in"
       sidePanel={<AuthQuotePanel />}
     >
       {arrivalNotice ? (
@@ -265,26 +266,9 @@ export default function Login() {
         </form>
       )}
 
-      {showPasswordForm && (
-        <div className="space-y-3">
-          <p className={authFooterLink}>
-            Forgot your password?{" "}
-            <Link href="/forgot-password" className={authLink}>
-              Reset password
-            </Link>
-          </p>
-          <p className={authFooterLink}>
-            Don&apos;t have an account?{" "}
-            <Link href={examAuthHref("/register", examCode)} className={authLink}>
-              Create account
-            </Link>
-          </p>
-        </div>
-      )}
 
       {sso ? (
         <div className="space-y-3">
-          {ssoReason ? <Alert tone="info">{ssoReason}</Alert> : null}
           {/*
            * The organisation's own wording, from the discovery answer.
            *
@@ -322,6 +306,7 @@ export default function Login() {
           >
             {ssoBusy ? "Opening sign-in…" : sso.sign_in_label}
           </AuthButton>
+          {ssoReason ? <Alert tone="info">{ssoReason}</Alert> : null}
           {ssoNotice ? (
             <p role="alert" className="text-center text-osce-meta text-osce-danger">
               {ssoNotice}
@@ -329,16 +314,40 @@ export default function Login() {
           ) : null}
           {!showPasswordForm ? (
             <p className={authFooterLink}>
-              Sign in with your organisation account. Password sign-in
-              isn&apos;t available on this site. Need help?{" "}
-              <a href={`mailto:${SUPPORT_EMAIL}`} className={authLink}>
-                Contact support
-              </a>
-              .
+              Your organisation signs you in through its own system. Use the single sign-on button.
             </p>
           ) : null}
         </div>
       ) : null}
+
+      <div className="space-y-3">
+        <p className={authFooterLink}>
+          {showPasswordForm ? (
+            <>
+              <Link href="/forgot-password" className={authLink}>
+                Forgot your password?
+              </Link>
+              {" · "}
+            </>
+          ) : null}
+          New organisation?{" "}
+          <Link href="/register/organisation" className={authLink}>
+            Register
+          </Link>
+          {" · "}Help:{" "}
+          <a href={`mailto:${SUPPORT_EMAIL}`} className={authLink}>
+            {SUPPORT_EMAIL}
+          </a>
+        </p>
+        {showPasswordForm ? (
+          <p className={authFooterLink}>
+            Don&apos;t have an account?{" "}
+            <Link href={examAuthHref("/register", examCode)} className={authLink}>
+              Create account
+            </Link>
+          </p>
+        ) : null}
+      </div>
     </AuthShell>
   );
 }

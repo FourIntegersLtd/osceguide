@@ -114,15 +114,16 @@ function MfaCodeStep({
 
   return (
     <form className="space-y-5" onSubmit={(event) => void submit(event)} noValidate>
-      <p className="text-base text-site-muted">
-        {mode === "code"
-          ? "Enter the six-digit code from your authenticator app."
-          : "Enter one of the recovery codes you saved when you set up two-factor sign-in. Each code works once."}
-      </p>
+      {mode === "recovery" ? (
+        <p className="text-base text-site-muted">
+          Enter one of the recovery codes you saved when you set up two-factor sign-in. Each code works once.
+        </p>
+      ) : null}
       <Input
         key={mode}
         label={mode === "code" ? "Authentication code" : "Recovery code"}
         name={mode === "code" ? "code" : "recovery_code"}
+        placeholder={mode === "code" ? "123 456" : undefined}
         inputMode={mode === "code" ? "numeric" : "text"}
         autoComplete={mode === "code" ? "one-time-code" : "off"}
         // The password form this replaced held focus; without this it falls to
@@ -135,7 +136,7 @@ function MfaCodeStep({
         className={cn(authInput, "pl-3.5", mode === "code" && "text-center font-landing-mono text-2xl font-semibold tracking-[0.4em]")}
       />
       <AuthButton isLoading={busy} disabled={!ready}>
-        {busy ? "Checking…" : "Verify"}
+        {busy ? "Checking…" : "Continue"}
       </AuthButton>
       <div className="flex flex-col items-center gap-2 text-osce-meta">
         <button

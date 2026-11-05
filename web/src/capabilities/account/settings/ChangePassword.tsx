@@ -52,6 +52,13 @@ const FIELDS: { name: PasswordField; label: string; hint?: string }[] = [
   { name: "confirmPassword", label: "Confirm New Password" },
 ];
 
+/** The forced screen's words (the sign-in board): the shell carries the heading. */
+const FORCED_LABELS: Record<PasswordField, string> = {
+  currentPassword: "Temporary password",
+  newPassword: "New password",
+  confirmPassword: "Confirm it",
+};
+
 /**
  * Change your own password, on whichever arm you are standing in.
  *
@@ -65,7 +72,14 @@ const FIELDS: { name: PasswordField; label: string; hint?: string }[] = [
  * the forced screen, it runs after the success message lands, so the session
  * can be re-read and the person sent on.
  */
-export default function ChangePassword({ onChanged }: { onChanged?: () => Promise<void> }) {
+export default function ChangePassword({
+  onChanged,
+  forced = false,
+}: {
+  onChanged?: () => Promise<void>;
+  /** The required first change after a temporary password: board wording, no card heading. */
+  forced?: boolean;
+}) {
   const [values, setValues] = useState({
     currentPassword: "",
     newPassword: "",
@@ -136,11 +150,13 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
 
   return (
     <ModalContent>
-      <ModalLead
-        title="Update password"
-        description="Choose a new password for your account"
-        icon={<HiOutlineLockClosed className="h-5 w-5" />}
-      />
+      {forced ? null : (
+        <ModalLead
+          title="Update password"
+          description="Choose a new password for your account"
+          icon={<HiOutlineLockClosed className="h-5 w-5" />}
+        />
+      )}
       {formError ? <Alert message={formError} type="error" /> : null}
       {noPassword && email ? (
         <ModalPrimaryButton type="button" onClick={() => void sendSetPasswordLink()}>
@@ -152,7 +168,7 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
         <ModalSection title="Password details">
           <div className="space-y-4">
             {FIELDS.map(({ name, label, hint }) => (
-              <ModalField key={name} label={label} htmlFor={name}>
+              <ModalField key={name} label={forced ? FORCED_LABELS[name] : label} htmlFor={name}>
                 <div className="relative">
                   <input
                     type={shown[name] ? "text" : "password"}
@@ -193,7 +209,7 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
                 <Spinner size="xs" className="text-current" label="Updating" /> Updating...
               </>
             ) : (
-              "Update password"
+              forced ? "Save password" : "Update password"
             )}
           </ModalPrimaryButton>
         </ModalFooterActions>

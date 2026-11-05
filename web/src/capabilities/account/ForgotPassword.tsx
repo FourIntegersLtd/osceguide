@@ -109,7 +109,7 @@ export default function ForgotPassword() {
       variant="split"
       icon="key"
       title="Reset your password"
-      subtitle="We'll email you a link to set a new one"
+      subtitle="We email you a link if an account uses this address."
       sidePanel={<AuthQuotePanel />}
     >
       <form className="space-y-5" method="post" onSubmit={handleFormSubmission} noValidate>
@@ -132,7 +132,7 @@ export default function ForgotPassword() {
           </p>
         ) : null}
         <AuthButton isLoading={isSubmitting}>
-          {isSubmitting ? "Sending…" : "Send reset link"}
+          {isSubmitting ? "Sending…" : "Send the link"}
         </AuthButton>
       </form>
 

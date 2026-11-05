@@ -32,7 +32,7 @@ export type AuthIconName = keyof typeof ICONS;
 
 type AuthShellProps = {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   eyebrow?: string;
   /** `split` is the card beside the navy panel (`sidePanel`); `card` is the card alone. */
   variant: "split" | "card";
@@ -67,7 +67,7 @@ export default function AuthShell({
           {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
         </div>
         <h1 className={authTitle}>{title}</h1>
-        <p className={authSubtitle}>{subtitle}</p>
+        {subtitle ? <p className={authSubtitle}>{subtitle}</p> : null}
       </header>
       <div className="mt-7 space-y-5">{children}</div>
     </section>
