@@ -518,7 +518,7 @@ export function TraineesPanel({
         ) : (
           <EmptyState
             title={`No ${w.trainees} yet`}
-            description={`Add ${w.trainees} so you can put them on an exam or training circuit.`}
+            description={`Add ${w.trainees} so you can put them on ${w.hiring ? "an assessment" : "an exam or training circuit"}.`}
             action={
               canManage ? (
                 <Button themeType="b2b" variant="commit" onClick={onAddPeople}>

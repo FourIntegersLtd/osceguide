@@ -11,7 +11,7 @@ test("ASSESS-1 admin schedules a sitting and finds it listed", async ({ page, co
 
   await openPage(page, `/app/${w.slug}/dashboard`);
   // Setup is done by global-setup, so the guide points at the one step left.
-  await expect(page.getByText("Everything is in place. Schedule the first sitting.")).toBeVisible();
+  await expect(page.getByText("Schedule your first sitting").first()).toBeVisible();
   await page.getByRole("link", { name: "Schedule a sitting" }).first().click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Schedule a sitting" })).toBeVisible();

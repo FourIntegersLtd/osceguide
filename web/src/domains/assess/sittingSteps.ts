@@ -121,7 +121,15 @@ export function sittingSteps(input: SittingStepsInput): SittingStep[] {
       id: "circuits",
       label: "Circuits",
       state: circuits.length > 0 || reportOnly ? "done" : "todo",
-      note: reportOnly ? (nobodySat ? plural(counts?.candidates ?? 0, "candidate") + " assigned" : "Candidates sat") : circuits.length > 0 ? plural(circuits.length, "circuit") : "None yet",
+      note: reportOnly
+        ? nobodySat
+          ? plural(counts?.candidates ?? 0, "candidate") + " assigned"
+          : "Candidates sat"
+        : circuits.length === 0
+          ? "None yet"
+          : counts !== null && counts.candidates > 0 && !begun
+            ? plural(counts.candidates, "candidate") + " assigned"
+            : plural(circuits.length, "circuit"),
     },
     run,
     { id: "mark", label: "Mark", state: marked ? "done" : "todo", note: markNote },

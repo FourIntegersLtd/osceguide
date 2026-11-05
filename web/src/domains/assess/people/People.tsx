@@ -44,7 +44,7 @@ export function People({ orgSlug, initialTab }: { orgSlug: string; initialTab: P
     <div className="flex flex-col gap-6">
       <B2CPageHeader
         title={w.People}
-        subtitle={`Everyone in your organisation. ${w.Trainees} sit sittings; staff (supervisors and admins) run circuits and mark them.`}
+        subtitle={`Everyone in your organisation. ${w.Trainees} sit ${w.sittings}; staff (supervisors and admins) run circuits and mark them.`}
         action={
           canManage ? (
             <Button

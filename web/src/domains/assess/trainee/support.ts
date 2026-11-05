@@ -92,7 +92,7 @@ export function modeLabel(sitting: MySitting): string {
 /** A sitting in one of these is over: it sorts last and belongs under "Past" (T-9). */
 const FINISHED_STATUSES: readonly string[] = ["completed", "ended", "cancelled"];
 
-function isOver(sitting: MySitting): boolean {
+export function isOver(sitting: MySitting): boolean {
   return FINISHED_STATUSES.includes(sitting.status);
 }
 
@@ -280,7 +280,7 @@ export function splitFinished(sittings: readonly MySitting[]): { current: MySitt
 }
 
 const JOIN_REFUSALS: Record<string, string> = {
-  circuit_not_live: "This circuit is not open yet. It opens when your supervisor starts it.",
+  circuit_not_live: "This circuit is not open yet. You will be let in when your supervisor starts it.",
   circuit_not_found: "That circuit is not on your list any more. Ask your organiser.",
   voice_unavailable: "The voice service is not available right now. Try again in a minute.",
   trainee_revoked: "Your access to this organisation has been withdrawn.",

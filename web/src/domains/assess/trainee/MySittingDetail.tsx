@@ -33,6 +33,7 @@ import {
 import {
   activeSlot,
   isExam,
+  isOver,
   modeLabel,
   orderedSlots,
   progressOf,
@@ -97,6 +98,11 @@ function MicCheck() {
               : "Test it now so the room can open straight away."}
       </p>
       {ok ? null : (
+        <p className="mt-1 text-osce-meta">
+          We check it before you join. If your browser blocks it: &quot;Allow it in the address bar, then try again.&quot;
+        </p>
+      )}
+      {ok ? null : (
         <Button themeType="b2b" variant="secondary" size="sm" className="mt-2" onClick={() => void mic.request()}>
           Test microphone
         </Button>
@@ -112,6 +118,8 @@ function Circuit({ sitting }: { sitting: MySitting }) {
   const briefSlot = readingBriefSlot(sitting);
   const { total } = progressOf(sitting);
   const exam = isExam(sitting);
+  // Once the sitting is over there is nothing to join or prepare for: the stations and the result are what is left.
+  const over = isOver(sitting);
 
   return (
     <section className="space-y-4">
@@ -148,9 +156,9 @@ function Circuit({ sitting }: { sitting: MySitting }) {
         }
       />
 
-      {sitting.can_join ? null : <MicCheck />}
+      {sitting.can_join || over ? null : <MicCheck />}
 
-      {sitting.can_join ? null : (
+      {sitting.can_join || over ? null : (
       <Alert tone="info" title={exam ? "Before you start" : "How a practice circuit works"}>
         {exam
           ? "Your station opens when your supervisor starts it. Go in straight away: the patient joins when reading time ends, and you need to be in the room by then."

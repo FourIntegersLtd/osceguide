@@ -132,6 +132,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
     <div className="flex flex-col gap-6">
       <B2CPageHeader
         title={w.Sittings}
+        subtitle={`${w.hiring ? "An" : "A"} ${w.sitting} is one occasion, such as the March mock. Its circuits are built for you when you schedule it.`}
         action={
           can(session, "schedule_sittings") ? (
             <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">

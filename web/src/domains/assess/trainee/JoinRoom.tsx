@@ -106,6 +106,7 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
             <LuLogOut className="h-4 w-4" aria-hidden />
             Leave the room
           </Button>
+          <p className="text-osce-meta text-b2b-mid">If you drop out we rejoin you by ourselves.</p>
         </div>
       </VoiceRoom>
     );

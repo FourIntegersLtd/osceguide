@@ -49,11 +49,11 @@ import {
  */
 
 /** Building a sitting or circuit is the administrator's; a supervisor who lands here by URL is told so rather than shown a form the server refuses. */
-function AdminsOnly({ children }: { children: React.ReactNode }) {
+function AdminsOnly({ children, what }: { children: React.ReactNode; what: "sitting" | "circuit" }) {
   return (
     <RequireCapability
       permission="schedule_sittings"
-      fallback={<EmptyState title="Administrators only" description="Only someone who schedules sittings can add or edit a sitting or circuit. Ask an administrator." />}
+      fallback={<EmptyState title="Administrators only" description={`Only someone who schedules sittings can add or edit a ${what}. Ask an administrator.`} />}
     >
       {children}
     </RequireCapability>
@@ -79,7 +79,7 @@ function AssessSittingDetail(props: ScreenProps) {
 
 function AssessNewSitting(props: ScreenProps) {
   return (
-    <AdminsOnly>
+    <AdminsOnly what="sitting">
       <NewSitting orgSlug={slugOf(props)} />
     </AdminsOnly>
   );
@@ -87,7 +87,7 @@ function AssessNewSitting(props: ScreenProps) {
 
 function AssessNewCircuit(props: ScreenProps) {
   return (
-    <AdminsOnly>
+    <AdminsOnly what="circuit">
       <NewCircuit orgSlug={slugOf(props)} sittingId={props.params?.sittingId ?? ""} />
     </AdminsOnly>
   );
@@ -103,7 +103,7 @@ function AssessCircuitRunner(props: ScreenProps) {
 
 function AssessCircuitEdit(props: ScreenProps) {
   return (
-    <AdminsOnly>
+    <AdminsOnly what="circuit">
       <EditCircuit orgSlug={slugOf(props)} circuitId={props.params?.circuitId ?? ""} />
     </AdminsOnly>
   );

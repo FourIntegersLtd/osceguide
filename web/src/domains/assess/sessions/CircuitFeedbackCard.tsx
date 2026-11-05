@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { HiCheckCircle } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Button, b2bTokens, Panel } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button, ButtonLink, b2bTokens, Panel } from "@/foundation/ui";
 import type { AsyncState } from "@/foundation/hooks";
 import {
   finalizeCircuitReview,
@@ -92,6 +92,7 @@ function FeedbackForm({
   const publishedAt = current.state === "published" ? current.review.finalized_at : null;
 
   return (
+    <div id="circuit-feedback">
     <Panel
       title="Share this circuit's feedback"
       description="Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one."
@@ -124,7 +125,10 @@ function FeedbackForm({
 
       {marked === 0 ? (
         <p className="text-osce-caption text-b2b-mid">
-          You can share feedback once at least one station has been marked.
+          You can publish once at least one station is marked; this is the step that finalises the circuit&apos;s feedback.{" "}
+          <ButtonLink href="#circuit-feedback" themeType="b2b" variant="ghost">
+            Go to circuit feedback
+          </ButtonLink>
         </p>
       ) : null}
 
@@ -140,5 +144,6 @@ function FeedbackForm({
       </Button>
       </div>
     </Panel>
+    </div>
   );
 }
