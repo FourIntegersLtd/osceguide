@@ -1,6 +1,30 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { tabsFor } from "@/capabilities/account/settings/settingsTabs";
+import { arrangeTabs, tabsFor } from "@/capabilities/account/settings/settingsTabs";
+
+test("an organisation's own tabs open the strip, then the person's, then Invoices, as on the Settings board", () => {
+  const extras = [
+    { id: "organisation", label: "Organisation" },
+    { id: "sso", label: "Single sign-on" },
+    { id: "provisioning", label: "Provisioning" },
+    { id: "invoices", label: "Invoices", after: true },
+  ];
+  assert.deepEqual(
+    arrangeTabs(tabsFor("assess"), extras).map((tab) => tab.label),
+    ["Organisation", "Single sign-on", "Provisioning", "Your account", "Preferences", "Invoices"],
+  );
+});
+
+test("a supervisor, with no organisation tabs, sees Your account and Preferences only", () => {
+  assert.deepEqual(
+    arrangeTabs(tabsFor("assess"), []).map((tab) => tab.label),
+    ["Your account", "Preferences"],
+  );
+});
+
+test("a learner's strip keeps its Profile label", () => {
+  assert.equal(tabsFor("train")[0]?.label, "Profile");
+});
 
 test("every consumer account sees the Referrals tab and no Exam tab (the exam type is on Profile)", () => {
   assert.deepEqual(

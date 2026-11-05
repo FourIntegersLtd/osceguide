@@ -140,7 +140,7 @@ export function NewOrganisation() {
             </p>
           ) : (
             <p className="text-osce-caption text-ink-muted">
-              This decides which features your organisation gets. You can add more later in Settings.
+              This decides which features your organisation gets. To change it later, contact support.
             </p>
           )}
         </fieldset>
