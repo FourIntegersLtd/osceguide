@@ -31,12 +31,14 @@ import {
   attentionFromResults,
   comingUp,
   modeLabel,
+  NEW_EXAM_PATH,
+  SCHEDULE_SITTING_PATH,
   setupComplete,
   todaySentence,
   type AttentionItem,
 } from "@/domains/assess/dashboard/support";
 import { readResultsIndex } from "@/domains/assess/results/api";
-import { StationsToReview } from "@/domains/assess/results/StationsToReview";
+import { StationsToReview, useStationsToReview } from "@/domains/assess/results/StationsToReview";
 import { greetingFor } from "@/domains/assess/trainee/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 
@@ -78,6 +80,20 @@ function Body({ data, orgSlug, admin, runs }: { data: Data; orgSlug: string; adm
   return <Today data={data} orgSlug={orgSlug} admin={admin} runs={runs} name={session?.user.name} />;
 }
 
+/** A supervisor's header: how many of their stations still need a review. */
+function SupervisorHeader({ orgSlug, eyebrow }: { orgSlug: string; eyebrow: string }) {
+  const { stations } = useStationsToReview(orgSlug);
+  const count = stations.length;
+  return (
+    <B2CPageHeader
+      className="!mb-0"
+      eyebrow={eyebrow}
+      title={`${count === 0 ? "No" : count} ${count === 1 ? "station" : "stations"} to review`}
+      subtitle="You review the circuits you lead. Your ratings are what count; the AI mark is a starting point."
+    />
+  );
+}
+
 function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: string; admin: boolean; runs: boolean; name?: string }) {
   const w = useAssessWords();
   const { hrefFor } = useSurface();
@@ -92,15 +108,18 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
 
   return (
     <>
+      {runs && !mayDecide ? (
+        <SupervisorHeader orgSlug={orgSlug} eyebrow={data.name} />
+      ) : (
       <B2CPageHeader
         className="!mb-0"
         eyebrow={data.name}
-        title={greetingFor(name, new Date())}
-        subtitle={todaySentence(running, attention.length)}
+        title={w.hiring ? "Overview" : greetingFor(name, new Date())}
+        subtitle={w.hiring ? `Your ${w.sittings}, ${w.trainees} and results.` : todaySentence(running, attention.length)}
         action={
           schedules ? (
             data.setup.ready_to_run ? (
-              <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
+              <ButtonLink href={hrefFor(SCHEDULE_SITTING_PATH)} themeType="b2b" variant="commit">
                 <LuPlus className="h-4 w-4" aria-hidden />
                 {w.scheduleSitting}
               </ButtonLink>
@@ -111,7 +130,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
                 </Button>
                 <p id="schedule-blocked" className="text-osce-meta text-b2b-muted">
                   {`Nothing can be scheduled until an ${w.exam} is ready. `}
-                  <Link href={hrefFor("/authoring")} className={b2bTokens.b2bLink}>
+                  <Link href={hrefFor(NEW_EXAM_PATH)} className={b2bTokens.b2bLink}>
                     {`Set up an ${w.exam}`}
                   </Link>
                 </p>
@@ -120,6 +139,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
           ) : null
         }
       />
+      )}
 
       {/* What is happening now comes before what exists: on an examination morning it is the
           only thing anybody wants. */}
@@ -142,7 +162,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
           {upcoming.length === 0 ? (
             <B2CGroupedRow
               title={`No ${w.sittings} are scheduled.`}
-              meta={schedules ? <Link href={hrefFor("/sittings/new")} className={b2bTokens.b2bLink}>{w.scheduleSitting}</Link> : `An administrator can schedule one.`}
+              meta={schedules ? <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={b2bTokens.b2bLink}>{w.scheduleSitting}</Link> : `An administrator can schedule one.`}
             />
           ) : (
             upcoming.map((sitting) => <SittingRow key={sitting.id} sitting={sitting} />)
@@ -165,6 +185,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
 
 function SittingRow({ sitting }: { sitting: NonNullable<Data["recent_sittings"]>[number] }) {
   const { hrefFor } = useSurface();
+  const w = useAssessWords();
   return (
     <B2CGroupedRowLink
       href={hrefFor(`/sittings/${sitting.id}`)}
@@ -172,8 +193,8 @@ function SittingRow({ sitting }: { sitting: NonNullable<Data["recent_sittings"]>
       title={sitting.name}
       meta={
         sitting.scheduled_for
-          ? `${new Date(sitting.scheduled_for).toLocaleString()} · ${modeLabel(sitting.mode)}`
-          : modeLabel(sitting.mode)
+          ? `${new Date(sitting.scheduled_for).toLocaleString()} · ${modeLabel(sitting.mode, w)}`
+          : modeLabel(sitting.mode, w)
       }
       trailing={
         <Badge variant="neutral" dot>
@@ -225,12 +246,18 @@ function Counts({ data }: { data: Data }) {
   const w = useAssessWords();
   const { hrefFor } = useSurface();
   const counts = data.counts;
-  const tiles = [
-    { label: `${w.Exams} ready to schedule`, value: counts.programmes_with_markable_exam, path: "/authoring" },
+  const tiles = w.hiring
+    ? [
+        { label: w.Trainees, value: counts.trainees, path: "/trainees" },
+        { label: w.Supervisors, value: counts.staff, path: "/team" },
+        { label: w.Sittings, value: counts.sittings, path: "/sittings" },
+      ]
+    : [
+    { label: `${w.Exams} ready to schedule`, value: counts.programmes_with_markable_exam, path: "/authoring/exams" },
     // The backend counts this organisation's own stations, not the platform catalogue it may also run.
     { label: "Published stations", value: counts.stations, path: "/authoring/stations" },
     { label: w.Trainees, value: counts.trainees, path: "/trainees" },
-    { label: w.Supervisors === "Assessors" ? "Assessors" : "Staff", value: counts.staff, path: "/team" },
+    { label: w.Supervisors, value: counts.staff, path: "/team" },
     { label: w.Sittings, value: counts.sittings, path: "/sittings" },
   ];
 

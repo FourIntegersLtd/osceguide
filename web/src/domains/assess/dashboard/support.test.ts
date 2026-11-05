@@ -14,7 +14,7 @@ import {
   recordingMissing,
   setupComplete,
   todaySentence,
-  stepBlockedReason,
+  stepBlock,
 } from "@/domains/assess/dashboard/support";
 
 function setup(over: Partial<OrgSetup> = {}): OrgSetup {
@@ -88,16 +88,23 @@ test("the first open step leads, and setup ends when the required steps are done
   assert.equal(setupComplete(assistantSteps(setup({ trainees_added: true }), INSTITUTION_WORDS)), false);
 });
 
-test("somebody who may not do a step is told why", () => {
+test("scheduling is blocked, with the fix, until an exam is ready", () => {
+  const sitting = assistantSteps(setup(), INSTITUTION_WORDS).find((step) => step.id === "sitting");
+  assert.ok(sitting);
+  assert.deepEqual(stepBlock(sitting, setup(), INSTITUTION_WORDS), {
+    reason: "Nothing can be scheduled until an exam is ready.",
+    fixLabel: "Set up an exam",
+    fixHref: "/authoring/exams/new",
+  });
+  assert.equal(stepBlock(sitting, setup({ ready_to_run: true }), INSTITUTION_WORDS), null);
   const exam = assistantSteps(setup(), INSTITUTION_WORDS)[0];
   assert.ok(exam);
-  assert.equal(stepBlockedReason(exam, () => true), null);
-  assert.equal(stepBlockedReason(exam, () => false), "Only an administrator can do this. Ask one to complete this step.");
+  assert.equal(stepBlock(exam, setup(), INSTITUTION_WORDS), null);
 });
 
 test("needs-your-attention lists outcomes to write and results to release, oldest first", () => {
   const row = (over: Partial<ResultsIndexRow>): ResultsIndexRow =>
-    ({ sitting_id: "s", name: "Sitting", candidates: 3, draft: 0, not_decided: 0, released: 0, signed_off: 0, mode: "exam", status: "ended", scheduled_for: null, ...over }) as ResultsIndexRow;
+    ({ sitting_id: "s", name: "Sitting", candidates: 3, draft: 0, not_decided: 0, released: 0, signed_off: 0, mode: "exam", status: "completed", scheduled_for: null, ...over }) as ResultsIndexRow;
   const items = attentionFromResults(
     [row({ sitting_id: "new", name: "Year 4 mock", signed_off: 2 }), row({ sitting_id: "old", name: "February", not_decided: 2, draft: 1 })],
     INSTITUTION_WORDS,
@@ -109,6 +116,20 @@ test("needs-your-attention lists outcomes to write and results to release, oldes
       ["2 ready", "Release results for Year 4 mock", "/sittings/new/results"],
     ],
   );
+});
+
+test("a scheduled or training sitting has no decisions waiting", () => {
+  const row = (over: Partial<ResultsIndexRow>): ResultsIndexRow =>
+    ({ sitting_id: "s", name: "Sitting", candidates: 20, draft: 0, not_decided: 20, released: 0, signed_off: 0, mode: "exam", status: "scheduled", scheduled_for: null, ...over }) as ResultsIndexRow;
+  assert.deepEqual(attentionFromResults([row({}), row({ status: "completed", mode: "training" })], INSTITUTION_WORDS), []);
+});
+
+test("hire words the decision row as the board does", () => {
+  const items = attentionFromResults(
+    [{ sitting_id: "a", name: "Band 6 day", candidates: 4, draft: 1, not_decided: 3, released: 0, signed_off: 0, mode: "exam", status: "completed", scheduled_for: null } as ResultsIndexRow],
+    EMPLOYER_WORDS,
+  );
+  assert.deepEqual(items.map((item) => [item.title, item.tag]), [["4 candidates need a hiring decision", "Decide"]]);
 });
 
 test("a consultation with no attempt behind it is a station nobody is recording", () => {

@@ -36,6 +36,7 @@ export function SupervisorCircuits({
   sayWhenEmpty?: boolean;
 }) {
   const { hrefFor } = useSurface();
+  const w = useAssessWords();
   const state = useAsync((signal) => readSupervisorCircuits(orgSlug, signal), [orgSlug]);
 
   if (state.loading) return <Spinner />;
@@ -71,13 +72,13 @@ export function SupervisorCircuits({
   return (
     <Section>
       {ordered[0] ? <NextCircuit row={ordered[0]} /> : null}
-      {ordered.map((row) => (
+      {ordered.slice(1).map((row) => (
         <B2CGroupedRowLink
           key={row.circuit_id}
           href={hrefFor(`/circuits/${row.circuit_id}`)}
           icon={LuClipboardCheck}
           title={`${row.sitting_name} · ${row.circuit_name}`}
-          meta={`${modeLabel(row.mode)} · ${row.slot_count} station${row.slot_count === 1 ? "" : "s"}${
+          meta={`${modeLabel(row.mode, w)} · ${row.slot_count} station${row.slot_count === 1 ? "" : "s"}${
             row.scheduled_for ? ` · ${new Date(row.scheduled_for).toLocaleString()}` : ""
           }`}
           trailing={
@@ -118,7 +119,7 @@ function NextCircuit({ row }: { row: SupervisorCircuitRow }) {
       <p className={b2bTokens.b2bEyebrow}>Your next circuit</p>
       <p className="text-osce-body font-semibold text-b2b-headline">{`${row.sitting_name} · ${row.circuit_name}`}</p>
       <p className="text-osce-meta text-b2b-muted">
-        {`${row.scheduled_for ? `${new Date(row.scheduled_for).toLocaleString()} · ` : ""}${modeLabel(row.mode)} · ${row.slot_count} station${row.slot_count === 1 ? "" : "s"}`}
+        {`${row.scheduled_for ? `${new Date(row.scheduled_for).toLocaleString()} · ` : ""}${modeLabel(row.mode, w)} · ${row.slot_count} station${row.slot_count === 1 ? "" : "s"}`}
       </p>
       <div>
         <ButtonLink href={hrefFor(`/circuits/${row.circuit_id}`)} themeType="b2b" variant="commit">

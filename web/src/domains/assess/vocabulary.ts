@@ -18,10 +18,6 @@ export type AssessWords = {
   exams: string;
   Exam: string;
   Exams: string;
-  /** The template a station takes, shown as "Station layout (optional)". */
-  stationLayout: string;
-  StationLayout: string;
-  StationLayouts: string;
   /** The people who run a circuit and review it: supervisors, assessors for an employer. */
   supervisor: string;
   supervisors: string;
@@ -32,13 +28,9 @@ export type AssessWords = {
   yearGroups: string;
   YearGroup: string;
   YearGroups: string;
-  /** A free-form set of people, distinct from a year group. */
-  group: string;
-  groups: string;
-  Group: string;
-  Groups: string;
-  /** What a sitting's mode is called: the words that replace the clash with "Exam". */
-  kind: string;
+  /** What a sitting's mode is called, so it never clashes with the "Exam" noun. */
+  /** True in a hire workspace, where results are hiring decisions. */
+  hiring: boolean;
   formalExam: string;
   training: string;
 };
@@ -59,9 +51,6 @@ export const INSTITUTION_WORDS: AssessWords = {
   exams: "exams",
   Exam: "Exam",
   Exams: "Exams",
-  stationLayout: "station layout",
-  StationLayout: "Station layout",
-  StationLayouts: "Station layouts",
   supervisor: "supervisor",
   supervisors: "supervisors",
   Supervisor: "Supervisor",
@@ -70,11 +59,7 @@ export const INSTITUTION_WORDS: AssessWords = {
   yearGroups: "year groups",
   YearGroup: "Year group",
   YearGroups: "Year groups",
-  group: "group",
-  groups: "groups",
-  Group: "Group",
-  Groups: "Groups",
-  kind: "Kind",
+  hiring: false,
   formalExam: "Formal exam",
   training: "Training",
 };
@@ -95,9 +80,6 @@ export const EMPLOYER_WORDS: AssessWords = {
   exams: "exams",
   Exam: "Exam",
   Exams: "Exams",
-  stationLayout: "station layout",
-  StationLayout: "Station layout",
-  StationLayouts: "Station layouts",
   supervisor: "assessor",
   supervisors: "assessors",
   Supervisor: "Assessor",
@@ -106,11 +88,7 @@ export const EMPLOYER_WORDS: AssessWords = {
   yearGroups: "intakes",
   YearGroup: "Intake",
   YearGroups: "Intakes",
-  group: "group",
-  groups: "groups",
-  Group: "Group",
-  Groups: "Groups",
-  kind: "Kind",
+  hiring: true,
   formalExam: "Formal exam",
   training: "Training",
 };
