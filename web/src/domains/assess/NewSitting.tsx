@@ -15,6 +15,7 @@ import {
   type RailStep,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
+import { useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import {
   createSitting,
@@ -138,7 +139,7 @@ function Wizard({
   groups,
   yearGroups,
   cohorts,
-  leads,
+  leads: allLeads,
 }: {
   orgSlug: string;
   programmes: Programme[];
@@ -151,6 +152,11 @@ function Wizard({
   const w = useAssessWords();
   const router = useRouter();
   const { hrefFor } = useSurface();
+  const { session } = useSession();
+  // The signed-in person is marked "(you)" in every supervisor list.
+  const leads = allLeads.map((lead) =>
+    lead.value === session?.user.id ? { ...lead, label: `${lead.label} (you)` } : lead,
+  );
   const ready = useMemo(() => programmes.filter((programme) => programme.status === "active"), [programmes]);
 
   const [draft, setDraft] = useState<ScheduleDraft>({ ...EMPTY_DRAFT, programmeId: ready[0]?.id ?? "" });
@@ -239,6 +245,9 @@ function Wizard({
       <Panel title={SCHEDULE_STEPS[index]?.title}>
         {step === "basics" ? (
           <div className="flex max-w-lg flex-col gap-4">
+            <p className="text-sm text-ink-muted">
+              What this {w.sitting} is, which exam it uses and when it happens.
+            </p>
             <Input
               label="Name"
               value={draft.name}
@@ -303,7 +312,7 @@ function Wizard({
             setStations={(update) => setDraft((current) => ({ ...current, stations: update(current.stations) }))}
             scope={scope}
             examName={programme?.exam_name ?? "this exam"}
-            heading={`Published stations from ${programme?.exam_name ?? "this exam"}. Use the arrows to set the order every candidate goes round.${
+            heading={`Published stations from ${programme?.exam_name ?? "this exam"}. Drag to set the order every candidate goes round.${
               draft.mode === "exam" ? " At most 12 on a formal exam circuit." : ""
             }`}
           />

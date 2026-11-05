@@ -181,3 +181,14 @@ test("a training sitting stops at Mark: no Decide or Release", () => {
   );
   assert.deepEqual(sittingNext(input), { id: "done", line: "Every station has been marked.", actionable: false, waiting: 1 });
 });
+
+test("a scheduled sitting with circuits says how many candidates are assigned, not how many circuits", () => {
+  const counts = { candidates: 8, stations: 0, stationsSat: 0, stationsMarked: 0, decided: 0, signedOff: 0, released: 0 };
+  const circuit = { started_at: null, ended_at: null };
+  const steps = sittingSteps({ scheduledFor: "d", circuits: [circuit, circuit], counts, training: false, can });
+  assert.equal(steps[1]?.note, "8 candidates assigned");
+  assert.equal(
+    sittingSteps({ scheduledFor: "d", circuits: [circuit, circuit], counts: null, training: false, can })[1]?.note,
+    "2 circuits",
+  );
+});

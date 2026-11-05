@@ -255,9 +255,40 @@ export function CandidatePicker({
     { key: "years", label: "Year groups" },
   ];
   const sets = tab === "groups" ? groups : yearGroups;
+  const addFromSelect = (list: PickerSet[], id: string) => {
+    const set = list.find((item) => item.id === id);
+    if (set) void addSet(set);
+  };
 
   return (
     <div className="flex flex-col gap-3">
+      <p className="text-sm text-ink-muted">
+        {picked.length} of {trainees.filter((trainee) => trainee.user_id !== null).length} selected.
+        {single ? " A formal exam circuit is one candidate's sitting: they go through every station." : ""}
+      </p>
+      {groups.length > 0 || yearGroups.length > 0 ? (
+        <div className="flex flex-wrap gap-3">
+          {groups.length > 0 ? (
+            <FieldSelect
+              label="Add a group"
+              value=""
+              onChange={(value) => addFromSelect(groups, value)}
+              options={[{ value: "", label: "Add a group…" }, ...groups.map((set) => ({ value: set.id, label: set.label }))]}
+            />
+          ) : null}
+          {yearGroups.length > 0 ? (
+            <FieldSelect
+              label="Add a year group"
+              value=""
+              onChange={(value) => addFromSelect(yearGroups, value)}
+              options={[
+                { value: "", label: "Add a year group…" },
+                ...yearGroups.map((set) => ({ value: set.id, label: set.label })),
+              ]}
+            />
+          ) : null}
+        </div>
+      ) : null}
       <div role="tablist" aria-label="Pick from" className="flex gap-2">
         {tabs.map((item) => (
           <button
@@ -285,7 +316,12 @@ export function CandidatePicker({
       {tab === "people" ? (
         <>
           <div className="max-w-sm">
-            <Input label="Search by name or email" value={search} onChange={(event) => setSearch(event.target.value)} />
+            <Input
+              label="Find a candidate"
+              placeholder="Name or email"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
           </div>
           {trainees.length === 0 ? (
             <p className="text-sm text-ink-muted">Add {words.trainees} to your organisation first.</p>
@@ -300,7 +336,7 @@ export function CandidatePicker({
                       <p className="truncate text-ink-muted">{trainee.email}</p>
                       {userId === null ? (
                         <p className="text-osce-meta text-ink-muted">
-                          Has not accepted the invitation, so cannot be scheduled until they do.
+                          Invitation not accepted yet. They can be picked once they accept.
                         </p>
                       ) : null}
                       {resent[trainee.id] ? (

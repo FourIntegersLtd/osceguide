@@ -119,6 +119,7 @@ function OverrideForm({
           onChange={(event) => setReason(event.target.value)}
           className="mt-1"
         />
+        <span className="mt-1 block text-osce-caption text-b2b-mid">Optional. Your answer is saved with the circuit.</span>
       </label>
     </Dialog>
   );

@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, FoldSection } from "@/foundation/ui";
+import { Badge, ButtonLink, FoldSection } from "@/foundation/ui";
+import { useSurface } from "@/capabilities";
+import { reviewPath } from "@/domains/assess/results/candidateNeighbours";
 import { SlotReview } from "@/domains/assess/SlotReview";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import { orderedSlots, stationLabel } from "@/domains/assess/sessions/support";
@@ -26,6 +28,7 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
     [data],
   );
   const [selected, setSelected] = useState<string | null>(null);
+  const { hrefFor } = useSurface();
 
   const first = finished[0];
   if (!first) return null;
@@ -62,6 +65,16 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
           </button>
         ))}
       </div>
+      <p className="mb-3 text-osce-body text-b2b-mid">
+        The full marking form for this station opens here, the same as Slot review.{" "}
+        <ButtonLink
+          href={hrefFor(reviewPath(active.id, active.attempt_id, data.sitting.id))}
+          themeType="b2b"
+          variant="ghost"
+        >
+          Mark {stationLabel(active)}
+        </ButtonLink>
+      </p>
       <SlotReview orgSlug={orgSlug} slotId={active.id} attemptId={active.attempt_id ?? null} />
     </FoldSection>
   );

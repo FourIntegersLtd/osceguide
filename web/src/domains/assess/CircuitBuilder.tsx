@@ -166,6 +166,10 @@ export function CircuitBuilder({
 
   return (
     <div className="flex flex-col gap-5">
+      <p className="text-sm text-ink-muted">
+        Used for Edit on an existing circuit and for Add a circuit on a sitting. The Schedule wizard builds the first
+        circuits.
+      </p>
       {above}
       {error && <Alert tone="danger">{assessErrorMessage(error)}</Alert>}
       {tooManyCandidates && (
@@ -203,7 +207,11 @@ export function CircuitBuilder({
 
       <Panel
         title={`Stations (${stations.length})`}
-        description={isExam ? `At most ${MAX_EXAM_STATIONS} on a formal exam circuit` : undefined}
+        description={
+          isExam
+            ? `At most ${MAX_EXAM_STATIONS} on a formal exam circuit. The picker loads more with Load more.`
+            : "The picker loads more with Load more."
+        }
       >
         <StationOrder
           stations={stations}
