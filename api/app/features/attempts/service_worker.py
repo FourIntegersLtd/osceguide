@@ -17,6 +17,7 @@ from app.features.attempts.schemas import TranscriptIn, TranscriptMessageIn, Wor
 from app.features.attempts.service import attempt_deadline, ensure_entitled_to_begin
 from app.features.attempts.service_render import render_definition
 from app.features.catalog import service as catalog
+from app.features.sittings import service_reads as sittings_reads
 from app.features.station_sets import service as station_sets
 from app.features.tutor_memory import jobs as tutor_jobs
 
@@ -86,8 +87,10 @@ async def bootstrap(
             await repository.set_status(
                 session, attempt_id, status=domain.Status.FAILED, at=now, reason="not_entitled"
             )
+            await sittings_reads.attempt_progress(session, attempt)
             raise errors.NotEntitledToBegin(details=exc.details) from exc
         await repository.set_status(session, attempt_id, status=domain.Status.RUNNING, at=now)
+        await sittings_reads.attempt_progress(session, attempt)
         await _credit_practice_set_entry(session, attempt, at=now)
 
     return WorkerBootstrap(
@@ -256,6 +259,7 @@ async def accept_transcript(
             await repository.set_status(
                 session, attempt_id, status=target, at=now, reason="incomplete_transcript"
             )
+            await sittings_reads.attempt_progress(session, attempt)
 
 
 async def complete_interaction(session: AsyncSession, attempt: Attempt, *, now: datetime) -> None:
@@ -266,6 +270,7 @@ async def complete_interaction(session: AsyncSession, attempt: Attempt, *, now: 
     salvage cannot forget a step the delivery takes.
     """
     await repository.set_status(session, attempt.id, status=domain.Status.INTERACTION_COMPLETE, at=now)
+    await sittings_reads.attempt_progress(session, attempt)
     # Enqueued in this transaction, so the work and the record of it being
     # owed commit together. b2c spawned a thread and b2b a daemon thread, so a
     # deploy mid-generation stranded the attempt forever.

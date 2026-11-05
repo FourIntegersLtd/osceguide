@@ -21,11 +21,12 @@ from app.features.sittings import (
     repository_reads,
     repository_run,
 )
-from app.features.sittings.models import Circuit, Sitting, Slot
-from app.features.sittings.reads import timing_read
 
 # Re-exported: a caller asks this module for a circuit and is handed a
 # `CircuitRef`, so it should not have to know which file the dataclass is in.
+from app.features.sittings.announcements import attempt_progress as attempt_progress
+from app.features.sittings.models import Circuit, Sitting, Slot
+from app.features.sittings.reads import timing_read
 from app.features.sittings.reads_types import CircuitDetail as CircuitDetail
 from app.features.sittings.reads_types import CircuitRef as CircuitRef
 from app.features.sittings.reads_types import CircuitRun as CircuitRun
@@ -235,16 +236,18 @@ async def sitting_detail(
     sitting = await repository.sitting_by_id(session, org_id, sitting_id)
     if sitting is None:
         return None
-    circuits = []
-    for circuit in await repository.circuits_for_sitting(session, org_id, sitting_id):
-        slots = await repository.slots_for_circuit(session, org_id, circuit.id)
-        circuits.append(
-            CircuitDetail(
-                circuit=_circuit_ref(circuit),
-                sitting=_sitting_ref(sitting),
-                slots=[_slot_ref(slot) for slot in slots],
-            )
+    sitting_circuits = await repository.circuits_for_sitting(session, org_id, sitting_id)
+    slots_by_circuit = await repository.slots_for_circuits(
+        session, org_id, [circuit.id for circuit in sitting_circuits]
+    )
+    circuits = [
+        CircuitDetail(
+            circuit=_circuit_ref(circuit),
+            sitting=_sitting_ref(sitting),
+            slots=[_slot_ref(slot) for slot in slots_by_circuit[circuit.id]],
         )
+        for circuit in sitting_circuits
+    ]
     return SittingDetail(sitting=_sitting_ref(sitting), circuits=circuits)
 
 

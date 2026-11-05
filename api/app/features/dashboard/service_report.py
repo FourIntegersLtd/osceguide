@@ -37,6 +37,9 @@ async def build_sitting_report(
 
     slots = [(circuit, slot) for circuit in detail.circuits for slot in circuit.slots]
     user_ids = sorted({slot.trainee_id for _, slot in slots}, key=str)
+    slots_by_user: dict[uuid.UUID, list[tuple[sittings.CircuitDetail, sittings.SlotRef]]] = {}
+    for circuit, slot in slots:
+        slots_by_user.setdefault(slot.trainee_id, []).append((circuit, slot))
     people = await identity.user_refs_by_ids(session, user_ids)
     trainees = await roster.trainees_by_user_id(session, org_id, user_ids)
     titles = await stations.summaries_by_version_id(
@@ -53,9 +56,7 @@ async def build_sitting_report(
     candidates: list[CandidateReport] = []
     for user_id in user_ids:
         station_reports: list[StationReport] = []
-        for circuit, slot in slots:
-            if slot.trainee_id != user_id:
-                continue
+        for circuit, slot in slots_by_user[user_id]:
             summary = summaries[slot.id]
             outcome = outcomes[slot.id]
             attempt = live.get(slot.id)

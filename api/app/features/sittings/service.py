@@ -20,6 +20,7 @@ from app.features.roster import service as roster
 from app.features.roster import service_groups as roster_groups
 from app.features.rubrics import service_marking
 from app.features.sittings import (
+    announcements,
     domain,
     domain_edit,
     domain_run,
@@ -399,7 +400,11 @@ async def skip_unstarted_stations(
     session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID, *, now: datetime
 ) -> int:
     """For the roster: a person leaving the directory has their unstarted stations ended (S-18)."""
-    return await repository_run.skip_unstarted_slots_for_user(session, org_id, user_id, now=now)
+    circuit_ids = await repository.open_circuit_ids_with_unstarted_slots(session, org_id, user_id)
+    skipped = await repository_run.skip_unstarted_slots_for_user(session, org_id, user_id, now=now)
+    for circuit_id in circuit_ids:
+        await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.ABSENT)
+    return skipped
 
 
 async def circuit_counts_by_station_version(

@@ -25,6 +25,7 @@ from app.features.entitlements import service as entitlements
 from app.features.entitlements.errors import NotEntitled
 from app.features.identity import service as identity
 from app.features.identity import service_platform as identity_accounts
+from app.features.sittings import service_reads as sittings_reads
 from app.features.stations import service as stations
 from app.features.stations import service_plan_window
 from app.features.stations import service_reads as stations_reads
@@ -279,6 +280,7 @@ async def abandon_attempt(
         raise errors.InvalidAttemptState(str(exc)) from exc
 
     await repository.set_status(session, attempt_id, status=domain.Status.FAILED, at=now, reason="abandoned")
+    await sittings_reads.attempt_progress(session, attempt)
     return _attempt_read(await _require(session, attempt_id))
 
 
@@ -320,6 +322,7 @@ async def _close_overdue(session: AsyncSession, attempt_id: uuid.UUID, turns: in
         await repository.set_status(
             session, attempt_id, status=domain.Status.FAILED, at=now, reason="abandoned"
         )
+        await sittings_reads.attempt_progress(session, attempt)
     return True
 
 

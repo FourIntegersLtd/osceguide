@@ -14,6 +14,7 @@ subscriber that re-reads the database sees the change it was told about. See
 from __future__ import annotations
 
 import uuid
+from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,6 +35,17 @@ JUMPED = "circuit.jumped"
 AUTO_ADVANCE_CHANGED = "circuit.auto_advance_changed"
 TRAINEES_APPENDED = "circuit.trainees_appended"
 REBUILT = "circuit.rebuilt"
+# A candidate's attempt moved on (running, interaction complete, marked, failed): the clock did
+# not cause it, so nothing else would tell the console or the board.
+ATTEMPT_PROGRESS = "circuit.attempt_progress"
+ABSENT = "circuit.candidate_absent"
+
+
+class SlotAttempt(Protocol):
+    """The two fields of an attempt that say which circuit it belongs to."""
+
+    org_id: uuid.UUID | None
+    slot_id: uuid.UUID | None
 
 
 async def circuit_changed(
@@ -49,3 +61,17 @@ async def circuit_changed(
     publish_after_commit(session, org_topic(org_id), name)
     for slot in await repository.slots_for_circuit(session, org_id, circuit_id):
         publish_after_commit(session, user_topic(slot.trainee_id), name)
+
+
+async def attempt_progress(session: AsyncSession, attempt: SlotAttempt) -> None:
+    """Tell the console and the organisation's board that a slot's attempt changed status.
+
+    Nothing to say for an attempt that is not on a slot: a practice attempt is nobody's circuit.
+    """
+    if attempt.slot_id is None or attempt.org_id is None:
+        return
+    slot = await repository.slot_by_id(session, attempt.org_id, attempt.slot_id)
+    if slot is None:
+        return
+    publish_after_commit(session, circuit_topic(slot.circuit_id), ATTEMPT_PROGRESS)
+    publish_after_commit(session, org_topic(attempt.org_id), ATTEMPT_PROGRESS)
