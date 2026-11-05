@@ -43,17 +43,24 @@ function StationTemplateNewScreenForm() {
   const createdId = useRef<string | null>(null);
   const listHref = stationTemplatesListPath(hrefFor);
   const orgKey = orgSlug ?? "platform";
+  const [step, setStep] = useState<1 | 2>(1);
 
   return (
     <PlatformTemplateWizardPageLayout
       title="New template"
-      subtitle="Choose the exam, name the template, pick a starting layout, then save a draft. Only saved (and published) templates appear in the catalogue list."
+      subtitle={
+        step === 1
+          ? "Choose the exam, name the template, pick a starting layout, then save a draft. Only saved (and published) templates appear in the catalogue list."
+          : "Step 2 of 2: sections and fields."
+      }
       backHref={listHref}
       backLabel="Station templates"
     >
       <CreateStationTemplateWizardBody
         orgKey={orgKey}
         examCode={examCode}
+        step={step}
+        onStep={setStep}
         onCancel={() => router.push(listHref)}
         saveLabel={thenStation ? "Save and publish" : "Save draft"}
         onSave={async (title, structure, assignedExamCode) => {
@@ -80,17 +87,20 @@ function StationTemplateNewScreenForm() {
 function CreateStationTemplateWizardBody({
   orgKey,
   examCode,
+  step,
+  onStep: setStep,
   onCancel,
   saveLabel,
   onSave,
 }: {
   orgKey: string;
   examCode: string | null;
+  step: 1 | 2;
+  onStep: (step: 1 | 2) => void;
   onCancel: () => void;
   saveLabel: string;
   onSave: (title: string, structure: StationStructure, examCode: string) => Promise<void>;
 }) {
-  const [step, setStep] = useState<1 | 2>(1);
   const [selectedExamCode, setSelectedExamCode] = useState(examCode ?? "");
   const [startPoint, setStartPoint] = useState<StationTemplateStartPoint>(() =>
     initialStationStartPoint(orgKey, examCode),

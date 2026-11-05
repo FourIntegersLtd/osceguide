@@ -158,7 +158,7 @@ export function StationsSection() {
           <span className="block text-osce-data font-normal text-ink-muted">
             {visibleCount}
             {pages.hasMore ? "+" : ""} station{visibleCount === 1 && !pages.hasMore ? "" : "s"}
-            {published.length > 0 ? ` · ${published.length} template(s) available` : ""}
+            {published.length > 0 ? ` · ${published.length} template${published.length === 1 ? "" : "s"} available` : ""}
           </span>
         ) : null}
       </AuthoringSectionLead>
@@ -177,7 +177,7 @@ export function StationsSection() {
       {action.error && archiveConfirm === null ? <Alert tone="danger">{action.error}</Alert> : null}
       {stations.error ? (
         <Alert tone="danger">
-          {stations.error.message}
+          Could not load stations. {stations.error.message}
           <button type="button" className="ml-2 underline" onClick={() => stations.reload()}>
             Retry
           </button>
