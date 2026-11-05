@@ -1,4 +1,4 @@
-import { LuBriefcase, LuClipboardCheck, LuGauge, LuGraduationCap, LuPencilRuler, LuRadio, LuUserCog, LuUsers } from "react-icons/lu";
+import { LuBriefcase, LuChartNoAxesColumn, LuClipboardCheck, LuGauge, LuGraduationCap, LuPencilRuler, LuRadio, LuUsers } from "react-icons/lu";
 import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
 import { ASSESS_SCREEN_NAMES } from "@/surfaces/assess/surface";
 
@@ -17,16 +17,17 @@ function nav({ can, href }: NavContext): NavItem[] {
   if (!can("run_circuits")) {
     return [{ key: "myTraining", label: "My assessments", href: href("/trainee"), icon: LuGraduationCap }];
   }
-  // Staff never get My training or practice sessions: the menu is what they run. Team shows to who manages it.
+  // Staff never get My training or practice sessions: the menu is what they run, by job. Team and
+  // Programmes are tabs of Candidates and Exams; `/team` and `/programmes` still resolve.
   const staff: NavItem[] = [
     { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
-    { key: "sittings", label: "Assessments", href: href("/sittings"), icon: LuBriefcase },
-    { key: "results", label: "Results", href: href("/results"), icon: LuClipboardCheck },
-    { key: "live", label: "Now running", href: href("/live"), icon: LuRadio },
-    { key: "trainees", label: "Candidates", href: href("/trainees"), icon: LuUsers },
+    { key: "sittings", label: "Assessments", href: href("/sittings"), icon: LuBriefcase, section: "run" },
+    { key: "live", label: "Now running", href: href("/live"), icon: LuRadio, section: "run" },
+    { key: "results", label: "Results", href: href("/results"), icon: LuClipboardCheck, section: "run" },
+    { key: "trainees", label: "Candidates", href: href("/trainees"), icon: LuUsers, section: "organise" },
   ];
-  if (can("manage_team")) staff.push({ key: "team", label: "Team", href: href("/team"), icon: LuUserCog });
-  staff.push({ key: "build", label: "Build", href: href("/authoring"), icon: LuPencilRuler });
+  if (can("author_content")) staff.push({ key: "build", label: "Exams", href: href("/authoring"), icon: LuPencilRuler, section: "organise" });
+  staff.push({ key: "reporting", label: "Reporting", href: href("/reporting"), icon: LuChartNoAxesColumn, section: "insight" });
   return staff;
 }
 

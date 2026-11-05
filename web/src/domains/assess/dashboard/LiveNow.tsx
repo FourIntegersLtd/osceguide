@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Alert, B2CHero, Badge, ButtonLink } from "@/foundation/ui";
 import { useAsync, useEventStream } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
@@ -20,7 +21,7 @@ import { boardOrder, candidatesLabel, circuitStatus, recordingMissing } from "@/
  * "Live now" panel teaches people to stop looking at it, which is the opposite
  * of what this is for.
  */
-export function LiveNow({ orgSlug }: { orgSlug: string }) {
+export function LiveNow({ orgSlug, onCount }: { orgSlug: string; onCount?: (running: number) => void }) {
   const { hrefFor } = useSurface();
   const initial = useAsync((signal) => readLiveBoard(orgSlug, signal), [orgSlug]);
   const { session } = useSession();
@@ -30,6 +31,8 @@ export function LiveNow({ orgSlug }: { orgSlug: string }) {
   const board = stream.data ?? initial.data;
 
   const circuits = boardOrder(board?.circuits ?? []);
+  const running = circuits.length;
+  useEffect(() => onCount?.(running), [onCount, running]);
   const first = circuits[0];
   if (stream.error && !first) return <Alert tone="danger">The live view is unavailable: {stream.error.message}</Alert>;
   if (!first) return null;
@@ -44,11 +47,9 @@ export function LiveNow({ orgSlug }: { orgSlug: string }) {
           <ButtonLink href={hrefFor(`/circuits/${first.circuit_id}`)} themeType="b2b" variant="commit">
             Open console
           </ButtonLink>
-          {circuits.length > 1 ? (
-            <ButtonLink href={hrefFor("/live")} themeType="b2b" variant="secondary">
-              All {circuits.length} running
-            </ButtonLink>
-          ) : null}
+          <ButtonLink href={hrefFor("/live")} themeType="b2b" variant="secondary">
+            {circuits.length > 1 ? `Open the live board (${circuits.length} running)` : "Open the live board"}
+          </ButtonLink>
         </>
       }
       aside={

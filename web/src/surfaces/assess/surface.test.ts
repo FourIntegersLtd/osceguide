@@ -20,4 +20,24 @@ describe("institution navigation", () => {
     assert.ok(!navFor([]).includes("/app/kings/reporting"));
     assert.ok(assessSurface.screenNames.includes("reporting"));
   });
+
+  it("orders the menu by job, with People and Exams in place of Team, Stations and Programmes", () => {
+    const items = assessSurface.nav({ workspace, can: () => true, href: (p) => `/app/kings${p}` });
+    assert.deepEqual(
+      items.map((i) => [i.label, i.section ?? null]),
+      [
+        ["Home", null],
+        ["Sittings", "run"],
+        ["Now running", "run"],
+        ["Results", "run"],
+        ["People", "organise"],
+        ["Exams", "organise"],
+        ["Reporting", "insight"],
+      ],
+    );
+  });
+
+  it("shows a supervisor no Exams entry", () => {
+    assert.ok(!navFor(["run_circuits"]).includes("/app/kings/authoring"));
+  });
 });

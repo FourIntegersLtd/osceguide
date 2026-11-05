@@ -1,42 +1,50 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { LuCalendarDays, LuChevronRight, LuPlus } from "react-icons/lu";
 import {
-  LuCalendarDays,
-  LuPlus,
-} from "react-icons/lu";
-import {
+  Alert,
   AsyncBoundary,
   B2CGroupedRow,
   B2CGroupedRowLink,
   B2CGroupedSection,
   B2CPageHeader,
   Badge,
+  Button,
   ButtonLink,
+  Spinner,
   StatGrid,
   StatTile,
-  StepGuide,
   b2bTokens,
 } from "@/foundation/ui";
 import { humanise } from "@/foundation/format";
-import { useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { readOrgDashboard, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
 import { LiveNow } from "@/domains/assess/dashboard/LiveNow";
+import { SetupAssistant } from "@/domains/assess/dashboard/SetupAssistant";
 import { SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
-import { homeCommits, nextSetupAction, setupSteps } from "@/domains/assess/dashboard/support";
+import {
+  assistantSteps,
+  attentionFromResults,
+  comingUp,
+  modeLabel,
+  setupComplete,
+  todaySentence,
+  type AttentionItem,
+} from "@/domains/assess/dashboard/support";
+import { readResultsIndex } from "@/domains/assess/results/api";
 import { greetingFor } from "@/domains/assess/trainee/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * The institution's home screen.
  *
- * Two screens in the retiring client, chosen by reading a role string: an
- * administrator's and a supervisor's. It is one screen here, and what is on it
- * comes from what the backend says this person may do — a supervisor who is
- * also an admin sees both halves rather than whichever the role check picked.
+ * Until a first sitting is possible an administrator sees the setup assistant; afterwards
+ * "Today". A supervisor's circuits show for whoever may run them, so a supervisor who is also
+ * an admin sees both halves rather than whichever a role check picked.
  */
 export function OrgDashboard({ orgSlug }: { orgSlug: string }) {
   const state = useAsync((signal) => readOrgDashboard(orgSlug, signal), [orgSlug]);
@@ -47,126 +55,170 @@ export function OrgDashboard({ orgSlug }: { orgSlug: string }) {
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">
       <AsyncBoundary state={state}>
-        {(data) => (
-          <Body data={data} orgSlug={orgSlug} admin={admin} runs={runs} />
-        )}
+        {(data) => <Body data={data} orgSlug={orgSlug} admin={admin} runs={runs} />}
       </AsyncBoundary>
     </div>
   );
 }
 
-function Body({
-  data,
-  orgSlug,
-  admin,
-  runs,
-}: {
-  data: Data;
-  orgSlug: string;
-  admin: boolean;
-  runs: boolean;
-}) {
+function Body({ data, orgSlug, admin, runs }: { data: Data; orgSlug: string; admin: boolean; runs: boolean }) {
+  const w = useAssessWords();
+  const { session } = useSession();
+  const settingUp = admin && !setupComplete(assistantSteps(data.setup, w));
+
+  if (settingUp) {
+    return (
+      <>
+        <SetupAssistant orgName={data.name} setup={data.setup} />
+        <Counts data={data} />
+      </>
+    );
+  }
+  return <Today data={data} orgSlug={orgSlug} admin={admin} runs={runs} name={session?.user.name} />;
+}
+
+function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: string; admin: boolean; runs: boolean; name?: string }) {
   const w = useAssessWords();
   const { hrefFor } = useSurface();
   const { session } = useSession();
-  const commits = homeCommits(data.setup, can(session, "schedule_sittings"), can(session, "author_content"));
-  const sittings = data.recent_sittings ?? [];
+  const schedules = can(session, "schedule_sittings");
+  const upcoming = comingUp(data.recent_sittings ?? []);
+  const [running, setRunning] = useState(0);
+  const mayDecide = can(session, "sign_off_results");
+  const results = useAsync((signal) => (mayDecide ? readResultsIndex(orgSlug, signal) : Promise.resolve(null)), [orgSlug, mayDecide]);
+  const attention = attentionFromResults(results.data?.rows ?? [], w);
+  const earlier = (data.recent_sittings ?? []).filter((sitting) => sitting.status !== "scheduled");
 
   return (
     <>
       <B2CPageHeader
         className="!mb-0"
         eyebrow={data.name}
-        title={greetingFor(session?.user.name, new Date())}
+        title={greetingFor(name, new Date())}
+        subtitle={todaySentence(running, attention.length)}
         action={
-          commits === "header" ? (
-            <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
-              <LuPlus className="h-4 w-4" aria-hidden />
-              {w.scheduleSitting}
-            </ButtonLink>
+          schedules ? (
+            data.setup.ready_to_run ? (
+              <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
+                <LuPlus className="h-4 w-4" aria-hidden />
+                {w.scheduleSitting}
+              </ButtonLink>
+            ) : (
+              <div className="flex flex-col items-end gap-1">
+                <Button themeType="b2b" variant="commit" disabled aria-describedby="schedule-blocked">
+                  {w.scheduleSitting}
+                </Button>
+                <p id="schedule-blocked" className="text-osce-meta text-b2b-muted">
+                  {`Nothing can be scheduled until an ${w.exam} is ready. `}
+                  <Link href={hrefFor("/authoring")} className={b2bTokens.b2bLink}>
+                    {`Set up an ${w.exam}`}
+                  </Link>
+                </p>
+              </div>
+            )
           ) : null
         }
       />
 
-      <Setup data={data} commit={commits === "card"} />
+      {/* What is happening now comes before what exists: on an examination morning it is the
+          only thing anybody wants. */}
+      {runs ? <LiveNow orgSlug={orgSlug} onCount={setRunning} /> : null}
 
-      {/* What is happening now comes before what exists: on an examination
-          morning it is the only thing anybody wants. */}
-      {runs ? <LiveNow orgSlug={orgSlug} /> : null}
-
-      {admin ? <Counts data={data} /> : null}
+      {mayDecide ? <NeedsAttention loading={results.loading} error={results.error} items={attention} /> : null}
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start [&>*]:min-w-0 [&>*]:flex-1">
-        {/* A supervisor needs the empty state — it says why their screen is
-            otherwise blank. An administrator who happens to supervise nothing
-            does not, and a permanent "nothing is assigned to you" is noise. */}
+        {/* SLOT (Phase 5): "Stations to review" for a supervisor, grouped by circuit, comes from a
+            results component that phase exposes. Until then SupervisorCircuits names the circuits
+            this person leads and links on to Results. */}
         {runs ? <SupervisorCircuits orgSlug={orgSlug} sayWhenEmpty={!admin} /> : null}
 
         <B2CGroupedSection
-          eyebrow={`Recent ${w.sittings}`}
+          eyebrow="Coming up"
           action={
             <Link href={hrefFor("/sittings")} className={b2bTokens.b2bLink}>
-              All {w.sittings}
+              {`All ${w.sittings}`}
             </Link>
           }
         >
-          {sittings.length === 0 ? (
-            <B2CGroupedRow title="Nothing scheduled yet." />
+          {upcoming.length === 0 ? (
+            <B2CGroupedRow
+              title={`No ${w.sittings} are scheduled.`}
+              meta={schedules ? <Link href={hrefFor("/sittings/new")} className={b2bTokens.b2bLink}>{w.scheduleSitting}</Link> : `An administrator can schedule one.`}
+            />
           ) : (
-            sittings.map((sitting) => (
-              <B2CGroupedRowLink
-                key={sitting.id}
-                href={hrefFor(`/sittings/${sitting.id}`)}
-                icon={LuCalendarDays}
-                title={sitting.name}
-                meta={
-                  sitting.scheduled_for
-                    ? `${new Date(sitting.scheduled_for).toLocaleString()} · ${sitting.mode}`
-                    : sitting.mode
-                }
-                trailing={
-                  <Badge variant="neutral" dot>
-                    {humanise(sitting.status)}
-                  </Badge>
-                }
-              />
-            ))
+            upcoming.map((sitting) => <SittingRow key={sitting.id} sitting={sitting} />)
           )}
         </B2CGroupedSection>
       </div>
+
+      {earlier.length > 0 ? (
+        <B2CGroupedSection eyebrow={`Recent ${w.sittings}`}>
+          {earlier.map((sitting) => (
+            <SittingRow key={sitting.id} sitting={sitting} />
+          ))}
+        </B2CGroupedSection>
+      ) : null}
+
+      {admin ? <Counts data={data} /> : null}
     </>
   );
 }
 
-/**
- * What is left before a first sitting, in build order: the one thing to do
- * next, then every step with where it stands. It goes away once all are done.
- *
- * `ready_to_run` stays the backend's judgement of whether a sitting can be
- * scheduled; this is the longer road to a fully built institution.
- */
-function Setup({ data, commit }: { data: Data; commit: boolean }) {
+function SittingRow({ sitting }: { sitting: NonNullable<Data["recent_sittings"]>[number] }) {
   const { hrefFor } = useSurface();
-  const router = useRouter();
-  const steps = setupSteps(data.setup);
-  const { session } = useSession();
-  const next = nextSetupAction(data.setup, can(session, "author_content"));
-  if (!next) return null;
+  return (
+    <B2CGroupedRowLink
+      href={hrefFor(`/sittings/${sitting.id}`)}
+      icon={LuCalendarDays}
+      title={sitting.name}
+      meta={
+        sitting.scheduled_for
+          ? `${new Date(sitting.scheduled_for).toLocaleString()} · ${modeLabel(sitting.mode)}`
+          : modeLabel(sitting.mode)
+      }
+      trailing={
+        <Badge variant="neutral" dot>
+          {humanise(sitting.status)}
+        </Badge>
+      }
+    />
+  );
+}
+
+/**
+ * Decisions waiting and results ready to release, oldest first, from the results index.
+ * Trainees who have not joined are not here: the roster can only be filtered by reading every
+ * page (`invitation_pending` is per row, with no server count), so People carries that.
+ */
+function NeedsAttention({ loading, error, items }: { loading: boolean; error: unknown; items: AttentionItem[] }) {
+  const { hrefFor } = useSurface();
+  if (loading) return <Spinner />;
+  if (error) return <Alert tone="danger">{errorMessage(error)}</Alert>;
 
   return (
-    <section className="flex flex-col gap-4 rounded-osce-2xl bg-canvas p-6">
-      <h2 className="text-osce-title font-semibold text-b2b-headline">Getting started</h2>
-      <StepGuide
-        steps={steps}
-        current={next.step}
-        onSelect={(id) => router.push(hrefFor(steps.find((step) => step.id === id)!.path))}
-        line={next.line}
-      >
-        <ButtonLink href={hrefFor(next.path)} themeType="b2b" variant={commit ? "commit" : "secondary"}>
-          {next.label}
-        </ButtonLink>
-      </StepGuide>
-    </section>
+    <B2CGroupedSection eyebrow="Needs your attention">
+      {items.length === 0 ? (
+        <B2CGroupedRow
+          title="Nothing needs you right now."
+          meta={
+            <Link href={hrefFor("/results")} className={b2bTokens.b2bLink}>
+              Open Results
+            </Link>
+          }
+        />
+      ) : (
+        items.map((item) => (
+          <B2CGroupedRowLink
+            key={item.key}
+            href={hrefFor(item.href)}
+            icon={LuChevronRight}
+            title={item.title}
+            meta={item.body}
+            trailing={<Badge variant="warning" dot>{item.tag}</Badge>}
+          />
+        ))
+      )}
+    </B2CGroupedSection>
   );
 }
 
@@ -175,11 +227,11 @@ function Counts({ data }: { data: Data }) {
   const { hrefFor } = useSurface();
   const counts = data.counts;
   const tiles = [
+    { label: `${w.Exams} ready to schedule`, value: counts.programmes_with_markable_exam, path: "/authoring" },
+    // The backend counts this organisation's own stations, not the platform catalogue it may also run.
+    { label: "Published stations", value: counts.stations, path: "/authoring/stations" },
     { label: w.Trainees, value: counts.trainees, path: "/trainees" },
-    { label: "Staff", value: counts.staff, path: "/team" },
-    // The backend counts this organisation's own stations, not the
-    // platform catalogue it may also run, so it is named that way.
-    { label: "Your stations", value: counts.stations, path: "/authoring" },
+    { label: w.Supervisors === "Assessors" ? "Assessors" : "Staff", value: counts.staff, path: "/team" },
     { label: w.Sittings, value: counts.sittings, path: "/sittings" },
   ];
 

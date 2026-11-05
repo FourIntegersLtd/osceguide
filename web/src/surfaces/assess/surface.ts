@@ -3,10 +3,7 @@ import {
   LuClipboardCheck,
   LuChartNoAxesColumn,
   LuGauge,
-  LuBookCopy,
   LuGraduationCap,
-  LuListChecks,
-  LuUserCog,
   LuLayers,
   LuRadio,
   LuSparkles,
@@ -33,20 +30,18 @@ export function assessNav({ can, href }: NavContext): NavItem[] {
    * The staff menu is the admin's list: what they run, who they run it for and
    * what it is built from. Their own training is not in it. */
   if (can("run_circuits")) {
-    /* Team, Stations and Programmes are tabs of People and Build; they also get
-     * their own entries so an admin finds them without knowing which tab holds them.
-     * Each shows only to who may open it, as the tab does. */
+    /* The menu is ordered by job: Home, then Run, Organise, Insight. Team, Stations and
+     * Programmes are no longer entries of their own: People holds the team (its Staff tab)
+     * and Exams holds stations and programmes (its tabs); `/team`, `/programmes` and
+     * `/authoring/stations` still resolve. Each shows only to who may open it. */
     const staff: [permission: Parameters<NavContext["can"]>[0] | null, item: NavItem][] = [
-      [null, { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge }],
-      [null, { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays }],
-      [null, { key: "results", label: "Results", href: href("/results"), icon: LuClipboardCheck }],
-      [null, { key: "live", label: "Now running", href: href("/live"), icon: LuRadio }],
-      [null, { key: "trainees", label: "People", href: href("/trainees"), icon: LuUsers }],
-      [null, { key: "reporting", label: "Reporting", href: href("/reporting"), icon: LuChartNoAxesColumn }],
-      ["manage_team", { key: "team", label: "Team", href: href("/team"), icon: LuUserCog }],
-      [null, { key: "build", label: "Build", href: href("/authoring"), icon: LuPencilRuler }],
-      ["author_content", { key: "stations", label: "Stations", href: href("/authoring/stations"), icon: LuBookCopy }],
-      ["author_content", { key: "programmes", label: "Programmes", href: href("/programmes"), icon: LuListChecks }],
+      [null, { key: "dashboard", label: "Home", href: href("/dashboard"), icon: LuGauge }],
+      [null, { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays, section: "run" }],
+      [null, { key: "live", label: "Now running", href: href("/live"), icon: LuRadio, section: "run" }],
+      [null, { key: "results", label: "Results", href: href("/results"), icon: LuClipboardCheck, section: "run" }],
+      [null, { key: "trainees", label: "People", href: href("/trainees"), icon: LuUsers, section: "organise" }],
+      ["author_content", { key: "build", label: "Exams", href: href("/authoring"), icon: LuPencilRuler, section: "organise" }],
+      [null, { key: "reporting", label: "Reporting", href: href("/reporting"), icon: LuChartNoAxesColumn, section: "insight" }],
     ];
     return staff.filter(([permission]) => permission === null || can(permission)).map(([, item]) => item);
   }
