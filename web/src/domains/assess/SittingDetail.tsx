@@ -18,6 +18,7 @@ import { useSurface } from "@/capabilities";
 import { can, useSession } from "@/foundation/session";
 import { listActiveTrainees, readSitting, type Circuit, type Sitting } from "@/domains/assess/api";
 import { SittingActionDialog, type PendingSittingAction } from "@/domains/assess/SittingActions";
+import { PendingCircuitsNotice } from "@/domains/assess/PendingCircuitsNotice";
 import { SittingEditForm } from "@/domains/assess/SittingEditForm";
 import { readSittingReport, type SittingReport } from "@/domains/assess/results/api";
 import { readAllCohorts, resendInvitation } from "@/domains/assess/roster/api";
@@ -81,6 +82,7 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
           };
           return (
           <>
+            <PendingCircuitsNotice orgSlug={orgSlug} sittingId={sitting.id} onDone={state.reload} />
             <B2CPageHeader
               back={{ href: hrefFor("/sittings"), label: w.Sittings }}
               eyebrow={sittingModeLabel(sitting.mode)}

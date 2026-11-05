@@ -21,7 +21,7 @@ import {
   readAllTraineeGroups,
   readGroupMembers,
 } from "@/domains/assess/roster/api";
-import type { PickerSet, TraineeRow } from "@/domains/assess/TraineePicker";
+import type { PickerSet, TraineeRow } from "@/domains/assess/scheduleSitting";
 
 /**
  * Put a circuit on a sitting: who sits it, at which stations, for how long.

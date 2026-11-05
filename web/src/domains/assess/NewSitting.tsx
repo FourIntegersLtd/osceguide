@@ -17,13 +17,10 @@ import {
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
-  createCircuit,
-  createExamCircuits,
   createSitting,
   listActiveMembers,
   listActiveTrainees,
   listProgrammes,
-  timingBody,
   type Programme,
   type SittingMode,
 } from "@/domains/assess/api";
@@ -44,7 +41,7 @@ import {
   EMPTY_DRAFT,
   SCHEDULE_STEPS,
   STEP_HELP,
-  circuitPlan,
+  candidateNames,
   furthestStep,
   peopleFormula,
   scheduledInstant,
@@ -53,12 +50,13 @@ import {
   timingSummary,
   type ScheduleDraft,
   type ScheduleStepId,
+  type PickerSet,
+  type TraineeRow,
 } from "@/domains/assess/scheduleSitting";
 import { circuitLeads } from "@/domains/assess/support";
-import type { PickerSet, TraineeRow } from "@/domains/assess/TraineePicker";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
-import { DEFAULT_BREAK_MINUTES, modeSupportsBreaks } from "@/domains/assess/timing";
+import { circuitsMade, createSittingCircuits, savePending } from "@/domains/assess/scheduleCircuits";
 
 /**
  * Schedule a sitting in six steps that unlock in order.
@@ -133,8 +131,6 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
   );
 }
 
-type Retry = { sittingId: string; created: number; message: string };
-
 function Wizard({
   orgSlug,
   programmes,
@@ -161,7 +157,6 @@ function Wizard({
   const [step, setStep] = useState<ScheduleStepId>("basics");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [retry, setRetry] = useState<Retry | null>(null);
 
   const patch = useCallback((change: Partial<ScheduleDraft>) => setDraft((current) => ({ ...current, ...change })), []);
   const programme = ready.find((item) => item.id === draft.programmeId);
@@ -172,15 +167,7 @@ function Wizard({
   const furthest = furthestStep(draft);
   const index = SCHEDULE_STEPS.findIndex((item) => item.id === step);
   const block = stepBlock(step, draft);
-  const names = useMemo(
-    () =>
-      Object.fromEntries(
-        trainees.flatMap((t) =>
-          t.user_id ? [[t.user_id, [t.first_name, t.last_name].filter(Boolean).join(" ") || t.email]] : [],
-        ),
-      ),
-    [trainees],
-  );
+  const names = useMemo(() => candidateNames(trainees), [trainees]);
 
   if (ready.length === 0) {
     const drafts = programmes.filter((item) => item.status === "draft").map((item) => item.exam_name);
@@ -205,82 +192,31 @@ function Wizard({
     note: item.title,
   }));
 
-  const createCircuits = async (sittingId: string, already: number): Promise<void> => {
-    const plan = circuitPlan(draft);
-    const stationIds = draft.stations.map((station) => station.version_id);
-    const sorted = [...draft.breaks].sort((a, b) => a.after - b.after);
-    const timing = {
-      readingMinutes: draft.readingMinutes,
-      simulationMinutes: draft.consultationMinutes,
-      breakMinutes: DEFAULT_BREAK_MINUTES,
-      breaks: modeSupportsBreaks(draft.mode) ? sorted.map((item) => item.after) : [],
-      breakLengths: modeSupportsBreaks(draft.mode)
-        ? Object.fromEntries(sorted.map((item) => [item.after, item.minutes]))
-        : {},
-    };
-    if (plan.kind === "training") {
-      await createCircuit(orgSlug, sittingId, {
-        name: draft.name.trim(),
-        stationVersionIds: stationIds,
-        traineeIds: draft.candidateIds,
-        supervisorUserId: draft.supervisorId || null,
-        timing,
-      });
-    } else if (plan.kind === "bulk") {
-      await createExamCircuits(orgSlug, sittingId, {
-        name_prefix: "Exam",
-        candidate_user_ids: draft.candidateIds,
-        station_version_ids: stationIds,
-        supervisor_user_id: draft.supervisorId || null,
-        timing: timingBody(timing),
-      });
-    } else {
-      for (let at = already; at < plan.candidateIds.length; at += 1) {
-        const candidate = plan.candidateIds[at] ?? "";
-        try {
-          await createCircuit(orgSlug, sittingId, {
-            name: `Exam ${at + 1}`,
-            stationVersionIds: stationIds,
-            traineeIds: [candidate],
-            supervisorUserId: draft.supervisorByCandidate[candidate] || null,
-            timing,
-          });
-        } catch (cause) {
-          // Circuits 1..at exist now: a retry must not make them twice.
-          throw Object.assign(cause instanceof Error ? cause : new Error(String(cause)), { created: at });
-        }
-      }
-    }
-  };
-
   const create = async () => {
     setBusy(true);
     setError(null);
-    let sittingId = retry?.sittingId ?? null;
+    let sittingId: string;
     try {
-      if (!sittingId) {
-        const sitting = await createSitting(orgSlug, {
-          name: draft.name.trim(),
-          mode: draft.mode,
-          programmeId: draft.programmeId,
-          cohortId: draft.cohortId || null,
-          scheduledFor: scheduledInstant(draft),
-        });
-        sittingId = sitting.id;
-      }
+      const sitting = await createSitting(orgSlug, {
+        name: draft.name.trim(),
+        mode: draft.mode,
+        programmeId: draft.programmeId,
+        cohortId: draft.cohortId || null,
+        scheduledFor: scheduledInstant(draft),
+      });
+      sittingId = sitting.id;
     } catch (cause) {
       setError(assessErrorMessage(cause));
       setBusy(false);
       return;
     }
     try {
-      await createCircuits(sittingId, retry?.created ?? 0);
-      router.push(hrefFor(`/sittings/${sittingId}`));
+      await createSittingCircuits(orgSlug, sittingId, draft, 0);
     } catch (cause) {
-      const created = (cause as { created?: number }).created ?? 0;
-      setRetry({ sittingId, created, message: assessErrorMessage(cause) });
-      setBusy(false);
+      // The sitting exists: land on it with the error and a "Try again" that makes the circuits.
+      savePending(sittingId, { draft, created: circuitsMade(cause), message: assessErrorMessage(cause) });
     }
+    router.push(hrefFor(`/sittings/${sittingId}`));
   };
 
   const formula = peopleFormula(draft, { trainee: w.trainee, trainees: w.trainees });
@@ -299,15 +235,6 @@ function Wizard({
         Step {index + 1} of {SCHEDULE_STEPS.length}
       </p>
       {error ? <Alert tone="danger">{error}</Alert> : null}
-      {retry ? (
-        <Alert tone="danger" title={`The ${w.sitting} was made, but its circuits were not`}>
-          <p>{retry.message}</p>
-          <ButtonLink href={hrefFor(`/sittings/${retry.sittingId}`)} themeType="b2b" variant="secondary" className="mt-2">
-            Open the {w.sitting}
-          </ButtonLink>
-        </Alert>
-      ) : null}
-
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
       <Panel title={SCHEDULE_STEPS[index]?.title}>
         {step === "basics" ? (
@@ -451,7 +378,7 @@ function Wizard({
         </Button>
         {step === "review" ? (
           <Button themeType="b2b" variant="commit" disabled={busy} onClick={() => void create()}>
-            {busy ? <Spinner label="Creating" className="text-current" /> : retry ? "Try again" : `Create ${w.sitting}`}
+            {busy ? <Spinner label="Creating" className="text-current" /> : `Create ${w.sitting}`}
           </Button>
         ) : (
           <Button

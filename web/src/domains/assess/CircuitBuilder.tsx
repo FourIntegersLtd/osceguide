@@ -5,23 +5,31 @@ import { Alert, Button, Input, Spinner, Panel } from "@/foundation/ui";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import type { StationLibraryScope } from "@/capabilities/stations";
 import { useSurface } from "@/capabilities";
-import { CandidatePicker, StationOrder, SupervisorStep, TimingStep } from "@/domains/assess/ScheduleSteps";
+import {
+  BreakEditor,
+  CandidatePicker,
+  DefaultBreakInput,
+  DurationInputs,
+  StationOrder,
+  SupervisorSelect,
+} from "@/domains/assess/ScheduleSteps";
 import type { CircuitShape } from "@/domains/assess/api";
-import { EMPTY_DRAFT, type ScheduleDraft } from "@/domains/assess/scheduleSitting";
+import {
+  EMPTY_DRAFT,
+  circuitTiming,
+  type PickerSet,
+  type ScheduleDraft,
+  type TraineeRow,
+} from "@/domains/assess/scheduleSitting";
 import { circuitLeads, isBulkExam } from "@/domains/assess/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
-import type { PickerSet, TraineeRow } from "@/domains/assess/TraineePicker";
 import {
   DEFAULT_BREAK_MINUTES,
   DEFAULT_READING_MINUTES,
   DEFAULT_SIMULATION_MINUTES,
-  clampReadingMinutes,
   MAX_BULK_CANDIDATES,
   MAX_EXAM_CANDIDATES,
   MAX_EXAM_STATIONS,
-  clampBreakMinutes,
-  clampBreaks,
-  pruneBreakLengths,
   modeSupportsBreaks,
 } from "@/domains/assess/timing";
 
@@ -128,20 +136,7 @@ export function CircuitBuilder({
     () => circuitLeads(staff).map((member) => ({ value: member.user_id, label: `${member.email ?? member.user_id} (${member.role})` })),
     [staff],
   );
-  const names = useMemo(
-    () =>
-      Object.fromEntries(
-        trainees.flatMap((trainee) =>
-          trainee.user_id ? [[trainee.user_id, [trainee.first_name, trainee.last_name].filter(Boolean).join(" ") || trainee.email]] : [],
-        ),
-      ),
-    [trainees],
-  );
-
   const submit = useCallback(async () => {
-    const chosenBreaks = isExam ? clampBreaks(draft.breaks.map((item) => item.after), stations.length) : [];
-    const defaultBreak = clampBreakMinutes(draft.breakMinutes);
-    const lengths = Object.fromEntries(draft.breaks.map((item) => [item.after, item.minutes]));
     setBusy(true);
     setError(null);
     try {
@@ -154,16 +149,7 @@ export function CircuitBuilder({
           // who has never signed in has no user row and cannot be put on one.
           traineeIds: picked,
           supervisorUserId: draft.supervisorId || null,
-          timing: {
-            readingMinutes: clampReadingMinutes(draft.readingMinutes),
-            simulationMinutes: draft.consultationMinutes,
-            // Clamped here as well as on the server: a break can point at a
-            // position that stopped existing when a station came off the circuit,
-            // and a training circuit must not carry breaks at all.
-            breakMinutes: defaultBreak,
-            breaks: chosenBreaks,
-            breakLengths: pruneBreakLengths(lengths, chosenBreaks, defaultBreak),
-          },
+          timing: circuitTiming(draft),
         },
         bulk,
       );
@@ -228,18 +214,21 @@ export function CircuitBuilder({
       </Panel>
 
       <Panel title="Timing">
-        <TimingStep draft={draft} patch={patch} circuit />
+        <div className="flex max-w-lg flex-col gap-4">
+          <DurationInputs draft={draft} patch={patch} />
+          {isExam ? (
+            <>
+              <DefaultBreakInput draft={draft} patch={patch} />
+              <BreakEditor draft={draft} patch={patch} />
+            </>
+          ) : null}
+        </div>
       </Panel>
 
       <Panel title="Supervisor">
-        <SupervisorStep
-          draft={draft}
-          patch={patch}
-          leads={leads}
-          candidateNames={names}
-          inviteHref={hrefFor("/team")}
-          circuit
-        />
+        <div className="flex max-w-lg flex-col gap-4">
+          <SupervisorSelect draft={draft} patch={patch} leads={leads} inviteHref={hrefFor("/team")} />
+        </div>
       </Panel>
 
       <div className="flex items-center justify-end gap-3">

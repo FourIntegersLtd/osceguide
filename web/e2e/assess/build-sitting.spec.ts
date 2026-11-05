@@ -47,6 +47,10 @@ test("ASSESS-1 admin schedules a sitting and finds it listed", async ({ page, co
   await openPage(page, `/app/${w.slug}/sittings`);
   await expect(page.getByRole("link", { name: new RegExp(name) })).toBeVisible();
   const listed = await call(await adminToken(), `/api/v1/orgs/${w.slug}/sittings?limit=50`);
-  const row = (listed.items as { name: string; mode: string; status: string }[]).find((item) => item.name === name);
+  const row = (listed.items as { id: string; name: string; mode: string; status: string }[]).find((item) => item.name === name);
   expect(row).toMatchObject({ mode: "exam", status: "scheduled" });
+
+  // The circuit the wizard promised exists: the list read carries none, the sitting read does.
+  const sitting = await call(await adminToken(), `/api/v1/orgs/${w.slug}/sittings/${row?.id}`);
+  expect((sitting.circuits as unknown[]).length).toBeGreaterThan(0);
 });

@@ -7,14 +7,39 @@
  */
 
 import { plural } from "@/foundation/format";
-import type { SittingMode } from "@/domains/assess/api";
+import type { CircuitTiming, SittingMode } from "@/domains/assess/api";
+import { displayName } from "@/domains/assess/roster/support";
 import {
   BREAK_MINUTES_BOUNDS,
   DEFAULT_BREAK_MINUTES,
+  MAX_BULK_CANDIDATES,
   MAX_EXAM_STATIONS,
   READING_MINUTES_BOUNDS,
   breakPositions,
+  clampBreakMinutes,
+  clampBreaks,
+  clampReadingMinutes,
+  modeSupportsBreaks,
+  pruneBreakLengths,
 } from "@/domains/assess/timing";
+
+/** A roster person the pickers list. `user_id` is null until they accept their invitation. */
+export type TraineeRow = {
+  id: string;
+  user_id: string | null;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  cohort_id?: string | null;
+};
+
+/** A named set of roster ids the picker can tick in one go. */
+export type PickerSet = { id: string; label: string; count?: number; loadMemberIds: () => Promise<string[]> };
+
+/** User id to the name a person is shown under, for everyone who has signed in. */
+export function candidateNames(trainees: readonly TraineeRow[]): Record<string, string> {
+  return Object.fromEntries(trainees.flatMap((t) => (t.user_id ? [[t.user_id, displayName(t)]] : [])));
+}
 
 export type ScheduleStepId = "basics" | "stations" | "people" | "timing" | "supervisor" | "review";
 
@@ -43,7 +68,7 @@ export const STEP_HELP: Record<ScheduleStepId, { title: string; body: string }> 
   },
   timing: {
     title: "Timing is for this sitting only",
-    body: "Reading time, consultation time and breaks start from the exam. Changing them here does not change the exam.",
+    body: "Reading time, consultation time and breaks start from the usual defaults. Changing them here changes this sitting only.",
   },
   supervisor: {
     title: "The supervisor",
@@ -51,7 +76,7 @@ export const STEP_HELP: Record<ScheduleStepId, { title: string; body: string }> 
   },
   review: {
     title: "Nothing is created yet",
-    body: "Create sitting makes the sitting and its circuits. If the circuits fail, you land on the sitting with the error and a Try again button.",
+    body: "Create sitting makes the sitting and its circuits. If the circuits fail, you land on the sitting with the error and a Try again button that makes them.",
   },
 };
 
@@ -123,6 +148,9 @@ export function stepBlock(step: ScheduleStepId, draft: ScheduleDraft): string | 
       return null;
     case "people":
       if (draft.candidateIds.length === 0) return "Pick at least one person.";
+      if (draft.mode === "exam" && draft.candidateIds.length > MAX_BULK_CANDIDATES) {
+        return `A formal exam takes at most ${MAX_BULK_CANDIDATES} candidates at a time. Deselect ${draft.candidateIds.length - MAX_BULK_CANDIDATES}.`;
+      }
       if (draft.mode === "training" && draft.candidateIds.length !== draft.stations.length) {
         return "The number of trainees must match the number of stations.";
       }
@@ -196,19 +224,59 @@ export function endsAbout(
 
 /** "3 + 10 min per station · breaks after 2 and 4". */
 export function timingSummary(
-  draft: Pick<ScheduleDraft, "readingMinutes" | "consultationMinutes" | "breaks">,
+  draft: Pick<ScheduleDraft, "mode" | "readingMinutes" | "consultationMinutes" | "breaks" | "breakMinutes" | "stations">,
 ): string {
-  const after = [...draft.breaks].map((item) => item.after).sort((a, b) => a - b);
+  // The breaks the api will keep, so the review never promises one that is dropped.
+  const after = circuitTiming(draft).breaks;
   const base = `${draft.readingMinutes} + ${draft.consultationMinutes} min per station`;
   if (after.length === 0) return base;
   const list = after.length === 1 ? String(after[0]) : `${after.slice(0, -1).join(", ")} and ${after[after.length - 1]}`;
   return `${base} · breaks after ${list}`;
 }
 
-/** The next free gap for "Add a break", or null when every gap has one. */
-export function nextBreakPosition(draft: Pick<ScheduleDraft, "stations" | "breaks">): number | null {
+/** The gaps still free for "Add a break": after station N, never after the last. */
+export function freeBreakPositions(draft: Pick<ScheduleDraft, "stations" | "breaks">): number[] {
   const taken = new Set(draft.breaks.map((item) => item.after));
-  return breakPositions(draft.stations.length).find((position) => !taken.has(position)) ?? null;
+  return breakPositions(draft.stations.length).filter((position) => !taken.has(position));
+}
+
+/** The first free gap, or null when every gap has one. */
+export function nextBreakPosition(draft: Pick<ScheduleDraft, "stations" | "breaks">): number | null {
+  return freeBreakPositions(draft)[0] ?? null;
+}
+
+/**
+ * The clock the circuits are made with, as the api will keep it.
+ *
+ * Breaks are clamped to real gaps and dropped outside a formal exam, and a
+ * length equal to the default is not stored, exactly as the circuit builder
+ * does: the review, the stored circuit and an edit all then agree.
+ */
+export function circuitTiming(
+  draft: Pick<ScheduleDraft, "mode" | "readingMinutes" | "consultationMinutes" | "breaks" | "breakMinutes" | "stations">,
+): CircuitTiming {
+  const kept = modeSupportsBreaks(draft.mode)
+    ? clampBreaks(draft.breaks.map((item) => item.after), draft.stations.length)
+    : [];
+  const defaultBreak = clampBreakMinutes(draft.breakMinutes);
+  const lengths = Object.fromEntries(draft.breaks.map((item) => [item.after, item.minutes]));
+  return {
+    readingMinutes: clampReadingMinutes(draft.readingMinutes),
+    simulationMinutes: draft.consultationMinutes,
+    breakMinutes: defaultBreak,
+    breaks: kept,
+    breakLengths: pruneBreakLengths(lengths, kept, defaultBreak),
+  };
+}
+
+/**
+ * The per-candidate circuits still to make, numbered from the first.
+ *
+ * `already` circuits exist (the failure came after them), so a retry carries on
+ * from the next candidate and never makes one twice or skips one.
+ */
+export function eachCircuitJobs(candidateIds: readonly string[], already: number): { number: number; candidate: string }[] {
+  return candidateIds.flatMap((candidate, at) => (at >= already ? [{ number: at + 1, candidate }] : []));
 }
 
 /** The date and start time as the one instant the sitting stores; null when no date is set. */
