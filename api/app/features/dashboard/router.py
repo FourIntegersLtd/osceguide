@@ -6,7 +6,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import StreamingResponse
 
 from app.core.auth import CurrentPrincipal
 from app.core.db import SessionDep as Session
@@ -166,7 +166,7 @@ async def read_sitting_report(
 # (the same reason the readout is org admin), where the screen is read in place.
 @router.get(
     "/orgs/{org_slug}/sittings/{sitting_id}/report.csv",
-    response_class=Response,
+    response_class=StreamingResponse,
     responses={
         **error_responses(Forbidden, errors.SittingNotFound),
         200: {
@@ -175,15 +175,17 @@ async def read_sitting_report(
         },
     },
 )
-async def read_sitting_report_csv(sitting_id: uuid.UUID, workspace: OrgAdmin, session: Session) -> Response:
-    payload, filename = await service_report_csv.export_sitting_results(
+async def read_sitting_report_csv(
+    sitting_id: uuid.UUID, workspace: OrgAdmin, session: Session
+) -> StreamingResponse:
+    rows, filename = await service_report_csv.export_sitting_results(
         session,
         org_id=workspace.org_id,
         sitting_id=sitting_id,
         actor=workspace.principal,
     )
-    return Response(
-        content=payload,
+    return StreamingResponse(
+        rows,
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

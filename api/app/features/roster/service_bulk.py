@@ -55,8 +55,10 @@ async def bulk_revoke_trainees(
     an already-revoked id is left untouched rather than re-written.
     """
     results: list[BulkTraineeAccessResult] = []
-    for trainee_id in _dedupe_ids(trainee_ids):
-        trainee = await repository.trainee_by_id(session, org_id, trainee_id)
+    unique_ids = _dedupe_ids(trainee_ids)
+    known = await repository.trainees_by_ids(session, org_id, unique_ids)
+    for trainee_id in unique_ids:
+        trainee = known.get(trainee_id)
         if trainee is None:
             results.append(BulkTraineeAccessResult(trainee_id=trainee_id, outcome="not_found"))
             continue

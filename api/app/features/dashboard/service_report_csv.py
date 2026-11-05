@@ -7,10 +7,12 @@ of them changed.
 
 from __future__ import annotations
 
+import codecs
 import csv
 import io
 import re
 import uuid
+from collections.abc import Iterator
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,18 +55,26 @@ def results_csv_columns() -> list[str]:
     ]
 
 
-def render_sitting_results_csv(report: SittingReport) -> bytes:
-    """UTF-8 CSV of one report, with a BOM so Excel reads accented names.
+def stream_sitting_results_csv(report: SittingReport) -> Iterator[bytes]:
+    """UTF-8 CSV of one report, row by row, led by a BOM so Excel reads accented names.
 
     `stations` is how many stations the candidate sat. The station list itself
     is nested, and a spreadsheet row is one flat line beside `stations_marked`.
     """
     buffer = io.StringIO(newline="")
     writer = csv.writer(buffer, lineterminator="\n")
-    writer.writerow(results_csv_columns())
+
+    def take_line(cells: list[str]) -> bytes:
+        """Write one row and hand back its bytes, leaving the buffer empty."""
+        writer.writerow(cells)
+        line = buffer.getvalue().encode("utf-8")
+        buffer.seek(0)
+        buffer.truncate()
+        return line
+
+    yield codecs.BOM_UTF8 + take_line(results_csv_columns())
     for candidate in report.candidates:
-        writer.writerow(_candidate_row(candidate))
-    return buffer.getvalue().encode("utf-8-sig")
+        yield take_line(_candidate_row(candidate))
 
 
 async def export_sitting_results(
@@ -73,10 +83,12 @@ async def export_sitting_results(
     org_id: uuid.UUID,
     sitting_id: uuid.UUID,
     actor: Principal,
-) -> tuple[bytes, str]:
-    """The sitting report as a CSV file, and an audit row for the download."""
+) -> tuple[Iterator[bytes], str]:
+    """The sitting report as a CSV stream, and an audit row for the download.
+
+    The audit row is written here, before the first byte goes out.
+    """
     report = await build_sitting_report(session, org_id, sitting_id)
-    payload = render_sitting_results_csv(report)
     filename = f"{_filename_stem(report.sitting.name, report.sitting.id)}-results.csv"
     await audit.record_for_owner(
         session,
@@ -87,7 +99,7 @@ async def export_sitting_results(
         target_id=str(sitting_id),
         summary=f"Downloaded results for sitting {sitting_id} as CSV",
     )
-    return payload, filename
+    return stream_sitting_results_csv(report), filename
 
 
 def _filename_stem(sitting_name: str, sitting_id: uuid.UUID) -> str:

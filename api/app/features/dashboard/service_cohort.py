@@ -45,17 +45,17 @@ async def build_cohort_summary(
     people = await identity.user_refs_by_ids(session, user_ids)
     trainees = await roster.trainees_by_user_id(session, org_id, user_ids)
 
-    by_candidate: dict[uuid.UUID, list[uuid.UUID]] = {}
+    by_candidate: dict[uuid.UUID, list[sittings.SlotRef]] = {}
     for slot in slots:
-        by_candidate.setdefault(slot.trainee_id, []).append(slot.id)
+        by_candidate.setdefault(slot.trainee_id, []).append(slot)
 
     candidates: list[CohortCandidate] = []
-    for user_id, slot_ids in by_candidate.items():
+    for user_id, candidate_slots in by_candidate.items():
+        slot_ids = [slot.id for slot in candidate_slots]
         finished = [
             slot.id
-            for slot in slots
-            if slot.trainee_id == user_id
-            and (slot.exam_completed_at is not None or slot.status in COMPLETED_SLOT_STATUSES)
+            for slot in candidate_slots
+            if slot.exam_completed_at is not None or slot.status in COMPLETED_SLOT_STATUSES
         ]
         candidate_outcomes = [outcomes[slot_id] for slot_id in slot_ids if slot_id in outcomes]
         marked = [outcome.score for outcome in candidate_outcomes if outcome.score is not None]

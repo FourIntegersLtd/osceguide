@@ -260,6 +260,41 @@ async def slots_for_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id
     return list((await session.execute(stmt)).scalars())
 
 
+async def slots_for_circuits(
+    session: AsyncSession, org_id: uuid.UUID, circuit_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, list[Slot]]:
+    """Every slot of each circuit in one query, grouped by circuit, each in station order."""
+    grouped: dict[uuid.UUID, list[Slot]] = {circuit_id: [] for circuit_id in circuit_ids}
+    if not grouped:
+        return grouped
+    stmt = (
+        select(Slot)
+        .where(Slot.org_id == org_id, Slot.circuit_id.in_(list(grouped)))
+        .order_by(Slot.circuit_id, Slot.slot_index)
+    )
+    for slot in (await session.execute(stmt)).scalars():
+        grouped[slot.circuit_id].append(slot)
+    return grouped
+
+
+async def open_circuit_ids_with_unstarted_slots(
+    session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID
+) -> list[uuid.UUID]:
+    """Circuits not yet ended where this person still has a scheduled station."""
+    stmt = (
+        select(Slot.circuit_id)
+        .join(Circuit, Circuit.id == Slot.circuit_id)
+        .where(
+            Slot.org_id == org_id,
+            Slot.trainee_id == user_id,
+            Slot.status == "scheduled",
+            Circuit.ended_at.is_(None),
+        )
+        .distinct()
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
 async def slot_by_id(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> Slot | None:
     """The slot with this id, or None if it does not belong to this organisation."""
     stmt = select(Slot).where(Slot.org_id == org_id, Slot.id == slot_id)

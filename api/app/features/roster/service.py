@@ -56,8 +56,6 @@ async def add_trainee(
     Every trainee ends up linked to an account: a slot names a `users.id`, so an
     unlinked trainee could be rostered and never scheduled.
     """
-    if await repository.trainee_by_email(session, org_id, email) is not None:
-        raise errors.TraineeExists()
     trainee = await repository.create_trainee(
         session,
         org_id,
@@ -66,6 +64,8 @@ async def add_trainee(
         last_name=last_name,
         cohort_id=cohort_id,
     )
+    if trainee is None:
+        raise errors.TraineeExists()
     # A slot names a `users.id`, so a trainee without a linked account could be
     # rostered and never scheduled. Invite and link now, so every trainee has one.
     existing = await identity.user_ref_by_email(session, email)

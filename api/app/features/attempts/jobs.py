@@ -24,6 +24,7 @@ from app.core.ports import EvaluationFailed, Evaluator
 from app.features.attempts import domain, domain_definition, repository
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.models import Attempt
+from app.features.sittings import service_reads as sittings_reads
 
 log = get_logger(__name__)
 
@@ -114,6 +115,7 @@ async def enqueue_scoring(
             publish_after_commit(
                 session, user_topic(attempt.user_id), "attempt", {"attempt_id": str(attempt.id)}
             )
+            await sittings_reads.attempt_progress(session, attempt)
         return
 
     await defer_in_transaction(
@@ -186,6 +188,7 @@ async def prepare_scoring(
         # waiting for feedback, and a failure they are never told about is a
         # spinner that turns for ever.
         publish_after_commit(session, user_topic(attempt.user_id), "attempt", {"attempt_id": str(attempt_id)})
+        await sittings_reads.attempt_progress(session, attempt)
         return None
 
     return PreparedScoring(
@@ -242,6 +245,7 @@ async def record_scoring(
     # it finished somehow. b2c polled; this says so once, after the commit,
     # and the poll goes.
     publish_after_commit(session, user_topic(attempt.user_id), "attempt", {"attempt_id": str(attempt_id)})
+    await sittings_reads.attempt_progress(session, attempt)
     return True
 
 
