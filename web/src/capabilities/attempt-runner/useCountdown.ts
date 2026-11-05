@@ -2,6 +2,33 @@
 
 import { useEffect, useRef, useState } from "react";
 
+export interface CountdownAnchor {
+  /** When the server says the phase began, in the server's clock. */
+  startedAtMs: number;
+  /** The server's clock minus this device's, when the brief arrived. */
+  serverOffsetMs: number;
+}
+
+/** The device time at which `totalSeconds` from the server's start runs out. */
+export function anchoredDeadline(totalSeconds: number, anchor: CountdownAnchor): number {
+  return anchor.startedAtMs + totalSeconds * 1000 - anchor.serverOffsetMs;
+}
+
+export function secondsUntil(deadlineMs: number, nowMs: number): number {
+  return Math.max(0, Math.round((deadlineMs - nowMs) / 1000));
+}
+
+/** The anchor a brief gives, or `undefined` while the server has not started the phase. */
+export function countdownAnchor(
+  brief: { started_at?: string | null; server_time?: string },
+  receivedAtMs: number,
+): CountdownAnchor | undefined {
+  const startedAtMs = brief.started_at ? Date.parse(brief.started_at) : NaN;
+  const serverNowMs = brief.server_time ? Date.parse(brief.server_time) : NaN;
+  if (Number.isNaN(startedAtMs) || Number.isNaN(serverNowMs)) return undefined;
+  return { startedAtMs, serverOffsetMs: serverNowMs - receivedAtMs };
+}
+
 /**
  * A countdown that survives a sleeping tab.
  *
@@ -10,20 +37,23 @@ import { useEffect, useRef, useState } from "react";
  * drifts minutes off over a station. The old clients had four such timers and
  * none of them agreed after a tab switch.
  *
- * It is still the browser's clock. Server-owned phases are the real fix and
- * the backend already carries the columns for them; this reads
- * `phase_ends_at` when a caller supplies one.
+ * Without an `anchor` it is the browser's clock, started when the hook runs. With one (the
+ * server's `started_at` and its offset from this device) the deadline is the server's, so a
+ * reload or a late-joining screen shows what is really left.
  */
 export function useCountdown(
   totalSeconds: number,
   running: boolean,
   onElapsed?: () => void,
+  anchor?: CountdownAnchor,
 ): { secondsLeft: number; elapsed: boolean } {
   const [secondsLeft, setSecondsLeft] = useState(totalSeconds);
   const deadlineRef = useRef<number | null>(null);
   const firedRef = useRef(false);
   const onElapsedRef = useRef(onElapsed);
   onElapsedRef.current = onElapsed;
+  const anchoredStart = anchor?.startedAtMs;
+  const anchoredOffset = anchor?.serverOffsetMs;
 
   useEffect(() => {
     if (!running) {
@@ -33,12 +63,19 @@ export function useCountdown(
       return;
     }
 
-    deadlineRef.current ??= Date.now() + totalSeconds * 1000;
+    if (anchoredStart !== undefined && anchoredOffset !== undefined) {
+      deadlineRef.current = anchoredDeadline(totalSeconds, {
+        startedAtMs: anchoredStart,
+        serverOffsetMs: anchoredOffset,
+      });
+    } else {
+      deadlineRef.current ??= Date.now() + totalSeconds * 1000;
+    }
 
     const tick = () => {
       const deadline = deadlineRef.current;
       if (deadline === null) return;
-      const left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      const left = secondsUntil(deadline, Date.now());
       setSecondsLeft(left);
       if (left === 0 && !firedRef.current) {
         firedRef.current = true;
@@ -58,7 +95,7 @@ export function useCountdown(
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [running, totalSeconds]);
+  }, [running, totalSeconds, anchoredStart, anchoredOffset]);
 
   return { secondsLeft, elapsed: secondsLeft === 0 };
 }

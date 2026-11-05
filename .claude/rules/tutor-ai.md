@@ -49,6 +49,10 @@ Owner: `attempt-engine-owner`. Proof: `verify-attempt-engine`. Athena is the voi
   reply, because that path had no test. `help_content.json` is static and is *not* rendered, so it
   spells the address out (`tests/unit/test_assistant_content.py` pins both).
 - Dashboard `progress` counts only started, non-debrief attempts.
+- **The `debrief` me-event** (`{attempt_id, state: ready|none|failed}`, `attempt_id` is the debrief attempt) is the
+  only way the Debriefs screen learns a summary is done. `summarise_debrief` queues `ready`/`none` after commit;
+  `jobs.run_debrief_summary` publishes `failed` straight to the bus (nothing commits) and re-raises. A new early
+  return in the summary must say `none`, or the screen waits forever.
 
 ## What a failure looks like here
 - A worker that learns a product, exam id or navigation label, or compares a session type outside `modes.py`.
