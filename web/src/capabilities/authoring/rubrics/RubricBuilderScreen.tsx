@@ -2,11 +2,12 @@
 
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useId, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Alert, AsyncBoundary, B2CPageHeader, cn, getInputClassName } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { addRubricVersion, copyRubric, readRubric, renameRubric, type Rubric } from "@/capabilities/authoring/api";
+import { addRubricVersion, readRubric, renameRubric, type Rubric } from "@/capabilities/authoring/api";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { nextRubricTitle } from "@/capabilities/authoring/rubrics/rubricTitle";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
@@ -14,6 +15,8 @@ import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import type { RubricDashboardPreview } from "@/capabilities/authoring/rubrics/dashboardSlot";
 import { RubricBuilder } from "@/capabilities/authoring/rubrics/RubricBuilder";
+import { copyAndOpen } from "@/capabilities/authoring/rubrics/copyAndOpen";
+import { useExamReturn } from "@/capabilities/authoring/rubrics/useExamReturn";
 import { rubricEditPath, rubricsListPath } from "@/capabilities/authoring/templates/paths";
 
 /**
@@ -37,9 +40,16 @@ export function RubricBuilderScreen({
   const { hrefFor } = useSurface();
   const rubric = useAsync((signal) => readRubric(scope, rubricId, signal), [scope.base, rubricId]);
   const canAuthor = useCanAuthor();
+  // Set when the New exam sheet sent the author here: publishing offers the way back to it.
+  const { examId, examHref } = useExamReturn();
 
   return (
     <div className="flex w-full flex-col gap-4 pb-8">
+      {examHref ? (
+        <Link href={examHref} className="text-osce-body font-medium text-accent hover:underline">
+          Close and go back to the exam
+        </Link>
+      ) : null}
       <AsyncBoundary state={rubric}>
         {(data: Rubric) => {
           const found = (data.versions ?? []).find((candidate) => candidate.version === version);
@@ -51,9 +61,9 @@ export function RubricBuilderScreen({
             <>
               <B2CPageHeader
                 title={editable ? <RubricTitle rubric={data} onRenamed={rubric.reload} /> : data.title}
-                subtitle={`Marking scheme · version ${version}${owned ? "" : " · OSCE Guide catalogue"}`}
+                subtitle={`Exams › Marking schemes · version ${version}${owned ? "" : " · OSCE Guide catalogue"}. How a station is marked, and what the candidate's feedback looks like. Publishing makes a new version; sittings already marked keep the version they used.`}
                 back={{ href: rubricsListPath(hrefFor), label: "Marking schemes" }}
-                action={found ? <VersionActions rubric={data} version={version} status={found.status} owned={owned} /> : undefined}
+                action={found ? <VersionActions rubric={data} version={version} status={found.status} owned={owned} examId={examId} /> : undefined}
                 className="mb-0"
               />
               {found ? (
@@ -66,6 +76,7 @@ export function RubricBuilderScreen({
                   version={found}
                   readOnly={!editable || found.status !== "draft"}
                   dashboardPreview={dashboardPreview}
+                  examHref={examHref}
                   onPublished={rubric.reload}
                   onStale={rubric.reload}
                 />
@@ -146,7 +157,7 @@ function RubricTitle({ rubric, onRenamed }: { rubric: Rubric; onRenamed: () => v
 }
 
 /** The status, and the way to change a version that can no longer be edited. */
-function VersionActions({ rubric, version, status, owned }: { rubric: Rubric; version: number; status: string; owned: boolean }) {
+function VersionActions({ rubric, version, status, owned, examId }: { rubric: Rubric; version: number; status: string; owned: boolean; examId: string | null }) {
   const scope = useAuthoringScope();
   const { hrefFor } = useSurface();
   const router = useRouter();
@@ -165,7 +176,7 @@ function VersionActions({ rubric, version, status, owned }: { rubric: Rubric; ve
           onClick={() =>
             action.run("add", async () => {
               const created = await addRubricVersion(scope, rubric.id);
-              router.push(rubricEditPath(hrefFor, rubric.id, created.version));
+              router.push(rubricEditPath(hrefFor, rubric.id, created.version, examId));
             })
           }
         >
@@ -184,11 +195,9 @@ function VersionActions({ rubric, version, status, owned }: { rubric: Rubric; ve
           size="sm"
           isLoading={action.busy === "copy"}
           onClick={() =>
-            action.run("copy", async () => {
-              const copy = await copyRubric(scope, { source_rubric_id: rubric.id, source_version: version });
-              const first = (copy.versions ?? [])[0];
-              router.push(rubricEditPath(hrefFor, copy.id, first?.version ?? 1));
-            })
+            action.run("copy", () =>
+              copyAndOpen(scope, router.push, hrefFor, { source_rubric_id: rubric.id, source_version: version }, examId),
+            )
           }
         >
           Copy to my marking schemes

@@ -28,7 +28,8 @@ import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringSc
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { useSurface } from "@/capabilities";
-import { rubricVersionActions } from "@/capabilities/authoring/sections/versions";
+import { copyAndOpen } from "@/capabilities/authoring/rubrics/copyAndOpen";
+import { latestOf, rubricVersionActions } from "@/capabilities/authoring/sections/versions";
 import { rubricEditPath } from "@/capabilities/authoring/templates/paths";
 
 /** A rubric's versions, and the writes against each one. */
@@ -58,16 +59,44 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
         {(data: Rubric) => (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-osce-body font-semibold text-ink">{data.title}</h2>
-              <AuthoringButton
-                write
-                variant="secondary"
-                size="sm"
-                disabled={action.busy !== null}
-                onClick={() => action.run("add", () => addRubricVersion(scope, data.id))}
-              >
-                {action.busy === "add" ? "Creating…" : "New draft version"}
-              </AuthoringButton>
+              <div>
+                <p className="text-osce-caption text-ink-muted">Marking scheme</p>
+                <h2 className="text-osce-body font-semibold text-ink">{data.title}</h2>
+                <p className="text-osce-caption text-ink-muted">
+                  Each version is a frozen copy. Candidates are marked against the live one.
+                </p>
+              </div>
+              {scope.kind === "org" && data.owner_kind === "platform" ? (
+                <AuthoringButton
+                  write
+                  variant="secondary"
+                  size="sm"
+                  disabled={action.busy !== null}
+                  onClick={() =>
+                    action.run("copy", () =>
+                      copyAndOpen(
+                        scope,
+                        router.push,
+                        hrefFor,
+                        { source_rubric_id: data.id, source_version: latestOf(data.versions ?? []).published?.version ?? null },
+                        null,
+                      ),
+                    )
+                  }
+                >
+                  {action.busy === "copy" ? "Copying…" : "Copy to my marking schemes"}
+                </AuthoringButton>
+              ) : (
+                <AuthoringButton
+                  write
+                  variant="secondary"
+                  size="sm"
+                  disabled={action.busy !== null}
+                  onClick={() => action.run("add", () => addRubricVersion(scope, data.id))}
+                >
+                  {action.busy === "add" ? "Creating…" : "New draft version"}
+                </AuthoringButton>
+              )}
             </div>
 
             {(data.versions ?? []).length === 0 ? (

@@ -61,7 +61,7 @@ export function RatingPanel() {
         </FoldSection>
       </div>
 
-      <FoldSection title="Grades and field name">
+      <FoldSection title="Grades">
       <div className="space-y-6">
       <div className="max-w-sm">
         <label htmlFor={fieldId} className="block text-osce-meta font-medium text-ink-muted">

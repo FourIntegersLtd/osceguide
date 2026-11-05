@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { RubricBuilderScreen } from "@/capabilities/authoring/rubrics/RubricBuilderScreen";
 import { RubricDashboardPreview } from "@/domains/train/dashboard/RubricDashboardPreview";
 
@@ -10,10 +11,12 @@ export default async function Page({ params }: { params: Promise<{ rubricId: str
   const { rubricId, version } = await params;
   const versionNumber = Number.parseInt(version, 10);
   return (
-    <RubricBuilderScreen
+    <Suspense fallback={null}>
+<RubricBuilderScreen
       rubricId={rubricId}
       version={Number.isFinite(versionNumber) ? versionNumber : 0}
       dashboardPreview={RubricDashboardPreview}
     />
+</Suspense>
   );
 }
