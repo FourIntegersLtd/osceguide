@@ -20,6 +20,7 @@ import { PendingFeedbackProvider } from "@/capabilities/pending-feedback";
 import type { HelpNavItem } from "@/capabilities/help/api";
 import type { NavItem, SurfaceManifest } from "@/surfaces/contract";
 import { examDetail, examForFilter } from "@/surfaces/examNav";
+import { useNavBadges } from "@/surfaces/useNavBadges";
 import { WorkspaceSidebar } from "@/surfaces/WorkspaceSidebar";
 import { WorkspaceToolbar } from "@/surfaces/WorkspaceToolbar";
 import { PERSONAL_WORKSPACE, type Workspace } from "@/foundation/routing";
@@ -58,12 +59,19 @@ export function WorkspaceShell({
 
   const href = useCallback((path: string) => `${basePath}${path}`, [basePath]);
 
+  const badges = useNavBadges(manifest.id, workspace.orgSlug ?? null);
+
   const items = useMemo<NavItem[]>(() => {
-    const own = manifest.nav({
-      workspace,
-      can: (permission: Permission) => hasPermission(session, permission),
-      href,
-    });
+    const own = manifest
+      .nav({
+        workspace,
+        can: (permission: Permission) => hasPermission(session, permission),
+        href,
+      })
+      .map((item) => {
+        const badge = badges[item.key as keyof typeof badges];
+        return badge ? { ...item, badge } : item;
+      });
     const mounted = capabilitiesFor(manifest.id, {
       can: session?.capabilities.can ?? {},
       basePath,
@@ -76,7 +84,7 @@ export function WorkspaceShell({
       section: capability.section,
     }));
     return [...own, ...mounted];
-  }, [manifest, workspace, session, href, basePath, examCode]);
+  }, [manifest, workspace, session, href, basePath, examCode, badges.live, badges.results]);
 
   // Only an arm that mounts the inbox asks for the count; staff and
   // institution shells never make the request.

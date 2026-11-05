@@ -99,7 +99,7 @@ function Report({
               disabled={downloading}
               onClick={() => downloadCsv()}
             >
-              Download CSV
+              Export CSV
             </Button>
           ) : undefined
         }

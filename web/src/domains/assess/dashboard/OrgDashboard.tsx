@@ -22,14 +22,16 @@ import { humanise } from "@/foundation/format";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
-import { readOrgDashboard, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
+import { readOrgDashboard, readSupervisorCircuits, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
 import { LiveNow } from "@/domains/assess/dashboard/LiveNow";
 import { SetupAssistant } from "@/domains/assess/dashboard/SetupAssistant";
-import { SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
+import { NextCircuit, SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
 import {
   assistantSteps,
   attentionFromResults,
   comingUp,
+  dateEyebrow,
+  dateTile,
   modeLabel,
   NEW_EXAM_PATH,
   SCHEDULE_SITTING_PATH,
@@ -104,16 +106,18 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   const mayDecide = can(session, "sign_off_results");
   const results = useAsync((signal) => (mayDecide ? readResultsIndex(orgSlug, signal) : Promise.resolve(null)), [orgSlug, mayDecide]);
   const attention = attentionFromResults(results.data?.rows ?? [], w);
+  const circuits = useAsync((signal) => (runs ? readSupervisorCircuits(orgSlug, signal) : Promise.resolve(null)), [orgSlug, runs]);
+  const circuitRows = circuits.data?.items ?? [];
   const earlier = (data.recent_sittings ?? []).filter((sitting) => sitting.status !== "scheduled");
 
   return (
     <>
       {runs && !mayDecide ? (
-        <SupervisorHeader orgSlug={orgSlug} eyebrow={data.name} />
+        <SupervisorHeader orgSlug={orgSlug} eyebrow={w.Supervisor} />
       ) : (
       <B2CPageHeader
         className="!mb-0"
-        eyebrow={data.name}
+        eyebrow={w.hiring ? data.name : dateEyebrow(new Date())}
         title={w.hiring ? "Overview" : greetingFor(name, new Date())}
         subtitle={w.hiring ? `Your ${w.sittings}, ${w.trainees} and results.` : todaySentence(running, attention.length)}
         action={
@@ -148,8 +152,11 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
       {mayDecide ? <NeedsAttention loading={results.loading} error={results.error} items={attention} /> : null}
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start [&>*]:min-w-0 [&>*]:flex-1">
+        {runs && circuits.error ? <Alert tone="danger">{errorMessage(circuits.error)}</Alert> : null}
+        {runs && circuits.loading ? <Spinner /> : null}
+        {runs && !circuits.loading && !circuits.error ? <NextCircuit rows={circuitRows} /> : null}
         {runs ? <StationsToReview orgSlug={orgSlug} /> : null}
-        {runs ? <SupervisorCircuits orgSlug={orgSlug} sayWhenEmpty={!admin} /> : null}
+        {runs && !circuits.loading && !circuits.error ? <SupervisorCircuits rows={circuitRows} sayWhenEmpty={!admin} /> : null}
 
         <B2CGroupedSection
           eyebrow="Coming up"
@@ -184,19 +191,27 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
 }
 
 function SittingRow({ sitting }: { sitting: NonNullable<Data["recent_sittings"]>[number] }) {
+  const date = dateTile(sitting.scheduled_for);
   const { hrefFor } = useSurface();
   const w = useAssessWords();
   return (
     <B2CGroupedRowLink
       href={hrefFor(`/sittings/${sitting.id}`)}
-      icon={LuCalendarDays}
+      icon={date ? undefined : LuCalendarDays}
+      leading={
+        date ? (
+          <span aria-hidden className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-osce-md bg-b2c-surface-muted text-osce-ink-700">
+            <span className="text-[10px] font-semibold leading-none">{date.month}</span>
+            <span className="text-osce-body font-semibold leading-tight">{date.day}</span>
+          </span>
+        ) : undefined
+      }
       title={sitting.name}
       meta={
-        sitting.scheduled_for
+        sitting.scheduled_for && !date
           ? `${new Date(sitting.scheduled_for).toLocaleString()} · ${modeLabel(sitting.mode, w)}`
           : modeLabel(sitting.mode, w)
-      }
-      trailing={
+      }      trailing={
         <Badge variant="neutral" dot>
           {humanise(sitting.status)}
         </Badge>
@@ -216,7 +231,7 @@ function NeedsAttention({ loading, error, items }: { loading: boolean; error: un
   if (error) return <Alert tone="danger">{errorMessage(error)}</Alert>;
 
   return (
-    <B2CGroupedSection eyebrow="Needs your attention">
+    <B2CGroupedSection eyebrow="Needs your attention" action={<span className="text-osce-meta text-b2b-muted">Oldest first</span>}>
       {items.length === 0 ? (
         <B2CGroupedRow
           title="Nothing needs you right now."

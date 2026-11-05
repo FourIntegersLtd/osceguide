@@ -282,3 +282,81 @@ export function todaySentence(running: number, needs: number): string {
   const things = needs === 0 ? "nothing needs you" : `${count(needs)} ${needs === 1 ? "thing needs" : "things need"} you`;
   return `${circuits} and ${things}.`;
 }
+
+/** "Thursday 5 November": the eyebrow of the Today screen. */
+export function dateEyebrow(now: Date): string {
+  return now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+}
+
+/** The month and day of a sitting's date tile: "NOV", "12". */
+export function dateTile(iso: string | null): { month: string; day: string } | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return {
+    month: date.toLocaleDateString("en-GB", { month: "short" }).toUpperCase(),
+    day: String(date.getDate()),
+  };
+}
+
+/** "Thursday, 12 November, 09:30": a date with its time, for the next-circuit card. */
+export function longWhen(iso: string | null): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date
+    .toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+    .replace(" at ", ", ");
+}
+
+/** "12 Nov": a date without the time, for a circuit row. */
+export function shortDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+/**
+ * What a running circuit is doing, in one line. A formal exam: "Station 4 of 8 · Supervisor: Dr Patel
+ * · 8 candidates". An employer: "3 candidates on stations · Assessor: Dr Patel".
+ */
+export function runningLine(circuit: LiveCircuit, w: AssessWords): string {
+  const count = (circuit.candidates ?? []).length;
+  const who = circuit.supervisor?.name ?? circuit.supervisor?.email;
+  const lead = who ? `${w.Supervisor}: ${who}` : null;
+  const people = `${count} ${count === 1 ? w.trainee : w.trainees}`;
+  const parts = w.hiring
+    ? [`${people} on stations`, lead]
+    : [
+        circuit.stations_total > 0
+          ? `Station ${(circuit.current_station?.slot_index ?? circuit.stations_completed) + 1} of ${circuit.stations_total}`
+          : null,
+        lead,
+        people,
+      ];
+  return parts.filter(Boolean).join(" · ");
+}
+
+/** "5 of 8 candidates still to review". */
+export function stillToReviewLine(unmarked: number, total: number, w: AssessWords): string {
+  return `${unmarked} of ${total} ${total === 1 ? w.trainee : w.trainees} still to review`;
+}
+
+/** A supervisor's circuits grouped by sitting: one row per sitting, "· 6 circuits" when several. */
+export function circuitsBySitting<T extends { sitting_id: string; sitting_name: string; circuit_name: string }>(
+  rows: readonly T[],
+): { sittingId: string; title: string; rows: T[] }[] {
+  const groups: { sittingId: string; title: string; rows: T[] }[] = [];
+  for (const row of rows) {
+    const found = groups.find((group) => group.sittingId === row.sitting_id);
+    if (found) found.rows.push(row);
+    else groups.push({ sittingId: row.sitting_id, title: row.sitting_name, rows: [row] });
+  }
+  return groups.map((group) => ({
+    ...group,
+    title:
+      group.rows.length === 1
+        ? `${group.title} · ${group.rows[0]?.circuit_name ?? ""}`
+        : `${group.title} · ${group.rows.length} circuits`,
+  }));
+}

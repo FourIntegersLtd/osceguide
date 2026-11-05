@@ -69,6 +69,8 @@ export interface NavItem {
   icon?: ComponentType<{ className?: string }>;
   /** Which group this sits in. Ungrouped items render above the groups. */
   section?: NavSection;
+  /** A count chip beside the label, such as "Results 5". Filled by the shell from reads it already makes. */
+  badge?: string;
 }
 
 export interface NavContext {

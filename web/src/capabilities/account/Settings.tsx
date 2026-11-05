@@ -169,7 +169,10 @@ function SettingsFrame({
     // The consumer screen is one 960px column (canvas `train-settings`); an
     // institution's extra tabs hold tables and keep the full width.
     <div className={surface === "train" ? "w-full max-w-[960px]" : undefined}>
-      <B2CPageHeader title="Settings" />
+      <B2CPageHeader
+        title="Settings"
+        subtitle={surface === "train" ? undefined : "Your organisation, how people sign in, and your own account."}
+      />
       <B2CSegmentedTabs
         className="mb-6"
         items={items}

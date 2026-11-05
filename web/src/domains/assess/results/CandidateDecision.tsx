@@ -201,6 +201,10 @@ function Form({
         />
       </label>
 
+      {!signedOff && blockers.length === 0 ? (
+        <p className="text-osce-meta text-b2b-mid">Every station marked · a rationale written</p>
+      ) : null}
+
       {!signedOff && blockers.length > 0 ? (
         <Alert tone="warning" title="Before this can be signed off">
           <ul className="list-inside list-disc space-y-1">

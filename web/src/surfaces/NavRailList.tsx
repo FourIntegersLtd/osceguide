@@ -66,7 +66,7 @@ export function NavRailList({
         href={item.href}
         onClick={onNavigate}
         aria-current={active ? "page" : undefined}
-        aria-label={collapsed ? item.label : undefined}
+        aria-label={collapsed ? (item.badge ? `${item.label}, ${item.badge}` : item.label) : undefined}
         className={cn(
           active ? b2cNavLinkActive : b2cNavLinkInactive,
           collapsed && "h-11 w-full justify-center !px-0 !py-0",
@@ -74,7 +74,14 @@ export function NavRailList({
       >
         {Icon ? <Icon className="h-4 w-4 shrink-0" aria-hidden /> : null}
         {collapsed ? null : (
-          <span className="min-w-0 flex-1 truncate">{item.label}</span>
+          <>
+            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+            {item.badge ? (
+              <span className="shrink-0 rounded-full bg-osce-navActive px-2 py-0.5 text-osce-caption font-semibold text-osce-ink-700">
+                {item.badge}
+              </span>
+            ) : null}
+          </>
         )}
       </Link>
     );

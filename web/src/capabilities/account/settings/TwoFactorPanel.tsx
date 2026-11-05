@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { HiOutlineCheckCircle, HiOutlineShieldCheck } from "react-icons/hi2";
 import { hasCode } from "@/foundation/platform-client";
-import { AsyncBoundary, Button, ConfirmModal, Input, Modal, Panel } from "@/foundation/ui";
+import { AsyncBoundary, Button, Input, Modal, Panel } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import {
   confirmMyMfa,
@@ -52,9 +52,6 @@ export function TwoFactorPanel() {
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
-  const [offError, setOffError] = useState<string | null>(null);
-  /** The code typed in the disable dialog, held while the confirm step is open. */
-  const [pendingOffCode, setPendingOffCode] = useState<string | null>(null);
   const toast = useToast();
 
   const start = async () => {
@@ -71,26 +68,7 @@ export function TwoFactorPanel() {
 
   const close = () => {
     setDialog(null);
-    setPendingOffCode(null);
     status.reload();
-  };
-
-  const turnOff = async (code: string) => {
-    setOffError(null);
-    try {
-      await disableMyMfa(code);
-      toast.success("Two-factor sign-in is off");
-      close();
-    } catch (cause) {
-      if (hasCode(cause, "invalid_mfa_code")) {
-        // The confirm step has no code field: send them back to the one that does.
-        toast.error(codeFailure(cause));
-        setPendingOffCode(null);
-        setDialog({ kind: "disable" });
-      } else {
-        setOffError(codeFailure(cause));
-      }
-    }
   };
 
   return (
@@ -151,18 +129,6 @@ export function TwoFactorPanel() {
         </AsyncBoundary>
       </Panel>
 
-      <ConfirmModal
-        isOpen={pendingOffCode !== null}
-        onCancel={close}
-        onConfirm={() => (pendingOffCode === null ? undefined : turnOff(pendingOffCode))}
-        title="Turn off two-factor sign-in?"
-        message="You will sign in with your password alone. Your recovery codes stop working."
-        confirmText="Turn off"
-        cancelText="Keep it on"
-        tone="danger"
-        error={offError}
-      />
-
       {dialog ? (
         <Modal width="440px" title={DIALOG_TITLES[dialog.kind]} onClose={close}>
           <div className="p-5">
@@ -186,14 +152,17 @@ export function TwoFactorPanel() {
               />
             ) : (
               <CodeDialog
-                description="Enter a code from your authenticator app to continue."
-                action="Continue"
-                run={async () => []}
-                onDone={(_, code) => {
-                  setOffError(null);
-                  setDialog(null);
-                  setPendingOffCode(code);
+                description="You will sign in with your password alone. Your recovery codes stop working. Enter a code from your authenticator app to continue."
+                action="Turn off"
+                run={async (code) => {
+                  await disableMyMfa(code);
+                  return [];
                 }}
+                onDone={() => {
+                  toast.success("Two-factor sign-in is off");
+                  close();
+                }}
+                onCancel={close}
               />
             )}
           </div>
@@ -207,7 +176,7 @@ const DIALOG_TITLES: Record<Dialog["kind"], string> = {
   enrol: "Set up two-factor sign-in",
   codes: "Your recovery codes",
   regenerate: "New recovery codes",
-  disable: "Turn off two-factor sign-in",
+  disable: "Turn off two-factor sign-in?",
 };
 
 function EnrolDialog({
@@ -245,11 +214,13 @@ function CodeDialog({
   action,
   run,
   onDone,
+  onCancel,
 }: {
   description: string;
   action: string;
   run: (code: string) => Promise<string[]>;
   onDone: (codes: string[], code: string) => void;
+  onCancel?: () => void;
 }) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -286,9 +257,16 @@ function CodeDialog({
         onChange={(event) => setCode(event.target.value)}
         error={error}
       />
-      <Button type="submit" fullWidth isLoading={busy} disabled={!isCompleteTotp(code)}>
-        {action}
-      </Button>
+      <div className="flex gap-2">
+        {onCancel ? (
+          <Button type="button" variant="secondary" fullWidth onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : null}
+        <Button type="submit" fullWidth isLoading={busy} disabled={!isCompleteTotp(code)}>
+          {action}
+        </Button>
+      </div>
     </form>
   );
 }
