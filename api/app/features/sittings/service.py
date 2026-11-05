@@ -143,13 +143,11 @@ async def _with_totals(
     """Fill each sitting's programme name, exam code and candidate count, a few queries for the lot."""
     programme_ids = [read.programme_id for read in reads if read.programme_id]
     exams = await catalog.programme_exams(session, org_id, programme_ids)
-    counts = await repository_reads.candidate_counts_for_sittings(
-        session, org_id, [read.id for read in reads]
-    )
+    totals = await repository_reads.totals_for_sittings(session, org_id, [read.id for read in reads])
     for sitting in reads:
         if sitting.programme_id in exams:
             sitting.programme_name, sitting.exam_code = exams[sitting.programme_id]
-        sitting.candidate_count = counts.get(sitting.id, 0)
+        sitting.circuit_count, sitting.candidate_count = totals.get(sitting.id, (0, 0))
     return reads
 
 

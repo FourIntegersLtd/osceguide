@@ -177,6 +177,13 @@ async def candidate_counts(
     return await repository_reads.candidate_counts_for_sittings(session, org_id, sitting_ids)
 
 
+async def sitting_totals(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, tuple[int, int]]:
+    """(circuits, distinct candidates) per sitting, in one query."""
+    return await repository_reads.totals_for_sittings(session, org_id, sitting_ids)
+
+
 async def candidate_user_ids(
     session: AsyncSession, org_id: uuid.UUID, sitting_ids: list[uuid.UUID]
 ) -> dict[uuid.UUID, set[uuid.UUID]]:
@@ -346,6 +353,7 @@ async def run_history(
 alerts_for = domain_alerts.alerts_for
 elapsed_seconds = domain_run.elapsed_seconds
 remaining_seconds = domain_run.remaining_seconds
+overdue_seconds = domain_run.overdue_seconds
 FINISHED_SLOT_STATUSES = frozenset(str(status) for status in domain.FINISHED_SLOT_STATUSES)
 # A station the candidate actually sat (or is sitting), as opposed to one the circuit moved past.
 SAT_SLOT_STATUSES = frozenset({str(domain.SlotStatus.IN_CONSULTATION), str(domain.SlotStatus.COMPLETED)})

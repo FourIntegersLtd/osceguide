@@ -115,6 +115,8 @@ class ExamSettings(BaseModel):
     session_modes: list[SessionMode] = Field(default_factory=lambda: _default_session_modes())
     # The kinds of station an author must choose between; empty means no choice.
     station_subtypes: list[StationSubtype] = Field(default_factory=list)
+    # How long a break between two stations lasts by default; a sitting may change it for itself.
+    default_break_minutes: int | None = Field(default=None, ge=1, le=60)
     # Whether exam tips play while a consultation is being marked.
     show_tips_while_marking: bool = False
     # What the help dock offers, in order.

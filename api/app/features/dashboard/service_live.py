@@ -92,6 +92,9 @@ async def build_live_board(session: AsyncSession, org_id: uuid.UUID, *, now: dat
                 remaining_seconds=sittings.remaining_seconds(
                     circuit.phase_ends_at, paused_at=circuit.paused_at, now=now
                 ),
+                overdue_seconds=sittings.overdue_seconds(
+                    circuit.phase_ends_at, paused_at=circuit.paused_at, now=now
+                ),
                 stations_total=len(detail.slots),
                 stations_completed=sum(
                     1 for slot in detail.slots if slot.status in sittings.FINISHED_SLOT_STATUSES

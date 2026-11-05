@@ -2729,6 +2729,17 @@
             "title": "Name",
             "type": "string"
           },
+          "overdue_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overdue Seconds"
+          },
           "paused": {
             "default": false,
             "title": "Paused",
@@ -6191,6 +6202,19 @@
             "title": "Date Label",
             "type": "string"
           },
+          "default_break_minutes": {
+            "anyOf": [
+              {
+                "maximum": 60.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Break Minutes"
+          },
           "generation": {
             "$ref": "#/components/schemas/GenerationSettings"
           },
@@ -8052,6 +8076,17 @@
             "title": "Mode",
             "type": "string"
           },
+          "overdue_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overdue Seconds"
+          },
           "paused": {
             "default": false,
             "title": "Paused",
@@ -9655,6 +9690,11 @@
       "OrgCounts": {
         "description": "What the setup checklist counts.",
         "properties": {
+          "invited_not_joined": {
+            "default": 0,
+            "title": "Invited Not Joined",
+            "type": "integer"
+          },
           "library_stations": {
             "title": "Library Stations",
             "type": "integer"
@@ -9802,6 +9842,16 @@
       },
       "OrgSittingRow": {
         "properties": {
+          "candidate_count": {
+            "default": 0,
+            "title": "Candidate Count",
+            "type": "integer"
+          },
+          "circuit_count": {
+            "default": 0,
+            "title": "Circuit Count",
+            "type": "integer"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -13783,6 +13833,27 @@
       },
       "ProgrammeRead": {
         "properties": {
+          "default_break_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Break Minutes"
+          },
+          "default_reading_seconds": {
+            "default": 0,
+            "title": "Default Reading Seconds",
+            "type": "integer"
+          },
+          "default_simulation_seconds": {
+            "default": 0,
+            "title": "Default Simulation Seconds",
+            "type": "integer"
+          },
           "exam_code": {
             "title": "Exam Code",
             "type": "string"
@@ -13832,6 +13903,11 @@
             "title": "Candidates",
             "type": "integer"
           },
+          "exam_id": {
+            "format": "uuid",
+            "title": "Exam Id",
+            "type": "string"
+          },
           "exam_name": {
             "title": "Exam Name",
             "type": "string"
@@ -13867,6 +13943,7 @@
         },
         "required": [
           "programme_id",
+          "exam_id",
           "exam_name",
           "sittings",
           "candidates",
@@ -17502,6 +17579,11 @@
           "candidate_count": {
             "default": 0,
             "title": "Candidate Count",
+            "type": "integer"
+          },
+          "circuit_count": {
+            "default": 0,
+            "title": "Circuit Count",
             "type": "integer"
           },
           "circuits": {

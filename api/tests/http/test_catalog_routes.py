@@ -308,6 +308,7 @@ DEFAULT_SETTINGS = {
     "show_tips_while_marking": False,
     "help_modes": ["navigate"],
     "peer_waiting_email": False,
+    "default_break_minutes": None,
     "peer_practice": {"preparation_seconds": 180, "consultation_seconds": 720, "debrief_seconds": 900},
     "generation": {
         "station_prompt": "generic.station",

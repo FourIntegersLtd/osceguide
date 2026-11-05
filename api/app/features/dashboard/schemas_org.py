@@ -26,6 +26,8 @@ class OrgCounts(BaseModel):
     staff: int
     programmes_with_markable_exam: int
     sittings: int
+    # Trainees invited whose account nobody has used yet.
+    invited_not_joined: int = 0
 
 
 class OrgSittingRow(BaseModel):
@@ -34,6 +36,8 @@ class OrgSittingRow(BaseModel):
     mode: str
     status: str
     scheduled_for: datetime | None
+    circuit_count: int = 0
+    candidate_count: int = 0
 
 
 class OrgSetup(BaseModel):
@@ -170,6 +174,8 @@ class ConsoleCircuit(BaseModel):
     # system time still shows the right numbers.
     elapsed_seconds: int | None = None
     remaining_seconds: int | None = None
+    # How far past its end the phase has run; null while it is not late.
+    overdue_seconds: int | None = None
     alerts: list[str] = Field(default_factory=list)
     # From the same rule the edit-lock route serves, so the console does not
     # have to ask twice.

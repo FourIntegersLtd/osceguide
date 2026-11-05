@@ -426,6 +426,20 @@ async def mark_unused_reset_tokens_used(session: AsyncSession, *, user_id: uuid.
     )
 
 
+async def count_pending_invitations(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> int:
+    """How many of these people were invited and have not used the account (`UserRef.invitation_pending`)."""
+    if not user_ids:
+        return 0
+    stmt = select(func.count(User.id)).where(
+        User.id.in_(list(user_ids)),
+        User.password_hash.is_(None),
+        User.legacy_password_hash.is_(None),
+        User.password_login_disabled.is_(False),
+        User.last_login_at.is_(None),
+    )
+    return int((await session.execute(stmt)).scalar_one())
+
+
 async def users_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> list[User]:
     """Several people in one query.
 

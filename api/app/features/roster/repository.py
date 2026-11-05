@@ -269,6 +269,14 @@ async def count_trainees(
     return int((await session.execute(stmt)).scalar_one())
 
 
+async def active_linked_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
+    """The accounts of every trainee on this roster whose access is not revoked."""
+    stmt = select(Trainee.user_id).where(
+        Trainee.org_id == org_id, Trainee.user_id.is_not(None), Trainee.access_revoked_at.is_(None)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
 async def trainees_for_users(
     session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
 ) -> list[Trainee]:

@@ -348,6 +348,11 @@ def _ref(user: User) -> UserRef:
     )
 
 
+async def count_pending_invitations(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> int:
+    """How many of these people have an invitation they have not yet accepted, in one query."""
+    return await repository.count_pending_invitations(session, user_ids)
+
+
 async def user_refs_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, UserRef]:
     """The people behind a set of ids, keyed by id. One query for a whole screen rather than
     one per row."""

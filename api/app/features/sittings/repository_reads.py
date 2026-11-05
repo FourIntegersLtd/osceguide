@@ -83,6 +83,27 @@ async def candidate_counts_for_sittings(
     return {sitting_id: int(count) for sitting_id, count in (await session.execute(stmt)).all()}
 
 
+async def totals_for_sittings(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, tuple[int, int]]:
+    """(circuits, distinct candidates) per sitting in one aggregate query; a sitting with none is absent."""
+    if not sitting_ids:
+        return {}
+    stmt = (
+        select(
+            Circuit.sitting_id,
+            func.count(func.distinct(Circuit.id)),
+            func.count(func.distinct(CircuitTrainee.trainee_id)),
+        )
+        .outerjoin(CircuitTrainee, Circuit.id == CircuitTrainee.circuit_id)
+        .where(Circuit.org_id == org_id, Circuit.sitting_id.in_(list(sitting_ids)))
+        .group_by(Circuit.sitting_id)
+    )
+    return {
+        sid: (int(circuits), int(people)) for sid, circuits, people in (await session.execute(stmt)).all()
+    }
+
+
 async def candidate_user_ids_for_sittings(
     session: AsyncSession, org_id: uuid.UUID, sitting_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, set[uuid.UUID]]:

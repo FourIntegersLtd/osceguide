@@ -188,6 +188,16 @@ def remaining_seconds(
     return max(0, int((phase_ends_at - reference).total_seconds()))
 
 
+def overdue_seconds(
+    phase_ends_at: datetime | None, *, paused_at: datetime | None, now: datetime
+) -> int | None:
+    """How far past its end the phase has run, or None while it is not late (or the clock is stopped)."""
+    if phase_ends_at is None or paused_at is not None:
+        return None
+    late = int((now - phase_ends_at).total_seconds())
+    return late if late > 0 else None
+
+
 def elapsed_seconds(
     phase_started_at: datetime | None,
     *,

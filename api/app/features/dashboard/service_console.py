@@ -114,6 +114,9 @@ async def build_console(
         remaining_seconds=sittings.remaining_seconds(
             detail.circuit.phase_ends_at, paused_at=detail.circuit.paused_at, now=now
         ),
+        overdue_seconds=sittings.overdue_seconds(
+            detail.circuit.phase_ends_at, paused_at=detail.circuit.paused_at, now=now
+        ),
         alerts=sittings.alerts_for(
             phase=detail.circuit.phase,
             phase_started_at=detail.circuit.phase_started_at,
