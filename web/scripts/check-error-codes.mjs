@@ -52,7 +52,7 @@ const GENERIC_GROUPS = [
       "invalid_photo", "invalid_refresh_token", "invalid_saml_connection", "invalid_signature",
       "invalid_sso_binding", "invalid_trial_transcript", "invalid_webhook",
       "payout_account_number_required", "plan_code_taken", "platform_admin_exists",
-      "practice_access_exists", "referral_code_taken", "slug_taken", "sso_binding_taken",
+      "practice_access_exists", "referral_code_taken", "request_too_large", "slug_taken", "sso_binding_taken",
       "tag_too_long", "too_many_tags", "tool_arguments_invalid", "unknown_assistant_type",
       "unknown_media_kind", "unknown_partner", "unknown_plan", "unknown_sso_provider",
       "unknown_tool", "unusable_title",
@@ -102,7 +102,7 @@ const KNOWN_GAPS = allowList(
 
 const GENERIC = allowList(
   Object.fromEntries(GENERIC_GROUPS.flatMap(([reason, list]) => list.map((c) => [c, reason]))),
-  170, // lower only
+  171, // lower only
 );
 
 const codes = spec().components.schemas.ErrorResponse.properties.code.enum;

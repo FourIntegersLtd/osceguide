@@ -36,6 +36,10 @@ on:
         type: boolean
         required: false
         default: false
+      override_freeze_reason:
+        description: During an exam freeze window only, why this promotion cannot wait. Leave empty normally.
+        required: false
+        default: ""
 
 # Each job asks for exactly what it needs below.
 permissions: {}
@@ -75,6 +79,12 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
+
+      - name: Exam freeze
+        uses: ./.github/actions/exam-freeze
+        with:
+          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
+          override-reason: ${{ inputs.override_freeze_reason }}
 
       - name: Connect to the control plane
         uses: ./.github/actions/connect-to-control-plane
@@ -243,6 +253,12 @@ jobs:
           fetch-depth: 0
           # GITHUB_TOKEN may not push a commit that changes .github/workflows; PROMOTE_TOKEN (a fine-grained PAT: Contents + Workflows write) may.
           token: ${{ secrets.PROMOTE_TOKEN || github.token }}
+
+      - name: Exam freeze
+        uses: ./.github/actions/exam-freeze
+        with:
+          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
+          override-reason: ${{ inputs.override_freeze_reason }}
 
       # Deploy the manifests (assessment/k8s) as they were at the promoted commit, so production gets
       # the same config staging tested (or, on rollback, the config it ran before).

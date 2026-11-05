@@ -35,6 +35,10 @@ on:
         description: "Full commit sha to promote. Leave empty to promote whatever staging is running."
         required: false
         default: ""
+      override_freeze_reason:
+        description: During an exam freeze window only, why this promotion cannot wait. Leave empty normally.
+        required: false
+        default: ""
 
 # Only the rights this needs: push the production-api branch, and read CI results.
 permissions:
@@ -56,7 +60,20 @@ jobs:
     permissions:
       contents: read
     steps:
+      # The freeze step and gates below must be main's reviewed copy, not whatever a branch carries.
+      - name: Refuse runs from any branch but main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Run this workflow from main (Use workflow from: main), not ${GITHUB_REF}." >&2
+          exit 1
+
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Exam freeze
+        uses: ./.github/actions/exam-freeze
+        with:
+          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
+          override-reason: ${{ inputs.override_freeze_reason }}
+
       - uses: ./.github/actions/staging-checks
         with:
           api-url: ${{ vars.STAGING_API_URL }}
@@ -75,6 +92,13 @@ jobs:
       STAGING_API_URL: ${{ vars.STAGING_API_URL }}
       GH_TOKEN: ${{ github.token }}
     steps:
+      # The freeze step and gates below must be main's reviewed copy, not whatever a branch carries.
+      - name: Refuse runs from any branch but main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Run this workflow from main (Use workflow from: main), not ${GITHUB_REF}." >&2
+          exit 1
+
       # Full history, so the gates can compare the commit with main and production.
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -82,6 +106,12 @@ jobs:
           fetch-depth: 0
           # GITHUB_TOKEN may not push a commit that changes .github/workflows; PROMOTE_TOKEN (a fine-grained PAT: Contents + Workflows write) may.
           token: ${{ secrets.PROMOTE_TOKEN || github.token }}
+
+      - name: Exam freeze
+        uses: ./.github/actions/exam-freeze
+        with:
+          windows: ${{ vars.EXAM_FREEZE_WINDOWS }}
+          override-reason: ${{ inputs.override_freeze_reason }}
 
       # Ask staging what it runs. Its answer is also the default commit to promote.
       - name: Read staging's health

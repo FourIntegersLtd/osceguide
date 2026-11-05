@@ -4606,6 +4606,30 @@
         "title": "DashboardSummaryRead",
         "type": "object"
       },
+      "DatabasePoolRead": {
+        "description": "This api process's connection pool: how many connections are lent out, against its ceiling.",
+        "properties": {
+          "ceiling": {
+            "title": "Ceiling",
+            "type": "integer"
+          },
+          "checked_out": {
+            "title": "Checked Out",
+            "type": "integer"
+          },
+          "overflow": {
+            "title": "Overflow",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "checked_out",
+          "overflow",
+          "ceiling"
+        ],
+        "title": "DatabasePoolRead",
+        "type": "object"
+      },
       "DatabaseSizeRead": {
         "description": "How full the database is against its budget, measured when asked.",
         "properties": {
@@ -5828,6 +5852,7 @@
               "referral_not_found",
               "referral_not_redeemed",
               "reporter_not_found",
+              "request_too_large",
               "result_not_found",
               "result_not_released",
               "review_conflict",
@@ -12874,6 +12899,16 @@
           "commit": {
             "title": "Commit",
             "type": "string"
+          },
+          "database_pool": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatabasePoolRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "database_size": {
             "anyOf": [
