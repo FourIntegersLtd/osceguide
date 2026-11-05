@@ -1,7 +1,7 @@
 "use client";
 
 import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, Button, getInputClassName, Select, Textarea, FoldSection } from "@/foundation/ui";
@@ -41,18 +41,6 @@ function CreateStationScreenForm() {
       router.replace(stationListUrl(listHref, { status: "active", station: station.id }));
     },
   });
-
-  // Arriving from the chooser: the exam and the way are already picked.
-  const params = useSearchParams();
-  const chosen = useRef(false);
-  const { setExamCode, setMode } = form;
-  useEffect(() => {
-    if (chosen.current) return;
-    chosen.current = true;
-    const exam = params.get("exam");
-    if (exam && !params.get("templateVersion")) setExamCode(exam);
-    if (params.get("start") === "ai") setMode("ai");
-  }, [params, setExamCode, setMode]);
 
   const aiAvailable = promptGeneration || Boolean(form.templateVersionId);
   const aiMode = form.mode === "ai" && aiAvailable;
@@ -297,14 +285,8 @@ function CreateStationScreenForm() {
   );
 }
 
-function CreateStationScreenRoute() {
-  return showsCreateForm(useSearchParams()) ? <CreateStationScreenForm /> : <NewStationChooser />;
-}
-
 export function CreateStationScreen() {
-  return (
-    <RequireAuthor>
-      <CreateStationScreenRoute />
-    </RequireAuthor>
-  );
+  // The route's page puts a Suspense above this, which `useSearchParams` needs.
+  const showForm = showsCreateForm(useSearchParams());
+  return <RequireAuthor>{showForm ? <CreateStationScreenForm /> : <NewStationChooser />}</RequireAuthor>;
 }

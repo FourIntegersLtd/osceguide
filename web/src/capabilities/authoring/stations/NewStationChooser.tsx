@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Select } from "@/foundation/ui";
+import { Button, Select, SelectableCard } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { ImportStationDialog } from "@/capabilities/authoring/imports/ImportStationDialog";
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 import { LoadError } from "@/capabilities/authoring/parts/LoadError";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
 import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/wizardFooter";
-import { stationNewPath, stationsListPath } from "@/capabilities/authoring/stations/paths";
+import { stationLibraryPath, stationNewPath, stationsListPath } from "@/capabilities/authoring/stations/paths";
 import {
   STATION_START_WAYS,
   stationStartHref,
@@ -29,7 +29,7 @@ export function NewStationChooser() {
 
   function go() {
     if (way === "import") setImporting(true);
-    else if (way === "library") router.push(hrefFor("/stations"));
+    else if (way === "library") router.push(stationLibraryPath(hrefFor));
     else router.push(stationStartHref(stationNewPath(hrefFor), way, examCode));
   }
 
@@ -67,25 +67,15 @@ export function NewStationChooser() {
           <p className="text-osce-body font-semibold text-ink">How do you want to start?</p>
           <div role="radiogroup" aria-label="How do you want to start?" className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {STATION_START_WAYS.map((w) => (
-              <button
-                key={w.id}
-                type="button"
-                role="radio"
-                aria-checked={w.id === way}
-                onClick={() => setWay(w.id)}
-                className={[
-                  "flex min-h-[92px] flex-col gap-1 rounded-osce-lg border p-4 text-left",
-                  w.id === way ? "border-osce-accent bg-osce-accent-subtle" : "border-border bg-white",
-                ].join(" ")}
-              >
+              <SelectableCard key={w.id} selected={w.id === way} onSelect={() => setWay(w.id)}>
                 <span className="text-osce-body font-medium text-ink">{w.title}</span>
                 <span className="text-osce-caption text-ink-muted">{w.body}</span>
-              </button>
+              </SelectableCard>
             ))}
           </div>
         </div>
 
-        <div className="rounded-osce-lg border border-border bg-surface-raised/40 p-4">
+        <div className="rounded-osce-lg border border-osce-border bg-osce-surface p-4">
           <p className="text-osce-body font-medium text-ink">What happens next</p>
           <p className="mt-1 text-osce-caption text-ink-muted">{current.next}</p>
         </div>
@@ -95,12 +85,15 @@ export function NewStationChooser() {
         <Button type="button" variant="secondary" onClick={() => router.push(listHref)}>
           Cancel
         </Button>
-        <Button type="button" variant="commit" onClick={go}>
+        {examCode === "" ? (
+          <p className="mr-auto text-osce-caption text-ink-muted">Choose an exam to continue.</p>
+        ) : null}
+        <Button type="button" variant="commit" disabled={examCode === ""} onClick={go}>
           {current.cta}
         </Button>
       </div>
 
-      <ImportStationDialog open={importing} onClose={() => setImporting(false)} onChanged={() => undefined} />
+      <ImportStationDialog open={importing} onClose={() => setImporting(false)} initialExamCode={examCode} />
     </PlatformTemplateWizardPageLayout>
   );
 }

@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import { HiOutlineCloudArrowUp } from "react-icons/hi2";
-import { Alert, Select, Spinner, TextLink } from "@/foundation/ui";
+import { Alert, Badge, Select, Spinner, TextLink } from "@/foundation/ui";
 import { importStatusChip, importStatusLine, uploadFailureMessage } from "@/capabilities/authoring/imports/importCopy";
 import { errorMessage, useAsync, useMeEvents } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
@@ -68,26 +68,31 @@ export function ImportStationDialog({
   open,
   onClose,
   onChanged,
+  initialExamCode = "",
 }: {
   open: boolean;
   onClose: () => void;
-  /** Called when an import creates a template or a station, so the list behind can re-read. */
-  onChanged: () => void;
+  /** Called when an import creates a template or a station, so a list behind can re-read. */
+  onChanged?: () => void;
+  /** The exam the caller already chose. */
+  initialExamCode?: string;
 }) {
   // Mounted only while open, so nothing is fetched or listened for otherwise.
   if (!open) return null;
-  return <ImportStationDialogBody onClose={onClose} onChanged={onChanged} />;
+  return <ImportStationDialogBody onClose={onClose} onChanged={onChanged} initialExamCode={initialExamCode} />;
 }
 
 function ImportStationDialogBody({
   onClose,
   onChanged,
+  initialExamCode,
 }: {
   onClose: () => void;
-  onChanged: () => void;
+  onChanged?: () => void;
+  initialExamCode: string;
 }) {
   const scope = useAuthoringScope();
-  const [examCode, setExamCode] = useState("");
+  const [examCode, setExamCode] = useState(initialExamCode);
   // Null until the author picks, so the default can follow the templates once they load.
   const [pickedTemplate, setPickedTemplate] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -109,7 +114,7 @@ function ImportStationDialogBody({
       (event) => {
         reloadImports();
         reloadTemplates();
-        if (event.name !== "resync") onChanged();
+        if (event.name !== "resync") onChanged?.();
       },
       [reloadImports, reloadTemplates, onChanged],
     ),
@@ -186,7 +191,7 @@ function ImportStationDialogBody({
         versionId = latestOf(copy.versions).published?.id ?? NEW_TEMPLATE;
         setPickedTemplate(versionId);
         reloadTemplates();
-        onChanged();
+        onChanged?.();
       } catch (cause) {
         setUploading(false);
         setError(errorMessage(cause));
@@ -327,6 +332,7 @@ function ImportRow({
 
   const { status, template_id: templateId } = stationImport;
   const drafting = status === "drafting_template" || status === "drafting_station";
+  const chip = importStatusChip(status);
   // A failed import that already has a template failed at the station step, and
   // the backend lets that step be tried again.
   const canCreateStation =
@@ -358,8 +364,10 @@ function ImportRow({
         <p className="flex items-center gap-2 text-osce-meta text-ink-subtle" role="status">
           {drafting ? <Spinner label="Working" /> : null}
           {importStatusLine(status, templatePublished)}
-          {importStatusChip(status) ? (
-            <span className="rounded-full bg-surface-raised px-2 py-0.5 font-medium">{importStatusChip(status)}</span>
+          {chip ? (
+            <Badge tone="danger" size="sm">
+              {chip}
+            </Badge>
           ) : null}
         </p>
       </div>

@@ -22,13 +22,23 @@ export function useCreateStationChoices({
   scope: AuthoringScope;
   onCreated: (station: Station) => void;
 }) {
-  const preselected = useSearchParams().get("templateVersion");
+  const params = useSearchParams();
+  const preselected = params.get("templateVersion");
   const templates = useAsync((signal) => listStationTemplates(scope, signal), [scope.base]);
   const published = useMemo(
     () => (templates.data?.items ?? []).filter(hasPublishedVersion),
     [templates.data],
   );
-  const form = useCreateStationForm({ scope, templates: published, onCreated });
+  const form = useCreateStationForm({
+    scope,
+    templates: published,
+    onCreated,
+    // From the chooser; a named template brings its own exam.
+    initial: {
+      examCode: preselected ? undefined : (params.get("exam") ?? undefined),
+      mode: params.get("start") === "ai" ? "ai" : undefined,
+    },
+  });
 
   const examCatalog = useAuthoringExamCatalog();
   // Sourced from the exam's own settings, so a new exam that declares

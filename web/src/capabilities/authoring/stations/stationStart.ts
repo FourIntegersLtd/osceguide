@@ -41,7 +41,7 @@ export const STATION_START_WAYS: readonly {
     id: "blank",
     title: "Start blank",
     body: "Write every section yourself.",
-    next: "Opens the builder on the exam’s default layout.",
+    next: "Opens the form with your exam chosen. Add a layout there if you want one, or write the sections yourself.",
     cta: "Open the builder",
   },
 ];

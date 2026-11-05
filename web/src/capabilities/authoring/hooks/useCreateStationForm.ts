@@ -43,16 +43,19 @@ export function useCreateStationForm({
   scope,
   templates,
   onCreated,
+  initial,
 }: {
   scope: AuthoringScope;
   templates: StationTemplate[];
   onCreated: (station: Station) => void;
+  /** What the chooser already settled, so the form opens on it. */
+  initial?: { examCode?: string; mode?: "manual" | "ai" };
 }) {
-  const [mode, setMode] = useState<"manual" | "ai">("manual");
+  const [mode, setMode] = useState<"manual" | "ai">(initial?.mode ?? "manual");
   const [title, setTitle] = useState("");
   const [templateVersionId, setTemplateVersionId] = useState("");
   const [structure, setStructure] = useState<StationStructure | null>(null);
-  const [examCode, setExamCode] = useState("");
+  const [examCode, setExamCode] = useState(initial?.examCode ?? "");
   /** Only sent when the chosen exam's settings declare `station_subtypes`. */
   const [stationSubtype, setStationSubtype] = useState("");
   const [content, setContent] = useState<Record<string, unknown>>({});

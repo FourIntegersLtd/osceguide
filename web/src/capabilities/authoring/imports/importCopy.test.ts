@@ -33,7 +33,7 @@ test("a drafted template that is not published says creating the station publish
 });
 
 test("the pill beside an import says working or failed, and nothing when it is done", () => {
-  assert.equal(importStatusChip("drafting_template"), "…");
+  assert.equal(importStatusChip("drafting_template"), null);
   assert.equal(importStatusChip("failed"), "Failed");
   assert.equal(importStatusChip("completed"), null);
 });

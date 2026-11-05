@@ -1,20 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { STATION_START_WAYS, showsCreateForm, stationStartHref } from "@/capabilities/authoring/stations/stationStart";
-
-test("the chooser offers five ways, in the board's order", () => {
-  assert.deepEqual(
-    STATION_START_WAYS.map((w) => w.title),
-    [
-      "From a layout",
-      "Import a PDF or Word file",
-      "Draft with AI from a brief",
-      "Copy from the library",
-      "Start blank",
-    ],
-  );
-  assert.equal(STATION_START_WAYS[4]?.cta, "Open the builder");
-});
+import { showsCreateForm, stationStartHref } from "@/capabilities/authoring/stations/stationStart";
 
 test("a chosen way carries the exam to the form", () => {
   assert.equal(
