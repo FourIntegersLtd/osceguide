@@ -33,6 +33,8 @@ import {
   dateEyebrow,
   dateTile,
   modeLabel,
+  notJoinedItem,
+  sittingTally,
   NEW_EXAM_PATH,
   SCHEDULE_SITTING_PATH,
   setupComplete,
@@ -105,7 +107,8 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   const [running, setRunning] = useState(0);
   const mayDecide = can(session, "sign_off_results");
   const results = useAsync((signal) => (mayDecide ? readResultsIndex(orgSlug, signal) : Promise.resolve(null)), [orgSlug, mayDecide]);
-  const attention = attentionFromResults(results.data?.rows ?? [], w);
+  const notJoined = can(session, "manage_team") ? notJoinedItem(data.counts.invited_not_joined, w) : null;
+  const attention = [...attentionFromResults(results.data?.rows ?? [], w), ...(notJoined ? [notJoined] : [])];
   const circuits = useAsync((signal) => (runs ? readSupervisorCircuits(orgSlug, signal) : Promise.resolve(null)), [orgSlug, runs]);
   const circuitRows = circuits.data?.items ?? [];
   const earlier = (data.recent_sittings ?? []).filter((sitting) => sitting.status !== "scheduled");
@@ -149,7 +152,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
           only thing anybody wants. */}
       {runs ? <LiveNow orgSlug={orgSlug} onCount={setRunning} /> : null}
 
-      {mayDecide ? <NeedsAttention loading={results.loading} error={results.error} items={attention} /> : null}
+      {mayDecide || notJoined ? <NeedsAttention loading={results.loading} error={results.error} items={attention} /> : null}
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start [&>*]:min-w-0 [&>*]:flex-1">
         {runs && circuits.error ? <Alert tone="danger">{errorMessage(circuits.error)}</Alert> : null}
@@ -207,11 +210,14 @@ function SittingRow({ sitting }: { sitting: NonNullable<Data["recent_sittings"]>
         ) : undefined
       }
       title={sitting.name}
-      meta={
-        sitting.scheduled_for && !date
-          ? `${new Date(sitting.scheduled_for).toLocaleString()} · ${modeLabel(sitting.mode, w)}`
-          : modeLabel(sitting.mode, w)
-      }      trailing={
+      meta={[
+        sitting.scheduled_for && !date ? new Date(sitting.scheduled_for).toLocaleString() : null,
+        modeLabel(sitting.mode, w),
+        sittingTally(sitting, w),
+      ]
+        .filter(Boolean)
+        .join(" · ")}
+      trailing={
         <Badge variant="neutral" dot>
           {humanise(sitting.status)}
         </Badge>
@@ -222,8 +228,7 @@ function SittingRow({ sitting }: { sitting: NonNullable<Data["recent_sittings"]>
 
 /**
  * Decisions waiting and results ready to release, oldest first, from the results index.
- * Trainees who have not joined are not here: the roster can only be filtered by reading every
- * page (`invitation_pending` is per row, with no server count), so People carries that.
+ * Then the server's count of people who have not joined, which opens People.
  */
 function NeedsAttention({ loading, error, items }: { loading: boolean; error: unknown; items: AttentionItem[] }) {
   const { hrefFor } = useSurface();

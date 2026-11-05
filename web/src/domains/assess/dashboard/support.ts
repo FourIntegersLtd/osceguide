@@ -121,6 +121,18 @@ export function modeLabel(mode: string, w: AssessWords): string {
   return mode === "exam" ? w.formalExam : mode === "training" ? w.training : mode;
 }
 
+/** "2 circuits · 16 trainees": what a sitting holds; candidates for a formal exam. */
+export function sittingTally(
+  sitting: { mode: string; circuit_count: number; candidate_count: number },
+  w: AssessWords,
+): string {
+  if (sitting.circuit_count === 0) return "No circuits yet";
+  const circuits = `${sitting.circuit_count} ${sitting.circuit_count === 1 ? "circuit" : "circuits"}`;
+  const one = sitting.mode === "exam" ? "candidate" : w.trainee;
+  const many = sitting.mode === "exam" ? "candidates" : w.trainees;
+  return `${circuits} · ${sitting.candidate_count} ${sitting.candidate_count === 1 ? one : many}`;
+}
+
 /** The sittings still to come, soonest first. */
 export function comingUp(sittings: readonly OrgSittingRow[]): OrgSittingRow[] {
   return sittings
@@ -130,6 +142,21 @@ export function comingUp(sittings: readonly OrgSittingRow[]): OrgSittingRow[] {
 
 function decidable(row: ResultsIndexRow): boolean {
   return row.mode === "exam" && (row.status === "completed" || row.status === "reviewed");
+}
+
+/** People added but not yet joined: the server's count, one row that opens People. */
+export function notJoinedItem(count: number, w: AssessWords): AttentionItem | null {
+  if (count <= 0) return null;
+  return {
+    key: "not-joined",
+    tag: `${count} not joined`,
+    title:
+      count === 1
+        ? `A ${w.trainee} who has not accepted their invitation`
+        : `${w.Trainees} who have not accepted their invitation`,
+    body: "They cannot be scheduled until they set a password. Resend in one step.",
+    href: "/people",
+  };
 }
 
 export type AttentionItem = {

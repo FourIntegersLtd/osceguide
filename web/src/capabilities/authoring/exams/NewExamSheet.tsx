@@ -24,6 +24,7 @@ import {
   MAX_READING_MIN,
   PUBLISH_STEP_WORDS,
   timingsLine,
+  MAX_BREAK_MIN,
 } from "@/capabilities/authoring/exams/newExam";
 import { useNewExam, type SchemeWay } from "@/capabilities/authoring/exams/useNewExam";
 import { useExam } from "@/capabilities/authoring/exams/useExam";
@@ -66,6 +67,11 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
     note: "",
   }));
 
+  const setBreak = (value: string) =>
+    setDraft({
+      ...draft,
+      settings: { ...draft.settings, default_break_minutes: value.trim() === "" ? null : Number(value) },
+    });
   const setMinutes = (field: "reading" | "simulation", value: string) =>
     setDraft({ ...draft, [field]: String(Math.round(Number(value) * 60)) });
 
@@ -162,7 +168,7 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
               title="Timings and settings"
               lead="These are the defaults for every circuit. You can change them per circuit when you schedule."
             />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Reading time">
                 <input type="number" min={1} max={MAX_READING_MIN} value={minutes.reading} onChange={(e) => setMinutes("reading", e.target.value)} className={`mt-1 ${getInputClassName()}`} />
                 <span className="mt-1 block text-osce-caption text-ink-muted">{`1 to ${MAX_READING_MIN} min`}</span>
@@ -171,13 +177,14 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
                 <input type="number" min={1} max={MAX_CONSULT_MIN} value={minutes.simulation} onChange={(e) => setMinutes("simulation", e.target.value)} className={`mt-1 ${getInputClassName()}`} />
                 <span className="mt-1 block text-osce-caption text-ink-muted">{`1 to ${MAX_CONSULT_MIN} min`}</span>
               </Field>
+              <Field label="Break">
+                <input type="number" min={1} max={MAX_BREAK_MIN} value={minutes.breakMin} onChange={(e) => setBreak(e.target.value)} className={`mt-1 ${getInputClassName()}`} />
+                <span className="mt-1 block text-osce-caption text-ink-muted">{`1 to ${MAX_BREAK_MIN} min, formal exams`}</span>
+              </Field>
               <Field label="Attempts per station">
                 <input type="number" min={1} value={draft.attempts} onChange={(e) => setDraft({ ...draft, attempts: e.target.value })} className={`mt-1 ${getInputClassName()}`} />
               </Field>
             </div>
-            <p className="text-osce-caption text-ink-muted">
-              The break between stations is set per circuit when you schedule a formal sitting.
-            </p>
             {timings ? <Alert tone="danger">{timings}</Alert> : null}
             <ExamSettingsFields
               title="More settings"

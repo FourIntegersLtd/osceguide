@@ -20,6 +20,8 @@ import {
   circuitsBySitting,
   dateEyebrow,
   dateTile,
+  sittingTally,
+  notJoinedItem,
 } from "@/domains/assess/dashboard/support";
 
 function setup(over: Partial<OrgSetup> = {}): OrgSetup {
@@ -235,4 +237,23 @@ test("stillToReviewLine and circuitsBySitting use the board's phrases", () => {
 test("dateEyebrow and dateTile", () => {
   assert.equal(dateEyebrow(new Date(2026, 10, 5)), "Thursday 5 November");
   assert.deepEqual(dateTile(new Date(2026, 10, 12, 9).toISOString()), { month: "NOV", day: "12" });
+});
+
+test("a sitting says how many circuits and how many people", () => {
+  assert.equal(sittingTally({ mode: "training", circuit_count: 2, candidate_count: 16 }, INSTITUTION_WORDS), "2 circuits · 16 trainees");
+  assert.equal(sittingTally({ mode: "exam", circuit_count: 8, candidate_count: 8 }, INSTITUTION_WORDS), "8 circuits · 8 candidates");
+  assert.equal(sittingTally({ mode: "exam", circuit_count: 1, candidate_count: 1 }, INSTITUTION_WORDS), "1 circuit · 1 candidate");
+  assert.equal(sittingTally({ mode: "training", circuit_count: 0, candidate_count: 0 }, INSTITUTION_WORDS), "No circuits yet");
+});
+
+test("trainees who have not joined are one attention row that opens People", () => {
+  assert.equal(notJoinedItem(0, INSTITUTION_WORDS), null);
+  assert.deepEqual(notJoinedItem(4, INSTITUTION_WORDS), {
+    key: "not-joined",
+    tag: "4 not joined",
+    title: "Trainees who have not accepted their invitation",
+    body: "They cannot be scheduled until they set a password. Resend in one step.",
+    href: "/people",
+  });
+  assert.equal(notJoinedItem(1, INSTITUTION_WORDS)?.title, "A trainee who has not accepted their invitation");
 });

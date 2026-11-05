@@ -54,7 +54,16 @@ const CONSOLE_ALERT_COPY: Record<string, string> = {
  * (a formal exam: one candidate, so a slot's place is the station's number); the
  * api's alert is a code with no station of its own.
  */
-export function alertCopy(code: string, where: "board" | "console" = "board", station?: number | null): string {
+export function alertCopy(
+  code: string,
+  where: "board" | "console" = "board",
+  station?: number | null,
+  overdueSeconds?: number | null,
+): string {
+  if (code === "clock_overdue" && overdueSeconds) {
+    const late = overdueSeconds >= 60 ? `${Math.floor(overdueSeconds / 60)} min ${overdueSeconds % 60} s` : `${overdueSeconds} s`;
+    return `The clock is overdue by ${late}. ${where === "console" ? "Move the circuit on by hand." : "Advance it by hand."}`;
+  }
   if (station) {
     if (code === "attempt_failed") return `Station ${station}'s attempt failed. Resend the patient or redo the station.`;
     if (code === "no_running_attempt") return `The patient has not joined Station ${station}. Resend the patient if this does not clear.`;

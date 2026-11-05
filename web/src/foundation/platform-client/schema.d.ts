@@ -9450,6 +9450,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Overdue Seconds */
+            overdue_seconds?: number | null;
             /**
              * Paused
              * @default false
@@ -10633,6 +10635,8 @@ export interface components {
              * @default Exam date
              */
             date_label: string;
+            /** Default Break Minutes */
+            default_break_minutes?: number | null;
             generation?: components["schemas"]["GenerationSettings"];
             /** Help Modes */
             help_modes?: ("navigate" | "knowledge_base")[];
@@ -11443,6 +11447,8 @@ export interface components {
             elapsed_seconds?: number | null;
             /** Mode */
             mode: string;
+            /** Overdue Seconds */
+            overdue_seconds?: number | null;
             /**
              * Paused
              * @default false
@@ -12101,6 +12107,11 @@ export interface components {
          * @description What the setup checklist counts.
          */
         OrgCounts: {
+            /**
+             * Invited Not Joined
+             * @default 0
+             */
+            invited_not_joined: number;
             /** Library Stations */
             library_stations: number;
             /** Programmes With Markable Exam */
@@ -12164,6 +12175,16 @@ export interface components {
         };
         /** OrgSittingRow */
         OrgSittingRow: {
+            /**
+             * Candidate Count
+             * @default 0
+             */
+            candidate_count: number;
+            /**
+             * Circuit Count
+             * @default 0
+             */
+            circuit_count: number;
             /**
              * Id
              * Format: uuid
@@ -13603,6 +13624,18 @@ export interface components {
         };
         /** ProgrammeRead */
         ProgrammeRead: {
+            /** Default Break Minutes */
+            default_break_minutes?: number | null;
+            /**
+             * Default Reading Seconds
+             * @default 0
+             */
+            default_reading_seconds: number;
+            /**
+             * Default Simulation Seconds
+             * @default 0
+             */
+            default_simulation_seconds: number;
             /** Exam Code */
             exam_code: string;
             /**
@@ -13631,6 +13664,11 @@ export interface components {
         ProgrammeReportRow: {
             /** Candidates */
             candidates: number;
+            /**
+             * Exam Id
+             * Format: uuid
+             */
+            exam_id: string;
             /** Exam Name */
             exam_name: string;
             /** Pass Rate */
@@ -15129,6 +15167,11 @@ export interface components {
              * @default 0
              */
             candidate_count: number;
+            /**
+             * Circuit Count
+             * @default 0
+             */
+            circuit_count: number;
             /** Circuits */
             circuits?: components["schemas"]["CircuitRead"][];
             /** Cohort Id */

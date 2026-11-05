@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { AsyncBoundary, B2CEmptyState, B2CGroupedRow, B2CGroupedSection, B2CPageHeader, b2bTokens } from "@/foundation/ui";
+import { AsyncBoundary, B2CEmptyState, B2CGroupedRow, B2CGroupedRowLink, B2CGroupedSection, B2CPageHeader, b2bTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
+import { examDetailPath } from "@/capabilities/authoring/exams/paths";
 import { useAsync } from "@/foundation/hooks";
 import { passRateLabel, readOrgReporting } from "@/domains/assess/reporting/api";
 
@@ -24,8 +25,9 @@ export function Reporting({ orgSlug }: { orgSlug: string }) {
             <>
             <B2CGroupedSection eyebrow="Exams">
               {data.programmes.map((row) => (
-                <B2CGroupedRow
+                <B2CGroupedRowLink
                   key={row.programme_id}
+                  href={examDetailPath(hrefFor, row.exam_id)}
                   title={row.exam_name}
                   meta={`${row.sittings} sittings · ${row.candidates} candidates · ${passRateLabel(row)}`}
                 />

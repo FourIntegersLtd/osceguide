@@ -274,7 +274,7 @@ async def active_linked_user_ids(session: AsyncSession, org_id: uuid.UUID) -> li
     stmt = select(Trainee.user_id).where(
         Trainee.org_id == org_id, Trainee.user_id.is_not(None), Trainee.access_revoked_at.is_(None)
     )
-    return list((await session.execute(stmt)).scalars())
+    return [user_id for user_id in (await session.execute(stmt)).scalars() if user_id is not None]
 
 
 async def trainees_for_users(
