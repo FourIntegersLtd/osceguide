@@ -210,15 +210,25 @@ async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, now: datet
 
     This is history, not access: a caller deciding what to show or allow
     must filter on `live` itself rather than assume every row here is current.
+
+    Read once per session and moment: a request that asks twice (the station limit and the upgrade
+    offer both do) is answered from `session.info`, which every write in `repository` clears.
     """
-    reads = []
+    memo: dict[tuple[uuid.UUID, datetime], list[EntitlementRead]] = session.info.setdefault(
+        repository.MEMO_KEY, {}
+    )
+    if (user_id, now) in memo:
+        return list(memo[(user_id, now)])
     entitlements = await repository.for_user(session, user_id)
     held = await held_by_inactive_org(session, entitlements, now=now)
+    exam_ids = list({entitlement.exam_id for entitlement in entitlements})
+    codes = await catalog.exam_codes_by_id(session, exam_ids)
+    reads = []
     for entitlement in entitlements:
-        code = await catalog.exam_code_by_id(session, entitlement.exam_id)
-        read = _read(entitlement, code or "", now=now)
+        read = _read(entitlement, codes.get(entitlement.exam_id, ""), now=now)
         reads.append(read.model_copy(update={"live": False}) if entitlement.id in held else read)
-    return reads
+    memo[(user_id, now)] = reads
+    return list(reads)
 
 
 def _read(entitlement: Entitlement, exam_code: str, *, now: datetime) -> EntitlementRead:

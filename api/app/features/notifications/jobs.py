@@ -22,7 +22,6 @@ def register() -> None:
         from app.features.notifications.sender import build_email_sender
         from app.features.notifications.service import deliver_due
 
-        async with job_session() as session:
-            sent, deferred = await deliver_due(session, sender=build_email_sender(), now=datetime.now(UTC))
-            if sent or deferred:
-                log.info("outbox drained", sent=sent, deferred=deferred)
+        sent, deferred = await deliver_due(job_session, sender=build_email_sender(), now=datetime.now(UTC))
+        if sent or deferred:
+            log.info("outbox drained", sent=sent, deferred=deferred)
