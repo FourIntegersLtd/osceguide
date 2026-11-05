@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import circuit_topic, org_topic, publish_after_commit, user_topic
 from app.features.sittings import repository
+from app.features.tenancy import service as tenancy
 
 STARTED = "circuit.started"
 ENDED = "circuit.ended"
@@ -39,11 +40,14 @@ REBUILT = "circuit.rebuilt"
 # not cause it, so nothing else would tell the console or the board.
 ATTEMPT_PROGRESS = "circuit.attempt_progress"
 ABSENT = "circuit.candidate_absent"
+# The name every attempt change goes out under on a person's own stream (`useMeEvents(["attempt"])`).
+ATTEMPT_CHANGED = "attempt"
 
 
 class SlotAttempt(Protocol):
-    """The two fields of an attempt that say which circuit it belongs to."""
+    """The fields of an attempt that say which circuit it belongs to."""
 
+    id: uuid.UUID
     org_id: uuid.UUID | None
     slot_id: uuid.UUID | None
 
@@ -75,3 +79,11 @@ async def attempt_progress(session: AsyncSession, attempt: SlotAttempt) -> None:
         return
     publish_after_commit(session, circuit_topic(slot.circuit_id), ATTEMPT_PROGRESS)
     publish_after_commit(session, org_topic(attempt.org_id), ATTEMPT_PROGRESS)
+    # The candidate's own screen is told by the caller. Reviewers read the same mark, so the
+    # circuit's supervisor and the organisation's admins hear it on their own streams too.
+    circuit = await repository.circuit_by_id(session, attempt.org_id, slot.circuit_id)
+    reviewers = set(await tenancy.admin_user_ids(session, attempt.org_id))
+    if circuit is not None and circuit.supervisor_user_id is not None:
+        reviewers.add(circuit.supervisor_user_id)
+    for reviewer in sorted(reviewers, key=str):
+        publish_after_commit(session, user_topic(reviewer), ATTEMPT_CHANGED, {"attempt_id": str(attempt.id)})

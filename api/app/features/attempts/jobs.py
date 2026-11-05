@@ -68,6 +68,7 @@ async def record_marking_gave_up(session: AsyncSession, attempt_id: uuid.UUID) -
         return
     await repository.set_scoring_failure(session, attempt_id, reason=domain.SCORING_FAILED)
     publish_after_commit(session, user_topic(attempt.user_id), "attempt", {"attempt_id": str(attempt_id)})
+    await sittings_reads.attempt_progress(session, attempt)
 
 
 def policy_for(attempt: Attempt) -> tuple[str, str]:

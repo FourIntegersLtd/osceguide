@@ -25,7 +25,9 @@ from app.features.dashboard.schemas_org import (
     ConsoleTiming,
 )
 from app.features.identity import service as identity
+from app.features.results import service_evidence
 from app.features.reviews import service as reviews
+from app.features.reviews import service_summary as reviews_summary
 from app.features.roster import service as roster
 from app.features.sittings import service_catchup, service_circuit
 from app.features.sittings import service_reads as sittings
@@ -58,6 +60,8 @@ async def build_console(
         session, org_id, [slot.station_version_id for slot in detail.slots]
     )
     reviewed = await reviews.reviewed_slot_ids(session, slot_ids)
+    summaries = await reviews_summary.summaries_for_slots(session, org_id, slot_ids)
+    drafts = await reviews.draft_counts_for_slots(session, slot_ids)
     live = await attempts.live_attempts_for_slots(session, slot_ids)
     lock = await service_circuit.read_edit_lock(session, org_id, circuit_id)
 
@@ -148,6 +152,11 @@ async def build_console(
                 trainee=person(slot.trainee_id),
                 station=_station(slot.station_version_id, station_summaries),
                 has_review=slot.id in reviewed,
+                marked=service_evidence.station_is_marked(
+                    slot.id in live and live[slot.id].status == "evaluated",
+                    summaries[slot.id].overall_rag if slot.id in summaries else None,
+                ),
+                draft_reviews=drafts.get(slot.id, 0),
                 is_active=detail.circuit.active_slot_id == slot.id,
                 attempt_id=live[slot.id].id if slot.id in live else None,
                 # Derived from the circuit: the clock is the circuit's, and

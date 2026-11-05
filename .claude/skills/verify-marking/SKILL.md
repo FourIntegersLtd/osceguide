@@ -151,3 +151,6 @@ mark on an already-marked attempt.
   (37.93 for 11G/29), the candidate's released `assessment_score` is the cohort
   scale (domain = majority rating, G 100 / A 66 / R 33, mean of domains: 66).
   Both are right; compare each against its own rule.
+- In a fresh worktree `poetry run` builds an empty venv: run the main checkout's venv binaries
+  directly, and regenerate `openapi.json` with `PYTHONPATH=. <venv>/bin/python scripts/export_openapi.py`,
+  then `npm run platform:types`. A new test file must match an `OWNERS.md` row or the ownership guard fails.

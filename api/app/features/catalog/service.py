@@ -38,6 +38,13 @@ async def count_live_exams_for_rubric_version(session: AsyncSession, rubric_vers
     return await repository.count_live_exams_for_rubric_version(session, rubric_version_id)
 
 
+async def live_exam_names_by_rubric_version(
+    session: AsyncSession, org_id: uuid.UUID | None, rubric_version_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[str]]:
+    """Names of this owner's own exams not yet retired, by the rubric version each is marked against."""
+    return await repository.live_exam_names_by_rubric_version(session, org_id, rubric_version_ids)
+
+
 async def pilot_exam_codes(session: AsyncSession) -> frozenset[str]:
     """Which exams a partner attribution link may name. Platform-side only."""
     return frozenset(await repository.pilot_exam_codes(session))

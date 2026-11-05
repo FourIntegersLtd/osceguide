@@ -112,3 +112,18 @@ export const DISPLAY_LABELS: readonly Choice<DisplayLabelKey>[] = [
 export function labelFor<Value extends string>(choices: readonly Choice<Value>[], value: unknown): string {
   return choices.find((choice) => choice.value === value)?.label ?? String(value ?? "");
 }
+
+/** What the author may hide from the candidate's feedback page, in the board's wording. */
+export const CANDIDATE_SEES: readonly Choice<string>[] = [
+  { value: "overall", label: "Overall result and band", hint: "The total, outcome and band." },
+  { value: "areaScores", label: "Score per area", hint: "The figure each domain gets." },
+  { value: "wentWell", label: "What went well", hint: "Fields with the Strength role." },
+  { value: "workOn", label: "What to work on", hint: "Fields with the Improvement or Action role." },
+  { value: "quotes", label: "Transcript quotes", hint: "Fields with the Evidence role." },
+];
+
+export const FEEDBACK_TONES: readonly Choice<string>[] = [
+  { value: "supportive", label: "Supportive and direct", hint: "Warm, plain and specific." },
+  { value: "formal", label: "Formal examiner", hint: "Impersonal, as a mark scheme." },
+  { value: "brief", label: "Brief", hint: "Short sentences, no padding." },
+];

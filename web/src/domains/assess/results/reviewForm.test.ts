@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import type { Rating } from "@/capabilities/feedback/rubric";
 import {
   fieldValuesFor,
+  finishedReviewers,
+  reviewersAgreeLine,
   leadSaveNote,
   formDomains,
   initialComments,
@@ -101,5 +103,25 @@ describe("leadSaveNote", () => {
   it("names what the backend stored", () => {
     assert.equal(leadSaveNote("completed"), "Review completed.");
     assert.equal(leadSaveNote("draft"), "Draft saved.");
+  });
+});
+
+describe("the reviewers of a slot", () => {
+  const scale: Rating = { kind: "rag", field: "score", scale: ["G", "A", "R"] } as Rating;
+  it("lists finished reviews by name with their overall rating, and leaves drafts out", () => {
+    const items = [
+      { status: "completed", reviewer_name: "Dr Patel", overall: "G" },
+      { status: "draft", reviewer_name: null, overall: null },
+      { status: "completed", reviewer_name: "Ms Clarke", overall: "R" },
+    ];
+    assert.deepEqual(finishedReviewers(items, scale), [
+      { name: "Dr Patel", rating: "G" },
+      { name: "Ms Clarke", rating: "R" },
+    ]);
+  });
+  it("says whether they agree only when two have finished", () => {
+    assert.equal(reviewersAgreeLine(true), "Reviewers agree.");
+    assert.equal(reviewersAgreeLine(false), "Reviewers disagree. The lower rating is the one shown.");
+    assert.equal(reviewersAgreeLine(null), null);
   });
 });

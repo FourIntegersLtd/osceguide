@@ -17,6 +17,7 @@ import {
   stepBlock,
   runningLine,
   stillToReviewLine,
+  draftsWaitingLine,
   circuitsBySitting,
   dateEyebrow,
   dateTile,
@@ -217,6 +218,11 @@ test("runningLine reads as the Today board does, in each arm's words", () => {
   assert.equal(runningLine(circuit, INSTITUTION_WORDS), "Station 4 of 8 · Supervisor: Dr Patel · 8 trainees");
   const three = { ...circuit, candidates: [{}, {}, {}] } as unknown as LiveCircuit;
   assert.equal(runningLine(three, EMPLOYER_WORDS), "3 candidates on stations · Assessor: Dr Patel");
+});
+
+test("draftsWaitingLine says how many drafts wait", () => {
+  assert.equal(draftsWaitingLine(2), "2 drafts waiting to be completed");
+  assert.equal(draftsWaitingLine(1), "1 draft waiting to be completed");
 });
 
 test("stillToReviewLine and circuitsBySitting use the board's phrases", () => {

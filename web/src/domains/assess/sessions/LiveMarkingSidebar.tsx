@@ -30,7 +30,7 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
   const first = finished[0];
   if (!first) return null;
 
-  const activeId = selected ?? finished.find((slot) => !slot.has_review)?.id ?? first.id;
+  const activeId = selected ?? finished.find((slot) => !slot.marked)?.id ?? first.id;
   const active = finished.find((slot) => slot.id === activeId) ?? first;
 
   return (
@@ -50,7 +50,7 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
             }`}
           >
             {stationLabel(slot)}
-            {slot.has_review ? null : (
+            {slot.marked ? null : (
               <Badge
                 variant={slot.id === active.id ? "neutral" : "warning"}
                 size="xs"

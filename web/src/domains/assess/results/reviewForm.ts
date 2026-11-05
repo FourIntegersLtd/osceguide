@@ -1,5 +1,5 @@
 import type { components } from "@/foundation/platform-client";
-import { asRatingValue, isEnumerated, ratingFraction, type Rating, type RatingValue } from "@/capabilities/feedback/rubric";
+import { asRatingValue, isEnumerated, ratingFraction, ratingLabel, type Rating, type RatingValue } from "@/capabilities/feedback/rubric";
 
 /**
  * The review form a marker fills in, read off the station's rubric.
@@ -190,4 +190,21 @@ export function ratingVariant(
  */
 export function leadSaveNote(storedStatus: string): string {
   return storedStatus === "completed" ? "Review completed." : "Draft saved.";
+}
+
+/** Who finished a review of the slot and what they rated it overall; drafts are not listed. */
+export function finishedReviewers(
+  items: readonly { status: string; reviewer_name?: string | null; overall?: unknown }[] | null | undefined,
+  rating: Rating | null | undefined,
+): { name: string; rating: string }[] {
+  return (items ?? [])
+    .filter((item) => item.status === "completed" && item.reviewer_name)
+    .map((item) => ({ name: item.reviewer_name as string, rating: ratingLabel(rating, item.overall) }));
+}
+
+/** The line under the reviewers: said only once two have finished. */
+export function reviewersAgreeLine(agree: boolean | null | undefined): string | null {
+  if (agree === true) return "Reviewers agree.";
+  if (agree === false) return "Reviewers disagree. The lower rating is the one shown.";
+  return null;
 }

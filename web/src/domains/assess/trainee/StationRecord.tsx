@@ -29,7 +29,7 @@ export function StationRecord({ attemptId }: { attemptId: string }) {
 
       <section className="space-y-2">
         <h2 className={b2bTokens.b2bEyebrow}>Feedback</h2>
-        <AttemptFeedback attemptId={attemptId} />
+        <AttemptFeedback attemptId={attemptId} showAll />
       </section>
 
       <section className="space-y-2">

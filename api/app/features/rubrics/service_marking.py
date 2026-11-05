@@ -115,7 +115,8 @@ def _snapshot_of(
             structure=structure,
             system_prompt=version.system_prompt,
         ),
-        "system_prompt": version.system_prompt,
+        # What the marker reads: the author's instructions plus the feedback tone they picked.
+        "system_prompt": domain.prompt_with_tone(version.system_prompt, structure.display.feedback_tone),
         "pacing": dict(version.pacing or {}),
         "marking_layout": layout,
     }

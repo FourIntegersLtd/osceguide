@@ -26,7 +26,16 @@ const { b2cPickerChipBase } = productTokens;
  * The same screen for a candidate and for an examiner: the API decides whose
  * results a person may read, and nothing in this component asks who is looking.
  */
-export function AttemptFeedback({ attemptId, showLiveCoverage = false }: { attemptId: string; showLiveCoverage?: boolean }) {
+/** `showAll` is for staff who mark or inspect: they see what the author hid from the candidate. */
+export function AttemptFeedback({
+  attemptId,
+  showLiveCoverage = false,
+  showAll = false,
+}: {
+  attemptId: string;
+  showLiveCoverage?: boolean;
+  showAll?: boolean;
+}) {
   const state = useAsync((signal) => readFeedback(attemptId, signal), [attemptId]);
   const feedback = state.data;
   const pending = feedback !== null && (feedback.results ?? []).length === 0;
@@ -88,7 +97,7 @@ export function AttemptFeedback({ attemptId, showLiveCoverage = false }: { attem
   }
 
   return <AsyncBoundary state={state}>{(read) => <>
-    <Markings rubric={read.rubric} results={read.results ?? []} />
+    <Markings rubric={read.rubric} results={read.results ?? []} showAll={showAll} />
     {showLiveCoverage && <SavedLiveCoverage attemptId={attemptId} />}
   </>}</AsyncBoundary>;
 }
@@ -103,7 +112,7 @@ export function AttemptFeedback({ attemptId, showLiveCoverage = false }: { attem
  * listed every feedback a station had ever produced, and a station's attempts
  * are the mock's list now.
  */
-function Markings({ rubric, results }: { rubric: MarkingRubric | null; results: MarkedResult[] }) {
+function Markings({ rubric, results, showAll }: { rubric: MarkingRubric | null; results: MarkedResult[]; showAll: boolean }) {
   const latest = results.length - 1;
   const [selected, setSelected] = useState(latest);
   const showing = results[Math.min(selected, latest)];
@@ -134,7 +143,7 @@ function Markings({ rubric, results }: { rubric: MarkingRubric | null; results: 
         </div>
       )}
       {rubric ? (
-        <RubricFeedback rubric={rubric} result={showing} />
+        <RubricFeedback rubric={rubric} result={showing} showAll={showAll} />
       ) : (
         // Only an attempt marked before rubrics existed has none; its answers
         // cannot be read without one, so say so rather than guess at a shape.

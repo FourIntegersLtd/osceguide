@@ -56,6 +56,10 @@ export interface Display {
   tones: ToneRule[];
   bands: Band[];
   labels: Record<string, string>;
+  /** Which feedback fields the candidate sees (`overall`, `areaScores`, `wentWell`, `workOn`, `quotes`); absent means shown. */
+  show: Record<string, boolean>;
+  /** The wording tone the marker was asked for, or null when the instructions are used as written. */
+  feedbackTone: string | null;
 }
 
 /* ---------- reading the untyped JSON the API sends ---------- */
@@ -123,6 +127,10 @@ export function readDisplay(raw: JsonObject | null | undefined): Display | null 
     labels: Object.fromEntries(
       Object.entries(labels).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
     ),
+    show: Object.fromEntries(
+      Object.entries(isObject(raw.show) ? raw.show : {}).filter((entry): entry is [string, boolean] => typeof entry[1] === "boolean"),
+    ),
+    feedbackTone: typeof raw.feedbackTone === "string" ? raw.feedbackTone : null,
   };
 }
 

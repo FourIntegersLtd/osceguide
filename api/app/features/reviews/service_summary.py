@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import service_reads as attempts
+from app.features.identity import service as identity
 from app.features.reviews import errors, repository, scoring
 from app.features.reviews.schemas import (
     MySlotReviewRead,
@@ -92,8 +93,20 @@ async def read_slot_reviews(session: AsyncSession, org_id: uuid.UUID, slot_id: u
     reviews = await repository.slot_reviews(session, org_id, slot_id)
     completed = [review for review in reviews if review.status == "completed"]
     scoring_rubric = await slot_rubric(session, org_id, slot_id)
+    names = await identity.user_refs_by_ids(session, [review.submitted_by for review in completed])
+    overalls = {review.id: _overall(scoring_rubric, dict(review.field_values or {})) for review in completed}
+    rated = [overall for overall in overalls.values() if overall is not None]
     return SlotReviewsRead(
-        items=[_slot_read(review) for review in reviews],
+        items=[
+            _slot_read(review).model_copy(
+                update={
+                    "reviewer_name": names[review.submitted_by].name if review.id in overalls else None,
+                    "overall": overalls.get(review.id),
+                }
+            )
+            for review in reviews
+        ],
+        reviewers_agree=len(set(rated)) == 1 if len(rated) > 1 else None,
         summary=_summary(slot_id, scoring_rubric, [dict(review.field_values or {}) for review in completed]),
         form=review_form(scoring_rubric),
         attempt_failed_reason=await attempts.failed_reason_for_slot(session, slot_id),
@@ -126,6 +139,18 @@ async def _rubrics_for_slots(
     for version_id in set(version_by_slot.values()):
         by_version[version_id] = await rubrics.scoring_rubric_for_version(session, org_id, version_id)
     return {slot_id: by_version[version_id] for slot_id, version_id in version_by_slot.items()}
+
+
+def _overall(
+    scoring_rubric: rubrics.ScoringRubric | None, field_values: dict[str, Any]
+) -> rubric_scoring.RatingValue | None:
+    """One reviewer's overall rating: the worst of their domains, as the station summary reads it."""
+    if scoring_rubric is None:
+        return None
+    structure = scoring_rubric.structure
+    by_domain = rubric_scoring.ratings_from_paths(structure, field_values)
+    combined = [rubric_scoring.combine_reviewers(structure, ratings) for ratings in by_domain.values()]
+    return rubric_scoring.worst_rating(structure, [value for value in combined if value is not None])
 
 
 def _summary(

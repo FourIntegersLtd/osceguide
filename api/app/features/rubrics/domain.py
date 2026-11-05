@@ -56,6 +56,7 @@ __all__ = [
     "frozen_structure",
     "narrow_structure",
     "parse_structure",
+    "prompt_with_tone",
     "resolved_display",
     "reviewable_domains",
     "scoring_domain_ids",
@@ -328,7 +329,26 @@ def _display(raw: Mapping[str, Any] | None) -> DisplaySpec:
             for band in raw.get("bands") or ()
         ),
         labels={str(key): str(value) for key, value in (raw.get("labels") or {}).items()},
+        show={str(key): bool(value) for key, value in (raw.get("show") or {}).items()},
+        feedback_tone=raw.get("feedbackTone"),
     )
+
+
+# What the marker is told for each tone an author can pick. Appended to the marking instructions.
+_TONE_INSTRUCTIONS = {
+    "supportive": (
+        "Write every piece of feedback in a supportive, direct tone: "
+        "warm, specific and honest about what to change."
+    ),
+    "formal": "Write every piece of feedback in the formal tone of an examiner's report.",
+    "brief": "Keep every piece of feedback brief: one short sentence per point.",
+}
+
+
+def prompt_with_tone(system_prompt: str, tone: str | None) -> str:
+    """The marking instructions with the author's feedback tone added; unchanged when none is set."""
+    instruction = _TONE_INSTRUCTIONS.get(tone or "")
+    return f"{system_prompt}\n\n{instruction}" if instruction else system_prompt
 
 
 def _text(raw: Any) -> str:
@@ -498,6 +518,8 @@ def resolved_display(structure: RubricStructure) -> dict[str, Any]:
             for band in display.bands
         ],
         "labels": dict(display.labels),
+        "show": {key: display.show.get(key, True) for key in validation.FEEDBACK_SHOW},
+        "feedbackTone": display.feedback_tone,
     }
 
 

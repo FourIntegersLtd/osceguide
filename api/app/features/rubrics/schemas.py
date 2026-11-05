@@ -44,6 +44,11 @@ class RubricVersionRead(BaseModel):
     # saved while invalid (plan §8), so this is how its author sees what is left.
     problems: list[RubricProblemRead] = Field(default_factory=list)
     published_at: datetime | None = None
+    # When the version was last written (a draft's "edited today") and archived.
+    updated_at: datetime | None = None
+    archived_at: datetime | None = None
+    # Names of the caller's own live exams marked against this version; filled on a rubric read.
+    used_by_exams: list[str] = Field(default_factory=list)
 
 
 class RubricRead(BaseModel):

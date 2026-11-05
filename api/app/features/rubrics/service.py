@@ -108,6 +108,7 @@ async def list_rubrics(
     for rubric in rubrics:
         versions = await repository.versions_for_rubric(session, org_id, rubric.id)
         rubric_reads.append(rubric_read(rubric, list(versions)))
+    await _name_exams(session, org_id, rubric_reads)
     return rubric_reads, next_cursor
 
 
@@ -117,7 +118,18 @@ async def read_rubric(session: AsyncSession, org_id: uuid.UUID | None, rubric_id
     if rubric is None:
         raise errors.RubricNotFound()
     versions = await repository.versions_for_rubric(session, org_id, rubric_id)
-    return rubric_read(rubric, list(versions))
+    read = rubric_read(rubric, list(versions))
+    await _name_exams(session, org_id, [read])
+    return read
+
+
+async def _name_exams(session: AsyncSession, org_id: uuid.UUID | None, reads: list[RubricRead]) -> None:
+    """Name the caller's own exams beside each version, for the versions list: one read for all."""
+    versions = [version for read in reads for version in read.versions]
+    version_ids = [version.id for version in versions]
+    used = await catalog_service.live_exam_names_by_rubric_version(session, org_id, version_ids)
+    for version in versions:
+        version.used_by_exams = used.get(version.id, [])
 
 
 async def trial_candidates(
@@ -445,6 +457,8 @@ def version_read(version: RubricVersion) -> RubricVersionRead:
         problems=problems,
         marking_layout=dict(version.marking_layout) if version.marking_layout else None,
         published_at=version.published_at,
+        updated_at=version.updated_at,
+        archived_at=version.archived_at,
     )
 
 

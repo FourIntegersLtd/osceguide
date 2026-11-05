@@ -5,7 +5,7 @@ import { B2CGroupedRowLink, B2CGroupedSection, Badge } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { readSupervisorCircuits } from "@/domains/assess/dashboard/api";
-import { stillToReviewLine } from "@/domains/assess/dashboard/support";
+import { draftsWaitingLine, stillToReviewLine } from "@/domains/assess/dashboard/support";
 import { readCircuitReview, readConsole } from "@/domains/assess/sessions/api";
 import { slotReviewPath, summariseCircuit, type UnmarkedStation } from "@/domains/assess/sessions/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
@@ -28,6 +28,8 @@ export type CircuitToReview = {
   candidates: number;
   /** Of those, candidates with a station still unmarked. */
   toReview: number;
+  /** Reviews started and not yet completed. */
+  drafts: number;
   stations: StationToReview[];
   /** Every sat station is marked and the circuit's feedback is not published yet. */
   readyToPublish: boolean;
@@ -104,12 +106,16 @@ export function StationsToReview({ orgSlug }: { orgSlug: string }) {
             title={`${circuit.sittingName} · ${circuit.circuitName}`}
             meta={
               first
-                ? stillToReviewLine(circuit.toReview, circuit.candidates, w)
+                ? circuit.drafts > 0
+                  ? draftsWaitingLine(circuit.drafts)
+                  : stillToReviewLine(circuit.toReview, circuit.candidates, w)
                 : `Every review done. Publish circuit feedback to finalise and let ${w.trainees} read it.`
             }
             trailing={
               first ? (
-                <Badge variant="warning" dot>{`${circuit.stations.length} to review`}</Badge>
+                <Badge variant="warning" dot>
+                  {circuit.drafts > 0 ? `${circuit.drafts} ${circuit.drafts === 1 ? "draft" : "drafts"}` : `${circuit.stations.length} to review`}
+                </Badge>
               ) : (
                 <Badge variant="success" dot>Ready to publish</Badge>
               )

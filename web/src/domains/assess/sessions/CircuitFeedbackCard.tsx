@@ -52,7 +52,7 @@ export function CircuitFeedbackCard({
         <FeedbackForm
           key={current.review?.finalized_at ?? "none"}
           current={current}
-          marked={slots.filter((slot) => slot.has_review).length}
+          marked={slots.filter((slot) => slot.marked).length}
           total={slots.length}
           busy={busy}
           offline={offline}

@@ -154,7 +154,7 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
                   title="Feedback"
                   description="The marking as the candidate sees it."
                 >
-                  <AttemptFeedback attemptId={attempt.id} />
+                  <AttemptFeedback attemptId={attempt.id} showAll />
                 </Panel>
               ) : null}
 

@@ -18,7 +18,7 @@ export function CircuitReviewStep({ data, published }: { data: CircuitConsole; p
     attemptId: slot.attempt_id ?? null,
     position: slot.slot_index + 1,
     title: stationLabel(slot),
-    state: slot.has_review ? "marked" : markable(slot) ? "unmarked" : "not_sat",
+    state: slot.marked ? "marked" : markable(slot) ? "unmarked" : "not_sat",
   }));
   const { steps, line } = circuitReviewSteps(stations, published);
   const ordered = stationsToMark(stations);

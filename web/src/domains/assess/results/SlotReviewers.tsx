@@ -3,7 +3,7 @@
 import { Badge, EmptyState, b2bTokens } from "@/foundation/ui";
 import { passWord, ratingLabel } from "@/capabilities/feedback/rubric";
 import type { SlotReviews } from "@/domains/assess/results/api";
-import { ratingVariant, summaryDomains } from "@/domains/assess/results/reviewForm";
+import { finishedReviewers, ratingVariant, reviewersAgreeLine, summaryDomains } from "@/domains/assess/results/reviewForm";
 
 /**
  * What everybody who watched this station made of it.
@@ -32,6 +32,8 @@ export function SlotReviewers({
   const completed = summary.completed_reviews;
   const drafts = (data.items ?? []).filter((item) => item.status !== "completed").length;
   const byDomain = summaryDomains(summary);
+  const reviewers = finishedReviewers(data.items, rating);
+  const agreeLine = reviewersAgreeLine(data.reviewers_agree);
 
   if (completed === 0) {
     return (
@@ -56,6 +58,18 @@ export function SlotReviewers({
         ) : null}
         {outcome ? <Badge variant={summary.passed ? "success" : "danger"}>{outcome}</Badge> : null}
       </div>
+
+      {reviewers.length > 0 ? (
+        <ul className="divide-y divide-b2b-border">
+          {reviewers.map((reviewer, index) => (
+            <li key={`${index}-${reviewer.name}`} className="flex items-center justify-between gap-3 py-2.5">
+              <span className="min-w-0 truncate text-osce-meta font-medium text-b2b-headline">{reviewer.name}</span>
+              <span className="text-osce-meta text-b2b-mid">{reviewer.rating}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {agreeLine ? <p className={b2bTokens.b2bGroupedRowSubtitle}>{agreeLine}</p> : null}
 
       {byDomain.length > 0 ? (
         <ul className="divide-y divide-b2b-border">

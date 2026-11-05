@@ -41,9 +41,9 @@ export function markingNotice(state: MarkingState, failedReason?: string | null)
     case "none":
       return "Nobody has taken this station, so there is no automatic marking.";
     case "pending":
-      return "The AI mark is on its way. Refresh to see it when it lands.";
+      return "The AI mark is on its way. This page updates on its own.";
     case "failed":
-      return "Automatic marking failed. Retry it, or mark this station without it.";
+      return "This station could not be marked.";
     case "unmarkable":
       return failedReason === "no_marking_rubric"
         ? "This station was taken, but it could not be marked because its exam had no marking scheme. It needs to be sat again; you can still record your own marks."

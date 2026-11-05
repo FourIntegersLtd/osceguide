@@ -15,6 +15,31 @@ import {
   type Rating,
 } from "@/capabilities/feedback/rubric";
 
+/** The feedback fields an author may hide from the candidate, and the answer roles each one covers. */
+type FeedbackField = "wentWell" | "workOn" | "quotes";
+const ROLES_OF_FIELD: Record<FeedbackField, FieldRole[]> = {
+  wentWell: ["strength"],
+  workOn: ["improvement", "action"],
+  quotes: ["evidence"],
+};
+
+/** Answers without the hidden roles, at any depth; a group or record left empty goes with them. */
+function withoutRoles(answers: AnswerView[], hidden: ReadonlySet<FieldRole>): AnswerView[] {
+  if (hidden.size === 0) return answers;
+  return answers.flatMap((answer): AnswerView[] => {
+    if (hidden.has(answer.role)) return [];
+    if (answer.type === "group") {
+      const inner = withoutRoles(answer.answers, hidden);
+      return inner.length ? [{ ...answer, answers: inner }] : [];
+    }
+    if (answer.type === "records") {
+      const records = answer.records.map((record) => withoutRoles(record, hidden)).filter((record) => record.length > 0);
+      return records.length ? [{ ...answer, records }] : [];
+    }
+    return [answer];
+  });
+}
+
 /**
  * One marked result, turned into what the feedback screen draws.
  *
@@ -349,8 +374,18 @@ export function totalCaption(display: Display | null, rating: Rating): string {
  * candidate did not sit (Ortho has four; one is marked), so it is hidden
  * rather than shown as a row of blanks.
  */
-export function feedbackModel(rubric: MarkingRubric, result: MarkedResult, heading = "Your mark"): FeedbackModel {
+export function feedbackModel(
+  rubric: MarkingRubric,
+  result: MarkedResult,
+  heading = "Your mark",
+  /** An examiner reads the whole marking: what the author hid from the candidate is shown. */
+  options: { showAll?: boolean } = {},
+): FeedbackModel {
   const display = readDisplay(rubric.display);
+  const shown = (field: string): boolean => options.showAll === true || display?.show[field] !== false;
+  const hiddenRoles = new Set<FieldRole>(
+    (Object.keys(ROLES_OF_FIELD) as FeedbackField[]).filter((field) => !shown(field)).flatMap((field) => ROLES_OF_FIELD[field]),
+  );
   const rating = rubric.rating;
   const payload = result.payload;
   const totals = result.totals ?? null;
@@ -408,16 +443,35 @@ export function feedbackModel(rubric: MarkingRubric, result: MarkedResult, headi
   }
 
   const band = bandFor(display, totals?.total ?? null);
+  const showOverall = shown("overall");
+  const showAreas = shown("areaScores");
   return {
     header: {
       heading,
-      total: display && totals ? formatAggregate(display.total.aggregate, totals.total, display.total.max) : null,
-      caption: totalCaption(display, rating),
-      outcome: passWord(totals?.passed),
-      passed: totals?.passed ?? null,
-      band: band ? { name: bandName(band), tone: band.tone } : null,
-      passLine: display ? passLineText(display.total.aggregate, display.total.passAtLeast, display.total.max) : null,
+      total: showOverall && display && totals ? formatAggregate(display.total.aggregate, totals.total, display.total.max) : null,
+      caption: showOverall ? totalCaption(display, rating) : "",
+      outcome: showOverall ? passWord(totals?.passed) : null,
+      passed: showOverall ? (totals?.passed ?? null) : null,
+      band: showOverall && band ? { name: bandName(band), tone: band.tone } : null,
+      passLine:
+        showOverall && display ? passLineText(display.total.aggregate, display.total.passAtLeast, display.total.max) : null,
     },
-    blocks,
+    blocks: blocks.flatMap((block): Array<DomainView | SectionView> => {
+      const answers = withoutRoles(block.answers, hiddenRoles);
+      if (block.kind === "section") return answers.length ? [{ ...block, answers }] : [];
+      return [
+        {
+          ...block,
+          aggregate: showAreas ? block.aggregate : null,
+          passed: showAreas ? block.passed : null,
+          passLine: showAreas ? block.passLine : null,
+          competencies: block.competencies.map((competency) => ({
+            ...competency,
+            answers: withoutRoles(competency.answers, hiddenRoles),
+          })),
+          answers,
+        },
+      ];
+    }),
   };
 }

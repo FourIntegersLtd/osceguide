@@ -256,7 +256,7 @@ export function observerSubtitle(data: CircuitConsole): string {
  */
 export function markable(slot: ConsoleSlot): boolean {
   const progress = slotProgress(slot);
-  return progress === "in_consultation" || progress === "completed" || slot.has_review;
+  return progress === "in_consultation" || progress === "completed" || slot.marked;
 }
 
 export const EDIT_BLOCK_COPY: Record<string, string> = {
@@ -306,7 +306,7 @@ export function validOverrideSeconds(seconds: number): boolean {
 /** Stations sat and not yet marked, in the order they are sat. */
 export function unmarkedStations(data: CircuitConsole): (UnmarkedStation & { title: string; position: number })[] {
   return orderedSlots(data)
-    .filter((slot) => !slot.has_review && markable(slot))
+    .filter((slot) => !slot.marked && markable(slot))
     .map((slot) => ({
       slotId: slot.id,
       attemptId: slot.attempt_id ?? null,
@@ -322,6 +322,8 @@ export type CircuitSummary = {
   /** Of those, candidates with a station still unmarked. */
   toReview: number;
   unmarked: ReturnType<typeof unmarkedStations>;
+  /** Reviews started on this circuit's stations and not yet completed. */
+  drafts: number;
   /** Every sat station is marked and the circuit's feedback is known not to be published. */
   readyToPublish: boolean;
 };
@@ -335,8 +337,9 @@ export function summariseCircuit(data: CircuitConsole, review: { state: string }
   const unmarked = unmarkedStations(data);
   return {
     candidates: new Set(sat.map((slot) => slot.trainee.user_id)).size,
-    toReview: new Set(sat.filter((slot) => !slot.has_review).map((slot) => slot.trainee.user_id)).size,
+    toReview: new Set(sat.filter((slot) => !slot.marked).map((slot) => slot.trainee.user_id)).size,
     unmarked,
+    drafts: sat.reduce((total, slot) => total + slot.draft_reviews, 0),
     readyToPublish: unmarked.length === 0 && sat.length > 0 && review !== null && review.state !== "published",
   };
 }

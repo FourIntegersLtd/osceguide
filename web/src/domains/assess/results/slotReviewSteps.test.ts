@@ -8,7 +8,7 @@ test("marking state tells not taken, not ready and not available apart", () => {
   assert.equal(markingState({ attemptId: "a", hasResult: true, hasRubric: false }), "unavailable");
   assert.equal(markingState({ attemptId: "a", hasResult: true, hasRubric: true }), "ready");
   assert.equal(markingNotice("ready"), null);
-  assert.equal(markingNotice("pending"), "The AI mark is on its way. Refresh to see it when it lands.");
+  assert.equal(markingNotice("pending"), "The AI mark is on its way. This page updates on its own.");
   assert.match(markingNotice("unavailable") ?? "", /there will not be/);
 });
 
@@ -60,7 +60,7 @@ test("marking that failed says so in the rail and in the panel, and is not 'not 
       ["mine", "todo", "Not started"],
     ],
   );
-  assert.match(markingNotice("failed") ?? "", /^Automatic marking failed\./);
+  assert.equal(markingNotice("failed"), "This station could not be marked.");
 });
 
 test("a station whose attempt failed for want of a marking scheme was taken but cannot be marked (R-37)", () => {
