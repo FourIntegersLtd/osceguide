@@ -171,7 +171,7 @@ export function RubricBuilder({
             {/* Read-only on purpose: publishing and archiving a version live on the versions page. */}
             <Panel title="Versions">
               <ul className="space-y-1.5">
-                {versionRows(rubric.versions ?? []).map((row) => (
+                {versionRows(rubric.versions ?? [], rubric.current_version_id).map((row) => (
                   <li key={row.id} className="flex items-center justify-between gap-2 text-osce-body text-ink">
                     <span>
                       <span className="font-medium">v{row.version}</span>{" "}
