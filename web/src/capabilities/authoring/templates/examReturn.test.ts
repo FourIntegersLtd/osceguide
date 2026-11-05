@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { examQuery, examResumePath, rubricEditPath } from "@/capabilities/authoring/templates/paths";
+import { examResumePath, rubricEditPath } from "@/capabilities/authoring/templates/paths";
 
 const hrefFor = (path: string) => `/app/acme${path}`;
 
@@ -11,6 +11,5 @@ describe("returning to the New exam sheet", () => {
   });
   it("resumes the exam sheet", () => {
     assert.equal(examResumePath(hrefFor, "ex9"), "/app/acme/authoring/exams/new?exam=ex9");
-    assert.equal(examQuery(null), "");
   });
 });

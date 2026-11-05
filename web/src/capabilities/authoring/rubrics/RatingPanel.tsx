@@ -35,7 +35,7 @@ export function RatingPanel() {
   return (
     <div className="space-y-6">
       <div data-path="rating.kind">
-        <FoldSection title="Rated as" description="Each domain is rated on its own">
+        <FoldSection title="Rated as">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {RATING_KINDS.map((kind) => {
             const active = rating.kind === kind.value;

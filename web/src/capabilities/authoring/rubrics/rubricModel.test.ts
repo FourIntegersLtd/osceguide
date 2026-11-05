@@ -14,7 +14,7 @@ import {
   withScale,
   type RubricStructure,
 } from "@/capabilities/authoring/rubrics/rubricEdits";
-import { placeLabel, problemsAt, problemsFromDetails, problemsWithin, tabFor } from "@/capabilities/authoring/rubrics/problems";
+import { placeLabel, problemsAt, problemsFromDetails, problemsWithin } from "@/capabilities/authoring/rubrics/problems";
 import { applyInstructionSuggestions } from "@/capabilities/authoring/rubrics/draftInstructions";
 import { previewInputs, trialInputs } from "@/capabilities/authoring/rubrics/previewModel";
 
@@ -135,7 +135,6 @@ describe("problems", () => {
     assert.deepEqual(problemsAt(problems, ["sections", 0, "competencies", 0, "id"]), ["Ids are lower case."]);
     assert.equal(problemsWithin(problems, ["sections", 0]), 2);
     assert.equal(problemsWithin(problems, ["sections", 1]), 0);
-    assert.deepEqual(problems.map(tabFor), ["structure", "structure", "display"]);
   });
 
   it("says where a problem is in the author's words", () => {

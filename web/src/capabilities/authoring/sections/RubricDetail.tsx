@@ -21,7 +21,6 @@ import {
   addRubricVersion,
   archiveRubricVersion,
   publishRubricVersion,
-  copyRubric,
   readRubric,
   type Rubric,
 } from "@/capabilities/authoring/api";
@@ -29,7 +28,8 @@ import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringSc
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { useSurface } from "@/capabilities";
-import { rubricVersionActions } from "@/capabilities/authoring/sections/versions";
+import { copyAndOpen } from "@/capabilities/authoring/rubrics/copyAndOpen";
+import { latestOf, rubricVersionActions } from "@/capabilities/authoring/sections/versions";
 import { rubricEditPath } from "@/capabilities/authoring/templates/paths";
 
 /** A rubric's versions, and the writes against each one. */
@@ -73,24 +73,29 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                   size="sm"
                   disabled={action.busy !== null}
                   onClick={() =>
-                    action.run("copy", async () => {
-                      const copy = await copyRubric(scope, { source_rubric_id: data.id, source_version: null });
-                      router.push(rubricEditPath(hrefFor, copy.id, (copy.versions ?? [])[0]?.version ?? 1));
-                    })
+                    action.run("copy", () =>
+                      copyAndOpen(
+                        scope,
+                        router.push,
+                        hrefFor,
+                        { source_rubric_id: data.id, source_version: latestOf(data.versions ?? []).published?.version ?? null },
+                        null,
+                      ),
+                    )
                   }
                 >
                   {action.busy === "copy" ? "Copying…" : "Copy to my marking schemes"}
                 </AuthoringButton>
               ) : (
-              <AuthoringButton
-                write
-                variant="secondary"
-                size="sm"
-                disabled={action.busy !== null}
-                onClick={() => action.run("add", () => addRubricVersion(scope, data.id))}
-              >
-                {action.busy === "add" ? "Creating…" : "New draft version"}
-              </AuthoringButton>
+                <AuthoringButton
+                  write
+                  variant="secondary"
+                  size="sm"
+                  disabled={action.busy !== null}
+                  onClick={() => action.run("add", () => addRubricVersion(scope, data.id))}
+                >
+                  {action.busy === "add" ? "Creating…" : "New draft version"}
+                </AuthoringButton>
               )}
             </div>
 

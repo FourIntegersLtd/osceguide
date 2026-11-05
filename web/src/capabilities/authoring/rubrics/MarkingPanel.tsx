@@ -33,9 +33,7 @@ export function MarkingPanel({
   title,
   readOnly,
   layoutRequired,
-  onDraft,
-  drafting,
-  canDraft,
+  draft,
 }: {
   systemPrompt: string;
   onSystemPrompt: (value: string) => void;
@@ -48,18 +46,16 @@ export function MarkingPanel({
   /** Platform catalogue rubrics need an examiner layout before they can be published. */
   layoutRequired: boolean;
   /** Fill the instructions from the areas above (backend draft-instructions). */
-  onDraft?: () => void;
-  drafting?: boolean;
-  canDraft?: boolean;
+  draft: { run: () => void; busy: boolean; allowed: boolean };
 }) {
   const promptId = useId();
   return (
     <div className="space-y-6">
       <FoldSection title="Marking instructions" description="Written for the AI marker and for supervisors.">
-        {onDraft && !readOnly ? (
+        {!readOnly ? (
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <p className="text-osce-caption text-ink-muted">Draft them for me from the areas above, then edit.</p>
-            <AuthoringButton variant="ghost" size="sm" isLoading={drafting} disabled={!canDraft || drafting} onClick={onDraft}>
+            <AuthoringButton variant="ghost" size="sm" isLoading={draft.busy} disabled={!draft.allowed || draft.busy} onClick={draft.run}>
               Draft them for me
             </AuthoringButton>
           </div>

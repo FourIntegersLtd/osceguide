@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Alert, Panel, StepGuide } from "@/foundation/ui";
 import { PlatformError } from "@/foundation/platform-client";
@@ -15,6 +14,8 @@ import {
 } from "@/capabilities/authoring/api";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
+import { LeaveConfirmModal } from "@/foundation/ui";
+import { useLeaveGuard } from "@/foundation/hooks";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { RubricBuilderProvider } from "@/capabilities/authoring/rubrics/builderContext";
 import type { RubricDashboardPreview } from "@/capabilities/authoring/rubrics/dashboardSlot";
@@ -66,6 +67,8 @@ export function RubricBuilder({
   const trial = useTrialMark(scope, rubric.id);
   const action = useAction();
   const router = useRouter();
+  // Unsaved edits: the tab warning, and any link inside the app asks first.
+  const leave = useLeaveGuard(draft.dirty && !readOnly);
   const [note, setNote] = useState<string | null>(null);
 
   const valid = draft.preview?.valid === true && !draft.checking;
@@ -83,7 +86,7 @@ export function RubricBuilder({
   // A problem lives on one page now: scroll to its input.
   const pick = (problem: Problem) => revealPath(problem.path);
 
-  const publish = (thenBack: boolean) =>
+  const publish = () =>
     action.run("publish", async () => {
       try {
         await publishRubricVersion(scope, rubric.id, version.version);
@@ -93,7 +96,8 @@ export function RubricBuilder({
         }
         throw cause;
       }
-      if (thenBack && examHref) router.push(examHref);
+      // Opened from the New exam sheet: publishing is the last step, so go back to it.
+      if (examHref) router.push(examHref);
       else onPublished();
     });
 
@@ -121,18 +125,13 @@ export function RubricBuilder({
               <AuthoringButton variant="secondary" size="sm" isLoading={action.busy === "save"} disabled={action.busy !== null || !draft.dirty || promptMissing} onClick={() => action.run("save", draft.save)}>
                 Save draft
               </AuthoringButton>
-              <AuthoringButton variant="commit" size="sm" isLoading={action.busy === "publish"} disabled={action.busy !== null || publishBlocked !== null} onClick={() => publish(Boolean(examHref))}>
+              <AuthoringButton variant="commit" size="sm" isLoading={action.busy === "publish"} disabled={action.busy !== null || publishBlocked !== null} onClick={() => publish()}>
                 {examHref ? "Publish and go back" : "Publish"}
               </AuthoringButton>
             </div>
           )}
         </StepGuide>
 
-        {examHref && version.status === "published" ? (
-          <Alert tone="success">
-            Published. <Link href={examHref} className="font-medium underline">Back to the exam</Link>
-          </Alert>
-        ) : null}
         {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
         {note ? <Alert tone="info">{note}</Alert> : null}
         {draft.previewError ? <Alert tone="warning">The draft could not be checked: {draft.previewError.message}</Alert> : null}
@@ -152,16 +151,10 @@ export function RubricBuilder({
               title={rubric.title}
               readOnly={readOnly}
               layoutRequired={scope.kind === "platform"}
-              onDraft={() => void fillInstructions()}
-              drafting={action.busy === "draft"}
-              canDraft={valid && action.busy === null}
+              draft={{ run: () => void fillInstructions(), busy: action.busy === "draft", allowed: valid && action.busy === null }}
             />
-            <BoardSection title="Grades">
-              <RatingPanel />
-            </BoardSection>
-            <BoardSection title="Station total and pass line">
-              <DisplayPanel />
-            </BoardSection>
+            <RatingPanel />
+            <DisplayPanel />
           </div>
 
           <aside className="min-w-0 space-y-4 xl:sticky xl:top-4">
@@ -175,6 +168,7 @@ export function RubricBuilder({
             <Panel title="Problems">
               {readOnly ? <p className="text-osce-meta text-ink-muted">Read-only.</p> : <ProblemList problems={draft.problems} structure={draft.structure} checking={draft.checking} onPick={pick} />}
             </Panel>
+            {/* Read-only on purpose: publishing and archiving a version live on the versions page. */}
             <Panel title="Versions">
               <ul className="space-y-1.5">
                 {[...(rubric.versions ?? [])]
@@ -198,6 +192,14 @@ export function RubricBuilder({
           </aside>
         </div>
       </div>
+      <LeaveConfirmModal
+        isOpen={leave.asking}
+        onStay={leave.stay}
+        onLeave={() => {
+          const href = leave.confirmLeave();
+          if (href) router.push(href);
+        }}
+      />
     </RubricBuilderProvider>
   );
 }
