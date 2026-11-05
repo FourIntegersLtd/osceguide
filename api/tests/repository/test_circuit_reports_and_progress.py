@@ -10,13 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import PENDING_KEY, circuit_topic, org_topic
 from app.features.attempts import repository as attempts_repo
+from app.features.attempts import service as attempts_service
 from app.features.attempts import service_worker
 from app.features.identity import repository as identity_repo
 from app.features.results import repository as results_repo
 from app.features.roster import repository as roster_repo
-from app.features.sittings import announcements, repository
+from app.features.sittings import announcements, repository, service_rescue, service_run
 from tests.repository.test_circuit_run import a_circuit
 from tests.support.catalog import ensure_exam
+from tests.support.fakes import FakeRoomAgents
 
 pytestmark = pytest.mark.db
 
@@ -122,3 +124,38 @@ async def test_only_the_current_revision_counts_as_released(db_session: AsyncSes
         )
 
     assert await results_repo.released_outcomes(db_session, org_id) == [(circuit.sitting_id, "pass")]
+
+
+async def test_failing_a_leaving_persons_attempts_announces_the_slot_attempt(
+    db_session: AsyncSession,
+) -> None:
+    org_id, circuit_id, attempt = await a_slot_attempt(db_session)
+    assert attempt.user_id is not None
+
+    failed = await attempts_service.fail_unfinished_for_user(
+        db_session, user_id=attempt.user_id, now=NOW, reason="account_deactivated"
+    )
+
+    assert failed == 1
+    topics = {
+        topic for topic, name, _ in db_session.info[PENDING_KEY] if name == announcements.ATTEMPT_PROGRESS
+    }
+    assert topics == {circuit_topic(circuit_id), org_topic(org_id)}
+
+
+async def test_releasing_a_deactivated_candidates_stations_announces_their_circuit(
+    db_session: AsyncSession,
+) -> None:
+    org_id, circuit_id = await a_circuit(db_session, stations=2)
+    await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
+    slots = await repository.slots_for_circuit(db_session, org_id, circuit_id)
+    db_session.info.pop(PENDING_KEY, None)
+
+    given_up = await service_rescue.release_slots_for_user(
+        db_session, slots[0].trainee_id, agents=FakeRoomAgents(), now=NOW, reason="account_deactivated"
+    )
+
+    assert given_up >= 1
+    sent = [(topic, name) for topic, name, _ in db_session.info[PENDING_KEY]]
+    assert (circuit_topic(circuit_id), announcements.ABSENT) in sent
+    assert sent.count((circuit_topic(circuit_id), announcements.ABSENT)) == 1, "one event per circuit"
