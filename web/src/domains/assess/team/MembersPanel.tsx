@@ -1,6 +1,6 @@
 "use client";
 
-import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
+import { roleLabel } from "@/foundation/session/roles";
 import { useMemo, useState } from "react";
 import { Alert, Badge, Button, EmptyState, PlatformFilterBar, PlatformFilterSearch, b2bTokens } from "@/foundation/ui";
 import Table from "@/foundation/table/Table";
@@ -15,13 +15,17 @@ import {
   resendInvitations,
   restoreMembership,
   revokeMembership,
+  revokeMemberships,
   type Membership,
 } from "@/domains/assess/team/api";
 import {
   ASSIGNABLE_ROLES,
+  ROLE_CHOICE_HELP,
   isActive,
   isOwner,
+  revokableStaff,
   staffCountLabel,
+  staffRevokeTitle,
 } from "@/domains/assess/team/support";
 
 type Pending =
@@ -45,9 +49,12 @@ type Pending =
 export function MembersPanel({
   orgSlug,
   canManage,
+  onInviteStaff,
 }: {
   orgSlug: string;
   canManage: boolean;
+  /** Opens the Add people sheet on Staff, from the empty state. */
+  onInviteStaff: () => void;
 }) {
   const [pending, setPending] = useState<Pending>(null);
   const [role, setRole] = useState<string>("supervisor");
@@ -71,6 +78,54 @@ export function MembersPanel({
   // Everybody on the loaded pages who has not yet chosen a password.
   const awaiting = rows.filter((member) => member.invited && isActive(member) && !isOwner(member));
   const [resendingAll, setResendingAll] = useState(false);
+
+  // Ticked rows (membership ids). Only rows still on the loaded pages ever reach a call.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [confirmingBulk, setConfirmingBulk] = useState(false);
+  const selectedRows = rows.filter((member) => selected.has(member.id));
+  const toggle = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+
+  async function revokeSelected() {
+    setBusy(true);
+    setError(null);
+    try {
+      const ids = revokableStaff(selectedRows).map((member) => member.id);
+      const { results } = await revokeMemberships(orgSlug, ids);
+      const done = results.filter((result) => result.outcome === "revoked").length;
+      setNotice(`Revoked access for ${done} of ${results.length} staff.`);
+      setSelected(new Set());
+      setConfirmingBulk(false);
+      pages.state.reload();
+    } catch (cause) {
+      setError(errorMessage(cause));
+      pages.state.reload();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resendSelected() {
+    setError(null);
+    setResendingAll(true);
+    try {
+      const ids = selectedRows
+        .filter((member) => member.invited && isActive(member) && !isOwner(member))
+        .map((member) => member.id);
+      const { results } = await resendInvitations(orgSlug, ids);
+      const sent = results.filter((result) => result.outcome === "sent").length;
+      setNotice(`Resent ${sent} of ${results.length} invitations.`);
+      setSelected(new Set());
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setResendingAll(false);
+    }
+  }
 
   async function resendAll() {
     setError(null);
@@ -113,7 +168,7 @@ export function MembersPanel({
     try {
       if (pending.kind === "role") {
         await changeMemberRole(orgSlug, pending.member.id, role);
-        setNotice(`${who} is now ${roleLabel(role).toLowerCase()}.`);
+        setNotice(`${who} is now ${roleLabel(role)}.`);
       } else if (pending.kind === "revoke") {
         await revokeMembership(orgSlug, pending.member.id);
         setNotice(`Revoked access for ${who}.`);
@@ -132,6 +187,23 @@ export function MembersPanel({
 
   const columns = useMemo(
     () => [
+      ...(canManage
+        ? [
+            {
+              header: "Select",
+              key: "id" as keyof Membership,
+              render: (member: Membership) => (
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${member.email ?? "this person"}`}
+                  checked={selected.has(member.id)}
+                  disabled={isOwner(member) || !isActive(member)}
+                  onChange={() => toggle(member.id)}
+                />
+              ),
+            },
+          ]
+        : []),
       {
         header: "Email",
         key: "email" as keyof Membership,
@@ -193,7 +265,7 @@ export function MembersPanel({
           ) : null,
       },
     ],
-    [canManage, resendingId],
+    [canManage, resendingId, selected],
   );
 
   return (
@@ -231,6 +303,36 @@ export function MembersPanel({
         ) : null}
       </PlatformFilterBar>
 
+      {canManage && selectedRows.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3 text-osce-body text-b2b-headline">
+          <span className="font-medium">{selectedRows.length} selected</span>
+          <Button
+            themeType="b2b"
+            variant="secondary"
+            size="sm"
+            disabled={resendingAll || busy}
+            onClick={() => void resendSelected()}
+          >
+            Resend invitation
+          </Button>
+          <Button
+            themeType="b2b"
+            variant="secondary"
+            size="sm"
+            disabled={busy || revokableStaff(selectedRows).length === 0}
+            onClick={() => {
+              setError(null);
+              setConfirmingBulk(true);
+            }}
+          >
+            Revoke access
+          </Button>
+          <button type="button" className="underline" onClick={() => setSelected(new Set())}>
+            Clear
+          </button>
+        </div>
+      ) : null}
+
       {pages.state.error ? (
         <Alert tone="danger">
           {pages.state.error.message}
@@ -251,6 +353,13 @@ export function MembersPanel({
           <EmptyState
             title="No staff yet"
             description="Invite a supervisor so somebody can run a circuit."
+            action={
+              canManage ? (
+                <Button themeType="b2b" variant="commit" onClick={onInviteStaff}>
+                  Invite staff
+                </Button>
+              ) : undefined
+            }
           />
         )
       ) : (
@@ -265,9 +374,23 @@ export function MembersPanel({
 
       {!canManage ? (
         <p className="text-osce-caption text-b2b-icon">
-          Contact an owner or admin to change who has access.
+          <span className="font-medium">Supervisor (read only)</span>. Contact an owner or admin to
+          change who has access.
         </p>
       ) : null}
+
+      <Dialog
+        open={confirmingBulk}
+        title={staffRevokeTitle(revokableStaff(selectedRows).length)}
+        lead="They lose access to this organisation. Nothing they have marked is deleted. The owner and the last admin are skipped."
+        error={error}
+        busy={busy}
+        tone="danger"
+        commitLabel="Revoke access"
+        busyLabel="Revoking…"
+        onClose={() => setConfirmingBulk(false)}
+        onCommit={() => void revokeSelected()}
+      />
 
       <Dialog
         open={pending?.kind === "role"}
@@ -288,7 +411,7 @@ export function MembersPanel({
             Their role
           </label>
           <p className="mt-0.5 text-osce-caption text-b2b-mid">
-            {ROLE_DESCRIPTIONS.supervisor} {ROLE_DESCRIPTIONS.admin}
+            {ROLE_CHOICE_HELP}
           </p>
           <select
             id="assess-member-role"

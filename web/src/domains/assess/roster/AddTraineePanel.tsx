@@ -146,10 +146,10 @@ export function AddTraineePanel({
               htmlFor="assess-trainee-cohort"
               className="block text-osce-body font-semibold text-b2b-headline"
             >
-              Cohort (optional)
+              Year group (optional)
             </label>
             <p className="mt-0.5 text-osce-caption text-b2b-mid">
-              An intake, such as &quot;June 2026&quot;. Cohorts are created under Groups.
+              An intake, such as &quot;June 2026&quot;. Year groups are created under People › Groups and year groups.
             </p>
             <select
               id="assess-trainee-cohort"
@@ -157,7 +157,7 @@ export function AddTraineePanel({
               onChange={(event) => setCohortId(event.target.value)}
               className={`mt-2 ${b2bTokens.b2bInputBase}`}
             >
-              <option value="">No cohort</option>
+              <option value="">No year group</option>
               {cohorts.map((cohort) => (
                 <option key={cohort.id} value={cohort.id}>
                   {cohort.name}

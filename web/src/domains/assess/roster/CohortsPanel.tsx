@@ -69,8 +69,8 @@ export function CohortsPanel({
 
   return (
     <Panel
-      title="Cohorts"
-      description="An intake, such as a start date. Each trainee can be in one cohort, chosen when they are added."
+      title="Year groups (cohorts)"
+      description="An intake, such as a start date. Each trainee can be in one year group, chosen when they are added."
     >
       {error ? (
         <Alert tone="danger" className="mb-3">
@@ -80,10 +80,10 @@ export function CohortsPanel({
 
       {cohorts.length === 0 ? (
         <p className="text-osce-body text-b2b-mid">
-          No cohorts yet. Create one below, or leave people without.
+          No year groups yet. Create one below, or leave people without.
         </p>
       ) : (
-        <ul className="space-y-2" aria-label="Cohorts">
+        <ul className="space-y-2" aria-label="Year groups">
           {cohorts.map((cohort) => (
             <li
               key={cohort.id}
@@ -124,10 +124,10 @@ export function CohortsPanel({
 
       {canManage ? (
         <div className="mt-5">
-          <FoldSection title="Create a cohort">
+          <FoldSection title="Create a year group">
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
-              aria-label="Cohort name"
+              aria-label="Year group name"
               value={name}
               onChange={(event) => setName(event.target.value)}
               className={`${b2bTokens.b2bInputBase} min-w-0 flex-1`}
@@ -148,7 +148,7 @@ export function CohortsPanel({
               disabled={busy || name.trim() === ""}
               onClick={() => create()}
             >
-              {busy ? "Working…" : "Create cohort"}
+              {busy ? "Working…" : "Create year group"}
             </Button>
           </div>
           </FoldSection>

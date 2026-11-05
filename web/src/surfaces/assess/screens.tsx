@@ -1,7 +1,6 @@
 "use client";
 
 import { EmptyState } from "@/foundation/ui";
-import { PeopleTabs } from "@/domains/assess/PeopleTabs";
 import { can, RequireCapability, useSession } from "@/foundation/session";
 import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
 import {
@@ -36,9 +35,9 @@ import {
   Sittings,
   SlotReview,
   StationRecord,
-  Team,
+  People,
+  initialPeopleTab,
   TraineeHome,
-  Trainees,
 } from "@/domains/assess";
 
 /**
@@ -130,23 +129,13 @@ const AssessResultsIndex = (props: ScreenProps) => <ResultsIndex orgSlug={slugOf
 const AssessReporting = (props: ScreenProps) => <Reporting orgSlug={slugOf(props)} />;
 
 
-function AssessTrainees(props: ScreenProps) {
-  return (
-    <>
-      <PeopleTabs active="trainees" />
-      <Trainees orgSlug={slugOf(props)} />
-    </>
-  );
-}
-
-function AssessTeam(props: ScreenProps) {
-  return (
-    <>
-      <PeopleTabs active="team" />
-      <Team orgSlug={slugOf(props)} />
-    </>
-  );
-}
+// /trainees and /team are one People page; /team opens on the Staff tab.
+const AssessTrainees = (props: ScreenProps) => (
+  <People orgSlug={slugOf(props)} initialTab={initialPeopleTab("trainees")} />
+);
+const AssessTeam = (props: ScreenProps) => (
+  <People orgSlug={slugOf(props)} initialTab={initialPeopleTab("team")} />
+);
 
 function AssessMyTraining({ params }: ScreenProps) {
   return <TraineeHome slotId={params?.slot || null} />;

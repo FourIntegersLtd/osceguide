@@ -35,6 +35,19 @@ export function sortMembers(members: Membership[]): Membership[] {
   });
 }
 
+/** Who a bulk revoke may name: active people other than the owner (the server also skips the last admin). */
+export function revokableStaff(rows: Membership[]): Membership[] {
+  return rows.filter((member) => isActive(member) && !isOwner(member));
+}
+
+export function staffRevokeTitle(count: number): string {
+  return `Revoke access for ${count} staff ${count === 1 ? "member" : "members"}?`;
+}
+
+/** The change-role box's one-line explanation of the two roles it offers. */
+export const ROLE_CHOICE_HELP =
+  "Supervisor: runs circuits and marks the candidates on them. Admin: also manages the team and the organisation's settings, and signs off results.";
+
 /** "4 staff accounts" — the count the old members card carried. */
 export function staffCountLabel(count: number): string {
   return `${count} staff account${count === 1 ? "" : "s"}`;

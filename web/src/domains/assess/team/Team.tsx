@@ -54,7 +54,7 @@ export function Team({ orgSlug }: { orgSlug: string }) {
       {section === "activity" ? (
         <ActivityPanel orgSlug={orgSlug} />
       ) : section === "members" ? (
-        <MembersPanel orgSlug={orgSlug} canManage={canManage} />
+        <MembersPanel orgSlug={orgSlug} canManage={canManage} onInviteStaff={() => setSection("invite")} />
       ) : (
         // The members list re-fetches on its own next mount, so nothing here
         // needs to be told a new person was added.

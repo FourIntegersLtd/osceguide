@@ -94,28 +94,6 @@ export function traineeCountLabel(count: number, words: AssessWords): string {
   return `${count} ${count === 1 ? words.trainee : words.trainees}`;
 }
 
-/** The header subtitle, which changed with the tab in the old client. */
-export function sectionSubtitle(
-  section: "trainees" | "add" | "groups" | "access",
-  words: AssessWords,
-  counts: { trainees: number; groups: number },
-): string {
-  switch (section) {
-    case "trainees":
-      return "Everyone your organisation examines.";
-    case "add":
-      return counts.trainees === 0
-        ? `Add the ${words.trainees} who will sit your exams or training sessions.`
-        : `Add ${words.trainees} one at a time, or import a spreadsheet.`;
-    case "groups":
-      return counts.groups === 0
-        ? `Sort ${words.trainees} into groups like intakes or rotation teams.`
-        : "Cohorts are an intake; groups are who you put on a circuit.";
-    case "access":
-      return `Give a ${words.trainee} access to an exam they can practise between ${words.sittings}.`;
-  }
-}
-
 export type TraineeStage = "added" | "invited" | "accepted" | "member" | "booked";
 
 const STAGE_LABEL: Record<TraineeStage, string> = {
@@ -156,19 +134,14 @@ export function traineeStatus(trainee: Trainee): {
   return { stage, label: STAGE_LABEL[stage], attention };
 }
 
-export type RosterTabKey = "trainees" | "add" | "groups" | "access";
+/** The trainee bulk bar's words: a cohort is a "year group"; a group is a separate list. */
+export const MOVE_TO_YEAR_GROUP_LABEL = "Move to year group…";
+export const NO_YEAR_GROUP_LABEL = "No year group";
+export const ADD_TO_GROUP_LABEL = "Add to group…";
 
-/**
- * The roster's tabs. Exam access is the org admin's: its list and grants are closed to a
- * supervisor by the API, so the tab is not offered to one.
- */
-export function rosterTabs(canManage: boolean, words: AssessWords): { key: RosterTabKey; label: string }[] {
-  const tabs: { key: RosterTabKey; label: string }[] = [
-    { key: "trainees", label: "Everyone" },
-    { key: "add", label: words.addPeople },
-    { key: "groups", label: "Groups" },
-  ];
-  return canManage ? [...tabs, { key: "access", label: "Exam access" }] : tabs;
+/** Who is in a group after adding `picked`: everyone already in it, then the new people. */
+export function addToGroupIds(existing: string[], picked: string[]): string[] {
+  return [...new Set([...existing, ...picked])];
 }
 
 /** The cohort delete prompt: how many sittings it detaches (they are kept, with no cohort). */
@@ -176,9 +149,9 @@ export function cohortDeleteLead(name: string, sittingCount: number): string {
   const held =
     sittingCount <= 0
       ? "No sittings are held for it."
-      : `The ${sittingCount} sitting${sittingCount === 1 ? "" : "s"} held for it ${sittingCount === 1 ? "is" : "are"} kept but no longer belong to any cohort.`;
+      : `The ${sittingCount} sitting${sittingCount === 1 ? "" : "s"} held for it ${sittingCount === 1 ? "is" : "are"} kept but no longer belong to any year group.`;
   return (
-    `Delete “${name}”? Nobody can be put into it afterwards. This cannot be undone, and a cohort ` +
+    `Delete “${name}”? Nobody can be put into it afterwards. This cannot be undone, and a year group ` +
     `that still has trainees in it is not deleted. ${held}`
   );
 }
