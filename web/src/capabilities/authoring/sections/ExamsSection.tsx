@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   HiOutlineArrowUpTray,
@@ -10,11 +9,14 @@ import {
   HiOutlinePlusCircle,
   HiOutlineTrash,
 } from "react-icons/hi2";
-import { Alert, Badge, Checkbox, StepGuide } from "@/foundation/ui";
+import { Alert, Badge, ButtonLink, Checkbox, StepGuide, TextLink } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
-import { DeleteExamConfirm, RetireExamConfirm } from "@/capabilities/authoring/exams/ExamConfirms";
+import { ExamConfirm } from "@/capabilities/authoring/exams/ExamConfirms";
 import { examDetailPath, examNewPath, examSettingsPath } from "@/capabilities/authoring/exams/paths";
+import { saveExam } from "@/capabilities/authoring/exams/offer";
+import { toMinutes } from "@/capabilities/authoring/exams/newExam";
+import { programmeFor } from "@/capabilities/authoring/sections/examSteps";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -25,14 +27,12 @@ import { useAsync } from "@/foundation/hooks";
 import {
   createExam,
   listExams,
-  listProgrammes,
+  listAllProgrammes,
   publishExam,
-  updateExam,
   type Exam,
   type Programme,
 } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
-import { staleRefusal } from "@/capabilities/authoring/api/stale";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { ListCard } from "@/capabilities/authoring/parts/ListCard";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
@@ -62,7 +62,7 @@ export function ExamsSection() {
   const org = scope.kind === "org";
   // Programmes say which exams are offered for scheduling; the staff catalogue has none.
   const programmes = useAsync(
-    async (signal) => (org ? (await listProgrammes(scope, signal)).items : []),
+    async (signal) => (org ? listAllProgrammes(scope, signal) : []),
     [scope.base, org],
   );
   const action = useAction(exams.reload);
@@ -89,19 +89,16 @@ export function ExamsSection() {
         />
         <div className="flex flex-wrap items-center gap-3">
           {org && canAuthor ? (
-            <Link href={hrefFor("/programmes")} className="text-osce-meta font-medium text-osce-accent hover:underline">
+            <TextLink href={hrefFor("/programmes")} variant="muted" className="text-osce-meta">
               Adopt from OSCE Guide
-            </Link>
+            </TextLink>
           ) : null}
           {org ? (
             canAuthor ? (
-              <Link
-                href={examNewPath(hrefFor)}
-                className="inline-flex min-h-9 items-center gap-2 rounded-osce-md bg-osce-accent px-3 text-osce-meta font-semibold text-white hover:bg-osce-accent-hover"
-              >
+              <ButtonLink href={examNewPath(hrefFor)} variant="commit" size="sm" className="gap-2">
                 <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
                 Create exam
-              </Link>
+              </ButtonLink>
             ) : null
           ) : (
             <AuthoringButton
@@ -122,6 +119,9 @@ export function ExamsSection() {
       </div>
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
+      {programmes.error ? (
+        <Alert tone="danger">Which exams are ready to schedule could not be loaded. Reload the page to try again.</Alert>
+      ) : null}
 
       <ListCard
         count={items.length}
@@ -145,9 +145,10 @@ export function ExamsSection() {
               key={exam.id}
               title={exam.name}
               onOpen={org ? () => router.push(examDetailPath(hrefFor, exam.id)) : undefined}
-              meta={`${exam.code} · ${Math.round(exam.default_reading_seconds / 60)} min reading · ${Math.round(exam.default_simulation_seconds / 60)} min station${exam.owner_kind === "platform" ? " · OSCE Guide" : ""}${exam.partner_pilot ? " · partner pilot" : ""}`}
+              meta={`${exam.code} · ${toMinutes(exam.default_reading_seconds)} min reading · ${toMinutes(exam.default_simulation_seconds)} min station${exam.owner_kind === "platform" ? " · OSCE Guide" : ""}${exam.partner_pilot ? " · partner pilot" : ""}`}
             >
-              {org ? <ExamChipBadge exam={exam} programmes={programmes.data ?? []} /> : <StatusBadge status={exam.status} />}
+              <StatusBadge status={exam.status} />
+              {org && programmes.data ? <ExamChipBadge exam={exam} programmes={programmes.data} /> : null}
               <AuthoringRowActions write>
                 <AuthoringIconAction
                   label={
@@ -248,9 +249,10 @@ export function ExamsSection() {
         onCommit={() =>
           void action.run("edit", async () => {
             if (!editing) return;
-            try {
-              await updateExam(scope, editing.id, {
-                revision: editing.revision,
+            await saveExam(
+              scope,
+              editing,
+              {
                 name: form.name.trim(),
                 default_reading_seconds: Number(form.reading),
                 default_simulation_seconds: Number(form.simulation),
@@ -258,26 +260,21 @@ export function ExamsSection() {
                 partner_pilot: form.partnerPilot,
                 rubric_version_id: form.rubricVersionId || null,
                 settings: form.settings,
-              });
-            } catch (cause) {
-              const stale = staleRefusal(cause, "exam");
-              if (!stale) throw cause;
+              },
               // Close the form: reopened, it reads their version.
-              setEditing(null);
-              exams.reload();
-              throw stale;
-            }
+              () => {
+                setEditing(null);
+                exams.reload();
+              },
+            );
             setEditing(null);
           })
         }
       >
         {editing && org ? (
-          <Link
-            href={examSettingsPath(hrefFor, editing.id)}
-            className="mb-3 inline-block text-osce-meta font-medium text-osce-accent hover:underline"
-          >
+          <TextLink href={examSettingsPath(hrefFor, editing.id)} variant="muted" className="mb-3 inline-block text-osce-meta">
             Open the full form ›
-          </Link>
+          </TextLink>
         ) : null}
         {editingExam ? (
           <div className="mb-4 space-y-3">
@@ -287,14 +284,14 @@ export function ExamsSection() {
         <ExamFields value={form} onChange={setForm} codeDisabled />
       </AuthoringDialog>
 
-      <DeleteExamConfirm scope={scope} exam={deleting} action={action} onCancel={() => setDeleting(null)} />
-      <RetireExamConfirm scope={scope} exam={retiring} action={action} onCancel={() => setRetiring(null)} />
+      <ExamConfirm kind="delete" scope={scope} exam={deleting} action={action} onCancel={() => setDeleting(null)} />
+      <ExamConfirm kind="retire" scope={scope} exam={retiring} action={action} onCancel={() => setRetiring(null)} />
     </div>
   );
 }
 
 function ExamChipBadge({ exam, programmes }: { exam: Exam; programmes: Programme[] }) {
-  const chip = examChip(exam, programmes.find((p) => p.exam_code === exam.code) ?? null);
+  const chip = examChip(exam, programmeFor(programmes, exam));
   return (
     <Badge tone={chip === "Ready to schedule" ? "success" : "warning"} size="sm" dot>
       {chip}

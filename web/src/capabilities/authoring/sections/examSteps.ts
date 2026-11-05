@@ -48,8 +48,19 @@ export type AvailabilityStep = "add" | "activate" | "retire";
 
 /** The "Available for scheduling" switch is the programme's add, activate and retire. */
 export function availabilityPlan(programme: ProgrammeState, on: boolean): AvailabilityStep[] {
-  if (on) return programme ? ["activate"] : ["add", "activate"];
+  if (on) return !programme ? ["add", "activate"] : programme.status === "active" ? [] : ["activate"];
   return programme && programme.status === "active" ? ["retire"] : [];
+}
+
+export type PublishStep = "publish" | AvailabilityStep;
+
+/**
+ * Publishing and offering an exam, from wherever it stands: the writes still to do, in order.
+ * Recomputed from fresh state, so a retry after a failure resumes at the step that failed.
+ */
+export function publishPlan(exam: { status: string }, programme: ProgrammeState): PublishStep[] {
+  const offer = availabilityPlan(programme, true);
+  return exam.status === "published" ? offer : ["publish", ...offer];
 }
 
 export type ExamNextAction = { id: "pick-scheme" | "publish" | "programme" | "none"; line: string };
@@ -59,4 +70,9 @@ export function examNextAction(exam: ExamState): ExamNextAction {
   if (exam.status === "published") return { id: "programme", line: "Live. Add a programme for it so people can take it." };
   if (!exam.rubric_version_id) return { id: "pick-scheme", line: "Pick a marking scheme, then publish." };
   return { id: "publish", line: "Publish this exam to run sittings against it." };
+}
+
+/** The programme an exam is offered through, matched by the exam's id (a code is only unique per owner). */
+export function programmeFor<P extends { exam_id: string }>(programmes: P[], exam: { id: string }): P | null {
+  return programmes.find((programme) => programme.exam_id === exam.id) ?? null;
 }

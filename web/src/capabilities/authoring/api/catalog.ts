@@ -85,8 +85,22 @@ export function deleteExam(scope: AuthoringScope, exam: string): Promise<void> {
 export function listProgrammes(
   scope: AuthoringScope,
   signal?: AbortSignal,
+  cursor?: string | null,
 ): Promise<S["Page_ProgrammeRead_"]> {
-  return platformRequest(`${scope.base}/programmes`, { signal });
+  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  return platformRequest(`${scope.base}/programmes${query}`, { signal });
+}
+
+/** Every programme, page after page: a read of the first page alone misses an exam's programme past it. */
+export async function listAllProgrammes(scope: AuthoringScope, signal?: AbortSignal): Promise<Programme[]> {
+  const all: Programme[] = [];
+  let cursor: string | null | undefined = null;
+  do {
+    const page: S["Page_ProgrammeRead_"] = await listProgrammes(scope, signal, cursor);
+    all.push(...page.items);
+    cursor = page.next_cursor;
+  } while (cursor);
+  return all;
 }
 
 export function addProgramme(scope: AuthoringScope, exam_code: string): Promise<Programme> {

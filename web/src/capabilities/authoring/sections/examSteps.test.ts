@@ -5,6 +5,8 @@ import {
   examChip,
   examNextAction,
   examSteps,
+  programmeFor,
+  publishPlan,
   toggleHelp,
 } from "@/capabilities/authoring/sections/examSteps";
 
@@ -54,5 +56,28 @@ describe("examSteps", () => {
     assert.equal(examNextAction({ status: "published", rubric_version_id: "rv1" }).id, "programme");
     assert.equal(examSteps({ status: "retired" })[1]?.note, "Retired");
     assert.equal(examNextAction({ status: "retired" }).id, "none");
+  });
+});
+
+describe("publishPlan", () => {
+  it("lists the writes still to do, so a retry resumes there", () => {
+    assert.deepEqual(publishPlan({ status: "draft" }, null), ["publish", "add", "activate"]);
+    assert.deepEqual(publishPlan({ status: "published" }, null), ["add", "activate"]);
+    assert.deepEqual(publishPlan({ status: "published" }, { status: "draft" }), ["activate"]);
+    assert.deepEqual(publishPlan({ status: "published" }, { status: "active" }), []);
+  });
+});
+
+describe("programmeFor", () => {
+  it("matches by exam id, so another owner's exam with the same code is not taken", () => {
+    const mine = { exam_id: "e1", exam_code: "PAED", status: "active" };
+    const theirs = { exam_id: "e2", exam_code: "PAED", status: "retired" };
+    assert.equal(programmeFor([theirs, mine], { id: "e1" }), mine);
+    assert.equal(programmeFor([theirs], { id: "e1" }), null);
+  });
+  it("resumes the chain from what a fresh read shows after a half-done publish", () => {
+    // publish and add committed, activate failed: a retry re-reads and only activates
+    const fresh = programmeFor([{ exam_id: "e1", status: "draft" }], { id: "e1" });
+    assert.deepEqual(publishPlan({ status: "published" }, fresh), ["activate"]);
   });
 });

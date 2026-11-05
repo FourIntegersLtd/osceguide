@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useSurface } from "@/capabilities";
 import { HiOutlineAcademicCap, HiOutlineArrowPath, HiOutlineNoSymbol, HiOutlinePlusCircle } from "react-icons/hi2";
-import { Alert, Select } from "@/foundation/ui";
+import { Alert, Select, TextLink } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -55,9 +54,9 @@ export function ProgrammesSection() {
         action={
           can(session, "schedule_sittings") ? (
             <div className="flex flex-wrap items-center gap-3">
-            <Link href={hrefFor("/programmes")} className="text-osce-meta font-medium text-osce-accent hover:underline">
+            <TextLink href={hrefFor("/programmes")} variant="muted" className="text-osce-meta">
               Exams the platform publishes
-            </Link>
+            </TextLink>
             <AuthoringButton
               variant="commit"
               size="sm"

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   NEW_EXAM_STEPS,
-  nextPublishStep,
+  toMinutes,
   resumeStep,
   timingProblem,
   timingsLine,
@@ -27,10 +27,8 @@ describe("New exam sheet", () => {
   it("summarises timings", () => {
     assert.equal(timingsLine({ reading: "3", simulation: "10" }), "3 min reading · 10 min consultation");
   });
-  it("names the publish step to retry", () => {
-    assert.equal(nextPublishStep({ status: "draft" }, null), "publish");
-    assert.equal(nextPublishStep({ status: "published" }, null), "programme");
-    assert.equal(nextPublishStep({ status: "published" }, { status: "draft" }), "activate");
-    assert.equal(nextPublishStep({ status: "published" }, { status: "active" }), "done");
+  it("shows stored seconds as minutes", () => {
+    assert.equal(toMinutes(180), 3);
+    assert.equal(toMinutes("600"), 10);
   });
 });

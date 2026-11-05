@@ -29,20 +29,17 @@ export function timingsLine({ reading, simulation }: Minutes): string {
   return `${reading} min reading · ${simulation} min consultation`;
 }
 
-export type PublishStep = "publish" | "programme" | "activate" | "done";
+import type { PublishStep } from "@/capabilities/authoring/sections/examSteps";
 
-/** Publishing is three writes; this names the first one not yet done, so a retry resumes there. */
-export function nextPublishStep(
-  exam: { status: string },
-  programme: { status: string } | null,
-): PublishStep {
-  if (exam.status !== "published") return "publish";
-  if (!programme) return "programme";
-  return programme.status === "active" ? "done" : "activate";
-}
-
-export const PUBLISH_STEP_WORDS: Record<Exclude<PublishStep, "done">, string> = {
+/** What the screen says while each write runs, and which one to retry. */
+export const PUBLISH_STEP_WORDS: Record<PublishStep, string> = {
   publish: "Publishing the exam",
-  programme: "Creating its programme",
+  add: "Creating its programme",
   activate: "Making it available for scheduling",
+  retire: "Taking it off scheduling",
 };
+
+/** Stored seconds as whole minutes, the unit every exam screen shows. */
+export function toMinutes(seconds: number | string): number {
+  return Math.round(Number(seconds) / 60);
+}

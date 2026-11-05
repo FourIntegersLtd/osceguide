@@ -96,6 +96,7 @@ export {
   publishExam,
   retireExam,
   deleteExam,
+  listAllProgrammes,
   listProgrammes,
   countProgrammeSittings,
   addProgramme,

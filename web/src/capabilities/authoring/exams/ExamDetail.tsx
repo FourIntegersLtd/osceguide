@@ -3,28 +3,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Alert, AsyncBoundary, B2CPageHeader, Badge, Button, Panel } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CPageHeader, Badge, Button, ButtonLink, Panel, Switch, TextLink } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
-  addProgramme,
   countProgrammeSittings,
-  listExams,
-  listProgrammes,
   listRubrics,
   listStations,
-  updateProgramme,
+  listStationTemplatesPage,
   type Exam,
   type Programme,
 } from "@/capabilities/authoring/api";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
-import { DeleteExamConfirm, RetireExamConfirm } from "@/capabilities/authoring/exams/ExamConfirms";
-import { examSettingsPath, examsListPath } from "@/capabilities/authoring/exams/paths";
+import { ExamConfirm } from "@/capabilities/authoring/exams/ExamConfirms";
+import { applyStep } from "@/capabilities/authoring/exams/offer";
+import { examResumePath, examSettingsPath, examsListPath } from "@/capabilities/authoring/exams/paths";
+import { shortDay, schemeLine } from "@/capabilities/authoring/exams/schemeLine";
+import { timingsLine, toMinutes } from "@/capabilities/authoring/exams/newExam";
+import { loadExam } from "@/capabilities/authoring/exams/useExam";
 import { availabilityPlan, examChip, toggleHelp } from "@/capabilities/authoring/sections/examSteps";
-import { stationNewPath, stationsListPath } from "@/capabilities/authoring/stations/paths";
-import { rubricsListPath } from "@/capabilities/authoring/templates/paths";
+import { stationNewForExamPath, stationsForExamPath, stationsListPath } from "@/capabilities/authoring/stations/paths";
+import { rubricEditPath, rubricsListPath, stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
 
 /** How many of an exam's stations and sittings one read looks at; a count at the limit reads "100+". */
 const COUNT_LIMIT = 100;
@@ -33,28 +34,46 @@ function useExamView(examId: string) {
   const scope = useAuthoringScope();
   return useAsync(
     async (signal) => {
-      const exams = await listExams(scope, { status: "all" }, signal);
-      const exam = exams.items.find((item) => item.id === examId) ?? null;
-      if (!exam) return null;
-      const [programmes, stations, rubrics] = await Promise.all([
-        listProgrammes(scope, signal),
+      const found = await loadExam(scope, examId, signal);
+      if (!found) return null;
+      const { exam, programme } = found;
+      const [stations, rubrics, templates, sittings] = await Promise.all([
         listStations(scope, { exam_code: exam.code, limit: COUNT_LIMIT }, signal),
         listRubrics(scope, {}, signal),
+        listStationTemplatesPage(scope, { exam_code: exam.code, limit: COUNT_LIMIT }, signal),
+        programme ? countProgrammeSittings(scope, programme.id, signal) : Promise.resolve(null),
       ]);
-      const programme = programmes.items.find((item) => item.exam_code === exam.code) ?? null;
-      const sittings = programme ? (await countProgrammeSittings(scope, programme.id, signal)).items.length : 0;
       const scheme = rubrics.items
-        .flatMap((rubric) => (rubric.versions ?? []).map((v) => ({ title: rubric.title, version: v.version, id: v.id })))
-        .find((v) => v.id === exam.rubric_version_id);
-      return { exam, programme, stations: stations.items, sittings, scheme: scheme ?? null };
+        .flatMap((rubric) => (rubric.versions ?? []).map((v) => ({ rubric, v })))
+        .find(({ v }) => v.id === exam.rubric_version_id);
+      return {
+        exam,
+        programme,
+        stations: stations.items,
+        templates: templates.items,
+        sittings: sittings?.items ?? [],
+        scheme: scheme ? { rubricId: scheme.rubric.id, title: scheme.rubric.title, version: scheme.v } : null,
+      };
     },
     [scope.base, examId],
   );
 }
 
+type View = NonNullable<ReturnType<typeof useExamView>["data"]>;
+
 function plural(n: number, one: string, many: string): string {
   const shown = n >= COUNT_LIMIT ? `${COUNT_LIMIT}+` : String(n);
   return `${shown} ${n === 1 ? one : many}`;
+}
+
+/** "Published v2" / "Draft": a station's state as the board words it. */
+function stationState(status: string, version: number): string {
+  return status === "published" ? `Published v${version}` : "Draft";
+}
+
+function sentence(value: string): string {
+  const spaced = value.replace(/_/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 /** One exam: whether it is offered for scheduling, its stations, sittings, marking scheme and settings. */
@@ -73,21 +92,7 @@ export function ExamDetail({ examId }: { examId: string }) {
   );
 }
 
-function ExamDetailBody({
-  exam,
-  programme,
-  stations,
-  sittings,
-  scheme,
-  reload,
-}: {
-  exam: Exam;
-  programme: Programme | null;
-  stations: { id: string; title: string; status: string }[];
-  sittings: number;
-  scheme: { title: string; version: number } | null;
-  reload: () => void;
-}) {
+function ExamDetailBody({ exam, programme, stations, templates, sittings, scheme, reload }: View & { reload: () => void }) {
   const scope = useAuthoringScope();
   const { hrefFor } = useSurface();
   const router = useRouter();
@@ -100,16 +105,15 @@ function ExamDetailBody({
   const chip = examChip(exam, programme);
   const published = stations.filter((s) => s.status === "published").length;
   const locked = exam.owner_kind === "platform";
-  const inUse = stations.length > 0 || sittings > 0;
-  const mayToggle = canAuthor && exam.status === "published" && !locked;
+  const inUse = stations.length > 0 || sittings.length > 0;
+  // An adopted exam is the platform's, but its programme is this organisation's own: only Retire and Delete are locked.
+  const mayToggle = canAuthor && exam.status === "published";
+  const layouts = templates.map((template) => template.title);
 
   function toggle(next: boolean) {
     void action.run("available", async () => {
-      let current: Programme | null = programme;
-      for (const step of availabilityPlan(programme, next)) {
-        if (step === "add") current = await addProgramme(scope, exam.code);
-        else if (current) current = await updateProgramme(scope, current.id, step === "activate" ? "active" : "retired");
-      }
+      let state: { exam: Exam; programme: Programme | null } = { exam, programme };
+      for (const step of availabilityPlan(programme, next)) state = await applyStep(scope, step, state);
     });
   }
 
@@ -127,18 +131,15 @@ function ExamDetailBody({
         title={exam.name}
         subtitle={[
           plural(published, "published station", "published stations"),
-          scheme ? `Marking scheme v${scheme.version}` : "No marking scheme",
-          plural(sittings, "sitting", "sittings"),
+          scheme ? `Marking scheme v${scheme.version.version}` : "No marking scheme",
+          plural(sittings.length, "sitting", "sittings"),
         ].join(" · ")}
         back={{ href: examsListPath(hrefFor), label: "Exams" }}
         action={
           programme?.status === "active" ? (
-            <Link
-              href={hrefFor("/sittings/new")}
-              className="inline-flex min-h-11 items-center rounded-osce-md bg-osce-accent px-4 text-osce-body font-semibold text-white hover:bg-osce-accent-hover"
-            >
+            <ButtonLink href={hrefFor("/sittings/new")} variant="primary">
               Schedule a sitting
-            </Link>
+            </ButtonLink>
           ) : null
         }
       />
@@ -149,33 +150,24 @@ function ExamDetailBody({
         <div className="min-w-0 flex-1">
           <p className="text-osce-body font-semibold text-ink">Available for scheduling</p>
           <p className="text-osce-caption text-ink-muted">
-            {exam.status === "published" ? toggleHelp(on) : "Publish the exam first, then switch this on."}
+            {exam.status === "published" ? toggleHelp(on) : "Finish setting the exam up and publish it, then switch this on."}
           </p>
+          {exam.status === "draft" && canAuthor ? (
+            <TextLink href={examResumePath(hrefFor, exam.id)} variant="muted" className="text-osce-meta">
+              Continue setup
+            </TextLink>
+          ) : null}
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={on}
-          aria-label="Available for scheduling"
-          disabled={!mayToggle || action.busy !== null}
-          onClick={() => toggle(!on)}
-          className={`relative h-6 w-11 shrink-0 rounded-full border border-transparent transition-colors disabled:opacity-50 ${
-            on ? "bg-osce-accent" : "bg-surface-raised border-border"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? "left-[22px]" : "left-0.5"}`}
-          />
-        </button>
+        <Switch checked={on} onChange={toggle} label="Available for scheduling" disabled={!mayToggle || action.busy !== null} />
       </Panel>
 
       <Panel className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-osce-body font-semibold text-ink">Stations</h2>
           {canAuthor ? (
-            <Link href={stationNewPath(hrefFor)} className="text-osce-meta font-medium text-osce-accent hover:underline">
+            <TextLink href={stationNewForExamPath(hrefFor, exam.code)} variant="muted" className="text-osce-meta">
               Add station
-            </Link>
+            </TextLink>
           ) : null}
         </div>
         {stations.length === 0 ? (
@@ -183,66 +175,94 @@ function ExamDetailBody({
         ) : (
           <ul className="divide-y divide-border">
             {stations.slice(0, 3).map((station) => (
-              <li key={station.id} className="flex items-center justify-between gap-3 py-2">
-                <span className="min-w-0 truncate text-osce-body text-ink">{station.title}</span>
-                <Badge tone={station.status === "published" ? "success" : "warning"} size="sm">
-                  {station.status === "published" ? "Published" : "Draft"}
-                </Badge>
+              <li key={station.id}>
+                <Link
+                  href={`${stationsListPath(hrefFor)}?station=${encodeURIComponent(station.id)}`}
+                  className="flex items-center justify-between gap-3 py-2 hover:bg-canvas"
+                >
+                  <span className="min-w-0 truncate text-osce-body text-ink">{station.title}</span>
+                  <Badge tone={station.status === "published" ? "success" : "warning"} size="sm">
+                    {stationState(station.status, station.version)}
+                  </Badge>
+                </Link>
               </li>
             ))}
           </ul>
         )}
-        <Link href={stationsListPath(hrefFor)} className="text-osce-meta font-medium text-osce-accent hover:underline">
+        <TextLink href={stationsForExamPath(hrefFor, exam.code)} variant="muted" className="text-osce-meta">
           {`See all ${stations.length >= COUNT_LIMIT ? `${COUNT_LIMIT}+` : stations.length} stations`}
-        </Link>
+        </TextLink>
       </Panel>
 
       <Panel className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-osce-body font-semibold text-ink">Sittings</h2>
-          <Link href={hrefFor("/sittings")} className="text-osce-meta font-medium text-osce-accent hover:underline">
+          <TextLink href={hrefFor("/sittings")} variant="muted" className="text-osce-meta">
             All sittings
-          </Link>
+          </TextLink>
         </div>
-        <p className="text-osce-body text-ink-muted">
-          {sittings === 0 ? "No sittings scheduled for this exam yet." : plural(sittings, "sitting", "sittings")}
-        </p>
+        {sittings.length === 0 ? (
+          <p className="text-osce-body text-ink-muted">No sittings scheduled for this exam yet.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {sittings.slice(0, 2).map((sitting) => (
+              <li key={sitting.id}>
+                <Link
+                  href={hrefFor(`/sittings/${encodeURIComponent(sitting.id)}`)}
+                  className="flex items-center justify-between gap-3 py-2 hover:bg-canvas"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-osce-body text-ink">{sitting.name}</span>
+                    <span className="block text-osce-caption text-ink-muted">
+                      {`${sitting.scheduled_for ? `${shortDay(sitting.scheduled_for)} · ` : ""}${sentence(sitting.sitting_type)}`}
+                    </span>
+                  </span>
+                  <Badge tone="neutral" size="sm">
+                    {sentence(sitting.status)}
+                  </Badge>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </Panel>
 
       <Panel className="flex flex-col gap-2">
         <h2 className="text-osce-body font-semibold text-ink">Marking scheme</h2>
         <p className="text-osce-body text-ink">{scheme ? scheme.title : "None chosen yet."}</p>
-        {scheme ? <p className="text-osce-caption text-ink-muted">Version {scheme.version}</p> : null}
+        {scheme ? <p className="text-osce-caption text-ink-muted">{schemeLine(scheme.version)}</p> : null}
         <div className="flex flex-wrap gap-3">
-          <Link href={rubricsListPath(hrefFor)} className="text-osce-meta font-medium text-osce-accent hover:underline">
+          <TextLink
+            href={scheme ? rubricEditPath(hrefFor, scheme.rubricId, scheme.version.version) : rubricsListPath(hrefFor)}
+            variant="muted"
+            className="text-osce-meta"
+          >
             Open scheme
-          </Link>
+          </TextLink>
           {canAuthor ? (
-            <Link href={examSettingsPath(hrefFor, exam.id)} className="text-osce-meta font-medium text-osce-accent hover:underline">
+            <TextLink href={examSettingsPath(hrefFor, exam.id)} variant="muted" className="text-osce-meta">
               Change scheme
-            </Link>
+            </TextLink>
           ) : null}
         </div>
       </Panel>
 
       <Panel className="flex flex-col gap-2">
         <h2 className="text-osce-body font-semibold text-ink">Station layouts (optional)</h2>
-        <Link
-          href={`${hrefFor("/authoring")}/station-templates`}
-          className="text-osce-meta font-medium text-osce-accent hover:underline"
-        >
+        {layouts.length > 0 ? <p className="text-osce-body text-ink-muted">{layouts.join(" · ")}</p> : null}
+        <TextLink href={stationTemplatesListPath(hrefFor)} variant="muted" className="text-osce-meta">
           Manage layouts
-        </Link>
+        </TextLink>
       </Panel>
 
       <Panel className="flex flex-col gap-2">
         <h2 className="text-osce-body font-semibold text-ink">Settings</h2>
         <p className="text-osce-body text-ink-muted">
-          {`${Math.round(exam.default_reading_seconds / 60)} min reading · ${Math.round(exam.default_simulation_seconds / 60)} min consultation · Patient voice and feedback style`}
+          {`${timingsLine({ reading: String(toMinutes(exam.default_reading_seconds)), simulation: String(toMinutes(exam.default_simulation_seconds)) })} · Patient voice and feedback style`}
         </p>
-        <Link href={examSettingsPath(hrefFor, exam.id)} className="text-osce-meta font-medium text-osce-accent hover:underline">
+        <TextLink href={examSettingsPath(hrefFor, exam.id)} variant="muted" className="text-osce-meta">
           Edit settings
-        </Link>
+        </TextLink>
       </Panel>
 
       {canAuthor && !locked ? (
@@ -266,8 +286,9 @@ function ExamDetailBody({
         </Panel>
       ) : null}
 
-      <RetireExamConfirm scope={scope} exam={retiring} action={action} onCancel={() => setRetiring(null)} />
-      <DeleteExamConfirm
+      <ExamConfirm kind="retire" scope={scope} exam={retiring} action={action} onCancel={() => setRetiring(null)} />
+      <ExamConfirm
+        kind="delete"
         scope={scope}
         exam={deleting}
         action={action}
