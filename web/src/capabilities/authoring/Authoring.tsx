@@ -8,6 +8,7 @@ import { supportsProgrammes } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import {
   authoringTabItems,
+  DEFAULT_AUTHORING_SECTION,
   parseAuthoringSection,
   type AuthoringSection,
 } from "@/capabilities/authoring/sections";
@@ -17,12 +18,18 @@ import { RubricsSection } from "@/capabilities/authoring/sections/RubricsSection
 import { ExamsSection } from "@/capabilities/authoring/sections/ExamsSection";
 import { ProgrammesSection } from "@/capabilities/authoring/sections/ProgrammesSection";
 
-const DEFAULT_SECTION: AuthoringSection = "rubrics";
+
 
 export function AuthoringHome({ section: sectionSlug }: { section?: string }) {
   const scope = useAuthoringScope();
   const { surface, hrefFor } = useSurface();
   const router = useRouter();
+  // The staff console keeps its own page name; every organisation arm reads "Exams".
+  const title = surface === "platform" ? "Authoring" : "Exams";
+  const lead =
+    surface === "platform"
+      ? "Marking schemes, exams, programmes, templates and stations."
+      : "Everything you examine with: the exams themselves, their stations, how they are marked, the layout a station follows, and which exams are offered for scheduling.";
 
   const items = useMemo(
     () => authoringTabItems(supportsProgrammes(scope)),
@@ -31,15 +38,15 @@ export function AuthoringHome({ section: sectionSlug }: { section?: string }) {
 
   const parsed = parseAuthoringSection(sectionSlug);
   const active =
-    parsed && items.some((item) => item.id === parsed) ? parsed : DEFAULT_SECTION;
+    parsed && items.some((item) => item.id === parsed) ? parsed : DEFAULT_AUTHORING_SECTION;
 
   useEffect(() => {
     if (!sectionSlug) {
-      router.replace(`${hrefFor("/authoring")}/${DEFAULT_SECTION}`);
+      router.replace(`${hrefFor("/authoring")}/${DEFAULT_AUTHORING_SECTION}`);
       return;
     }
     if (!parsed) {
-      router.replace(`${hrefFor("/authoring")}/${DEFAULT_SECTION}`);
+      router.replace(`${hrefFor("/authoring")}/${DEFAULT_AUTHORING_SECTION}`);
     }
   }, [sectionSlug, parsed, router, hrefFor]);
 
@@ -60,8 +67,8 @@ export function AuthoringHome({ section: sectionSlug }: { section?: string }) {
   if (surface === "platform") {
     return (
       <PlatformTabbedScreen
-        title="Authoring"
-        description="Marking schemes, exams, programmes, templates and stations."
+        title={title}
+        description={lead}
         tabs={items}
         value={active}
         onChange={onTabChange}
@@ -74,7 +81,7 @@ export function AuthoringHome({ section: sectionSlug }: { section?: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <B2CPageHeader title="Authoring" subtitle="Marking schemes, exams, programmes, templates and stations." />
+      <B2CPageHeader title={title} subtitle={lead} />
       <B2CSegmentedTabs
         items={items}
         value={active}

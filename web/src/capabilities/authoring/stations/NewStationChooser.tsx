@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Select, SelectableCard } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { ImportStationDialog } from "@/capabilities/authoring/imports/ImportStationDialog";
@@ -22,7 +22,8 @@ export function NewStationChooser() {
   const { hrefFor } = useSurface();
   const listHref = stationsListPath(hrefFor);
   const catalog = useAuthoringExamCatalog();
-  const [examCode, setExamCode] = useState("");
+  // An exam page sends its own code, so the choice is already made.
+  const [examCode, setExamCode] = useState(useSearchParams().get("exam") ?? "");
   const [way, setWay] = useState<StationStartWay>("layout");
   const [importing, setImporting] = useState(false);
   const current = STATION_START_WAYS.find((w) => w.id === way) ?? STATION_START_WAYS[0]!;

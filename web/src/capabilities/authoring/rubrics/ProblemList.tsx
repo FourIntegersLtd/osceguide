@@ -45,7 +45,7 @@ export function ProblemList({
     return (
       <div className="flex items-center gap-2 rounded-osce-md border border-osce-border bg-osce-surface px-3 py-2 text-osce-meta text-ink-muted">
         <HiOutlineCheckCircle className="h-4 w-4 shrink-0 text-osce-accent" aria-hidden />
-        {checking ? "Checking…" : "No problems. This marking scheme can be published."}
+        {checking ? "Checking…" : "None. Publishing is blocked while any are listed here, and each says what to fix."}
       </div>
     );
   }

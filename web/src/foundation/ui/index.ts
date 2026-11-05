@@ -17,6 +17,7 @@ export type { InputProps, InputSize } from "@/foundation/ui/Input";
 export { SelectableCard } from "@/foundation/ui/SelectableCard";
 export { Badge } from "@/foundation/ui/Badge";
 export type { BadgeProps, BadgeVariant, BadgeTone, BadgeSize } from "@/foundation/ui/Badge";
+export { Switch } from "@/foundation/ui/Switch";
 export { TextLink } from "@/foundation/ui/TextLink";
 export type { TextLinkProps } from "@/foundation/ui/TextLink";
 export { AnchoredTooltip } from "@/foundation/ui/AnchoredTooltip";

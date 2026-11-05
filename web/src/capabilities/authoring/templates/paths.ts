@@ -61,6 +61,21 @@ export function rubricNewPath(hrefFor: (path: string) => string): string {
   return `${rubricsListPath(hrefFor)}/new`;
 }
 
-export function rubricEditPath(hrefFor: (path: string) => string, rubricId: string, version: number): string {
-  return `${rubricsListPath(hrefFor)}/${encodeURIComponent(rubricId)}/versions/${version}`;
+export function rubricEditPath(
+  hrefFor: (path: string) => string,
+  rubricId: string,
+  version: number,
+  examId?: string | null,
+): string {
+  return `${rubricsListPath(hrefFor)}/${encodeURIComponent(rubricId)}/versions/${version}${examQuery(examId)}`;
+}
+
+/** `?exam=<id>`: the exam sheet that sent the author here, carried until the scheme is published. */
+function examQuery(examId?: string | null): string {
+  return examId ? `?exam=${encodeURIComponent(examId)}` : "";
+}
+
+/** Back to the New exam sheet, resuming the exam it left (Phase 2a owns that page). */
+export function examResumePath(hrefFor: (path: string) => string, examId: string): string {
+  return `${hrefFor("/authoring")}/exams/new${examQuery(examId)}`;
 }

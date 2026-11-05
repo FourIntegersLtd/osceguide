@@ -31,15 +31,6 @@ export function problemsWithin(problems: readonly Problem[], path: JsonPath): nu
   ).length;
 }
 
-/** The builder tab a problem is fixed on. */
-export type BuilderTab = "structure" | "rating" | "display";
-
-export function tabFor(problem: Problem): BuilderTab {
-  if (problem.path === "rating" || problem.path.startsWith("rating.")) return "rating";
-  if (problem.path === "display" || problem.path.startsWith("display.")) return "display";
-  return "structure";
-}
-
 function nameOf(value: unknown, keys: readonly string[], fallback: string): string {
   if (!isJsonObject(value)) return fallback;
   for (const key of keys) {
