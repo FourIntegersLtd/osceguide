@@ -29,6 +29,7 @@ from app.features.peer_practice import service_privacy as peer_practice_privacy
 from tests.http.test_attempt_material_routes import _entitled_attempt
 from tests.support.catalog import ensure_exam
 from tests.support.finished_consultation import finish_consultation
+from tests.support.sessions import opener_for
 from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db
@@ -935,7 +936,7 @@ async def test_erasure_clears_the_exam_and_sign_in_links_and_confirms_by_email(
     from tests.support.fakes import RecordingEmailSender
 
     sender = RecordingEmailSender()
-    await notifications_service.deliver_due(db_session, sender=sender, now=datetime.now(UTC))
+    await notifications_service.deliver_due(opener_for(db_session), sender=sender, now=datetime.now(UTC))
     assert [m.to for m in sender.sent if m.subject.startswith("Your OSCE Guide account has been erased")] == [
         "confirm@example.com"
     ]

@@ -13,6 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.pagination import keyset_page
 from app.features.entitlements.models import Entitlement
 
+# Where `service.list_for_user` keeps what it read in this session; every write here drops it.
+MEMO_KEY = "entitlements_memo"
+
+
+def _forget_reads(session: AsyncSession) -> None:
+    session.info.pop(MEMO_KEY, None)
+
 
 async def grant(
     session: AsyncSession,
@@ -38,6 +45,7 @@ async def grant(
         granted_by=granted_by,
         **({"starts_at": starts_at} if starts_at is not None else {}),
     )
+    _forget_reads(session)
     session.add(entitlement)
     await session.flush()
     await session.refresh(entitlement)
@@ -154,11 +162,14 @@ async def by_id_for_org(
 
 
 async def revoke(session: AsyncSession, entitlement_id: uuid.UUID, *, at: datetime) -> None:
+    """Withdraw a grant from `at`, so it stops opening anything."""
+    _forget_reads(session)
     await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(revoked_at=at))
 
 
 async def restore(session: AsyncSession, entitlement_id: uuid.UUID) -> None:
     """Undo a withdrawal: the grant is live again for whatever window it still has."""
+    _forget_reads(session)
     await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(revoked_at=None))
 
 
@@ -181,6 +192,7 @@ async def by_id(session: AsyncSession, entitlement_id: uuid.UUID) -> Entitlement
 
 async def set_ends_at(session: AsyncSession, entitlement_id: uuid.UUID, *, ends_at: datetime | None) -> None:
     """Move only a grant's end (used by the lifecycle test world to lapse a grant)."""
+    _forget_reads(session)
     await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(ends_at=ends_at))
 
 
@@ -188,6 +200,7 @@ async def set_window(
     session: AsyncSession, entitlement_id: uuid.UUID, *, starts_at: datetime, ends_at: datetime | None
 ) -> None:
     """Move a grant's dates, so access bought to follow another can start sooner."""
+    _forget_reads(session)
     await session.execute(
         update(Entitlement)
         .where(Entitlement.id == entitlement_id)

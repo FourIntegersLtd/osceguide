@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.notifications import domain, repository, service
 from tests.support.fakes import RecordingEmailSender
+from tests.support.sessions import opener_for
 
 pytestmark = pytest.mark.db
 
@@ -40,7 +41,7 @@ async def queue(session: AsyncSession, key: str = "k1", recipient: str = "a@exam
 async def test_a_queued_message_is_delivered(db_session: AsyncSession) -> None:
     await queue(db_session)
     sender = RecordingEmailSender()
-    sent, deferred = await service.deliver_due(db_session, sender=sender, now=now())
+    sent, deferred = await service.deliver_due(opener_for(db_session), sender=sender, now=now())
     assert (sent, deferred) == (1, 0)
     assert sender.sent[0].to == "a@example.com"
 
@@ -48,9 +49,9 @@ async def test_a_queued_message_is_delivered(db_session: AsyncSession) -> None:
 async def test_a_delivered_message_is_not_sent_twice(db_session: AsyncSession) -> None:
     await queue(db_session)
     sender = RecordingEmailSender()
-    await service.deliver_due(db_session, sender=sender, now=now())
+    await service.deliver_due(opener_for(db_session), sender=sender, now=now())
     await db_session.flush()
-    sent, _ = await service.deliver_due(db_session, sender=sender, now=now())
+    sent, _ = await service.deliver_due(opener_for(db_session), sender=sender, now=now())
     assert sent == 0
     assert len(sender.sent) == 1
 
@@ -61,14 +62,14 @@ async def test_queueing_the_same_key_twice_queues_once(db_session: AsyncSession)
     await queue(db_session, key="same")
     await queue(db_session, key="same")
     sender = RecordingEmailSender()
-    sent, _ = await service.deliver_due(db_session, sender=sender, now=now())
+    sent, _ = await service.deliver_due(opener_for(db_session), sender=sender, now=now())
     assert sent == 1
 
 
 async def test_a_failure_is_retried_later_with_backoff(db_session: AsyncSession) -> None:
     await queue(db_session)
     sender = RecordingEmailSender(fail_times=1)
-    sent, deferred = await service.deliver_due(db_session, sender=sender, now=now())
+    sent, deferred = await service.deliver_due(opener_for(db_session), sender=sender, now=now())
     assert (sent, deferred) == (0, 1)
 
     await db_session.flush()
@@ -81,15 +82,15 @@ async def test_a_failure_is_retried_later_with_backoff(db_session: AsyncSession)
 
 async def test_a_deferred_message_is_not_due_yet(db_session: AsyncSession) -> None:
     await queue(db_session)
-    await service.deliver_due(db_session, sender=RecordingEmailSender(fail_times=1), now=now())
+    await service.deliver_due(opener_for(db_session), sender=RecordingEmailSender(fail_times=1), now=now())
     await db_session.flush()
 
     sender = RecordingEmailSender()
-    sent, _ = await service.deliver_due(db_session, sender=sender, now=now())
+    sent, _ = await service.deliver_due(opener_for(db_session), sender=sender, now=now())
     assert sent == 0, "the backoff has not elapsed"
 
     later = now() + timedelta(seconds=domain.retry_delay(1) + 1)
-    sent, _ = await service.deliver_due(db_session, sender=sender, now=later)
+    sent, _ = await service.deliver_due(opener_for(db_session), sender=sender, now=later)
     assert sent == 1
 
 
@@ -100,7 +101,7 @@ async def test_a_message_is_abandoned_after_enough_failures(db_session: AsyncSes
     sender = RecordingEmailSender(fail_times=domain.MAX_ATTEMPTS)
     at = now()
     for attempt in range(1, domain.MAX_ATTEMPTS + 1):
-        await service.deliver_due(db_session, sender=sender, now=at)
+        await service.deliver_due(opener_for(db_session), sender=sender, now=at)
         await db_session.flush()
         at = at + timedelta(seconds=domain.retry_delay(attempt) + 1)
 
@@ -115,7 +116,7 @@ async def test_one_bad_address_does_not_stop_the_queue(db_session: AsyncSession)
     await queue(db_session, key="good", recipient="good@example.com")
     sender = RecordingEmailSender(fail_times=1)
 
-    sent, deferred = await service.deliver_due(db_session, sender=sender, now=now())
+    sent, deferred = await service.deliver_due(opener_for(db_session), sender=sender, now=now())
     assert sent == 1 and deferred == 1
 
 
@@ -143,7 +144,7 @@ async def test_a_stranded_claim_is_taken_back(db_session: AsyncSession) -> None:
     assert await repository.reclaim_stale(db_session, before=domain.stale_claim_cutoff(later)) == 1
 
     sender = RecordingEmailSender()
-    sent, _ = await service.deliver_due(db_session, sender=sender, now=later)
+    sent, _ = await service.deliver_due(opener_for(db_session), sender=sender, now=later)
     assert sent == 1
     assert [m.to for m in sender.sent] == ["stranded@example.com"]
 
@@ -160,7 +161,7 @@ async def test_an_email_body_escapes_what_it_is_given(db_session: AsyncSession) 
         idempotency_key="escaped-1",
     )
     sender = RecordingEmailSender()
-    await service.deliver_due(db_session, sender=sender, now=now())
+    await service.deliver_due(opener_for(db_session), sender=sender, now=now())
 
     body = sender.sent[0].html
     assert "<script>" not in body
@@ -179,7 +180,7 @@ async def test_a_password_reset_reads_as_an_email(db_session: AsyncSession) -> N
         idempotency_key="readable-1",
     )
     sender = RecordingEmailSender()
-    await service.deliver_due(db_session, sender=sender, now=now())
+    await service.deliver_due(opener_for(db_session), sender=sender, now=now())
 
     body = sender.sent[0].html
     assert "Reset your password" in body
@@ -201,7 +202,7 @@ async def test_a_message_with_an_unknown_template_is_failed_not_sent_and_the_res
     await queue(db_session, key="good-one", recipient="good@example.com")
     sender = RecordingEmailSender()
 
-    sent, deferred = await service.deliver_due(db_session, sender=sender, now=now())
+    sent, deferred = await service.deliver_due(opener_for(db_session), sender=sender, now=now())
 
     assert (sent, deferred) == (1, 0)
     assert [m.to for m in sender.sent] == ["good@example.com"]
@@ -217,6 +218,6 @@ async def test_one_run_drains_a_whole_invitation_batch(db_session: AsyncSession)
         await queue(db_session, key=f"bulk-{index}")
     sender = RecordingEmailSender()
 
-    sent, _ = await service.deliver_due(db_session, sender=sender, now=now())
+    sent, _ = await service.deliver_due(opener_for(db_session), sender=sender, now=now())
 
     assert sent == 100
