@@ -195,10 +195,10 @@ Ask few questions; record judgement calls below. Phase 6 (money) is merged after
 | 2a Exams and programmes | merged | npm run ci, reviewer | see judgement calls |
 | 2b Stations and layouts | merged (2f471167) | npm run ci, reviewers | |
 | 2c Marking schemes | merged | npm run ci, reviewers | |
-| 3 Scheduling and exam day | built, in review | npm run ci | |
+| 3 Scheduling and exam day | merged | npm run ci, reviewers | api additions merged (counts, overdue, break, reporting exam id) |
 | 4 People | merged (3bdec4ec) | npm run ci, reviewers | |
 | 5 Results and review | merged | npm run ci, reviewers | |
 | 6 Settings and Invoices | merged | npm run ci, security review clean; user to read (money) | |
-| 7 Docs | not started | | |
-| Browser verification | not started | | every merged phase |
-| Final 41-board audit | not started | | |
+| 7 Docs | merged | product guide checked | guide republish pending |
+| Browser verification | partial | verify/RESULTS.md | re-run on final main; staff import and training retry not walked |
+| Final 41-board audit | fixes merged | audit table | invitation preview (migration 8d2f4b6a1c93) held for user security read |
