@@ -15,6 +15,11 @@ import {
   setupComplete,
   todaySentence,
   stepBlock,
+  runningLine,
+  stillToReviewLine,
+  circuitsBySitting,
+  dateEyebrow,
+  dateTile,
 } from "@/domains/assess/dashboard/support";
 
 function setup(over: Partial<OrgSetup> = {}): OrgSetup {
@@ -199,4 +204,35 @@ test("the Today sentence counts what runs and what needs you", () => {
   assert.equal(todaySentence(1, 5), "One circuit is running and five things need you.");
   assert.equal(todaySentence(0, 1), "No circuit is running and one thing needs you.");
   assert.equal(todaySentence(2, 0), "Two circuits are running and nothing needs you.");
+});
+
+test("runningLine reads as the Today board does, in each arm's words", () => {
+  const circuit = {
+    stations_total: 8,
+    stations_completed: 3,
+    current_station: { slot_id: "s", slot_index: 3 },
+    supervisor: { name: "Dr Patel" },
+    candidates: Array.from({ length: 8 }, () => ({ name: "A" })),
+  } as unknown as LiveCircuit;
+  assert.equal(runningLine(circuit, INSTITUTION_WORDS), "Station 4 of 8 · Supervisor: Dr Patel · 8 trainees");
+  const three = { ...circuit, candidates: [{}, {}, {}] } as unknown as LiveCircuit;
+  assert.equal(runningLine(three, EMPLOYER_WORDS), "3 candidates on stations · Assessor: Dr Patel");
+});
+
+test("stillToReviewLine and circuitsBySitting use the board's phrases", () => {
+  assert.equal(stillToReviewLine(5, 8, INSTITUTION_WORDS), "5 of 8 trainees still to review");
+  const rows = [
+    { sitting_id: "a", sitting_name: "Year 3 practice round", circuit_name: "Circuit B" },
+    { sitting_id: "b", sitting_name: "Final-year OSCE, summer finals", circuit_name: "A" },
+    { sitting_id: "b", sitting_name: "Final-year OSCE, summer finals", circuit_name: "B" },
+  ];
+  assert.deepEqual(
+    circuitsBySitting(rows).map((g) => g.title),
+    ["Year 3 practice round · Circuit B", "Final-year OSCE, summer finals · 2 circuits"],
+  );
+});
+
+test("dateEyebrow and dateTile", () => {
+  assert.equal(dateEyebrow(new Date(2026, 10, 5)), "Thursday 5 November");
+  assert.deepEqual(dateTile(new Date(2026, 10, 12, 9).toISOString()), { month: "NOV", day: "12" });
 });

@@ -44,16 +44,19 @@ type RowProps = {
   title: ReactNode;
   meta?: ReactNode;
   icon?: ComponentType<{ className?: string }>;
+  /** Replaces the icon square, such as a date tile. */
+  leading?: ReactNode;
   trailing?: ReactNode;
   /** The row for what is open now, such as the episode that is playing. */
   active?: boolean;
   className?: string;
 };
 
-function RowBody({ title, meta, icon: Icon, trailing, active, chevron }: RowProps & { chevron: boolean }) {
+function RowBody({ title, meta, icon: Icon, leading, trailing, active, chevron }: RowProps & { chevron: boolean }) {
   return (
     <>
-      {Icon ? (
+      {leading ?? null}
+      {Icon && !leading ? (
         <span
           className={cn(
             "flex h-8 w-8 shrink-0 items-center justify-center rounded-osce-md",

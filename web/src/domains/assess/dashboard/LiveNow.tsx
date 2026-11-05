@@ -11,7 +11,8 @@ import {
   readLiveBoard,
   type LiveBoard as Board,
 } from "@/domains/assess/dashboard/api";
-import { boardOrder, candidatesLabel, circuitStatus, recordingMissing } from "@/domains/assess/dashboard/support";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { boardOrder, candidatesLabel, circuitStatus, recordingMissing, runningLine } from "@/domains/assess/dashboard/support";
 
 /**
  * What is running, on the way past.
@@ -23,6 +24,7 @@ import { boardOrder, candidatesLabel, circuitStatus, recordingMissing } from "@/
  */
 export function LiveNow({ orgSlug, onCount }: { orgSlug: string; onCount?: (running: number) => void }) {
   const { hrefFor } = useSurface();
+  const w = useAssessWords();
   const initial = useAsync((signal) => readLiveBoard(orgSlug, signal), [orgSlug]);
   const { session } = useSession();
   const stream = useEventStream<Board>(liveBoardStreamPath(orgSlug), {
@@ -44,12 +46,19 @@ export function LiveNow({ orgSlug, onCount }: { orgSlug: string; onCount?: (runn
       title={`${first.sitting_name} · ${first.circuit_name}`}
       action={
         <>
-          <ButtonLink href={hrefFor(`/circuits/${first.circuit_id}`)} themeType="b2b" variant="commit">
+          {w.hiring ? (
+            <ButtonLink href={hrefFor("/live")} themeType="b2b" variant="commit">
+              {circuits.length > 1 ? `Watch it (${circuits.length} running)` : "Watch it"}
+            </ButtonLink>
+          ) : null}
+          <ButtonLink href={hrefFor(`/circuits/${first.circuit_id}`)} themeType={"b2b"} variant={w.hiring ? "secondary" : "commit"}>
             Open console
           </ButtonLink>
-          <ButtonLink href={hrefFor("/live")} themeType="b2b" variant="secondary">
-            {circuits.length > 1 ? `Open the live board (${circuits.length} running)` : "Open the live board"}
-          </ButtonLink>
+          {w.hiring ? null : (
+            <ButtonLink href={hrefFor("/live")} themeType="b2b" variant="secondary">
+              {circuits.length > 1 ? `Open the live board (${circuits.length} running)` : "Open the live board"}
+            </ButtonLink>
+          )}
         </>
       }
       aside={
@@ -60,7 +69,7 @@ export function LiveNow({ orgSlug, onCount }: { orgSlug: string; onCount?: (runn
             </Badge>
           ) : (
             <Badge variant={first.paused ? "warning" : "success"} dot>
-              {circuitStatus(first)}
+              {first.paused ? circuitStatus(first) : "Live"}
             </Badge>
           )}
           {first.remaining_seconds !== null && first.remaining_seconds !== undefined ? (
@@ -74,7 +83,8 @@ export function LiveNow({ orgSlug, onCount }: { orgSlug: string; onCount?: (runn
         </div>
       }
     >
-      {candidatesLabel(first)}
+      {runningLine(first, w)}
+      {(first.candidates ?? []).length > 0 ? ` · ${candidatesLabel(first)}` : ""}
     </B2CHero>
   );
 }

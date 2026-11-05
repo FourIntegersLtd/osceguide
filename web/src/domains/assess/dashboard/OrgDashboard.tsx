@@ -30,6 +30,8 @@ import {
   assistantSteps,
   attentionFromResults,
   comingUp,
+  dateEyebrow,
+  dateTile,
   modeLabel,
   NEW_EXAM_PATH,
   SCHEDULE_SITTING_PATH,
@@ -109,11 +111,11 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   return (
     <>
       {runs && !mayDecide ? (
-        <SupervisorHeader orgSlug={orgSlug} eyebrow={data.name} />
+        <SupervisorHeader orgSlug={orgSlug} eyebrow="Supervisor" />
       ) : (
       <B2CPageHeader
         className="!mb-0"
-        eyebrow={data.name}
+        eyebrow={w.hiring ? data.name : dateEyebrow(new Date())}
         title={w.hiring ? "Overview" : greetingFor(name, new Date())}
         subtitle={w.hiring ? `Your ${w.sittings}, ${w.trainees} and results.` : todaySentence(running, attention.length)}
         action={
@@ -148,6 +150,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
       {mayDecide ? <NeedsAttention loading={results.loading} error={results.error} items={attention} /> : null}
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start [&>*]:min-w-0 [&>*]:flex-1">
+        {runs ? <SupervisorCircuits orgSlug={orgSlug} part="next" /> : null}
         {runs ? <StationsToReview orgSlug={orgSlug} /> : null}
         {runs ? <SupervisorCircuits orgSlug={orgSlug} sayWhenEmpty={!admin} /> : null}
 
@@ -165,7 +168,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
               meta={schedules ? <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={b2bTokens.b2bLink}>{w.scheduleSitting}</Link> : `An administrator can schedule one.`}
             />
           ) : (
-            upcoming.map((sitting) => <SittingRow key={sitting.id} sitting={sitting} />)
+            upcoming.map((sitting) => <SittingRow key={sitting.id} sitting={sitting} tile />)
           )}
         </B2CGroupedSection>
       </div>
@@ -183,16 +186,25 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   );
 }
 
-function SittingRow({ sitting }: { sitting: NonNullable<Data["recent_sittings"]>[number] }) {
+function SittingRow({ sitting, tile = false }: { sitting: NonNullable<Data["recent_sittings"]>[number]; tile?: boolean }) {
+  const date = tile ? dateTile(sitting.scheduled_for) : null;
   const { hrefFor } = useSurface();
   const w = useAssessWords();
   return (
     <B2CGroupedRowLink
       href={hrefFor(`/sittings/${sitting.id}`)}
-      icon={LuCalendarDays}
+      icon={date ? undefined : LuCalendarDays}
+      leading={
+        date ? (
+          <span aria-hidden className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-osce-md bg-b2c-surface-muted text-osce-ink-700">
+            <span className="text-[10px] font-semibold leading-none">{date.month}</span>
+            <span className="text-osce-body font-semibold leading-tight">{date.day}</span>
+          </span>
+        ) : undefined
+      }
       title={sitting.name}
       meta={
-        sitting.scheduled_for
+        sitting.scheduled_for && !date
           ? `${new Date(sitting.scheduled_for).toLocaleString()} · ${modeLabel(sitting.mode, w)}`
           : modeLabel(sitting.mode, w)
       }
@@ -216,7 +228,7 @@ function NeedsAttention({ loading, error, items }: { loading: boolean; error: un
   if (error) return <Alert tone="danger">{errorMessage(error)}</Alert>;
 
   return (
-    <B2CGroupedSection eyebrow="Needs your attention">
+    <B2CGroupedSection eyebrow="Needs your attention" action={<span className="text-osce-meta text-b2b-muted">Oldest first</span>}>
       {items.length === 0 ? (
         <B2CGroupedRow
           title="Nothing needs you right now."

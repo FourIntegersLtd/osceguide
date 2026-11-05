@@ -55,7 +55,8 @@ export function CircuitReviewStep({ data, published }: { data: CircuitConsole; p
           </p>
         ) : null}
       </B2CGroupedSection>
-      <p className="text-osce-meta text-b2b-mid">
+      <h3 className="text-osce-body font-semibold text-b2b-headline">The record</h3>
+      <p className="-mt-2 text-osce-meta text-b2b-mid">
         Transcripts and automatic marking for each station open from its row. Only the supervisor named on this
         circuit can read what was said.
       </p>
