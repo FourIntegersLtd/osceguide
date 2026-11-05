@@ -19,13 +19,13 @@ import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { ExamConfirm } from "@/capabilities/authoring/exams/ExamConfirms";
 import { applyStep } from "@/capabilities/authoring/exams/offer";
-import { examResumePath, examSettingsPath, examsListPath } from "@/capabilities/authoring/exams/paths";
+import { examSettingsPath, examsListPath } from "@/capabilities/authoring/exams/paths";
 import { shortDay, schemeLine } from "@/capabilities/authoring/exams/schemeLine";
 import { timingsLine, toMinutes } from "@/capabilities/authoring/exams/newExam";
 import { loadExam } from "@/capabilities/authoring/exams/useExam";
 import { availabilityPlan, examChip, toggleHelp } from "@/capabilities/authoring/sections/examSteps";
 import { stationNewForExamPath, stationsForExamPath, stationsListPath } from "@/capabilities/authoring/stations/paths";
-import { rubricEditPath, rubricsListPath, stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
+import { examResumePath, rubricEditPath, rubricsListPath, stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
 
 /** How many of an exam's stations and sittings one read looks at; a count at the limit reads "100+". */
 const COUNT_LIMIT = 100;
@@ -233,7 +233,7 @@ function ExamDetailBody({ exam, programme, stations, templates, sittings, scheme
         {scheme ? <p className="text-osce-caption text-ink-muted">{schemeLine(scheme.version)}</p> : null}
         <div className="flex flex-wrap gap-3">
           <TextLink
-            href={scheme ? rubricEditPath(hrefFor, scheme.rubricId, scheme.version.version) : rubricsListPath(hrefFor)}
+            href={scheme ? rubricEditPath(hrefFor, scheme.rubricId, scheme.version.version, exam.id) : rubricsListPath(hrefFor)}
             variant="muted"
             className="text-osce-meta"
           >

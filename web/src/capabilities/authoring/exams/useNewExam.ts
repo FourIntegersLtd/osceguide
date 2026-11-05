@@ -7,8 +7,9 @@ import { createExam, listExams, type Exam, type Programme } from "@/capabilities
 import { errorMessage } from "@/foundation/hooks";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { applyStep, saveExam } from "@/capabilities/authoring/exams/offer";
-import { examDetailPath, examResumePath } from "@/capabilities/authoring/exams/paths";
+import { examDetailPath } from "@/capabilities/authoring/exams/paths";
 import { resumeStep, timingProblem, toMinutes } from "@/capabilities/authoring/exams/newExam";
+import { examResumePath } from "@/capabilities/authoring/templates/paths";
 import { loadExam } from "@/capabilities/authoring/exams/useExam";
 import { blankExam, examToDraft, type ExamDraft } from "@/capabilities/authoring/sections/ExamFields";
 import { publishPlan, type PublishStep } from "@/capabilities/authoring/sections/examSteps";

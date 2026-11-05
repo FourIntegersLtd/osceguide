@@ -29,7 +29,7 @@ import { useNewExam, type SchemeWay } from "@/capabilities/authoring/exams/useNe
 import { useExam } from "@/capabilities/authoring/exams/useExam";
 import { useSchemeVersions } from "@/capabilities/authoring/sections/ExamFields";
 import { ExamSettingsFields, Field } from "@/capabilities/authoring/sections/ExamSettingsFields";
-import { rubricNewPath, rubricsListPath } from "@/capabilities/authoring/templates/paths";
+import { examQuery, rubricNewPath } from "@/capabilities/authoring/templates/paths";
 
 const SCHEME_WAYS: { id: SchemeWay; title: string; body?: string }[] = [
   { id: "use", title: "Use one of your marking schemes" },
@@ -144,17 +144,8 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
               </Field>
             ) : (
               <div className="flex flex-col items-start gap-2">
-                {/* Copy starts from the Marking schemes list (OSCE Guide's are in it); write opens a blank builder. */}
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    router.push(
-                      way === "copy"
-                        ? `${rubricsListPath(hrefFor)}?exam=${encodeURIComponent(exam?.id ?? "")}`
-                        : `${rubricNewPath(hrefFor)}?exam=${encodeURIComponent(exam?.id ?? "")}`,
-                    )
-                  }
-                >
+                {/* Both go to the builder's start screen, which offers Start from cards (OSCE Guide's schemes) and a blank one. */}
+                <Button variant="secondary" onClick={() => router.push(`${rubricNewPath(hrefFor)}${examQuery(exam?.id)}`)}>
                   {way === "copy" ? "Choose one to copy" : "Open the scheme builder"}
                 </Button>
                 <p className="text-osce-caption text-ink-muted">
