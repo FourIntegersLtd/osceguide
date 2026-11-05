@@ -459,3 +459,22 @@ def voice_tokens(client: AsyncClient):  # type: ignore[no-untyped-def]
     fake = FakeVoiceTokens()
     client._transport.app.dependency_overrides[get_voice_tokens] = lambda: fake  # type: ignore[attr-defined]
     return fake
+
+
+@pytest.fixture(autouse=True)
+def _fresh_local_rate_windows() -> Iterator[None]:
+    """Sign-in counts per process when Redis is off; one test's attempts must not count in the next.
+
+    Looked up in `sys.modules` so a test that never loaded the module does not import it (and read
+    settings) before the database url is set."""
+    import sys
+
+    def clear() -> None:
+        """Empty the process-local windows if the limiter has been imported."""
+        module = sys.modules.get("app.core.rate_limit")
+        if module is not None:
+            module._local_windows.clear()
+
+    clear()
+    yield
+    clear()

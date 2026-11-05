@@ -173,7 +173,8 @@ async def test_a_block_with_no_stored_value_is_written_flat_under_its_id(
     assert first.status_code == 200, first.text
     radiographs = second.json()["version"]["content"]["radiograph"]
     assert len(radiographs) == 2
-    assert radiographs[0] == first.json()["version"]["content"]["radiograph"][0]
+    # Signed links differ by the second they were signed in; the stored file is the part before "?".
+    assert radiographs[0].split("?")[0] == first.json()["version"]["content"]["radiograph"][0].split("?")[0]
 
 
 async def test_a_block_that_does_not_take_images_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
