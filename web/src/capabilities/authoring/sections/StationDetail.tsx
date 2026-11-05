@@ -485,7 +485,7 @@ export function StationDetail({
                 Version {version}.
                 {editable
                   ? " Edit the sections below; Save in the bar above stores them."
-                  : " Published, so it is read only. Create a new draft version to edit."}
+                  : " Published, so it is read only. Create a new draft version to edit. Photos stay editable."}
               </p>
               <LegacyStationMeta content={editContent} stationTitle={savedTitle} />
               <StationInstanceContentPanel

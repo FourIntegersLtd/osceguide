@@ -8,6 +8,7 @@ import { useCreateStationForm } from "@/capabilities/authoring/hooks/useCreateSt
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 import { hasPublishedVersion } from "@/capabilities/authoring/sections/StationsSection";
 import { useAsync } from "@/foundation/hooks";
+import { templatesForChosenExam } from "@/capabilities/authoring/stations/stationStart";
 
 /**
  * What the create-station screen lets the author choose from: published
@@ -22,13 +23,23 @@ export function useCreateStationChoices({
   scope: AuthoringScope;
   onCreated: (station: Station) => void;
 }) {
-  const preselected = useSearchParams().get("templateVersion");
+  const params = useSearchParams();
+  const preselected = params.get("templateVersion");
   const templates = useAsync((signal) => listStationTemplates(scope, signal), [scope.base]);
   const published = useMemo(
     () => (templates.data?.items ?? []).filter(hasPublishedVersion),
     [templates.data],
   );
-  const form = useCreateStationForm({ scope, templates: published, onCreated });
+  const form = useCreateStationForm({
+    scope,
+    templates: published,
+    onCreated,
+    // From the chooser; a named template brings its own exam.
+    initial: {
+      examCode: preselected ? undefined : (params.get("exam") ?? undefined),
+      mode: params.get("start") === "ai" ? "ai" : undefined,
+    },
+  });
 
   const examCatalog = useAuthoringExamCatalog();
   // Sourced from the exam's own settings, so a new exam that declares
@@ -40,14 +51,15 @@ export function useCreateStationChoices({
     [examCatalog.exams, form.examCode],
   );
 
+  const offered = useMemo(() => templatesForChosenExam(published, params), [published, params]);
   const choices = useMemo(
     () =>
-      published.flatMap((t) =>
+      offered.flatMap((t) =>
         t.versions
           .filter((v) => v.status === "published")
           .map((v) => ({ id: v.id, label: `${t.title} (v${v.version})` })),
       ),
-    [published],
+    [offered],
   );
 
   const { templateVersionId, handleTemplateSelect } = form;

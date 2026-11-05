@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { PlatformError } from "@/foundation/platform-client";
-import { importStatusLine, uploadFailureMessage } from "@/capabilities/authoring/imports/importCopy";
+import { importStatusChip, importStatusLine, uploadFailureMessage } from "@/capabilities/authoring/imports/importCopy";
 
 const refusal = (status: number, code: string) =>
   new PlatformError(status, { code, message: "raw server text" } as never);
@@ -30,4 +30,10 @@ test("a drafted template that is not published says creating the station publish
     importStatusLine("template_ready", true),
     "Template drafted. Review it, then create the station.",
   );
+});
+
+test("the pill beside an import says working or failed, and nothing when it is done", () => {
+  assert.equal(importStatusChip("drafting_template"), null);
+  assert.equal(importStatusChip("failed"), "Failed");
+  assert.equal(importStatusChip("completed"), null);
 });

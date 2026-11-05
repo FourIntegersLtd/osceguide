@@ -3,7 +3,7 @@
 import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, AsyncBoundary, Badge, cn, getInputClassName, SectionSearchField } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, cn, getInputClassName, SelectableCard, SectionSearchField } from "@/foundation/ui";
 import { useAsync, useSearchQuery } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { copyRubric, listRubricStartingPoints, type RubricStartingPoint } from "@/capabilities/authoring/api";
@@ -102,16 +102,7 @@ function RubricStartScreenForm() {
 
 function StartCard({ point, selected, onSelect }: { point: RubricStartingPoint; selected: boolean; onSelect: () => void }) {
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={onSelect}
-      className={cn(
-        "flex h-full flex-col gap-2 rounded-osce-lg border p-4 text-left transition-colors",
-        selected ? "border-osce-accent bg-osce-accent-subtle ring-2 ring-osce-accent-subtle" : "border-osce-border bg-osce-surface hover:border-osce-accent",
-      )}
-    >
+    <SelectableCard selected={selected} onSelect={onSelect}>
       <div className="flex items-center gap-2">
         <Badge tone={point.kind === "blank" ? "neutral" : point.kind === "platform" ? "accent" : "info"} size="sm">
           {KIND_WORDS[point.kind]}
@@ -126,7 +117,7 @@ function StartCard({ point, selected, onSelect }: { point: RubricStartingPoint; 
       {point.domains && point.domains.length > 0 ? (
         <span className="line-clamp-2 text-osce-caption text-ink-subtle">{point.domains.join(" · ")}</span>
       ) : null}
-    </button>
+    </SelectableCard>
   );
 }
 

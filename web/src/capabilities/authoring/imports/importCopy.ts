@@ -33,3 +33,8 @@ export function importStatusLine(status: string, templatePublished: boolean): st
       return status;
   }
 }
+
+/** The pill beside an import: "Failed" when it could not be read. Working shows as a spinner. */
+export function importStatusChip(status: string): string | null {
+  return status === "failed" ? "Failed" : null;
+}
