@@ -8,7 +8,6 @@ import { PlatformError } from "@/foundation/platform-client";
 import {
   listInvoices,
   readInvoice,
-  readOrganization,
   setInvoicePoNumber,
   type Invoice,
 } from "@/domains/assess/api";
@@ -19,17 +18,15 @@ import {
 } from "@/domains/assess/settings/invoiceView";
 
 /**
- * The invoices OSCE Guide has raised for this organisation (org admin only).
+ * The invoices OSCE Guide has raised for this organisation (org admin only), on `/settings/invoices`.
  *
  * Read only except for one field: the organisation's own purchase order number, which the api
  * accepts until the invoice is paid or void. Raising, paying and voiding stay in the staff console.
  */
-export function InvoicesPanel({ orgSlug, setDirty }: { orgSlug: string; setDirty: (dirty: boolean) => void }) {
+export function InvoiceBrowser({ orgSlug, setDirty }: { orgSlug: string; setDirty: (dirty: boolean) => void }) {
   const [openId, setOpenId] = useState<string | null>(null);
-  const org = useAsync((signal) => readOrganization(orgSlug, signal), [orgSlug]);
-  const description = `Invoices OSCE Guide raises for ${org.data?.name ?? "your organisation"}, and the purchase order number your finance team needs on them.`;
   return (
-    <Panel title="Invoices" description={description}>
+    <Panel>
       {openId ? (
         <InvoiceDetail key={openId} orgSlug={orgSlug} invoiceId={openId} setDirty={setDirty} onBack={() => setOpenId(null)} />
       ) : (

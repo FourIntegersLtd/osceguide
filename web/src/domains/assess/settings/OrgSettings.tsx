@@ -14,7 +14,7 @@ import {
   type Organization,
 } from "@/domains/assess/api";
 import { describeSsoStatus } from "@/domains/assess/settings/ssoStatus";
-import { InvoicesPanel } from "@/domains/assess/settings/InvoicesPanel";
+import { InvoicesTab } from "@/domains/assess/settings/InvoicesPage";
 import { ScimTokens } from "@/domains/assess/settings/ScimTokens";
 
 /**
@@ -37,7 +37,7 @@ export function WorkspaceSettings() {
               { id: "organisation", label: "Organisation", panel: (setDirty) => <OrganisationPanel orgSlug={orgSlug} setDirty={setDirty} /> },
               { id: "sso", label: "Single sign-on", panel: () => <SignInPanel orgSlug={orgSlug} /> },
               { id: "provisioning", label: "Provisioning", panel: () => <ScimTokens key={orgSlug} orgSlug={orgSlug} /> },
-              { id: "invoices", label: "Invoices", after: true, panel: (setDirty) => <InvoicesPanel key={orgSlug} orgSlug={orgSlug} setDirty={setDirty} /> },
+              { id: "invoices", label: "Invoices", after: true, panel: () => <InvoicesTab orgSlug={orgSlug} /> },
             ]
           : []
       }
