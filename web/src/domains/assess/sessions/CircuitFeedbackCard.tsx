@@ -43,6 +43,8 @@ export function CircuitFeedbackCard({
   run: (name: string, action: () => Promise<unknown>) => Promise<void>;
 }) {
   const slots = data.slots ?? [];
+  // The marking and sharing steps are drawn once the circuit has ended, so that is the only place to go to.
+  const ended = data.circuit.ended_at !== null;
 
   if (slots.length === 0) return null;
 
@@ -52,6 +54,7 @@ export function CircuitFeedbackCard({
         <FeedbackForm
           key={current.review?.finalized_at ?? "none"}
           current={current}
+          ended={ended}
           marked={slots.filter((slot) => slot.has_review).length}
           total={slots.length}
           busy={busy}
@@ -75,6 +78,7 @@ export function CircuitFeedbackCard({
 
 function FeedbackForm({
   current,
+  ended,
   marked,
   total,
   busy,
@@ -82,6 +86,7 @@ function FeedbackForm({
   publish,
 }: {
   current: CircuitReviewState;
+  ended: boolean;
   marked: number;
   total: number;
   busy: string | null;
@@ -92,7 +97,7 @@ function FeedbackForm({
   const publishedAt = current.state === "published" ? current.review.finalized_at : null;
 
   return (
-    <div id="circuit-feedback">
+    <div>
     <Panel
       title="Share this circuit's feedback"
       description="Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one."
@@ -126,9 +131,11 @@ function FeedbackForm({
       {marked === 0 ? (
         <p className="text-osce-caption text-b2b-mid">
           You can publish once at least one station is marked; this is the step that finalises the circuit&apos;s feedback.{" "}
-          <ButtonLink href="#circuit-feedback" themeType="b2b" variant="ghost">
-            Go to circuit feedback
-          </ButtonLink>
+          {ended ? (
+            <ButtonLink href="#circuit-review" themeType="b2b" variant="ghost">
+              Go to circuit feedback
+            </ButtonLink>
+          ) : null}
         </p>
       ) : null}
 

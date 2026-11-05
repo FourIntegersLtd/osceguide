@@ -207,7 +207,6 @@ export function CandidatePicker({
   groups,
   yearGroups,
   single,
-  inCircuit,
   words,
 }: {
   orgSlug: string;
@@ -218,8 +217,6 @@ export function CandidatePicker({
   yearGroups: PickerSet[];
   /** Formal exams make a circuit per person, so the order picked is the order made. */
   single?: boolean;
-  /** On the circuit form the notes say "picked"; in the wizard they say "scheduled". */
-  inCircuit?: boolean;
   words: { trainee: string; trainees: string };
 }) {
   const [tab, setTab] = useState<PeopleTab>("people");
@@ -266,7 +263,7 @@ export function CandidatePicker({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-ink-muted">
-        {picked.length} of {trainees.length} selected.
+        {picked.length} of {trainees.filter((trainee) => trainee.user_id !== null).length} selected.
         {single ? " A formal exam circuit is one candidate's sitting: they go through every station." : ""}
       </p>
       {groups.length > 0 || yearGroups.length > 0 ? (
@@ -339,9 +336,7 @@ export function CandidatePicker({
                       <p className="truncate text-ink-muted">{trainee.email}</p>
                       {userId === null ? (
                         <p className="text-osce-meta text-ink-muted">
-                          {inCircuit
-                            ? "Has not accepted the invitation, so cannot be picked."
-                            : "Has not accepted the invitation, so cannot be scheduled until they do."}
+                          Invitation not accepted yet. They can be picked once they accept.
                         </p>
                       ) : null}
                       {resent[trainee.id] ? (
@@ -352,7 +347,7 @@ export function CandidatePicker({
                     </div>
                     {userId === null ? (
                       <>
-                        <Badge>{inCircuit ? "Not signed in yet" : "Not joined yet"}</Badge>
+                        <Badge>Not joined yet</Badge>
                         <Button themeType="b2b" variant="secondary" onClick={() => void resend(trainee)}>
                           Resend invitation
                         </Button>

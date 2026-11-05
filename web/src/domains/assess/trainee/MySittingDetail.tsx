@@ -33,7 +33,7 @@ import {
 import {
   activeSlot,
   isExam,
-  isOver,
+  candidateDone,
   modeLabel,
   orderedSlots,
   progressOf,
@@ -99,7 +99,7 @@ function MicCheck() {
       </p>
       {ok ? null : (
         <p className="mt-1 text-osce-meta">
-          We check it before you join. If your browser blocks it: &quot;Allow it in the address bar, then try again.&quot;
+          {'We check it before you join. If your browser blocks it: "Allow it in the address bar, then try again."'}
         </p>
       )}
       {ok ? null : (
@@ -119,7 +119,7 @@ function Circuit({ sitting }: { sitting: MySitting }) {
   const { total } = progressOf(sitting);
   const exam = isExam(sitting);
   // Once the sitting is over there is nothing to join or prepare for: the stations and the result are what is left.
-  const over = isOver(sitting);
+  const over = candidateDone(sitting);
 
   return (
     <section className="space-y-4">

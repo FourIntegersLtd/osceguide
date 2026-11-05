@@ -169,11 +169,12 @@ export function SupervisorControls({
         )}
       </div>
 
-      <p className="text-osce-caption text-b2b-mid">
-        {started
-          ? "Not started yet? One button: Start circuit. Every override asks for a reason, kept with the record."
-          : "Everyone is in. Starting begins reading time for station 1."}
-      </p>
+      {started ? null : (
+        <p className="text-osce-caption text-b2b-mid">
+          Not started yet? One button: Start circuit. Every override asks for a reason, kept with the record.
+          {" "}Starting begins reading time for station 1.
+        </p>
+      )}
 
       {started ? (
         <label className="flex items-center gap-2 text-osce-caption text-b2b-mid">

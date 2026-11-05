@@ -201,7 +201,6 @@ export function CircuitBuilder({
           groups={groups}
           yearGroups={cohorts}
           single={isExam}
-          inCircuit
           words={{ trainee: w.trainee, trainees: w.trainees }}
         />
       </Panel>
@@ -210,8 +209,8 @@ export function CircuitBuilder({
         title={`Stations (${stations.length})`}
         description={
           isExam
-            ? `At most ${MAX_EXAM_STATIONS} on a formal exam circuit. Up to ${MAX_EXAM_STATIONS} stations. The picker loads more with Load more.`
-            : `Up to ${MAX_EXAM_STATIONS} stations. The picker loads more with Load more.`
+            ? `At most ${MAX_EXAM_STATIONS} on a formal exam circuit. The picker loads more with Load more.`
+            : "The picker loads more with Load more."
         }
       >
         <StationOrder

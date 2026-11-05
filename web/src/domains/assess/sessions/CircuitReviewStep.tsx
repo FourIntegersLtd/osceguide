@@ -29,7 +29,7 @@ export function CircuitReviewStep({ data, published }: { data: CircuitConsole; p
   const hidden = marked.length - Math.min(marked.length, 1);
 
   return (
-    <section aria-label="Marking and review" className="flex flex-col gap-4">
+    <section id="circuit-review" aria-label="Marking and review" className="flex flex-col gap-4">
       <StepGuide steps={steps} line={line} />
       <B2CGroupedSection eyebrow="Stations to mark">
         {shown.map((station) => (

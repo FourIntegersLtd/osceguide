@@ -3,7 +3,9 @@ import test from "node:test";
 import { PlatformError } from "@/foundation/platform-client";
 import type { MySitting, MySlot, OrgStation } from "@/domains/assess/trainee/api";
 import {
+  candidateDone,
   continueLabel,
+  isOver,
   greeting,
   greetingFor,
   joinFailureCopy,
@@ -201,4 +203,18 @@ test("a join refusal is said in words a candidate can act on", () => {
   assert.equal(joinFailureCopy(new PlatformError(409, { code: "circuit_not_live", message: "raw" })), "This circuit is not open yet. You will be let in when your supervisor starts it.");
   assert.equal(joinFailureCopy(new PlatformError(503, { code: "voice_unavailable", message: "raw" })), "The voice service is not available right now. Try again in a minute.");
   assert.equal(joinFailureCopy(new Error("boom")), "Something went wrong. Please try again.");
+});
+
+test("a sitting is over when completed, ended or cancelled, not while in progress", () => {
+  for (const status of ["completed", "ended", "cancelled"]) assert.equal(isOver(sitting({ status })), true, status);
+  for (const status of ["scheduled", "in_progress"]) assert.equal(isOver(sitting({ status })), false, status);
+});
+
+test("a candidate is done once the sitting is over or every station of their own is complete", () => {
+  const done = slot({ id: "a", status: "completed" });
+  const todo = slot({ id: "b", status: "scheduled" });
+  assert.equal(candidateDone(sitting({ status: "completed", slots: [todo] })), true);
+  assert.equal(candidateDone(sitting({ status: "in_progress", slots: [done] })), true);
+  assert.equal(candidateDone(sitting({ status: "in_progress", slots: [done, todo] })), false);
+  assert.equal(candidateDone(sitting({ status: "in_progress", slots: [] })), false);
 });

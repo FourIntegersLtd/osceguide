@@ -96,6 +96,12 @@ export function isOver(sitting: MySitting): boolean {
   return FINISHED_STATUSES.includes(sitting.status);
 }
 
+/** Nothing left to join or prepare for: the sitting is over, or every one of this candidate's own stations is done. */
+export function candidateDone(sitting: MySitting): boolean {
+  const { completed, total } = progressOf(sitting);
+  return isOver(sitting) || (total > 0 && completed >= total);
+}
+
 /**
  * Sittings in the order somebody wants to deal with them.
  *
