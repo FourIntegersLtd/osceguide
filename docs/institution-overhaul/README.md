@@ -28,6 +28,9 @@ one place) without removing anything.
   - a **Build spec** fold at the bottom: route, who sees it, owner, files to change,
     every API call with today's caller, and the build steps. Follow it literally.
 - `docs/institution-overhaul/boards/BuildGuide.dc.html`: the rules for turning a board into code.
+- **`docs/institution-overhaul/design/<Board>.md`: read this first.** The same board as plain
+  text: one section per tab and per dialog, every label exactly as drawn, buttons as `[..]`,
+  inputs as `‹input: ›`, plus the build spec. Build every section; tick each off in your report.
 
 **Hard rules.**
 1. **No feature is removed.** Every control on today's screen stays reachable. If today's
