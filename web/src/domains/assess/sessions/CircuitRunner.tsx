@@ -21,7 +21,7 @@ import { StationProgressList } from "@/domains/assess/sessions/StationProgressLi
 import { SupervisorControls } from "@/domains/assess/sessions/SupervisorControls";
 import { SupervisorReadingBrief } from "@/domains/assess/sessions/SupervisorReadingBrief";
 import { TurnStrip } from "@/domains/assess/sessions/TurnStrip";
-import { alertCopy, observerSubtitle, phaseLabel, runnerSteps } from "@/domains/assess/sessions/support";
+import { alertCopy, examStationNumber, observerSubtitle, orderedSlots, slotProgress, phaseLabel, runnerSteps } from "@/domains/assess/sessions/support";
 import { useCircuitRun, useObserverRoom } from "@/domains/assess/sessions/useCircuitRun";
 
 /**
@@ -83,6 +83,8 @@ function Runner({
   const review = useAsync((signal) => readCircuitReview(orgSlug, circuitId, signal), [orgSlug, circuitId]);
   const circuit = data.circuit;
   const isExam = data.sitting.mode === "exam";
+  const onSlot = orderedSlots(data).find((slot) => ["reading", "in_consultation"].includes(slotProgress(slot)));
+  const station = examStationNumber(data.sitting.mode, onSlot?.slot_index);
   const live = circuit.started_at !== null && circuit.ended_at === null;
   // An invited supervisor has no name yet (it arrives empty), so fall back to the address.
   const supervisorName = circuit.supervisor?.name || circuit.supervisor?.email;
@@ -129,7 +131,7 @@ function Runner({
       {/* Alerts arrive as codes on purpose: the board decides how to say it. */}
       {(circuit.alerts ?? []).map((code) => (
         <Alert key={code} tone="warning">
-          {alertCopy(code)}
+          {alertCopy(code, "console", station)}
         </Alert>
       ))}
 

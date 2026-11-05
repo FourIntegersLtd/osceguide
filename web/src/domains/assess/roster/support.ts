@@ -5,12 +5,12 @@ import { errorMessage } from "@/foundation/hooks/useAsync";
 import { hasCode } from "@/foundation/platform-client";
 
 /** A trainee exists before they have ever signed in, so a name may be absent. */
-export function fullName(trainee: Trainee): string | null {
+export function fullName(trainee: Pick<Trainee, "first_name" | "last_name">): string | null {
   const parts = [trainee.first_name, trainee.last_name].filter(Boolean);
   return parts.length > 0 ? parts.join(" ") : null;
 }
 
-export function displayName(trainee: Trainee): string {
+export function displayName(trainee: Pick<Trainee, "first_name" | "last_name" | "email">): string {
   return fullName(trainee) ?? trainee.email;
 }
 

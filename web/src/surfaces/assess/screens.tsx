@@ -53,7 +53,7 @@ function AdminsOnly({ children }: { children: React.ReactNode }) {
   return (
     <RequireCapability
       permission="schedule_sittings"
-      fallback={<EmptyState title="Administrators only" description="Ask an administrator to make this change." />}
+      fallback={<EmptyState title="Administrators only" description="Only someone who schedules sittings can add or edit a sitting or circuit. Ask an administrator." />}
     >
       {children}
     </RequireCapability>

@@ -9,12 +9,15 @@ import {
   B2CHero,
   B2CPageHeader,
   Badge,
+  Button,
   ButtonLink,
   EmptyState,
   TextLink,
 } from "@/foundation/ui";
 import { useAsync, useEventStream } from "@/foundation/hooks";
+import { plural } from "@/foundation/format";
 import { useSurface } from "@/capabilities";
+import { useMicPreflight } from "@/foundation/livekit";
 import { JoinRoom } from "@/domains/assess/trainee/JoinRoom";
 import { SlotReadingBrief } from "@/domains/assess/trainee/SlotReadingBrief";
 import {
@@ -78,6 +81,30 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
   );
 }
 
+/** Ask for the microphone before the room opens, so a blocked browser is found now and not at the door. */
+function MicCheck() {
+  const mic = useMicPreflight();
+  const ok = mic.status === "ready";
+  return (
+    <Alert tone={ok ? "success" : "info"} title="Check your microphone">
+      <p>
+        {ok
+          ? "Your microphone is ready."
+          : mic.status === "denied"
+            ? "Allow your microphone to join. Your browser blocked it."
+            : mic.status === "missing"
+              ? "No microphone found."
+              : "Test it now so the room can open straight away."}
+      </p>
+      {ok ? null : (
+        <Button themeType="b2b" variant="secondary" size="sm" className="mt-2" onClick={() => void mic.request()}>
+          Test microphone
+        </Button>
+      )}
+    </Alert>
+  );
+}
+
 function Circuit({ sitting }: { sitting: MySitting }) {
   const w = useAssessWords();
   const { hrefFor } = useSurface();
@@ -100,6 +127,8 @@ function Circuit({ sitting }: { sitting: MySitting }) {
             : modeLabel(sitting)
         }
         title={sitting.name}
+        back={{ href: hrefFor("/trainee"), label: `All ${w.sittings}` }}
+        subtitle={`${exam ? "Formal exam" : "Practice circuit"} · ${plural(total, "station")}`}
         action={
           <>
             {sitting.live ? (
@@ -118,6 +147,8 @@ function Circuit({ sitting }: { sitting: MySitting }) {
           </>
         }
       />
+
+      {sitting.can_join ? null : <MicCheck />}
 
       {sitting.can_join ? null : (
       <Alert tone="info" title={exam ? "Before you start" : "How a practice circuit works"}>
@@ -139,6 +170,12 @@ function Circuit({ sitting }: { sitting: MySitting }) {
         >
           {activeSlot(sitting)?.station_title ?? null}
         </B2CHero>
+      ) : null}
+
+      {briefSlot?.status === "reading" ? (
+        <Alert tone="info" title="Joining during reading">
+          You join automatically while you read, so the patient is ready when it starts.
+        </Alert>
       ) : null}
 
       {briefSlot ? <SlotReadingBrief slot={briefSlot} /> : null}

@@ -86,6 +86,16 @@ test("an alert code is shown as a sentence, never as the code", () => {
   assert.match(alertCopy("no_running_attempt"), /patient has not joined/i);
   // An unknown code is still readable rather than raw.
   assert.equal(alertCopy("some_new_code"), "some new code");
+  // The console is already in the room, so it says what to do there.
+  assert.equal(
+    alertCopy("voice_fault", "console"),
+    "Voice fault in the room. The candidate may not hear the patient.",
+  );
+  assert.equal(
+    alertCopy("attempt_failed", "console"),
+    "This station's attempt failed. Resend the patient or redo the station.",
+  );
+  assert.equal(alertCopy("clock_overdue", "console"), "The clock is overdue. Move the circuit on by hand.");
 });
 
 test("a station the circuit skipped is not a completed one", () => {

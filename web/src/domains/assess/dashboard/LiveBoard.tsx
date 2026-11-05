@@ -19,7 +19,7 @@ import { useAsync, useCursorPages, useEventStream } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { can, useSession } from "@/foundation/session";
 import { ExamClock } from "@/capabilities/attempt-runner";
-import { alertCopy } from "@/domains/assess/sessions/support";
+import { alertCopy, examStationNumber } from "@/domains/assess/sessions/support";
 import {
   liveBoardStreamPath,
   readLiveBoard,
@@ -60,7 +60,7 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
     <div className="flex w-full min-w-0 flex-col gap-5">
       <B2CPageHeader
         title="Now running"
-        subtitle="Every circuit that is live in your organisation."
+        subtitle="Every circuit that is live in your organisation, updated as it happens."
         action={
           streaming ? (
             <Badge variant={stream.connected ? "success" : "warning"} dot>
@@ -71,7 +71,7 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
       />
 
       {stream.error ? (
-        <Alert tone="danger">The live view is unavailable: {stream.error.message}</Alert>
+        <Alert tone="danger">Live updates stopped. Reload to reconnect.</Alert>
       ) : null}
 
       <AsyncBoundary state={initial}>
@@ -109,6 +109,7 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
               >
                 {circuits[0]!.sitting_name}
               </B2CHero>
+              <p className="text-sm text-ink-muted">Trouble first, then least time left.</p>
               <B2CGroupedSection eyebrow="Running">
                 {circuits.map((circuit) => (
                   <Row key={circuit.circuit_id} circuit={circuit} />
@@ -275,6 +276,7 @@ function Row({ circuit }: { circuit: LiveCircuit }) {
 function Notices({ circuit }: { circuit: LiveCircuit }) {
   const missing = recordingMissing(circuit);
   const alerts = circuit.alerts ?? [];
+  const station = examStationNumber(circuit.mode, circuit.current_station?.slot_index);
   if (!missing && alerts.length === 0) return null;
   return (
     <div className="flex flex-col gap-2">
@@ -282,13 +284,13 @@ function Notices({ circuit }: { circuit: LiveCircuit }) {
         <Alert tone="danger">
           <span className="inline-flex items-center gap-2">
             <HiOutlineExclamationTriangle className="h-4 w-4 shrink-0" aria-hidden />
-            {circuit.circuit_name}: a consultation is running but is not being recorded. Open the circuit and send the patient in again.
+            {circuit.circuit_name}: {station ? `Recording missing for Station ${station}.` : "Recording missing."} A consultation is running but is not being recorded. Open the circuit and send the patient in again.
           </span>
         </Alert>
       ) : null}
       {alerts.map((code) => (
         <Alert key={code} tone="warning">
-          {circuit.circuit_name}: {alertCopy(code)}
+          {circuit.circuit_name}: {alertCopy(code, "board", station)}
         </Alert>
       ))}
     </div>

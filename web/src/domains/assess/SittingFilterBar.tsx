@@ -1,12 +1,17 @@
 "use client";
 
-import { Input, Select } from "@/foundation/ui";
-import { humanise } from "@/foundation/format";
+import { useState } from "react";
+import { Button, Input, Select } from "@/foundation/ui";
 import { filtersActive, NO_SITTING_FILTERS, type SittingFilters } from "@/domains/assess/support";
 
-const STATUSES = ["scheduled", "in_progress", "completed", "cancelled"];
+const STATUSES: [string, string][] = [
+  ["scheduled", "Scheduled"],
+  ["in_progress", "Running"],
+  ["completed", "Finished"],
+  ["cancelled", "Cancelled"],
+];
 
-/** Status, programme and date, applied by the server so they cover every page. */
+/** Kind, status, exam and date behind one Filters button, applied by the server so they cover every page. */
 export function SittingFilterBar({
   filters,
   onChange,
@@ -17,8 +22,31 @@ export function SittingFilterBar({
   programmes: { id: string; exam_name: string }[];
 }) {
   const set = (patch: Partial<SittingFilters>) => onChange({ ...filters, ...patch });
+  const [open, setOpen] = useState(filtersActive({ ...filters, search: "" }));
   return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <Button
+          themeType="b2b"
+          variant="secondary"
+          aria-expanded={open}
+          onClick={() => setOpen((current) => !current)}
+        >
+          Filters
+        </Button>
+      </div>
+      {open ? (
     <div className="flex flex-wrap items-end gap-3" role="group" aria-label="Filter sittings">
+      <Select
+        label="Kind"
+        className="w-auto"
+        value={filters.mode}
+        onChange={(e) => set({ mode: e.target.value })}
+      >
+        <option value="">All kinds</option>
+        <option value="exam">Formal exam</option>
+        <option value="training">Training</option>
+      </Select>
       <Select
         label="Status"
         className="w-auto"
@@ -26,19 +54,19 @@ export function SittingFilterBar({
         onChange={(e) => set({ status: e.target.value })}
       >
         <option value="">Any status</option>
-        {STATUSES.map((status) => (
+        {STATUSES.map(([status, label]) => (
           <option key={status} value={status}>
-            {humanise(status)}
+            {label}
           </option>
         ))}
       </Select>
       <Select
-        label="Programme"
+        label="Exam"
         className="w-auto"
         value={filters.programmeId}
         onChange={(e) => set({ programmeId: e.target.value })}
       >
-        <option value="">Any programme</option>
+        <option value="">Any exam</option>
         {programmes.map((programme) => (
           <option key={programme.id} value={programme.id}>
             {programme.exam_name}
@@ -51,6 +79,8 @@ export function SittingFilterBar({
         <button type="button" className="text-osce-meta underline" onClick={() => onChange(NO_SITTING_FILTERS)}>
           Clear filters
         </button>
+      ) : null}
+    </div>
       ) : null}
     </div>
   );

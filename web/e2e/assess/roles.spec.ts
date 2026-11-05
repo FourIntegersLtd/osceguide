@@ -23,7 +23,7 @@ test("ASSESS-5b a trainee lands on their own portal, not the console", async ({ 
   // The staff console is not theirs: no sitting controls, whatever the page does instead.
   await page.goto(`/app/${w.slug}/sittings/new`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(3_000);
-  await expect(page.getByRole("button", { name: "Create sitting" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Continue" })).toHaveCount(0);
 });
 
 test("ASSESS-5c the roster lists the trainee, and an admin can add another person", async ({ page, context }) => {

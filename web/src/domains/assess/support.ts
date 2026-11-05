@@ -202,14 +202,12 @@ export function sittingFilterQuery(filters: SittingFilters): Record<string, stri
 
 /** Said under the sittings filters while the list is only partly loaded. */
 export function sittingsScopeNote(loaded: number, hasMore: boolean): string | null {
-  return hasMore
-    ? `Next up covers the ${loaded} sittings loaded so far. Load more to include the rest.`
-    : null;
+  return hasMore && loaded > 0 ? "Covers the sittings loaded so far." : null;
 }
 
 export function sittingsEmptyDescription(canSchedule: boolean, words: AssessWords): string {
   return canSchedule
-    ? "Schedule your first one to get started."
+    ? "Schedule your first one."
     : `An administrator schedules ${words.sittings}; they will appear here.`;
 }
 
@@ -269,4 +267,9 @@ export function moveItem<T>(list: readonly T[], index: number, offset: -1 | 1): 
   const [item] = copy.splice(index, 1);
   copy.splice(target, 0, item as T);
   return copy;
+}
+
+/** A scheduled sitting nobody is assigned to yet: its circuits are still to be built. */
+export function sittingNeedsCircuits(sitting: { status: string; candidate_count: number }): boolean {
+  return sitting.status === "scheduled" && sitting.candidate_count === 0;
 }
