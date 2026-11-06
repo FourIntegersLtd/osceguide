@@ -1,0 +1,17 @@
+- main:
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/trainee
+  - paragraph: Friday 6 Nov
+  - heading "OV exam to review" [level=1]
+  - paragraph: Formal exam · 1 station
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/trainee
+  - status:
+    - paragraph: Check your microphone
+    - paragraph: Allow your microphone to join. Your browser blocked it.
+    - button "Test microphone"
+  - status:
+    - paragraph: Before you start
+    - text: "Your station opens when your supervisor starts it. Go in straight away: the patient joins when reading time ends, and you need to be in the room by then."
+  - heading "Your stations" [level=2]
+  - text: Station 1 · E2E gender voice test - male patient Read this one back below. A finished station cannot be re-entered. Completed

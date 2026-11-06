@@ -46,6 +46,7 @@ class PeerSession(Base, UUIDPrimaryKey, Timestamps):
     __tablename__ = "peer_sessions"
     __table_args__ = (
         Index("ix_peer_sessions_participants", "owner_user_id", "claimer_user_id"),
+        Index("ix_peer_sessions_claimer_user_id", "claimer_user_id"),
         # Backs `/me/peer-sessions?when=`.
         Index("ix_peer_sessions_status_starts_at", "status", "starts_at"),
     )

@@ -85,7 +85,7 @@ async def copy_rubric(
             org_id,
             rubric_id=rubric.id,
             version=1,
-            structure=authoring.blank_structure(),
+            structure=authoring.blank_scheme(),
             system_prompt=authoring.BLANK_SYSTEM_PROMPT,
             pacing=dict(authoring.BLANK_PACING),
         )
@@ -100,7 +100,7 @@ async def copy_rubric(
     if source_row.status != lifecycle.Status.PUBLISHED:
         raise errors.RubricVersionNotPublished("Only a published rubric version can be copied.")
     structure = authoring.with_origin(
-        domain.upgrade_structure(source_row.structure),
+        domain.authoring_form(source_row.structure),
         rubric_id=str(source.id),
         version=source_row.version,
         title=source.title,

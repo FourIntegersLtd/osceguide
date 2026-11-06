@@ -1,0 +1,87 @@
+- main:
+  - link "Circuit":
+    - /url: /app/e2e-mw3om0c6/circuits/e611deb4-b426-46a2-b90a-152f129ad14b
+  - heading "Edit circuit" [level=1]
+  - paragraph: OV exam to review · exam
+  - paragraph: Used for Edit on an existing circuit and for Add a circuit on a sitting. The Schedule wizard builds the first circuits.
+  - status:
+    - paragraph: This circuit cannot be changed right now
+    - text: This circuit has finished, so its stations can no longer be changed.
+  - heading "While the circuit is locked" [level=2]
+  - paragraph: Nothing on this form can be saved while the circuit is locked. While it is running, change its timings from the live circuit screen.
+  - heading "Details" [level=2]
+  - text: Name
+  - textbox "Name":
+    - /placeholder: Morning circuit
+    - text: OV exam to review circuit
+  - heading "Candidates" [level=2]
+  - paragraph: "1 of 1 selected. A formal exam circuit is one candidate's sitting: they go through every station."
+  - tablist "Pick from":
+    - tab "People" [selected]
+    - tab "Groups"
+    - tab "Year groups"
+  - text: Find a candidate
+  - textbox "Find a candidate":
+    - /placeholder: Name or email
+  - list:
+    - listitem:
+      - paragraph: Tess Trainee
+      - paragraph: e2e-trainee-mw3om0c6@example.com
+      - text: Signed in
+      - button "Picked" [pressed]
+  - heading "Stations (1)" [level=2]
+  - paragraph: At most 12 on a formal exam circuit. The picker loads more with Load more.
+  - list:
+    - listitem:
+      - button "Drag E2E gender voice test - male patient to reorder"
+      - text: 1. E2E gender voice test - male patient
+      - button "Move E2E gender voice test - male patient up" [disabled]
+      - button "Move E2E gender voice test - male patient down" [disabled]
+      - button "Remove E2E gender voice test - male patient"
+  - status
+  - paragraph: Find a station for sca
+  - link "Write a new station":
+    - /url: /app/e2e-mw3om0c6/authoring/stations/new
+  - search:
+    - text: Search stations by name
+    - searchbox "Search stations by name"
+  - list:
+    - listitem:
+      - paragraph: E2E gender voice test - male patient
+      - paragraph: Version 1
+      - text: SCA
+      - button "Added" [disabled]
+    - listitem:
+      - paragraph: E2E library station 2
+      - paragraph: Version 1
+      - text: SCA
+      - button "Add"
+    - listitem:
+      - paragraph: E2E library station 3
+      - paragraph: Version 1
+      - text: SCA
+      - button "Add"
+  - heading "Timing" [level=2]
+  - text: Reading time (minutes)
+  - spinbutton "Reading time (minutes)": "1"
+  - paragraph: 1 to 30 minutes.
+  - text: Consultation (minutes)
+  - spinbutton "Consultation (minutes)": "5"
+  - paragraph: 1 to 180 minutes.
+  - text: Default break length (minutes)
+  - spinbutton "Default break length (minutes)": "5"
+  - paragraph: A break goes between two stations, never after the last one. Everyone on the circuit pauses during it.
+  - paragraph: Breaks
+  - button "Add a break" [disabled]
+  - paragraph: Each break is 1 to 60 minutes.
+  - heading "Supervisor" [level=2]
+  - text: Supervisor
+  - combobox "Supervisor":
+    - option "Unassigned" [selected]
+    - option "e2e-admin-mw3om0c6@example.com (institution_admin)"
+    - option "e2e-sup-mw3om0c6@example.com (supervisor)"
+  - paragraph:
+    - text: No supervisors yet?
+    - link "Invite staff":
+      - /url: /app/e2e-mw3om0c6/team
+  - button "Save changes · locked" [disabled]

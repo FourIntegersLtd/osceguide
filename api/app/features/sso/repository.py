@@ -20,6 +20,13 @@ async def config_for_org(session: AsyncSession, org_id: uuid.UUID) -> Organizati
     return config_result.scalar_one_or_none()
 
 
+async def config_by_id(session: AsyncSession, config_id: uuid.UUID) -> OrganizationSso | None:
+    """One arrangement row, for a check that must not hold a transaction open across the broker."""
+    return (
+        await session.execute(select(OrganizationSso).where(OrganizationSso.id == config_id))
+    ).scalar_one_or_none()
+
+
 async def bindings_for(session: AsyncSession, sso_id: uuid.UUID) -> Sequence[OrganizationSsoBinding]:
     """Every host and email domain this configuration claims, in a stable order."""
     bindings_result = await session.execute(

@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from app.core.ports import EmailDeliveryFailed, EmailSender
+from app.core.ports import EmailDeliveryFailed, EmailDeliveryTimedOut, EmailSender
 from app.core.settings import get_settings
 
 # Longer than any healthy Resend call; shorter than a stalled one holding a send slot.
@@ -54,7 +54,10 @@ class ResendSender:
             send_result = await asyncio.wait_for(
                 asyncio.to_thread(self._resend.Emails.send, params), SEND_TIMEOUT_SECONDS
             )
-        except Exception as exc:  # noqa: BLE001 - any provider error or timeout is a delivery failure
+        except TimeoutError as exc:
+            # A retry may send twice: the thread can still be running. Abandon instead of re-queue.
+            raise EmailDeliveryTimedOut("Resend did not answer in time") from exc
+        except Exception as exc:  # noqa: BLE001 - any provider error is a delivery failure
             raise EmailDeliveryFailed(str(exc) or type(exc).__name__) from exc
         return str(send_result.get("id", ""))
 

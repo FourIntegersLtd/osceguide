@@ -2,10 +2,12 @@
 
 import Markdown from "react-markdown";
 import { AsyncBoundary } from "@/foundation/ui";
+import { boardCard, boardRow } from "@/foundation/ui/boardKit";
 import { useAsync } from "@/foundation/hooks";
 import { AudienceSections } from "@/capabilities/attempt-runner";
 import { listOrgStations, type OrgStation } from "@/domains/assess/trainee/api";
 import { readStaffSections, type CircuitConsole, type StaffSection } from "@/domains/assess/sessions/api";
+import { cardTitle, foldBody, foldSummary } from "@/domains/assess/chrome";
 
 /**
  * The station the supervisor console is running, as its staff read it.
@@ -52,10 +54,10 @@ function SupervisorBrief({
     <AsyncBoundary state={state}>
       {(sections: StaffSection[]) =>
         sections.length > 0 ? (
-          <section className="space-y-2">
-            <h2 className="text-osce-eyebrow font-semibold text-b2b-mid">
-              Station content{title ? `: ${title}` : ""}
-            </h2>
+          <section className={boardCard} data-board="station-content">
+            <div className={`${boardRow} border-t-0`}>
+              <h2 className={cardTitle}>Station content{title ? `: ${title}` : ""}</h2>
+            </div>
             <AudienceSections sections={sections} variant="collapsible" />
           </section>
         ) : (
@@ -92,35 +94,29 @@ function UntemplatedBrief({
         const fullContent = extractFullContent(content);
 
         return (
-          <section className="space-y-2">
-            <h2 className="text-osce-eyebrow font-semibold text-b2b-mid">
-              Station content{title ? `: ${title}` : ""}
-            </h2>
-            <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
-              {readingBrief ? (
-                <div className="mb-4">
-                  <h3 className="text-osce-body font-semibold text-b2b-headline mb-2">
-                    Reading brief
-                  </h3>
-                  <div className="max-w-3xl text-sm leading-6 text-ink">
-                    <Markdown>{readingBrief}</Markdown>
-                  </div>
-                </div>
-              ) : null}
-              {fullContent ? (
-                <div>
-                  <h3 className="text-osce-body font-semibold text-b2b-headline mb-2">
-                    Full content
-                  </h3>
-                  <div className="max-w-3xl text-sm leading-6 text-ink">
-                    <Markdown>{fullContent}</Markdown>
-                  </div>
-                </div>
-              ) : null}
-              {!readingBrief && !fullContent ? (
-                <p className="text-sm text-b2b-mid">No content available for this station.</p>
-              ) : null}
+          <section className={boardCard} data-board="station-content">
+            <div className={`${boardRow} border-t-0`}>
+              <h2 className={cardTitle}>Station content{title ? `: ${title}` : ""}</h2>
             </div>
+            {readingBrief ? (
+              <details className="group">
+                <summary className={foldSummary}>Reading brief</summary>
+                <div className={foldBody}>
+                  <Markdown>{readingBrief}</Markdown>
+                </div>
+              </details>
+            ) : null}
+            {fullContent ? (
+              <details className="group">
+                <summary className={foldSummary}>Full content</summary>
+                <div className={foldBody}>
+                  <Markdown>{fullContent}</Markdown>
+                </div>
+              </details>
+            ) : null}
+            {!readingBrief && !fullContent ? (
+              <p className={`${boardRow} text-osce-ink-500`}>No content available for this station.</p>
+            ) : null}
           </section>
         );
       }}

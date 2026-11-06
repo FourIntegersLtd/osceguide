@@ -1,10 +1,13 @@
 "use client";
 
+import { boardTab, boardTabs } from "@/foundation/ui/boardKit";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   B2CPageHeader,
   B2CSegmentedTabs,
+  b2bTokens as t,
+  cn,
   type B2CSegmentedTabItem,
   LeaveConfirmModal,
   PlatformTabbedScreen,
@@ -137,7 +140,7 @@ function SettingsFrame({
       {tab === "preferences" ? <PreferencesPanel /> : null}
       {tab === "payments" ? <PaymentsPanel /> : null}
       {tab === "referrals" ? <ReferralsPanel /> : null}
-      {extraTabs.map((entry) => (tab === entry.id ? <div key={entry.id}>{entry.panel(setDirty)}</div> : null))}
+      {extraTabs.map((entry) => (tab === entry.id ? <div key={entry.id} className="flex flex-col gap-6">{entry.panel(setDirty)}</div> : null))}
     </>
   );
 
@@ -162,6 +165,35 @@ function SettingsFrame({
         {panels}
         {leaveModal}
       </PlatformTabbedScreen>
+    );
+  }
+
+  if (surface !== "train") {
+    // Assess, hire and partner: the Settings board's header and tab strip (docs/institution-overhaul/boards/Settings.dc.html).
+    return (
+      <div className="flex min-w-0 max-w-[1080px] flex-col gap-6" data-testid="settings-page">
+        <div>
+          <div className={t.assessEyebrow}>Settings</div>
+          <h1 className={t.assessTitle}>Settings</h1>
+          <p className={cn(t.assessDesc, "m-0")}>Your organisation, how people sign in, and your own account.</p>
+        </div>
+        <div className={boardTabs} role="tablist" aria-label="Settings">
+          {items.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === entry.id}
+              onClick={() => handleTabChange(entry.id)}
+              className={boardTab(tab === entry.id)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-col gap-6">{panels}</div>
+        {leaveModal}
+      </div>
     );
   }
 

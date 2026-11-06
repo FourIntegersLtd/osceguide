@@ -17,7 +17,7 @@ from app.core.errors import Forbidden, error_responses
 from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
 from app.core.pagination import CursorParams, Page
-from app.core.ports import ClockDep, EventBus
+from app.core.ports import ClockDep, EventBus, RoomAgents
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
 from app.core.tenancy import OrgStaff, may_run_circuit_policy, resolve_workspace
@@ -25,13 +25,17 @@ from app.features.dashboard import schemas_live, service_live, service_streams
 
 router = APIRouter(tags=["dashboard"])
 
+Agents = Annotated[RoomAgents, Depends(service_live.get_room_agents)]
+
 
 @router.get(
     "/orgs/{org_slug}/live",
     response_model=schemas_live.LiveBoard,
     responses=error_responses(Forbidden),
 )
-async def read_live_board(workspace: OrgStaff, session: Session, clock: ClockDep) -> schemas_live.LiveBoard:
+async def read_live_board(
+    workspace: OrgStaff, session: Session, clock: ClockDep, agents: Agents
+) -> schemas_live.LiveBoard:
     """Every examination this organisation has running, in one request.
 
     The screen that did not exist: a course lead on the morning of an OSCE
@@ -41,7 +45,7 @@ async def read_live_board(workspace: OrgStaff, session: Session, clock: ClockDep
     Reading the board may advance a circuit whose clock ran out (S-7): the api catches up
     what the job worker did not.
     """
-    return await service_live.build_live_board(session, workspace.org_id, now=clock.now())
+    return await service_live.build_live_board(session, workspace.org_id, now=clock.now(), agents=agents)
 
 
 # Circuits this organisation has finished, most recently ended first.
@@ -72,6 +76,7 @@ async def stream_live_board(
     bus: Annotated[EventBus, Depends(get_event_bus)],
     open_session: SessionOpenerDep,
     clock: ClockDep,
+    agents: Agents,
 ) -> StreamingResponse:
     """The board, pushed. One subscription for the whole organisation.
 
@@ -84,7 +89,7 @@ async def stream_live_board(
         )
     return StreamingResponse(
         service_streams.live_board_stream(
-            workspace.org_id, principal, bus=bus, open_session=open_session, clock=clock
+            workspace.org_id, principal, bus=bus, open_session=open_session, clock=clock, agents=agents
         ),
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,

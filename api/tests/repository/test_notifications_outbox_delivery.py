@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ports import EmailDeliveryTimedOut
 from app.core.settings import get_settings
 from app.features.notifications import repository, service
 from tests.support.sessions import opener_for
@@ -140,6 +141,25 @@ async def test_a_template_that_cannot_render_fails_only_its_own_message(
     good_row = await repository.by_idempotency_key(db_session, "good")
     assert broken_row is not None and good_row is not None
     assert (broken_row.status, good_row.status) == ("failed", "sent")
+
+
+async def test_a_timed_out_send_is_abandoned_not_retried(db_session: AsyncSession) -> None:
+    await queue(db_session, "slow", "slow@example.com")
+
+    class TimeoutSender:
+        async def send(self, *, to: str, subject: str, html: str, reply_to: str | None = None) -> str:
+            raise EmailDeliveryTimedOut("Resend did not answer in time")
+
+    sent, deferred = await service.deliver_due(
+        opener_for(db_session), sender=TimeoutSender(), now=datetime.now(UTC)
+    )
+
+    assert (sent, deferred) == (0, 0)
+    await db_session.flush()
+    row = await repository.by_idempotency_key(db_session, "slow")
+    assert row is not None
+    assert row.status == "failed"
+    assert row.last_error is not None
 
 
 async def test_one_outcome_that_cannot_be_recorded_does_not_lose_the_others(

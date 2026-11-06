@@ -1,0 +1,30 @@
+- main:
+  - link "Stations":
+    - /url: /app/ov-fresh-mw3o1ru2/authoring/stations
+  - heading "New station" [level=1]
+  - paragraph: Choose a published template and fill in content manually or with AI. Saving opens the draft so you can publish it.
+  - status: No published templates yet. You can still write a station by choosing its exam below. Choose a published template to generate a draft with AI.
+  - button "Manual"
+  - button "Station details" [expanded]
+  - text: Station title
+  - textbox "Station title":
+    - /placeholder: e.g. Chest pain counselling
+  - text: Template
+  - combobox "Template":
+    - 'option "No template: write it from a prompt" [selected]'
+  - paragraph: Only published templates can be used for stations. A station with no template is still a real station. It just borrows the exam's own shape rather than a reusable one.
+  - text: Exam
+  - combobox "Exam":
+    - option "Select an exam…"
+    - option "CASC"
+    - option "Orthopaedic interview"
+    - option "Paediatrics block" [selected]
+    - option "PLAB 2"
+    - option "Simulated Consultation Assessment"
+  - paragraph: This exam needs a template
+  - paragraph:
+    - text: This exam has no built-in station layout. Create a station template for this exam here. It is published when you save it, and you come straight back to this station.
+    - link "Create a station template":
+      - /url: /app/ov-fresh-mw3o1ru2/authoring/station-templates/new?exam=paed&then=station
+  - button "Cancel"
+  - button "Save draft" [disabled]

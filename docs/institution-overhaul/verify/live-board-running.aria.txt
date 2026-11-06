@@ -1,0 +1,24 @@
+- main:
+  - heading "Now running" [level=1]
+  - paragraph: Every circuit that is live in your organisation, updated as it happens.
+  - text: Live
+  - status: The background worker is not running. This screen still moves due circuits on, but marking and clearing patients from rooms wait until it is back. Tell your platform admin.
+  - paragraph: Live
+  - heading "1 circuit running" [level=2]
+  - paragraph: OV formal finals
+  - link "Open Exam – Tess Trainee":
+    - /url: /app/e2e-mw3mzpx5/circuits/be99f6e7-c9d2-4ead-8f54-9ffdda0ad200
+  - paragraph: Trouble first, then least time left.
+  - heading "Running" [level=2]
+  - link "Exam – Tess Trainee OV formal finals · exam · Station 1 of 1 · E2E gender voice test - male patient · Tess Trainee · no supervisor named · room open Stage Reading time Reading time 2:50":
+    - /url: /app/e2e-mw3mzpx5/circuits/be99f6e7-c9d2-4ead-8f54-9ffdda0ad200
+    - img
+    - text: Exam – Tess Trainee OV formal finals · exam · Station 1 of 1 · E2E gender voice test - male patient · Tess Trainee · no supervisor named · room open
+    - list "Stage":
+      - listitem: Reading
+      - listitem: Consultation
+      - listitem: Between
+    - text: Reading time Reading time 2:50
+  - region "Earlier":
+    - paragraph: Nothing has finished yet.
+    - paragraph: Circuits appear here when they end.

@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, Checkbox, Input, Select, Textarea } from "@/foundation/ui";
+import { boardAlert, boardBtn, boardLabel } from "@/foundation/ui/boardKit";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
-import { AuthShell, AuthButton } from "@/capabilities/account";
+import { AuthShell, AuthButton, AuthFormField } from "@/capabilities/account";
 import { sendSiteMessage } from "@/capabilities/help";
 import { setupRequestBody } from "@/domains/assess/newOrganisationRequest";
 
@@ -77,15 +77,13 @@ export function NewOrganisation() {
     return (
       <AuthShell
         variant="card"
-        icon="done"
+        lead
         title="Request received"
         subtitle="We will email you at the address you gave once your organisation is ready. Then sign in and the setup assistant takes you through it, step by step."
       >
-        <p className={authFooterLink}>
-          <Link href="/login" className={authLink}>
-            Go to sign in
-          </Link>
-        </p>
+        <Link href="/login" className={`${boardBtn("primary")} self-start`}>
+          Go to sign in
+        </Link>
       </AuthShell>
     );
   }
@@ -93,73 +91,66 @@ export function NewOrganisation() {
   return (
     <AuthShell
       variant="card"
-      wide
-      icon="building"
+      lead
       title="Register your organisation"
       subtitle="Tell us who you are. We set your organisation up and email you a link to sign in, usually within a working day."
     >
       <form
-        className="space-y-5"
+        className="flex flex-col gap-3.5"
         onSubmit={(event) => {
           event.preventDefault();
           void send();
         }}
       >
-        <Input label="Organisation name" required value={name} onChange={(event) => setName(event.target.value)} />
-        <Select
+        <AuthFormField label="Organisation name" name="organisation" required value={name} onChange={(event) => setName(event.target.value)} />
+        <AuthFormField
           label="Type"
+          name="type"
+          fieldType="select"
+          options={ORG_TYPES.map((type) => ({ value: type, label: type }))}
           hint="Employer sets you up for hiring: candidates and assessments instead of trainees and sittings."
           value={orgType}
           onChange={(event) => setOrgType(event.target.value)}
-        >
-          {ORG_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </Select>
+        />
 
-        <fieldset className="space-y-2">
-          <legend className="text-osce-meta font-medium text-ink">What you will use it for</legend>
-          {PURPOSES.map((purpose) => (
-            <Checkbox
-              key={purpose.id}
-              label={purpose.label}
-              checked={purposes.includes(purpose.id)}
-              onChange={() => setPurposes((current) => toggled(current, purpose.id))}
-            />
-          ))}
+        <fieldset className="m-0 min-w-0 border-0 p-0">
+          <legend className={`${boardLabel} p-0`}>What you will use it for</legend>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {PURPOSES.map((purpose) => {
+              const on = purposes.includes(purpose.id);
+              return (
+                <label
+                  key={purpose.id}
+                  className={`m-0 inline-flex min-h-9 cursor-pointer items-center rounded-full border px-3 text-assess-meta font-normal leading-normal focus-within:ring-4 focus-within:ring-assess-focus-ring ${
+                    on
+                      ? "border-assess-select-border bg-assess-chip-info-bg text-assess-chip-info-text"
+                      : "border-osce-border bg-osce-surface text-osce-ink-900"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={on}
+                    onChange={() => setPurposes((current) => toggled(current, purpose.id))}
+                  />
+                  {purpose.label}
+                </label>
+              );
+            })}
+          </div>
           {purposeMissing ? (
-            <p role="alert" className="text-osce-meta text-danger">
+            <p role="alert" className="mt-1.5 text-assess-meta leading-normal text-osce-danger-text">
               Tick at least one.
             </p>
           ) : (
-            <p className="text-osce-caption text-ink-muted">You can tell us more when we contact you.</p>
+            <p className="mt-1.5 text-assess-meta leading-normal text-osce-ink-500">You can tell us more when we contact you.</p>
           )}
         </fieldset>
 
-        <Input
-          label="Your name"
-          required
-          autoComplete="name"
-          value={ownerName}
-          onChange={(event) => setOwnerName(event.target.value)}
-        />
-        <Input
-          label="Work email"
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        <Textarea
-          label="Anything else (optional)"
-          maxLength={1000}
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-        {error ? <Alert tone="danger">{error}</Alert> : null}
+        <AuthFormField label="Your name" name="name" autoComplete="name" required value={ownerName} onChange={(event) => setOwnerName(event.target.value)} />
+        <AuthFormField label="Work email" name="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+        <AuthFormField label="Anything else (optional)" name="notes" fieldType="textarea" maxLength={1000} value={notes} onChange={(event) => setNotes(event.target.value)} />
+        {error ? <div role="alert" className={boardAlert("bad")}>{error}</div> : null}
 
         <AuthButton isLoading={sending}>{sending ? "Sending…" : "Request set-up"}</AuthButton>
         <p className={authFooterLink}>

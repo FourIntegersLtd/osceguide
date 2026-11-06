@@ -1,10 +1,8 @@
 "use client";
 
 import { ButtonLink } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { readSittingReport } from "@/domains/assess/results";
-import { candidateSteps, reviewPath } from "@/domains/assess/results/candidateNeighbours";
+import { reviewPath, type CandidateSteps } from "@/domains/assess/results/candidateNeighbours";
 
 /**
  * Previous and next candidate on the same station.
@@ -13,17 +11,12 @@ import { candidateSteps, reviewPath } from "@/domains/assess/results/candidateNe
  * a convenience beside the form, so while it loads there is nothing to show,
  * and a failure says so without taking the form down with it.
  */
-export function CandidateStepper({ orgSlug, sittingId, slotId }: { orgSlug: string; sittingId: string; slotId: string }) {
+export function CandidateStepper({ steps, sittingId }: { steps: CandidateSteps; sittingId: string }) {
   const { hrefFor } = useSurface();
-  const report = useAsync((signal) => readSittingReport(orgSlug, sittingId, signal), [orgSlug, sittingId]);
-
-  if (report.error) return <p className="text-osce-meta text-b2b-mid">Could not load the other candidates.</p>;
-  const steps = report.data ? candidateSteps(report.data.candidates ?? [], slotId) : null;
-  if (!steps || steps.total < 2) return null;
-
+  if (steps.total < 2) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-osce-meta tabular-nums text-b2b-mid">
+    <div className="flex flex-wrap items-center gap-2.5">
+      <span className="text-assess-meta tabular-nums text-osce-ink-500">
         Candidate {steps.position} of {steps.total}
       </span>
       {steps.previous ? (

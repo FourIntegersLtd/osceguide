@@ -18,10 +18,10 @@ export function SelectableCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "flex h-full flex-col gap-2 rounded-osce-lg border p-4 text-left transition-colors",
+        "flex h-full flex-col gap-2 rounded-osce-lg border p-5 text-left transition-colors focus-visible:ring-assess-focus-ring",
         selected
-          ? "border-osce-accent bg-osce-accent-subtle ring-2 ring-osce-accent-subtle"
-          : "border-osce-border bg-osce-surface hover:border-osce-accent",
+          ? "border-assess-select-border bg-osce-accent-subtle"
+          : "border-osce-border bg-osce-surface hover:border-assess-select-border",
       )}
     >
       {children}

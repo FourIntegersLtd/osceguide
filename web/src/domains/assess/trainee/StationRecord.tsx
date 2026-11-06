@@ -2,7 +2,11 @@
 
 import { AsyncBoundary, b2bTokens } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
-import { AttemptFeedback, TranscriptView, readTranscript } from "@/capabilities/feedback";
+import {
+  AttemptFeedback,
+  TranscriptView,
+  readTranscript,
+} from "@/capabilities/feedback";
 
 /**
  * One station, read back: what was said, and how it was marked.
@@ -18,7 +22,10 @@ import { AttemptFeedback, TranscriptView, readTranscript } from "@/capabilities/
  * which attempts a person may open.
  */
 export function StationRecord({ attemptId }: { attemptId: string }) {
-  const transcript = useAsync((signal) => readTranscript(attemptId, signal), [attemptId]);
+  const transcript = useAsync(
+    (signal) => readTranscript(attemptId, signal),
+    [attemptId],
+  );
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">

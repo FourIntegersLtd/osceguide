@@ -1,0 +1,39 @@
+- main:
+  - link "Sittings":
+    - /url: /app/e2e-mw3mzpx5/sittings
+  - heading "Schedule a sitting" [level=1]
+  - paragraph: Steps unlock in order. Nothing is created until the last step.
+  - list "Steps":
+    - listitem:
+      - button "Basics The basics"
+    - listitem:
+      - button "Stations Pick the stations"
+    - listitem:
+      - button "Candidates Who is sitting it?"
+    - listitem:
+      - button "Timing Timing and breaks"
+    - listitem:
+      - button "Supervisor Who supervises?"
+    - listitem:
+      - button "Review Review and create"
+  - paragraph: Step 4 of 6
+  - heading "Timing and breaks" [level=2]
+  - paragraph: These start from the usual defaults. Change them for this sitting only.
+  - text: Reading time (minutes)
+  - spinbutton "Reading time (minutes)": "3"
+  - paragraph: 1 to 30 minutes.
+  - text: Consultation (minutes)
+  - spinbutton "Consultation (minutes)": "10"
+  - paragraph: 1 to 180 minutes.
+  - text: Start time
+  - textbox "Start time": 09:00
+  - paragraph: Breaks
+  - button "Add a break" [disabled]
+  - paragraph: Each break is 1 to 60 minutes.
+  - paragraph: Ends about 09:13 for each candidate.
+  - complementary "Help":
+    - paragraph: Help
+    - paragraph: Timing is for this sitting only
+    - paragraph: Reading time, consultation time and breaks start from the usual defaults. Changing them here changes this sitting only.
+  - button "Back"
+  - button "Continue"

@@ -1,0 +1,28 @@
+- main:
+  - link "Exams":
+    - /url: /app/ov-fresh-mw3o1ru2/authoring/exams
+  - heading "Programmes" [level=1]
+  - paragraph: A programme is an exam you run sittings against. Adopt one the platform publishes or add your own, activate it, and it is offered when you schedule a sitting.
+  - status: Simulated Consultation Assessment is now one of your programmes. Schedule a sitting against it whenever you are ready.
+  - heading "Exams the platform publishes" [level=2]
+  - text: CASC casc · 0 library stations
+  - button "Adopt"
+  - text: Orthopaedic interview ortho · 0 library stations
+  - button "Adopt"
+  - text: PLAB 2 plab · 0 library stations
+  - button "Adopt"
+  - text: Simulated Consultation Assessment sca · 3 library stations Adopted
+  - heading "Your programmes" [level=2]
+  - paragraph: A programme groups this institution's sittings under one exam.
+  - link "Exams the platform publishes":
+    - /url: /app/ov-fresh-mw3o1ru2/programmes
+  - button "New programme"
+  - text: Programmes 2
+  - paragraph: Paediatrics block
+  - paragraph: paed · custom
+  - text: Active
+  - button "Retire"
+  - paragraph: Simulated Consultation Assessment
+  - paragraph: sca · imported_osce_guide · OSCE Guide exam
+  - text: Active
+  - button "Retire"

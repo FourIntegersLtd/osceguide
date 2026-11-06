@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { HiMiniSignal } from "react-icons/hi2";
+import { Button } from "@/foundation/ui";
+import { assessMeta } from "@/foundation/ui/b2bTokens";
+import { boardPad } from "@/foundation/ui/boardKit";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
 import { overrides } from "@/domains/assess/sessions/api";
 import { OverrideDialog, type OverrideRequest } from "@/domains/assess/sessions/OverrideDialog";
 import { personLabel, slotProgress, stationLabel } from "@/domains/assess/sessions/support";
+import { cardTitle } from "@/domains/assess/chrome";
 
 /**
  * Who is on this circuit, and where the examination is in it.
@@ -24,6 +27,7 @@ export function TurnStrip({
   offline,
   failure,
   run,
+  onAdd,
 }: {
   data: CircuitConsole;
   orgSlug: string;
@@ -33,6 +37,8 @@ export function TurnStrip({
   offline: boolean;
   failure: string | null;
   run: (name: string, action: () => Promise<unknown>) => Promise<void>;
+  /** Opens the add-trainee dialog (training circuits that are running). */
+  onAdd?: () => void;
 }) {
   const [request, setRequest] = useState<OverrideRequest | null>(null);
   const circuit = data.circuit;
@@ -47,39 +53,61 @@ export function TurnStrip({
     setRequest(null);
   }
 
+  const active = circuit.active_slot_id;
+  const redoable = canJump ? slots.filter((slot) => slotProgress(slot) === "completed") : [];
+
   return (
-    <div className="overflow-hidden rounded-panel border border-b2b-border bg-b2b-surface">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-b2b-border px-3 py-2.5 sm:px-4">
-        <span className="text-osce-caption font-semibold text-b2b-mid">
-          Stations on this circuit
-        </span>
-        {canJump ? (
-          <span className="text-osce-caption font-medium text-b2b-accent">
-            Tap a name to jump the circuit to that station
-          </span>
+    <div className={boardPad}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className={cardTitle}>Stations on this circuit</h2>
+        {onAdd ? (
+          <Button themeType="b2b" variant="secondary" size="sm" onClick={onAdd}>
+            Add trainee
+          </Button>
         ) : null}
       </div>
+      {canJump ? <p className={assessMeta}>Tap a name to jump the circuit to that station</p> : null}
 
-      <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain px-3 py-3 sm:px-4">
-        <div className="flex w-max min-w-full flex-nowrap gap-2 pb-1">
-          {slots.map((slot, index) => (
-            <Chip
+      <div className="flex flex-wrap items-center gap-2.5">
+        {slots.map((slot, index) => {
+          const isActive = slot.id === active;
+          const live = isActive && circuit.agent_dispatched;
+          return (
+            <button
               key={slot.id}
-              slot={slot}
-              position={index + 1}
-              isActive={slot.id === circuit.active_slot_id}
-              agentLive={slot.id === circuit.active_slot_id && circuit.agent_dispatched}
-              canJump={canJump && slot.id !== circuit.active_slot_id}
-              onJump={() => setRequest(jumpRequest(orgSlug, circuitId, slot))}
-              onRedo={
-                canJump && slotProgress(slot) === "completed"
-                  ? () => setRequest(redoRequest(orgSlug, circuitId, slot))
-                  : undefined
-              }
-            />
+              type="button"
+              disabled={!canJump || isActive}
+              aria-current={isActive ? "step" : undefined}
+              onClick={() => setRequest(jumpRequest(orgSlug, circuitId, slot))}
+              title={canJump && !isActive ? "Jump the circuit to this station" : undefined}
+              className={`inline-flex min-h-9 items-center rounded-full border px-3 text-assess-meta disabled:cursor-default ${
+                isActive
+                  ? "border-assess-select-border bg-assess-chip-info-bg text-assess-chip-info-text"
+                  : "border-osce-border bg-osce-surface text-osce-ink-900"
+              }`}
+            >
+              {index + 1} · {personLabel(slot)} · {stationLabel(slot)}
+              {live ? " · Patient is live" : ""}
+            </button>
+          );
+        })}
+      </div>
+
+      {redoable.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2.5">
+          {redoable.map((slot) => (
+            <Button
+              key={slot.id}
+              themeType="b2b"
+              variant="ghost"
+              size="sm"
+              onClick={() => setRequest(redoRequest(orgSlug, circuitId, slot))}
+            >
+              Redo this station ({personLabel(slot)})
+            </Button>
           ))}
         </div>
-      </div>
+      ) : null}
 
       <OverrideDialog
         request={request}
@@ -88,78 +116,6 @@ export function TurnStrip({
         onClose={() => setRequest(null)}
         onCommit={(input) => void commit(input)}
       />
-    </div>
-  );
-}
-
-function Chip({
-  slot,
-  position,
-  isActive,
-  agentLive,
-  canJump,
-  onJump,
-  onRedo,
-}: {
-  slot: ConsoleSlot;
-  position: number;
-  isActive: boolean;
-  agentLive: boolean;
-  canJump: boolean;
-  onJump: () => void;
-  onRedo?: () => void;
-}) {
-  const progress = slotProgress(slot);
-  const frame = agentLive
-    ? "border-b2b-success-border bg-b2b-success-bg ring-2 ring-b2b-success-icon/40"
-    : isActive
-      ? "border-b2b-accent/50 bg-canvas"
-      : canJump
-        ? "border-b2b-border bg-b2b-surface hover:border-b2b-accent-border hover:bg-canvas"
-        : "border-b2b-border bg-canvas/50 opacity-70";
-
-  const marker = agentLive
-    ? "bg-b2b-success-icon text-white"
-    : isActive
-      ? "bg-b2b-accent text-white"
-      : "bg-canvas text-b2b-mid";
-
-  return (
-    <div className={`min-w-[170px] max-w-[220px] shrink-0 rounded-panel border px-3 py-2 ${frame}`}>
-      <button
-        type="button"
-        disabled={!canJump}
-        onClick={onJump}
-        title={canJump ? "Jump the circuit to this station" : undefined}
-        className="w-full text-left disabled:cursor-default"
-      >
-        <div className="flex items-center gap-2">
-          <span
-            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-osce-caption font-bold ${marker}`}
-          >
-            {position}
-          </span>
-          <span className="truncate text-osce-caption font-semibold text-b2b-headline">
-            {personLabel(slot)}
-          </span>
-        </div>
-        <p className="mt-1 truncate text-osce-caption text-b2b-mid">{stationLabel(slot)}</p>
-      </button>
-
-      {agentLive ? (
-        <p className="mt-1 flex items-center gap-1 text-osce-micro font-semibold text-b2b-success-text">
-          <HiMiniSignal className="h-3 w-3 shrink-0 animate-pulse" aria-hidden />
-          Patient is live
-        </p>
-      ) : progress === "completed" && onRedo ? (
-        <button
-          type="button"
-          onClick={onRedo}
-          className="mt-1 text-osce-micro font-medium text-b2b-mid underline underline-offset-2 hover:text-b2b-headline"
-        >
-          Redo this station
-        </button>
-      ) : null}
     </div>
   );
 }

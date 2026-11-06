@@ -1,21 +1,10 @@
 "use client";
 
 import { HiOutlineExclamationTriangle } from "react-icons/hi2";
-import { LuClipboardCheck } from "react-icons/lu";
-import {
-  Alert,
-  AsyncBoundary,
-  B2CGroupedRow,
-  B2CGroupedRowLink,
-  B2CGroupedSection,
-  B2CHero,
-  B2CPageHeader,
-  Badge,
-  Button,
-  ButtonLink,
-  EmptyState,
-} from "@/foundation/ui";
+import { AsyncBoundary, Button, b2bTokens, cn } from "@/foundation/ui";
+import { boardAlert, boardBtn, boardCardClipped, boardChip, boardPad } from "@/foundation/ui/boardKit";
 import { useAsync, useCursorPages, useEventStream } from "@/foundation/hooks";
+import Link from "next/link";
 import { useSurface } from "@/capabilities";
 import { can, useSession } from "@/foundation/session";
 import { ExamClock } from "@/capabilities/attempt-runner";
@@ -32,9 +21,12 @@ import {
   boardOrder,
   candidatesLabel,
   circuitStatus,
+  modeLabel,
   recordingMissing,
   runsByDay,
 } from "@/domains/assess/dashboard/support";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { BoardRow, RowText } from "@/domains/assess/dashboard/BoardParts";
 
 /**
  * The exam-day board: everything this organisation has running, at once.
@@ -57,21 +49,20 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5">
-      <B2CPageHeader
-        title="Now running"
-        subtitle="Every circuit that is live in your organisation, updated as it happens."
-        action={
-          streaming ? (
-            <Badge variant={stream.connected ? "success" : "warning"} dot>
-              {stream.connected ? "Live" : "Reconnecting"}
-            </Badge>
-          ) : null
-        }
-      />
+    <section aria-label="Now running" className={b2bTokens.assessPage}>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className={b2bTokens.assessEyebrow}>Run</div>
+          <h1 className={b2bTokens.assessTitle}>Now running</h1>
+          <p className={b2bTokens.assessDesc}>Every circuit that is live in your organisation, updated as it happens.</p>
+        </div>
+        {streaming ? <span className={boardChip(stream.connected ? "ok" : "warn")}>{stream.connected ? "Live" : "Reconnecting"}</span> : null}
+      </div>
 
       {stream.error ? (
-        <Alert tone="danger">Live updates stopped. Reload to reconnect.</Alert>
+        <div role="alert" className={boardAlert("bad")}>
+          Live updates stopped. Reload to reconnect.
+        </div>
       ) : null}
 
       <AsyncBoundary state={initial}>
@@ -79,52 +70,53 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
           const circuits = boardOrder(board?.circuits ?? []);
           if (circuits.length === 0) {
             return (
-              <EmptyState
-                title="Nothing is running."
-                description="Circuits appear here the moment a supervisor starts one."
-              />
+              <div className={boardPad}>
+                <h2 className="text-assess-desc font-semibold">Nothing is running.</h2>
+                <p className={cn(b2bTokens.assessMeta, "m-0")}>Circuits appear here the moment a supervisor starts one.</p>
+              </div>
             );
           }
           return (
-            <div className="flex flex-col gap-3">
+            <>
               {board?.worker_running === false ? (
-                <Alert tone="warning">
-                  The background worker is not running. This screen still moves due circuits on, but
-                  marking and clearing patients from rooms wait until it is back. Tell your platform
-                  admin.
-                </Alert>
+                <div role="alert" className={boardAlert("warn")}>
+                  The background worker is not running. This screen still moves due circuits on, but marking and clearing patients from rooms wait until it is back. Tell your platform admin.
+                </div>
               ) : null}
-              <B2CHero
-                eyebrow="Live"
-                title={`${circuits.length} ${circuits.length === 1 ? "circuit" : "circuits"} running`}
-                action={
-                  <ButtonLink
-                    href={hrefFor(`/circuits/${circuits[0]!.circuit_id}`)}
-                    themeType="b2b"
-                    variant="commit"
-                  >
-                    Open {circuits[0]!.circuit_name}
-                  </ButtonLink>
-                }
+              <section
+                aria-label="Live"
+                className="box-border flex flex-wrap items-center justify-between gap-5 rounded-panel border border-osce-accent bg-assess-hero-live-bg p-6"
               >
-                {circuits[0]!.sitting_name}
-              </B2CHero>
-              <p className="text-sm text-ink-muted">Trouble first, then least time left.</p>
-              <B2CGroupedSection eyebrow="Running">
-                {circuits.map((circuit) => (
-                  <Row key={circuit.circuit_id} circuit={circuit} />
-                ))}
-              </B2CGroupedSection>
+                <div>
+                  <div className={b2bTokens.assessEyebrow}>Live</div>
+                  <h2 className="mt-1 text-assess-section font-semibold">
+                    {`${circuits.length} ${circuits.length === 1 ? "circuit" : "circuits"} running`}
+                  </h2>
+                  <div className={b2bTokens.assessMeta}>{circuits[0]!.sitting_name}</div>
+                </div>
+                <Link href={hrefFor(`/circuits/${circuits[0]!.circuit_id}`)} className={boardBtn("primary")}>
+                  Open {circuits[0]!.circuit_name}
+                </Link>
+              </section>
               {circuits.map((circuit) => (
                 <Notices key={circuit.circuit_id} circuit={circuit} />
               ))}
-            </div>
+              <section aria-label="Running" className={boardCardClipped}>
+                <div className="flex flex-wrap items-center gap-4 px-5 py-3.5">
+                  <h2 className="text-assess-desc font-semibold leading-[1.3]">Running</h2>
+                  <span className={b2bTokens.assessMeta}>Trouble first, then least time left</span>
+                </div>
+                {circuits.map((circuit) => (
+                  <Row key={circuit.circuit_id} circuit={circuit} />
+                ))}
+              </section>
+            </>
           );
         }}
       </AsyncBoundary>
 
       <Earlier orgSlug={orgSlug} />
-    </div>
+    </section>
   );
 }
 
@@ -140,6 +132,7 @@ const timeOf = (iso: string) =>
  * opens the circuit's own console, where its record and feedback are.
  */
 function Earlier({ orgSlug }: { orgSlug: string }) {
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const history = useCursorPages(
     (cursor, signal) => readLiveHistory(orgSlug, cursor, signal),
@@ -153,53 +146,55 @@ function Earlier({ orgSlug }: { orgSlug: string }) {
         empty={{ title: "Nothing has finished yet.", description: "Circuits appear here when they end." }}
       >
         {(runs: LiveRun[]) => (
-          <>
-            {runsByDay(runs, new Date()).map((group) => (
-              <B2CGroupedSection key={group.label} eyebrow={`Earlier · ${group.label}`}>
+          <div className={boardCardClipped}>
+            {runsByDay(runs, new Date()).map((group, groupIndex) => (
+              <div key={group.label}>
+                <div className={cn("px-5 py-3.5", groupIndex > 0 && "border-t border-osce-border-light")}>
+                  <div className={b2bTokens.assessEyebrow}>{`Earlier · ${group.label}`}</div>
+                </div>
                 {group.runs.map((run) => {
-                  const rowProps = {
-                    title: run.circuit_name,
-                    meta: `${run.sitting_name} · ${run.mode} · ${run.candidate_count} ${
-                      run.candidate_count === 1 ? "candidate" : "candidates"
-                    } · ${run.stations_completed} of ${run.stations_total} stations${
-                      run.status === "ended_early" ? " · ended early" : ""
-                    }`,
-                    trailing: (
-                      <span className="shrink-0 font-mono text-osce-meta text-b2b-mid">
-                        {run.started_at ? `${timeOf(run.started_at)}–` : "ended "}
-                        {timeOf(run.ended_at)}
-                      </span>
-                    ),
-                  };
-                  return run.circuit_id ? (
-                    <B2CGroupedRowLink
-                      key={run.id}
-                      href={hrefFor(`/circuits/${run.circuit_id}`)}
-                      icon={LuClipboardCheck}
-                      {...rowProps}
+                  const when = (
+                    <span className={b2bTokens.assessMeta}>
+                      {run.started_at ? `${timeOf(run.started_at)}–` : "ended "}
+                      {timeOf(run.ended_at)}
+                    </span>
+                  );
+                  const text = (
+                    <RowText
+                      title={run.circuit_name}
+                      meta={`${run.sitting_name} · ${modeLabel(run.mode, w)} · ${run.candidate_count} ${
+                        run.candidate_count === 1 ? "candidate" : "candidates"
+                      } · ${run.stations_completed} of ${run.stations_total} stations${run.status === "ended_early" ? " · ended early" : ""}`}
                     />
+                  );
+                  return run.circuit_id ? (
+                    <BoardRow key={run.id} href={hrefFor(`/circuits/${run.circuit_id}`)}>
+                      {text}
+                      {when}
+                    </BoardRow>
                   ) : (
-                    <B2CGroupedRow key={run.id} icon={LuClipboardCheck} {...rowProps} />
+                    <BoardRow key={run.id}>
+                      {text}
+                      {when}
+                    </BoardRow>
                   );
                 })}
-              </B2CGroupedSection>
+              </div>
             ))}
-          </>
+            {history.hasMore ? (
+              <div className="flex justify-center border-t border-osce-border-light px-5 py-3.5">
+                <Button themeType="b2b" variant="ghost" size="sm" disabled={history.loadingMore} onClick={history.loadMore}>
+                  {history.loadingMore ? "Loading…" : "Show earlier"}
+                </Button>
+              </div>
+            ) : null}
+          </div>
         )}
       </AsyncBoundary>
       {history.moreError ? (
-        <Alert tone="danger">Could not load more: {history.moreError.message}</Alert>
-      ) : null}
-      {history.hasMore ? (
-        <Button
-          themeType="b2b"
-          variant="ghost"
-          size="sm"
-          disabled={history.loadingMore}
-          onClick={history.loadMore}
-        >
-          {history.loadingMore ? "Loading…" : "Show earlier"}
-        </Button>
+        <div role="alert" className={boardAlert("bad")}>
+          Could not load more: {history.moreError.message}
+        </div>
       ) : null}
     </section>
   );
@@ -215,27 +210,19 @@ const STAGES = [
 function StageStrip({ circuit }: { circuit: LiveCircuit }) {
   const current = STAGES.findIndex((stage) => stage.phase === circuit.phase);
   return (
-    <ol className="hidden items-center gap-2 md:flex" aria-label="Stage">
+    <span role="list" className="hidden text-assess-meta text-osce-ink-500 md:inline" aria-label="Stage">
       {STAGES.map((stage, index) => (
-        <li key={stage.phase} className="flex items-center gap-2">
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              index === current ? "bg-b2b-headline" : index < current ? "bg-b2b-mid" : "bg-b2b-border"
-            }`}
-            aria-hidden
-          />
-          <span
-            className={`text-osce-meta ${index === current ? "text-b2b-headline" : "text-b2b-mid"}`}
-          >
-            {stage.label}
-          </span>
-        </li>
+        <span key={stage.phase} role="listitem">
+          {index > 0 ? " › " : ""}
+          <span className={index === current ? "font-semibold text-osce-ink-900" : undefined}>{stage.label}</span>
+        </span>
       ))}
-    </ol>
+    </span>
   );
 }
 
 function Row({ circuit }: { circuit: LiveCircuit }) {
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const station = circuit.current_station
     ? `Station ${circuit.current_station.slot_index + 1} of ${circuit.stations_total}${
@@ -244,32 +231,29 @@ function Row({ circuit }: { circuit: LiveCircuit }) {
     : `Between stations · ${circuit.stations_completed} of ${circuit.stations_total} sat`;
 
   return (
-    <B2CGroupedRowLink
-      href={hrefFor(`/circuits/${circuit.circuit_id}`)}
-      icon={LuClipboardCheck}
-      title={circuit.circuit_name}
-      meta={`${circuit.sitting_name} · ${circuit.mode} · ${station} · ${candidatesLabel(circuit)}${
-        circuit.supervisor
-          ? ` · ${circuit.supervisor.name ?? circuit.supervisor.email ?? "Supervisor"}`
-          : " · no supervisor named"
-      }${circuit.room_name ? " · room open" : ""}`}
-      trailing={
-        <div className="flex shrink-0 items-center gap-3">
-          <StageStrip circuit={circuit} />
-          <Badge variant={circuit.paused ? "warning" : "success"} dot>
-            {circuitStatus(circuit)}
-          </Badge>
-          {circuit.remaining_seconds !== null && circuit.remaining_seconds !== undefined ? (
-            <ExamClock
-              secondsLeft={circuit.remaining_seconds}
-              label={circuitStatus(circuit)}
-              tick
-              paused={circuit.paused}
-            />
-          ) : null}
-        </div>
-      }
-    />
+    <BoardRow href={hrefFor(`/circuits/${circuit.circuit_id}`)}>
+      <RowText
+        title={circuit.circuit_name}
+        meta={`${circuit.sitting_name} · ${modeLabel(circuit.mode, w)} · ${station} · ${candidatesLabel(circuit)}${
+          circuit.supervisor
+            ? ` · ${circuit.supervisor.name ?? circuit.supervisor.email ?? "Supervisor"}`
+            : " · no supervisor named"
+        }${circuit.room_name ? " · room open" : ""}`}
+      />
+      <StageStrip circuit={circuit} />
+      <span className={boardChip(circuit.paused ? "warn" : "ok")}>{circuitStatus(circuit)}</span>
+      {circuit.remaining_seconds !== null && circuit.remaining_seconds !== undefined ? (
+        <span className="w-14 text-right font-semibold tabular-nums">
+          <ExamClock
+            secondsLeft={circuit.remaining_seconds}
+            label={circuitStatus(circuit)}
+            tick
+            paused={circuit.paused}
+            plain
+          />
+        </span>
+      ) : null}
+    </BoardRow>
   );
 }
 
@@ -281,17 +265,17 @@ function Notices({ circuit }: { circuit: LiveCircuit }) {
   return (
     <div className="flex flex-col gap-2">
       {missing ? (
-        <Alert tone="danger">
+        <div role="alert" className={boardAlert("bad")}>
           <span className="inline-flex items-center gap-2">
             <HiOutlineExclamationTriangle className="h-4 w-4 shrink-0" aria-hidden />
             {circuit.circuit_name}: {station ? `Recording missing for Station ${station}.` : "Recording missing."} A consultation is running but is not being recorded. Open the circuit and send the patient in again.
           </span>
-        </Alert>
+        </div>
       ) : null}
       {alerts.map((code) => (
-        <Alert key={code} tone="warning">
+        <div key={code} role="alert" className={boardAlert("warn")}>
           {circuit.circuit_name}: {alertCopy(code, "board", station, circuit.overdue_seconds)}
-        </Alert>
+        </div>
       ))}
     </div>
   );

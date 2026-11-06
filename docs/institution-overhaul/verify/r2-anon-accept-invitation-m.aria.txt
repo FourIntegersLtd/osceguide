@@ -1,0 +1,6 @@
+- main:
+  - heading "This link is incomplete" [level=1]
+  - paragraph: Open the link from your email again, or ask your administrator to resend it.
+  - paragraph:
+    - link "Sign in":
+      - /url: /login

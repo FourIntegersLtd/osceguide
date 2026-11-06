@@ -1,13 +1,9 @@
 "use client";
 
-import { Select } from "@/foundation/ui";
 import { useState } from "react";
 import { DndContext, DragOverlay, closestCenter } from "@dnd-kit/core";
 import { InspectorPanel } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/InspectorPanel";
-import {
-  SectionChipStrip,
-  SectionOutline,
-} from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/SectionFilmstrip";
+import { SectionChipStrip, SectionOutline } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/SectionFilmstrip";
 import { SectionStage } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/SectionStage";
 import { BlockPreviewContent } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/BlockPreviewContent";
 import { StationBlockTypesInfoModal } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/StationBlockTypesInfoModal";
@@ -20,38 +16,30 @@ import {
 import type { TemplateKind } from "@/capabilities/authoring/structure/b2b/lib/stations/blockTypeLabels";
 import { profileKeyForExamCode } from "@/capabilities/authoring/structure/b2b/lib/stations/generationProfileKeys";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
-import { TemplateBuilderShell } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/TemplateBuilderShell";
 import { TemplateGenerationPanel } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/TemplateGenerationPanel";
 import {
   BuilderChromeProvider,
-  BuilderIconButton,
   builderUi,
 } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/builderChrome";
-import { HiArrowUturnLeft, HiArrowUturnRight } from "react-icons/hi2";
+import { boardCols, boardColsMain, boardColsRail } from "@/foundation/ui/boardKit";
 
 /**
- * Section-at-a-time structure editor: an outline of sections (left, from
- * `lg`; a chip strip above the stage below that), the active section's
- * fields in the middle, and settings for the selected item in a drawer.
- * Fields are added from a grouped menu in the stage; drag is for reordering.
+ * The board's three columns: a sections card beside the active section's card (its fields and the add-field
+ * fold), the AI-drafting fold below them, and a permanent Section and Field inspector in the right-hand rail
+ * (under the rest on a phone). Drag reorders sections and fields.
  *
- * `kind="station"` colours sections by who reads them (patient, candidate,
- * examiner) and gives each field a role the engine places it by;
+ * `kind="station"` gives each section an audience and each field a role the engine places it by;
  * `kind="feedback"` is a plain marking form with the scoring field types.
  */
 export function StructureBuilder({
   value,
   onChange,
-  title,
-  onTitleChange,
   kind = "station",
   examCode,
   allowCustomGenerationPrompt = false,
 }: {
   value: StationStructure;
   onChange: (next: StationStructure) => void;
-  title?: string;
-  onTitleChange?: (title: string) => void;
   kind?: TemplateKind;
   examCode?: string | null;
   allowCustomGenerationPrompt?: boolean;
@@ -61,9 +49,12 @@ export function StructureBuilder({
 
   const activeSection =
     value.sections.find((s) => s.id === builder.activeSectionId) ?? null;
-  const activeSectionIndex = activeSection
-    ? value.sections.findIndex((s) => s.id === activeSection.id)
-    : -1;
+
+  const activeSectionIndex = value.sections.findIndex((s) => s.id === builder.activeSectionId);
+  const stepSection = (delta: -1 | 1) => {
+    const next = value.sections[activeSectionIndex + delta];
+    if (next) builder.focusSection(next.id);
+  };
 
   const activeParsed = builder.activeDragId
     ? parseDragId(builder.activeDragId)
@@ -76,11 +67,6 @@ export function StructureBuilder({
           ?.blocks.find((b) => b.id === activeParsed.blockId)
       : null;
 
-  const stepSection = (delta: -1 | 1) => {
-    const next = value.sections[activeSectionIndex + delta];
-    if (next) builder.focusSection(next.id);
-  };
-
   const sectionNav = {
     kind,
     sections: value.sections,
@@ -88,8 +74,6 @@ export function StructureBuilder({
     onFocusSection: builder.focusSection,
     onAddSection: builder.handleAddSection,
   };
-
-  const persona = value.layout?.persona ?? "patient";
 
   const generationProfileKey =
     value.generation?.profileKey ?? profileKeyForExamCode(examCode);
@@ -107,116 +91,71 @@ export function StructureBuilder({
         onDragEnd={builder.handleDragEnd}
         onDragCancel={builder.handleDragCancel}
       >
-        <TemplateBuilderShell
-          title={title}
-          onTitleChange={onTitleChange}
-          subheader={
-            <>
-              {kind === "station" ? (
-                <TemplateGenerationPanel
-                  value={value}
-                  onChange={builder.applyChange}
-                  examCode={examCode}
-                  allowCustomSystemPrompt={allowCustomGenerationPrompt}
-                  systemPrompt={generationProfile.systemPrompt}
-                  profileGuidesLoading={generationProfile.loading}
-                  profileGuidesError={generationProfile.error}
-                />
-              ) : null}
-              <SectionChipStrip {...sectionNav} />
-            </>
-          }
-          toolbarActions={
-            <>
-              {kind === "station" ? (
-                <label className="mr-2 hidden items-center gap-2 text-osce-caption text-ink-muted sm:inline-flex">
-                  Who speaks in the AI role
-                  <Select
-                    value={persona}
-                    selectSize="sm"
-                    className="w-auto"
-                    onChange={(e) =>
-                      builder.applyChange({
-                        ...value,
-                        layout: {
-                          ...value.layout,
-                          persona: e.target.value as "patient" | "examiner",
-                        },
-                      })
-                    }
-                  >
-                    <option value="patient">the patient</option>
-                    <option value="examiner">the examiner (viva)</option>
-                  </Select>
-                </label>
-              ) : null}
-              <BuilderIconButton
-                label="Undo"
-                disabled={!builder.canUndo}
-                onClick={builder.undo}
-              >
-                <HiArrowUturnLeft aria-hidden />
-              </BuilderIconButton>
-              <BuilderIconButton
-                label="Redo"
-                disabled={!builder.canRedo}
-                onClick={builder.redo}
-              >
-                <HiArrowUturnRight aria-hidden />
-              </BuilderIconButton>
-            </>
-          }
-        >
-          <SectionOutline {...sectionNav} />
-          <SectionStage
-            kind={kind}
-            section={activeSection}
-            sectionIndex={activeSectionIndex}
-            sections={value.sections}
-            selection={builder.selection}
-            dropTarget={
-              builder.dropTarget?.kind === "section"
-                ? {
-                    sectionId: builder.dropTarget.sectionId,
-                    index: builder.dropTarget.index,
-                  }
-                : null
-            }
-            onSelectNone={() => builder.setSelection({ kind: "none" })}
-            onSelectBlock={(sectionId, blockId) =>
-              builder.setSelection({ kind: "block", sectionId, blockId })
-            }
-            onSectionTitleChange={(sectionId, nextTitle) =>
-              builder.applyChange(
-                updateSection(value, sectionId, { title: nextTitle }),
-              )
-            }
-            onSectionDescriptionChange={(sectionId, description) =>
-              builder.applyChange(
-                updateSection(value, sectionId, {
-                  description: description || undefined,
-                }),
-              )
-            }
-            onOpenSectionSettings={builder.openSectionSettings}
-            onAddSection={builder.handleAddSection}
-            onAddField={(type, sectionId, index) =>
-              builder.addBlockToTarget(type, sectionId, index)
-            }
-            onOpenFieldTypesInfo={() => setFieldTypesInfoOpen(true)}
-            onStepSection={stepSection}
-          />
-          <InspectorPanel
-            kind={kind}
-            value={value}
-            selection={builder.selection}
-            onChange={builder.applyChange}
-            onSelectionChange={builder.setSelection}
-            onRemoveSection={builder.handleRemoveSection}
-            blockHints={generationProfile.blockHints}
-            profileGuidesLoading={generationProfile.loading}
-          />
-        </TemplateBuilderShell>
+        <div className={`${boardCols} !gap-5`}>
+          <div className={`${boardColsMain} !gap-5`}>
+            <SectionChipStrip {...sectionNav} />
+            <div className="grid items-start gap-4 lg:grid-cols-[220px_1fr]">
+              <div className="hidden lg:block">
+                <SectionOutline {...sectionNav} />
+              </div>
+              <SectionStage
+                kind={kind}
+                section={activeSection}
+                selection={builder.selection}
+                dropTarget={
+                  builder.dropTarget?.kind === "section"
+                    ? { sectionId: builder.dropTarget.sectionId, index: builder.dropTarget.index }
+                    : null
+                }
+                sectionIndex={activeSectionIndex}
+                sectionCount={value.sections.length}
+                onStepSection={stepSection}
+                canUndo={builder.canUndo}
+                canRedo={builder.canRedo}
+                onUndo={builder.undo}
+                onRedo={builder.redo}
+                onSelectBlock={(sectionId, blockId) => builder.setSelection({ kind: "block", sectionId, blockId })}
+                onSectionTitleChange={(sectionId, nextTitle) =>
+                  builder.applyChange(updateSection(value, sectionId, { title: nextTitle }))
+                }
+                onSectionDescriptionChange={(sectionId, description) =>
+                  builder.applyChange(updateSection(value, sectionId, { description: description || undefined }))
+                }
+                onOpenSectionSettings={(sectionId) => {
+                  builder.openSectionSettings(sectionId);
+                  document.getElementById("section-inspector-title")?.focus();
+                }}
+                onAddSection={builder.handleAddSection}
+                onAddField={(type, sectionId, index) => builder.addBlockToTarget(type, sectionId, index)}
+                onOpenFieldTypesInfo={() => setFieldTypesInfoOpen(true)}
+              />
+            </div>
+            {kind === "station" ? (
+              <TemplateGenerationPanel
+                value={value}
+                onChange={builder.applyChange}
+                examCode={examCode}
+                allowCustomSystemPrompt={allowCustomGenerationPrompt}
+                systemPrompt={generationProfile.systemPrompt}
+                profileGuidesLoading={generationProfile.loading}
+                profileGuidesError={generationProfile.error}
+              />
+            ) : null}
+          </div>
+          <div className={`${boardColsRail} min-w-0 !gap-5`}>
+            <InspectorPanel
+              kind={kind}
+              value={value}
+              activeSectionId={builder.activeSectionId}
+              selection={builder.selection}
+              onChange={builder.applyChange}
+              onSelectionChange={builder.setSelection}
+              onRemoveSection={builder.handleRemoveSection}
+              blockHints={generationProfile.blockHints}
+              profileGuidesLoading={generationProfile.loading}
+            />
+          </div>
+        </div>
         <DragOverlay dropAnimation={null}>
           {activeBlock ? (
             <div

@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
-import { Checkbox, getInputClassName, Select } from "@/foundation/ui";
+import { useMemo, type ReactNode, type SelectHTMLAttributes } from "react";
+import { Checkbox, getInputClassName, Select, b2bTokens } from "@/foundation/ui";
+import { BoardSelect } from "@/foundation/ui/BoardFields";
+import { boardInput } from "@/foundation/ui/boardKit";
 import { LoadError } from "@/capabilities/authoring/parts/LoadError";
 import { useAsync } from "@/foundation/hooks";
 import { listRubrics, type Exam, type ExamSettings } from "@/capabilities/authoring/api";
@@ -74,11 +76,26 @@ export function useSchemeVersions(selectedId: string) {
         const latest = Math.max(0, ...published.map((v) => v.version));
         return published
           .filter((v) => v.version === latest || v.id === selectedId)
-          .map((v) => ({ id: v.id, label: `${rubric.title} · v${v.version}` }));
+          .map((v) => ({ id: v.id, label: `${rubric.title} · v${v.version}${rubric.owner_kind === "platform" ? " (OSCE Guide)" : ""}` }));
       }),
     [rubrics.data, selectedId],
   );
   return { rubrics, versions };
+}
+
+/** One field of the form; the board's flow it as 200px-or-wider cells. */
+function FieldCell({ board, label, children }: { board: boolean; label: string; children: ReactNode }) {
+  return (
+    <div className={board ? "flex-[1_1_200px]" : undefined}>
+      <Field board={board} label={label}>
+        {children}
+      </Field>
+    </div>
+  );
+}
+
+function SchemeSelect({ board, ...props }: { board: boolean } & SelectHTMLAttributes<HTMLSelectElement>) {
+  return board ? <BoardSelect {...props} /> : <Select {...props} className="mt-1" />;
 }
 
 /**
@@ -92,10 +109,13 @@ export function ExamFields({
   value,
   onChange,
   codeDisabled = false,
+  board = false,
 }: {
   value: ExamDraft;
   onChange: (next: ExamDraft) => void;
   codeDisabled?: boolean;
+  /** The ExamSettings board's look: flowing 200px fields, board inputs, an open settings card. */
+  board?: boolean;
 }) {
   const scope = useAuthoringScope();
   const { rubrics, versions } = useSchemeVersions(value.rubricVersionId);
@@ -104,43 +124,44 @@ export function ExamFields({
   const setSettings = (patch: Partial<ExamSettings>) =>
     set({ settings: { ...value.settings, ...patch } });
 
+  const input = board ? boardInput : `mt-1 ${getInputClassName()}`;
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Code">
+      <div className={board ? "flex flex-wrap gap-4" : "grid grid-cols-1 gap-4 sm:grid-cols-2"}>
+        <FieldCell board={board} label="Code">
           <input
             value={value.code}
             disabled={codeDisabled}
             onChange={(e) => set({ code: e.target.value })}
-            className={`mt-1 ${getInputClassName()}`}
+            className={input}
             placeholder="e.g. finals"
           />
-        </Field>
-        <Field label="Name">
+        </FieldCell>
+        <FieldCell board={board} label="Name">
           <input
             value={value.name}
             onChange={(e) => set({ name: e.target.value })}
-            className={`mt-1 ${getInputClassName()}`}
+            className={input}
             placeholder="e.g. Final MB OSCE"
           />
-        </Field>
-        <Field label="Reading time (seconds)">
+        </FieldCell>
+        <FieldCell board={board} label="Reading time (seconds)">
           <input
             type="number"
             value={value.reading}
             onChange={(e) => set({ reading: e.target.value })}
-            className={`mt-1 ${getInputClassName()}`}
+            className={input}
           />
-        </Field>
-        <Field label="Station time (seconds)">
+        </FieldCell>
+        <FieldCell board={board} label="Station time (seconds)">
           <input
             type="number"
             value={value.simulation}
             onChange={(e) => set({ simulation: e.target.value })}
-            className={`mt-1 ${getInputClassName()}`}
+            className={input}
           />
-        </Field>
-        <Field label="Break between stations (minutes, formal exams)">
+        </FieldCell>
+        <FieldCell board={board} label="Break between stations (minutes, formal exams)">
           <input
             type="number"
             min={1}
@@ -149,22 +170,22 @@ export function ExamFields({
             onChange={(e) =>
               setSettings({ default_break_minutes: e.target.value.trim() === "" ? null : Number(e.target.value) })
             }
-            className={`mt-1 ${getInputClassName()}`}
+            className={input}
           />
-        </Field>
-        <Field label="Attempts per station">
+        </FieldCell>
+        <FieldCell board={board} label="Attempts per station">
           <input
             type="number"
             value={value.attempts}
             onChange={(e) => set({ attempts: e.target.value })}
-            className={`mt-1 ${getInputClassName()}`}
+            className={input}
           />
-        </Field>
-        <Field label="Marking scheme version">
-          <Select
+        </FieldCell>
+        <FieldCell board={board} label="Marking scheme version">
+          <SchemeSelect
+            board={board}
             value={value.rubricVersionId}
             onChange={(e) => set({ rubricVersionId: e.target.value })}
-            className="mt-1"
           >
             <option value="">{rubrics.error ? "Marking schemes could not be loaded" : "None yet"}</option>
             {versions.map((v) => (
@@ -172,11 +193,11 @@ export function ExamFields({
                 {v.label}
               </option>
             ))}
-          </Select>
+          </SchemeSelect>
           {rubrics.error ? <LoadError message={rubrics.error.message} onRetry={rubrics.reload} /> : null}
-        </Field>
+        </FieldCell>
       </div>
-      <ExamSettingsFields value={value.settings} onChange={setSettings} />
+      <ExamSettingsFields board={board} value={value.settings} onChange={setSettings} />
       {/*
        * The backend refuses this on the org-scoped route on purpose — "a
        * school cannot put its own private exam into the funnel by asking"
@@ -193,7 +214,7 @@ export function ExamFields({
           className="items-center"
         />
       ) : (
-        <p className="text-osce-caption text-ink-muted">
+        <p className={board ? b2bTokens.assessMeta : "text-osce-caption text-ink-muted"}>
           Partner-pilot status is set by OSCE Guide staff, not from here.
         </p>
       )}

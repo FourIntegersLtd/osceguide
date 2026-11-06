@@ -1,0 +1,36 @@
+- main:
+  - heading "Team" [level=1]
+  - paragraph: Who can run circuits and sign off results in this organisation.
+  - button "Add people"
+  - tablist "Team sections":
+    - tab "Members" [selected]
+    - tab "Add people"
+    - tab "History"
+  - paragraph: 1 staff account
+  - text: Search staff
+  - searchbox "Search staff"
+  - table:
+    - rowgroup:
+      - row "Select Email Role Circuits led Access Actions":
+        - columnheader "Select"
+        - columnheader "Email"
+        - columnheader "Role"
+        - columnheader "Circuits led"
+        - columnheader "Access"
+        - columnheader "Actions"
+    - rowgroup:
+      - row "Select e2e-partner-admin-mw3om0c6@example.com e2e-partner-admin-mw3om0c6@example.com Admin 0 Active Change role Revoke":
+        - cell "Select e2e-partner-admin-mw3om0c6@example.com":
+          - checkbox "Select e2e-partner-admin-mw3om0c6@example.com"
+        - cell "e2e-partner-admin-mw3om0c6@example.com"
+        - cell "Admin"
+        - cell "0"
+        - cell "Active"
+        - cell "Change role Revoke":
+          - button "Change role"
+          - button "Revoke"
+  - paragraph:
+    - text: Looking for the people being examined?
+    - link "Go to the roster":
+      - /url: /app/e2e-partner-mw3om0c6/trainees
+    - text: .

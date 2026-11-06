@@ -7,6 +7,7 @@ import { Button, ConfirmModal, productTokens, Spinner } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { closeAccount } from "@/capabilities/account/api";
+import { AccountButton, AccountCard, useBoardSkin } from "@/capabilities/account/settings/AccountKit";
 import { settingsMeta, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
 const { b2cInputBase } = productTokens;
@@ -23,6 +24,8 @@ const { b2cInputBase } = productTokens;
  */
 export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
   const { signOut } = useSession();
+  const board = useBoardSkin();
+  const reopenLine = `You are signed out straight away. You have ${ACCOUNT_REOPEN_DAYS} days to reopen it.`;
   const [step, setStep] = useState<"closed" | "form" | "final">("closed");
   const [confirmText, setConfirmText] = useState("");
   const [password, setPassword] = useState("");
@@ -53,10 +56,18 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <>
+      {board ? (
+        <AccountCard title="Delete your account" tone="danger" description={reopenLine}>
+          {isAdmin ? <p className="m-0 text-assess-meta text-ink-muted">Admin accounts cannot be deleted from Settings.</p> : null}
+          <AccountButton variant="danger" onClick={() => setStep("form")} disabled={isAdmin || busy} className="self-start">
+            {busy ? "Deleting..." : "Delete account"}
+          </AccountButton>
+        </AccountCard>
+      ) : (
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-osce-lg bg-canvas p-6">
         <div className="min-w-0 flex-1">
           <h2 className="text-osce-subheading font-semibold text-danger">Delete your account</h2>
-          <p className={settingsSub}>You are signed out straight away. You have {ACCOUNT_REOPEN_DAYS} days to reopen it.</p>
+          <p className={settingsSub}>{reopenLine}</p>
           {isAdmin ? (
             <p className={`mt-1 ${settingsMeta}`}>Admin accounts cannot be deleted from Settings.</p>
           ) : null}
@@ -80,6 +91,7 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
           )}
         </Button>
       </section>
+      )}
 
       <ConfirmModal
         isOpen={step === "form"}

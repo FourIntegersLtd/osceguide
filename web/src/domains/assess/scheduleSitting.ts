@@ -31,54 +31,199 @@ export type TraineeRow = {
   first_name: string | null;
   last_name: string | null;
   cohort_id?: string | null;
+  /** The account exists but its owner has not chosen a password yet. */
+  invitation_pending?: boolean;
 };
 
-/** A named set of roster ids the picker can tick in one go. */
-export type PickerSet = { id: string; label: string; count?: number; loadMemberIds: () => Promise<string[]> };
-
-/** User id to the name a person is shown under, for everyone who has signed in. */
-export function candidateNames(trainees: readonly TraineeRow[]): Record<string, string> {
-  return Object.fromEntries(trainees.flatMap((t) => (t.user_id ? [[t.user_id, displayName(t)]] : [])));
+/** Where a picker row stands: no account, an account nobody has used, or someone who has signed in. */
+export function candidateStanding(trainee: TraineeRow): "not_joined" | "invited" | "signed_in" {
+  if (trainee.user_id === null) return "not_joined";
+  return trainee.invitation_pending ? "invited" : "signed_in";
 }
 
-export type ScheduleStepId = "basics" | "stations" | "people" | "timing" | "supervisor" | "review";
+/** A named set of roster ids the picker can tick in one go. */
+export type PickerSet = {
+  id: string;
+  label: string;
+  count?: number;
+  loadMemberIds: () => Promise<string[]>;
+};
 
-export const SCHEDULE_STEPS: { id: ScheduleStepId; label: string; title: string }[] = [
-  { id: "basics", label: "Basics", title: "The basics" },
-  { id: "stations", label: "Stations", title: "Pick the stations" },
-  { id: "people", label: "Candidates", title: "Who is sitting it?" },
-  { id: "timing", label: "Timing", title: "Timing and breaks" },
-  { id: "supervisor", label: "Supervisor", title: "Who supervises?" },
-  { id: "review", label: "Review", title: "Review and create" },
+/** User id to the name a person is shown under, for everyone who has signed in. */
+export function candidateNames(
+  trainees: readonly TraineeRow[],
+): Record<string, string> {
+  return Object.fromEntries(
+    trainees.flatMap((t) => (t.user_id ? [[t.user_id, displayName(t)]] : [])),
+  );
+}
+
+export type ScheduleStepId =
+  "basics" | "stations" | "people" | "timing" | "supervisor" | "review";
+
+export const SCHEDULE_STEPS: {
+  id: ScheduleStepId;
+  label: string;
+  title: string;
+  desc: string;
+}[] = [
+  {
+    id: "basics",
+    label: "Basics",
+    title: "The basics",
+    desc: "What this sitting is, which exam it uses and when it happens.",
+  },
+  {
+    id: "stations",
+    label: "Stations",
+    title: "Pick the stations",
+    desc: "Published stations from the exam. Drag to set the order every candidate goes round.",
+  },
+  {
+    id: "people",
+    label: "Candidates",
+    title: "Who is sitting it?",
+    desc: "Pick people one by one, or add a whole group or year group.",
+  },
+  {
+    id: "timing",
+    label: "Timing",
+    title: "Timing and breaks",
+    desc: "Taken from the exam. Change them for this sitting only.",
+  },
+  {
+    id: "supervisor",
+    label: "Supervisor",
+    title: "Who supervises?",
+    desc: "The supervisor reviews and signs off the circuit afterwards. Any staff member can run the console on the day.",
+  },
+  {
+    id: "review",
+    label: "Review",
+    title: "Review and create",
+    desc: "Check it over. You can change everything on the sitting page afterwards.",
+  },
 ];
 
 /** The words in the Help panel beside each step. */
-export const STEP_HELP: Record<ScheduleStepId, { title: string; body: string }> = {
+export const STEP_HELP: Record<
+  ScheduleStepId,
+  { title: string; body: string }
+> = {
   basics: {
-    title: "What a sitting is",
-    body: "One occasion, such as the March mock. Its circuits are built for you when you create it. Only exams that are ready to schedule can be picked.",
+    title: "Formal or training?",
+    body: "A formal exam is marked, reviewed by the supervisor, signed off and then released to each candidate. Training gives feedback only, straight after each station.",
   },
   stations: {
-    title: "Order matters",
-    body: "Drag a station, or use the arrows, to set the order every candidate goes round. A formal exam has at most 12 stations.",
+    title: "Station order",
+    body: "Every candidate goes round in this order. A formal exam can have up to 12 stations. Only published stations of the chosen exam can be used.",
   },
   people: {
-    title: "Who can be picked",
-    body: "Only people who have signed in. Someone who has not accepted their invitation cannot be scheduled until they do: resend it from here.",
+    title: "Not joined yet?",
+    body: "People with no account yet cannot be scheduled. Someone invited who has not accepted can be picked, but needs to accept before the day. Resend the invitation here, or give them a temporary password from People.",
   },
   timing: {
-    title: "Timing is for this sitting only",
-    body: "Reading time, consultation time and breaks start from the usual defaults. Changing them here changes this sitting only.",
+    title: "Breaks",
+    body: "Breaks sit between stations and can each be a different length. Timings apply to every circuit in this sitting.",
   },
   supervisor: {
-    title: "The supervisor",
-    body: "They review and sign off the circuit afterwards. Any staff member can run the console on the day.",
+    title: "What a supervisor does",
+    body: 'Reviews each station, makes decisions and presses "Publish circuit feedback" to finalise. Supervisors are the examiners.',
   },
   review: {
-    title: "Nothing is created yet",
-    body: "Create sitting makes the sitting and its circuits. If the circuits fail, you land on the sitting with the error and a Try again button that makes them.",
+    title: "What gets made",
+    body: "A formal exam makes one circuit per candidate. Training makes one shared circuit where trainees rotate.",
   },
 };
+
+/** The two kinds of sitting, as the first step offers them. */
+export const MODE_OPTIONS: {
+  value: SittingMode;
+  title: string;
+  body: string;
+}[] = [
+  {
+    value: "exam",
+    title: "Formal exam: marked, signed off, released",
+    body: "One circuit per candidate. Results go out when you release them.",
+  },
+  {
+    value: "training",
+    title: "Training: feedback only",
+    body: "Trainees rotate round the stations and see feedback straight away.",
+  },
+];
+
+/** The two ways to name supervisors on a formal exam. */
+export const SUPERVISOR_OPTIONS: {
+  each: boolean;
+  title: string;
+  body: string;
+}[] = [
+  {
+    each: false,
+    title: "One supervisor for every circuit",
+    body: "Simplest for a small sitting.",
+  },
+  {
+    each: true,
+    title: "A supervisor per candidate",
+    body: "Share the reviewing across your staff.",
+  },
+];
+
+/** How many stations are picked, and in training what that must match. */
+export function stationNote(
+  draft: Pick<ScheduleDraft, "mode" | "stations">,
+): string {
+  const count = draft.stations.length;
+  return draft.mode === "exam"
+    ? `${count} of up to ${MAX_EXAM_STATIONS} stations picked.`
+    : `${plural(count, "station")} picked. Training needs one trainee per station.`;
+}
+
+/** The review's first row: "Summer finals · 26 Nov 2026". */
+export function sittingLine(
+  draft: Pick<ScheduleDraft, "name" | "date">,
+): string {
+  const name = draft.name.trim();
+  if (!draft.date) return name;
+  const day = new Date(`${draft.date}T00:00:00Z`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  return `${name} · ${day}`;
+}
+
+/** The review's headline sum and the sentence under it. */
+export function reviewFormula(
+  draft: Pick<
+    ScheduleDraft,
+    "mode" | "candidateIds" | "stations" | "perCandidate"
+  >,
+  supervisor: string,
+  words: { trainee: string; trainees: string },
+): { formula: string; help: string } {
+  const people = draft.candidateIds.length;
+  const stations = plural(draft.stations.length, "station");
+  if (draft.mode === "exam") {
+    const by = draft.perCandidate
+      ? ", with a supervisor each"
+      : supervisor
+        ? `, supervised by ${supervisor}`
+        : "";
+    return {
+      formula: `${plural(people, "candidate")} × ${stations} → ${plural(people, "circuit")}`,
+      help: `Each candidate gets their own circuit${by}.`,
+    };
+  }
+  return {
+    formula: `${plural(people, words.trainee, words.trainees)} × ${stations} → 1 circuit`,
+    help: "Trainees rotate together round one circuit.",
+  };
+}
 
 export const CONSULTATION_BOUNDS = { min: 1, max: 180 } as const;
 export const DEFAULT_START_TIME = "09:00";
@@ -141,19 +286,30 @@ export function examTimings(exam: {
   default_reading_seconds: number;
   default_simulation_seconds: number;
   default_break_minutes?: number | null;
-}): Partial<Pick<ScheduleDraft, "readingMinutes" | "consultationMinutes" | "breakMinutes">> {
+}): Partial<
+  Pick<ScheduleDraft, "readingMinutes" | "consultationMinutes" | "breakMinutes">
+> {
   const reading = Math.round(exam.default_reading_seconds / 60);
   const consultation = Math.round(exam.default_simulation_seconds / 60);
   const rest = exam.default_break_minutes;
   return {
-    ...(inBounds(reading, READING_MINUTES_BOUNDS) ? { readingMinutes: reading } : {}),
-    ...(inBounds(consultation, CONSULTATION_BOUNDS) ? { consultationMinutes: consultation } : {}),
-    ...(rest != null && inBounds(rest, BREAK_MINUTES_BOUNDS) ? { breakMinutes: rest } : {}),
+    ...(inBounds(reading, READING_MINUTES_BOUNDS)
+      ? { readingMinutes: reading }
+      : {}),
+    ...(inBounds(consultation, CONSULTATION_BOUNDS)
+      ? { consultationMinutes: consultation }
+      : {}),
+    ...(rest != null && inBounds(rest, BREAK_MINUTES_BOUNDS)
+      ? { breakMinutes: rest }
+      : {}),
   };
 }
 
 /** The step's blocking reason, or null when its answers are enough to go on. */
-export function stepBlock(step: ScheduleStepId, draft: ScheduleDraft): string | null {
+export function stepBlock(
+  step: ScheduleStepId,
+  draft: ScheduleDraft,
+): string | null {
   switch (step) {
     case "basics":
       if (draft.name.trim().length === 0) return "Give the sitting a name.";
@@ -167,17 +323,29 @@ export function stepBlock(step: ScheduleStepId, draft: ScheduleDraft): string | 
       return null;
     case "people":
       if (draft.candidateIds.length === 0) return "Pick at least one person.";
-      if (draft.mode === "exam" && draft.candidateIds.length > MAX_BULK_CANDIDATES) {
+      if (
+        draft.mode === "exam" &&
+        draft.candidateIds.length > MAX_BULK_CANDIDATES
+      ) {
         return `A formal exam takes at most ${MAX_BULK_CANDIDATES} candidates at a time. Deselect ${draft.candidateIds.length - MAX_BULK_CANDIDATES}.`;
       }
-      if (draft.mode === "training" && draft.candidateIds.length !== draft.stations.length) {
+      if (
+        draft.mode === "training" &&
+        draft.candidateIds.length !== draft.stations.length
+      ) {
         return "The number of trainees must match the number of stations.";
       }
       return null;
     case "timing":
-      if (!inBounds(draft.readingMinutes, READING_MINUTES_BOUNDS)) return "Reading time is 1 to 30 minutes.";
-      if (!inBounds(draft.consultationMinutes, CONSULTATION_BOUNDS)) return "Consultation is 1 to 180 minutes.";
-      if (draft.breaks.some((item) => !inBounds(item.minutes, BREAK_MINUTES_BOUNDS))) {
+      if (!inBounds(draft.readingMinutes, READING_MINUTES_BOUNDS))
+        return "Reading time is 1 to 30 minutes.";
+      if (!inBounds(draft.consultationMinutes, CONSULTATION_BOUNDS))
+        return "Consultation is 1 to 180 minutes.";
+      if (
+        draft.breaks.some(
+          (item) => !inBounds(item.minutes, BREAK_MINUTES_BOUNDS),
+        )
+      ) {
         return "Each break is 1 to 60 minutes.";
       }
       return null;
@@ -189,12 +357,16 @@ export function stepBlock(step: ScheduleStepId, draft: ScheduleDraft): string | 
 /** The furthest step that may be open: the first one whose answers are not enough yet. */
 export function furthestStep(draft: ScheduleDraft): ScheduleStepId {
   for (const step of SCHEDULE_STEPS) {
-    if (step.id !== "review" && stepBlock(step.id, draft) !== null) return step.id;
+    if (step.id !== "review" && stepBlock(step.id, draft) !== null)
+      return step.id;
   }
   return "review";
 }
 
-export function stepUnlocked(step: ScheduleStepId, draft: ScheduleDraft): boolean {
+export function stepUnlocked(
+  step: ScheduleStepId,
+  draft: ScheduleDraft,
+): boolean {
   const order = SCHEDULE_STEPS.map((item) => item.id);
   return order.indexOf(step) <= order.indexOf(furthestStep(draft));
 }
@@ -211,7 +383,11 @@ export function peopleFormula(
 ): { formula: string; help: string | null; ok: boolean } {
   const people = draft.candidateIds.length;
   if (draft.mode === "exam") {
-    return { formula: `${people} candidates picked. Each gets their own circuit.`, help: null, ok: people > 0 };
+    return {
+      formula: `${people} candidates picked. Each gets their own circuit.`,
+      help: null,
+      ok: people > 0,
+    };
   }
   const ok = people === draft.stations.length;
   return {
@@ -229,12 +405,21 @@ function clock(total: number): string {
 
 /** "Ends about 10:41": one candidate's run, start to last consultation. */
 export function endsAbout(
-  draft: Pick<ScheduleDraft, "startTime" | "readingMinutes" | "consultationMinutes" | "stations" | "breaks">,
+  draft: Pick<
+    ScheduleDraft,
+    | "startTime"
+    | "readingMinutes"
+    | "consultationMinutes"
+    | "stations"
+    | "breaks"
+  >,
 ): string | null {
   const match = /^(\d{1,2}):(\d{2})$/.exec(draft.startTime);
   if (!match || draft.stations.length === 0) return null;
   const start = Number(match[1]) * 60 + Number(match[2]);
-  const usable = draft.breaks.filter((item) => item.after >= 1 && item.after < draft.stations.length);
+  const usable = draft.breaks.filter(
+    (item) => item.after >= 1 && item.after < draft.stations.length,
+  );
   const total =
     draft.stations.length * (draft.readingMinutes + draft.consultationMinutes) +
     usable.reduce((sum, item) => sum + item.minutes, 0);
@@ -243,24 +428,41 @@ export function endsAbout(
 
 /** "3 + 10 min per station · breaks after 2 and 4". */
 export function timingSummary(
-  draft: Pick<ScheduleDraft, "mode" | "readingMinutes" | "consultationMinutes" | "breaks" | "breakMinutes" | "stations">,
+  draft: Pick<
+    ScheduleDraft,
+    | "mode"
+    | "readingMinutes"
+    | "consultationMinutes"
+    | "breaks"
+    | "breakMinutes"
+    | "stations"
+  >,
 ): string {
   // The breaks the api will keep, so the review never promises one that is dropped.
   const after = circuitTiming(draft).breaks;
   const base = `${draft.readingMinutes} + ${draft.consultationMinutes} min per station`;
   if (after.length === 0) return base;
-  const list = after.length === 1 ? String(after[0]) : `${after.slice(0, -1).join(", ")} and ${after[after.length - 1]}`;
+  const list =
+    after.length === 1
+      ? String(after[0])
+      : `${after.slice(0, -1).join(", ")} and ${after[after.length - 1]}`;
   return `${base} · breaks after ${list}`;
 }
 
 /** The gaps still free for "Add a break": after station N, never after the last. */
-export function freeBreakPositions(draft: Pick<ScheduleDraft, "stations" | "breaks">): number[] {
+export function freeBreakPositions(
+  draft: Pick<ScheduleDraft, "stations" | "breaks">,
+): number[] {
   const taken = new Set(draft.breaks.map((item) => item.after));
-  return breakPositions(draft.stations.length).filter((position) => !taken.has(position));
+  return breakPositions(draft.stations.length).filter(
+    (position) => !taken.has(position),
+  );
 }
 
 /** The first free gap, or null when every gap has one. */
-export function nextBreakPosition(draft: Pick<ScheduleDraft, "stations" | "breaks">): number | null {
+export function nextBreakPosition(
+  draft: Pick<ScheduleDraft, "stations" | "breaks">,
+): number | null {
   return freeBreakPositions(draft)[0] ?? null;
 }
 
@@ -272,13 +474,26 @@ export function nextBreakPosition(draft: Pick<ScheduleDraft, "stations" | "break
  * does: the review, the stored circuit and an edit all then agree.
  */
 export function circuitTiming(
-  draft: Pick<ScheduleDraft, "mode" | "readingMinutes" | "consultationMinutes" | "breaks" | "breakMinutes" | "stations">,
+  draft: Pick<
+    ScheduleDraft,
+    | "mode"
+    | "readingMinutes"
+    | "consultationMinutes"
+    | "breaks"
+    | "breakMinutes"
+    | "stations"
+  >,
 ): CircuitTiming {
   const kept = modeSupportsBreaks(draft.mode)
-    ? clampBreaks(draft.breaks.map((item) => item.after), draft.stations.length)
+    ? clampBreaks(
+        draft.breaks.map((item) => item.after),
+        draft.stations.length,
+      )
     : [];
   const defaultBreak = clampBreakMinutes(draft.breakMinutes);
-  const lengths = Object.fromEntries(draft.breaks.map((item) => [item.after, item.minutes]));
+  const lengths = Object.fromEntries(
+    draft.breaks.map((item) => [item.after, item.minutes]),
+  );
   return {
     readingMinutes: clampReadingMinutes(draft.readingMinutes),
     simulationMinutes: draft.consultationMinutes,
@@ -294,14 +509,23 @@ export function circuitTiming(
  * `already` circuits exist (the failure came after them), so a retry carries on
  * from the next candidate and never makes one twice or skips one.
  */
-export function eachCircuitJobs(candidateIds: readonly string[], already: number): { number: number; candidate: string }[] {
-  return candidateIds.flatMap((candidate, at) => (at >= already ? [{ number: at + 1, candidate }] : []));
+export function eachCircuitJobs(
+  candidateIds: readonly string[],
+  already: number,
+): { number: number; candidate: string }[] {
+  return candidateIds.flatMap((candidate, at) =>
+    at >= already ? [{ number: at + 1, candidate }] : [],
+  );
 }
 
 /** The date and start time as the one instant the sitting stores; null when no date is set. */
-export function scheduledInstant(draft: Pick<ScheduleDraft, "date" | "startTime">): string | null {
+export function scheduledInstant(
+  draft: Pick<ScheduleDraft, "date" | "startTime">,
+): string | null {
   if (!draft.date) return null;
-  const when = new Date(`${draft.date}T${/^\d{1,2}:\d{2}$/.test(draft.startTime) ? draft.startTime.padStart(5, "0") : DEFAULT_START_TIME}`);
+  const when = new Date(
+    `${draft.date}T${/^\d{1,2}:\d{2}$/.test(draft.startTime) ? draft.startTime.padStart(5, "0") : DEFAULT_START_TIME}`,
+  );
   return Number.isNaN(when.getTime()) ? null : when.toISOString();
 }
 
@@ -313,6 +537,7 @@ export type CircuitPlan =
 
 export function circuitPlan(draft: ScheduleDraft): CircuitPlan {
   if (draft.mode === "training") return { kind: "training" };
-  if (draft.perCandidate && draft.candidateIds.length > 1) return { kind: "each", candidateIds: draft.candidateIds };
+  if (draft.perCandidate && draft.candidateIds.length > 1)
+    return { kind: "each", candidateIds: draft.candidateIds };
   return { kind: "bulk" };
 }

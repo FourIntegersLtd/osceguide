@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { HiChevronRight, HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
 import { AsyncBoundary, Alert, B2CPageHeader, Button, cardScrollBody, productTokens } from "@/foundation/ui";
-import { useCursorPages, useMeEvents } from "@/foundation/hooks";
+import { useCursorPages, useEventDrivenReconcile, useMeEvents } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { debriefDate, listDebriefs } from "@/capabilities/debrief/api";
 
@@ -55,26 +55,33 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId, awaitingA
   const settle = (status: "arrived" | "failed") => {
     if (awaitingAttemptId) setSettled({ attemptId: awaitingAttemptId, status });
   };
-  const isListed = async (signal: AbortSignal) =>
-    (
-      await listDebriefs(
-        { attemptId: attemptId ?? null, stationVersionId: stationVersionId ?? null, setEntryId: entryId ?? null, limit: 5 },
-        signal,
-      )
-    ).items.some((item) => item.attempt_id === awaitingAttemptId);
-  const recheck = () => {
-    void isListed(new AbortController().signal).then(
-      (listed) => listed && settle("arrived"),
-      () => undefined, // a failed read is not an outcome; the next event asks again
-    );
-  };
-  useEffect(() => {
-    if (awaitingAttemptId) recheck();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per awaited debrief
-  }, [awaitingAttemptId]);
+  const isListed = useCallback(
+    async (signal: AbortSignal) =>
+      (
+        await listDebriefs(
+          { attemptId: attemptId ?? null, stationVersionId: stationVersionId ?? null, setEntryId: entryId ?? null, limit: 5 },
+          signal,
+        )
+      ).items.some((item) => item.attempt_id === awaitingAttemptId),
+    [attemptId, awaitingAttemptId, entryId, stationVersionId],
+  );
+
+  const recheck = useCallback(async () => {
+    if (!awaitingAttemptId || wait !== "waiting") return;
+    const listed = await isListed(new AbortController().signal);
+    if (listed) settle("arrived");
+  }, [awaitingAttemptId, isListed, wait]);
+
+  useEventDrivenReconcile({
+    enabled: Boolean(awaitingAttemptId) && wait === "waiting",
+    topics: ["debrief"],
+    matches: () => false,
+    reconcile: recheck,
+  });
+
   useMeEvents(["debrief"], (event) => {
     if (!awaitingAttemptId || wait !== "waiting") return;
-    if (event.name === "resync") return recheck();
+    if (event.name === "resync") return;
     if (event.data.attempt_id !== awaitingAttemptId) return;
     settle(event.data.state === "ready" ? "arrived" : "failed");
   });

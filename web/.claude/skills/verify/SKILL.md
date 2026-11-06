@@ -78,6 +78,14 @@ process.exitCode = (await finish(run)) ? 1 : 0;
 - Read-only by default. Anything that creates data (a sitting, a station)
   uses the test account's own organisation, and says so in the run log.
 
+## Board vs app
+
+A screen with a board in `docs/institution-overhaul/boards/` is proved with `e2e/support/board-diff.ts`
+(`npx playwright test e2e/assess/board-home.spec.ts`, also in `npm run e2e:assess`): pixel diff, computed styles, hover,
+desktop 1440 and mobile 760, PNGs under `docs/institution-overhaul/verify/board-diff/`. If Playwright says port 3101 is
+in use, an old `next dev --port 3101` is still running: kill it or set `E2E_REUSE_SERVER=1`. The empty-org state of
+Main is `node scripts/seed-demo-org.mjs --empty`.
+
 ## Evidence
 
 Each run writes to `.verify/<ISO-time>-<label>/`:

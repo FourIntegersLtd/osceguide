@@ -1,19 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { HiOutlineSparkles } from "react-icons/hi2";
+import { AsyncBoundary, ButtonLink, SectionSearchField } from "@/foundation/ui";
+import { boardChip } from "@/foundation/ui/boardKit";
 import {
-  AsyncBoundary,
-  B2CGroupedRow,
-  B2CGroupedSection,
-  B2CPageHeader,
-  ButtonLink,
-  SectionSearchField,
-} from "@/foundation/ui";
+  TraineeHead,
+  TraineeList,
+  TraineePage,
+  TraineeRow,
+} from "@/domains/assess/trainee/traineeBoard";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { stationAttemptPath, stationFeedbackPath } from "@/capabilities/station-runner/stationPaths";
+import {
+  stationAttemptPath,
+  stationFeedbackPath,
+} from "@/capabilities/station-runner/stationPaths";
 import { listOrgStations, type OrgStation } from "@/domains/assess/trainee/api";
 import { practisable } from "@/domains/assess/trainee/support";
 
@@ -22,14 +23,17 @@ import { practisable } from "@/domains/assess/trainee/support";
  * lives on `practiceStation` like consumer library practise.
  */
 export function SelfPractice({ orgSlug }: { orgSlug: string }) {
-  const state = useAsync((signal) => listOrgStations(orgSlug, signal), [orgSlug]);
+  const state = useAsync(
+    (signal) => listOrgStations(orgSlug, signal),
+    [orgSlug],
+  );
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-6">
-      <B2CPageHeader
-        className="!mb-0"
+    <TraineePage label="Self practice">
+      <TraineeHead
+        eyebrow="Practise"
         title="Self practice"
-        subtitle="Your organisation's stations. Nothing here is marked for the record."
+        desc="Your organisation's stations. Nothing here is marked for the record."
       />
 
       <AsyncBoundary
@@ -43,38 +47,50 @@ export function SelfPractice({ orgSlug }: { orgSlug: string }) {
       >
         {(stations) => <StationList stations={stations} />}
       </AsyncBoundary>
-    </div>
+    </TraineePage>
   );
 }
 
 function StationList({ stations }: { stations: readonly OrgStation[] }) {
-  const router = useRouter();
   const { hrefFor } = useSurface();
   const [query, setQuery] = useState("");
   const all = useMemo(() => practisable(stations), [stations]);
   const needle = query.trim().toLowerCase();
-  const rows = needle ? all.filter((station) => station.title.toLowerCase().includes(needle)) : all;
+  const rows = needle
+    ? all.filter((station) => station.title.toLowerCase().includes(needle))
+    : all;
   const withheld = stations.length - all.length;
 
   return (
-    <div className="flex flex-col gap-3">
-      <SectionSearchField value={query} onChange={setQuery} placeholder="Search stations" />
-      <B2CGroupedSection
-        eyebrow={`${rows.length} station${rows.length === 1 ? "" : "s"} you can sit`}
+    <>
+      <div className="max-w-[420px]">
+        <SectionSearchField
+          value={query}
+          onChange={setQuery}
+          placeholder="Search stations"
+        />
+      </div>
+      <TraineeList
+        untitled
+        title={`${rows.length} station${rows.length === 1 ? "" : "s"} you can sit`}
       >
         {rows.map((station) => (
-          // Beside the row, not inside it: the row is a button that starts an attempt.
-          <div key={station.id} className="flex items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <B2CGroupedRow
-                icon={HiOutlineSparkles}
-                title={station.title}
-                meta={`${station.exam_code.toUpperCase()} · version ${station.version}`}
-                onClick={() =>
-                  router.push(hrefFor(stationAttemptPath(station.id)))
-                }
-              />
-            </div>
+          <TraineeRow
+            key={station.id}
+            title={station.title}
+            meta={`${station.exam_code.toUpperCase()} · version ${station.version}`}
+          >
+            <span className={boardChip("neutral")}>
+              {station.exam_code.toUpperCase()}
+            </span>
+            <ButtonLink
+              themeType="b2b"
+              variant="secondary"
+              size="sm"
+              href={hrefFor(stationAttemptPath(station.id))}
+            >
+              Practise
+            </ButtonLink>
             <ButtonLink
               themeType="b2b"
               variant="ghost"
@@ -83,15 +99,15 @@ function StationList({ stations }: { stations: readonly OrgStation[] }) {
             >
               Past feedback
             </ButtonLink>
-          </div>
+          </TraineeRow>
         ))}
-      </B2CGroupedSection>
+      </TraineeList>
       {withheld > 0 ? (
         <p className="px-1 text-osce-meta text-b2b-mid">
-          {withheld} more {withheld === 1 ? "is a draft" : "are drafts"} and cannot be sat until
-          published.
+          {withheld} more {withheld === 1 ? "is a draft" : "are drafts"} and
+          cannot be sat until published.
         </p>
       ) : null}
-    </div>
+    </>
   );
 }

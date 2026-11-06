@@ -18,11 +18,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Principal
 from app.core.db import SessionOpener
 from app.core.events import circuit_topic, org_topic, user_topic
-from app.core.ports import Clock, EventBus
+from app.core.ports import Clock, EventBus, RoomAgents
 from app.core.sse import Snapshot, StreamFinished, event_stream
 from app.core.streams import still_active
 from app.features.dashboard import service_console, service_live, service_trainee
 from app.features.dashboard.errors import CircuitNotFound
+from app.features.health import service as health
 from app.features.identity import service as identity
 from app.features.tenancy import service as tenancy
 
@@ -49,6 +50,7 @@ def console_stream(
     bus: EventBus,
     open_session: SessionOpener,
     clock: Clock,
+    agents: RoomAgents,
 ) -> AsyncIterator[str]:
     """The supervisor's console, pushed.
 
@@ -60,7 +62,9 @@ def console_stream(
         async with open_session() as session:
             await _watcher_still_allowed(session, principal, org_id)
             try:
-                console = await service_console.build_console(session, org_id, circuit_id, now=clock.now())
+                console = await service_console.build_console(
+                    session, org_id, circuit_id, now=clock.now(), agents=agents
+                )
             except CircuitNotFound:
                 # Deleted, or never this org's. Closing says so in the one way
                 # a stream can; the client re-reads the route for the status.
@@ -68,14 +72,20 @@ def console_stream(
         # An ended circuit gets one last snapshot and then the stream closes.
         return Snapshot(console.model_dump_json(), final=console.circuit.ended_at is not None)
 
-    # No snapshot on the heartbeat: every write that changes the console announces itself
-    # (`sittings.announcements`). With the worker down nothing is announced, so a due circuit is
-    # caught up on the next reload or event, not on a timer.
+    async def resnapshot_when_worker_down() -> bool:
+        """Tells the console to refresh itself while the background worker is not running.
+
+        Time-based alerts need a fresh `now`; with no worker, nothing announces that.
+        """
+        async with open_session() as session:
+            return not await health.worker_running(session, now=clock.now())
+
     return event_stream(
         topics=[circuit_topic(circuit_id)],
         snapshot=snapshot,
         bus=bus,
         owner=principal.user_id,
+        snapshot_on_heartbeat_when=resnapshot_when_worker_down,
     )
 
 
@@ -108,7 +118,13 @@ def my_sittings_stream(
 
 
 def live_board_stream(
-    org_id: uuid.UUID, principal: Principal, *, bus: EventBus, open_session: SessionOpener, clock: Clock
+    org_id: uuid.UUID,
+    principal: Principal,
+    *,
+    bus: EventBus,
+    open_session: SessionOpener,
+    clock: Clock,
+    agents: RoomAgents,
 ) -> AsyncIterator[str]:
     """The exam-day board, pushed.
 
@@ -120,12 +136,18 @@ def live_board_stream(
         """One frame: every circuit this organisation has running, as it stands right now."""
         async with open_session() as session:
             await _watcher_still_allowed(session, principal, org_id)
-            board = await service_live.build_live_board(session, org_id, now=clock.now())
+            board = await service_live.build_live_board(session, org_id, now=clock.now(), agents=agents)
         return Snapshot(board.model_dump_json())
+
+    async def resnapshot_when_worker_down() -> bool:
+        """Tells the live board to refresh itself while the background worker is not running."""
+        async with open_session() as session:
+            return not await health.worker_running(session, now=clock.now())
 
     return event_stream(
         topics=[org_topic(org_id)],
         snapshot=snapshot,
         bus=bus,
         owner=principal.user_id,
+        snapshot_on_heartbeat_when=resnapshot_when_worker_down,
     )

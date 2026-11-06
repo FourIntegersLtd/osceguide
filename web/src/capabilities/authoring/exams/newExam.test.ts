@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  codeTakenMessage,
   NEW_EXAM_STEPS,
   toMinutes,
   resumeStep,
@@ -42,5 +43,18 @@ describe("New exam sheet", () => {
   it("shows stored seconds as minutes", () => {
     assert.equal(toMinutes(180), 3);
     assert.equal(toMinutes("600"), 10);
+  });
+});
+
+describe("codeTakenMessage", () => {
+  it("names the exam that holds the code and where to find it", () => {
+    assert.equal(
+      codeTakenMessage("csm", "Consultation skills mock", "draft"),
+      'The code "csm" is already used by the draft "Consultation skills mock". Open it from Exams and choose Continue setup, or pick another code.',
+    );
+    assert.equal(
+      codeTakenMessage("csm", "Consultation skills mock", "published"),
+      'The code "csm" is already used by the exam "Consultation skills mock". Pick another code.',
+    );
   });
 });

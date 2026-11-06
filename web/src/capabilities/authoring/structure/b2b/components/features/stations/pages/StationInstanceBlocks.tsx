@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { Checkbox, Select, Textarea } from "@/foundation/ui";
+import { boardInput } from "@/foundation/ui/boardKit";
 import type { MediaUploads } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/MediaBlockEditor";
 import { RichBlockEditor } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/RichBlockEditors";
 import { StationInstanceArrayField } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/StationInstanceArrayField";
@@ -18,6 +19,7 @@ export function StationInstanceBlocks({
   showBlockIds = false,
   listEditor = "admin",
   media,
+  board = false,
 }: {
   blocks: Block[];
   content: Record<string, unknown>;
@@ -28,6 +30,8 @@ export function StationInstanceBlocks({
   listEditor?: "admin" | "lines";
   /** Upload and remove for media blocks, once the station has a saved version. */
   media?: MediaUploads;
+  /** The institution board's fields: a lone long-text block is drawn bare, named for readers by an invisible label. */
+  board?: boolean;
 }) {
   const ro = !!readOnly;
   const scope = useId();
@@ -49,13 +53,13 @@ export function StationInstanceBlocks({
       </>
     );
     return (
-      <div className="flex items-center justify-between gap-3">
+      <div className={board && blocks.length === 1 ? undefined : "flex items-center justify-between gap-3"}>
         {grouped ? (
           <p id={`${controlId(blockId)}-label`} className="block text-osce-body font-medium text-ink">
             {text}
           </p>
         ) : (
-          <label htmlFor={controlId(blockId)} className="block text-osce-body font-medium text-ink">
+          <label htmlFor={controlId(blockId)} className={board && blocks.length === 1 ? "sr-only" : "block text-osce-body font-medium text-ink"}>
             {text}
           </label>
         )}
@@ -67,7 +71,7 @@ export function StationInstanceBlocks({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+    <div className={`grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start${board && !blocks.some((b) => b.type === "media") ? " pb-1.5" : ""}`}>
       {blocks.map((b) => {
         const key = b.id;
         const label = b.label;
@@ -82,6 +86,7 @@ export function StationInstanceBlocks({
               required={required}
               readOnly={ro}
               media={media}
+              board={board}
               onChange={(next) => patch(key, next)}
             />
           );
@@ -111,8 +116,8 @@ export function StationInstanceBlocks({
                 disabled={ro}
                 value={typeof content[key] === "string" ? content[key] : ""}
                 onChange={(e) => patch(key, e.target.value)}
-                className="mt-1 read-only:bg-surface-raised/60 disabled:opacity-90"
-                rows={4}
+                className={board ? `${boardInput} block min-h-24 py-2.5 read-only:bg-surface-raised/60 disabled:opacity-90` : "mt-1 read-only:bg-surface-raised/60 disabled:opacity-90"}
+                rows={board ? 2 : 4}
               />
             </div>
           );

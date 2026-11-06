@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HiOutlineCalendarDays, HiOutlinePencil } from "react-icons/hi2";
+import { useDismissOnOutside } from "@/foundation/hooks";
 import { Button, productTokens } from "@/foundation/ui";
 import { useCurrentExam, useSession } from "@/foundation/session";
 import { AddExamDate } from "@/capabilities/account/AddExamDate";
@@ -25,21 +26,8 @@ export function ExamDateControl() {
   const root = useRef<HTMLDivElement>(null);
   const timer = useRef<number | undefined>(undefined);
 
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointer);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onPointer);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const dismiss = useCallback(() => setOpen(false), []);
+  useDismissOnOutside(root, open, dismiss);
 
   const onSaved = () => {
     void refresh();

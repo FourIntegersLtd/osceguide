@@ -195,6 +195,11 @@ export function parseTraineeCsv(text: string): CsvParse {
 }
 
 /** Why the backend skipped a row, in words an administrator can act on. */
+/** "3 added, 1 skipped": rows the file itself dropped (no usable email) count as skipped too. */
+export function importSummary(added: number, skippedByServer: number, leftOutOfFile: number): string {
+  return `${added} added, ${skippedByServer + leftOutOfFile} skipped.`;
+}
+
 export function skipReason(code: string): string {
   switch (code) {
     case "duplicate":

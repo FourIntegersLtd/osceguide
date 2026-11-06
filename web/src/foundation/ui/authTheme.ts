@@ -1,27 +1,20 @@
 /*
- * Class strings for the sign-in pages, on the public site's `.site-root` tokens
- * (blue, light and dark). The auth layout carries `.site-root`; nothing here is
- * a colour of its own.
+ * Class strings for the sign-in pages. The card, fields and buttons are the board kit's
+ * (`boardKit.ts`: docs/institution-overhaul/boards/SignIn.dc.html); only the page frame
+ * (`authHeader`) is the public site's `.site-root` skin, which the auth layout carries.
  */
 
-export const authCard =
-  "rounded-[22px] border border-site-line bg-site-card p-6 shadow-[0_18px_40px_-24px_rgba(14,42,92,0.35)] sm:p-9";
+/** The card's title: the boards draw a sign-in screen at 26px, 600, and a short state card ("Choose a new password", "This link is incomplete") as a 16px h2. */
+export const authTitle = (compact = false) =>
+  compact ? "m-0 text-assess-state-title font-semibold text-osce-ink-900" : "my-1.5 text-assess-card-title font-semibold text-osce-ink-900";
 
-export const authTitle =
-  "font-landing-heading text-[28px] font-bold leading-[1.15] tracking-tight text-site-ink sm:text-3xl";
-
-export const authSubtitle = "mt-2 text-base leading-relaxed text-site-muted";
+/** The line under the title: the board's `.meta` (13px), or `lead` for the 14px the invitation and set-up screens use. */
+export const authSubtitle = (lead = false) => `m-0 ${lead ? "text-assess-label" : "text-assess-meta"} leading-normal text-osce-ink-500`;
 
 export const authLink =
-  "font-semibold text-site-brand transition-colors hover:text-site-brand-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-site-brand";
+  "text-osce-accent transition-colors hover:text-osce-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-osce-accent";
 
-/** Text under a form: "Already have an account?", "Send again". */
-export const authFooterLink = "text-center text-[15px] leading-relaxed text-site-muted";
-
-/** Field box. Padding-left is added by the field, which knows whether it has an icon. */
-export const authInput =
-  "w-full min-h-[50px] rounded-xl border border-site-rule bg-site-card py-3 pr-3.5 text-base text-site-ink placeholder:text-site-faint focus:border-site-brand focus:outline-none focus:ring-4 focus:ring-site-pale";
-
-export const authLabel = "block text-sm font-semibold text-site-ink";
+/** Text under a form: "Already have an account?", "Send again" (the board's `.meta`). */
+export const authFooterLink = "text-assess-meta leading-normal text-osce-ink-500";
 
 export const authHeader = "border-b border-site-line bg-site-card";

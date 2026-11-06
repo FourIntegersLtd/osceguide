@@ -15,19 +15,19 @@ import type {
 } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
 import { TemplateStartPanel } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/TemplateLayoutGallery";
-import { Button, getInputClassName, StepRail } from "@/foundation/ui";
+import { boardAlert, boardBtn, boardInput, boardLabel, boardPad } from "@/foundation/ui/boardKit";
 import { AuthoringExamSelect } from "@/capabilities/authoring/parts/AuthoringExamSelect";
 import {
   b2bTemplateTitleSchema,
   zodErrorFirstMessage,
 } from "@/capabilities/authoring/structure/b2b/lib/validation";
 import { useSurface } from "@/capabilities";
+import { LayoutBuilderRail } from "@/capabilities/authoring/templates/LayoutBuilderRail";
 import { createStationTemplate, publishStationTemplate } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { isThenStation, stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
 import { stationNewPath } from "@/capabilities/authoring/stations/paths";
-import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
-import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/wizardFooter";
+import { LayoutBuilderPage } from "@/capabilities/authoring/templates/LayoutBuilderPage";
 import { wizardSteps } from "@/capabilities/authoring/templates/wizardSteps";
 
 function StationTemplateNewScreenForm() {
@@ -46,7 +46,7 @@ function StationTemplateNewScreenForm() {
   const [step, setStep] = useState<1 | 2>(1);
 
   return (
-    <PlatformTemplateWizardPageLayout
+    <LayoutBuilderPage
       title="New template"
       subtitle={
         step === 1
@@ -80,7 +80,7 @@ function StationTemplateNewScreenForm() {
           router.push(stationNewPath(hrefFor, version.id));
         }}
       />
-    </PlatformTemplateWizardPageLayout>
+    </LayoutBuilderPage>
   );
 }
 
@@ -140,125 +140,127 @@ function CreateStationTemplateWizardBody({
   }
 
   const current = step === 1 ? "start" : "sections";
+  const errorAlert = error ? (
+    <p role="alert" className={boardAlert("bad")}>
+      {error}
+    </p>
+  ) : null;
+
+  async function save() {
+    setError(null);
+    const parsed = b2bTemplateTitleSchema.safeParse(title);
+    if (!parsed.success) {
+      setError(zodErrorFirstMessage(parsed.error));
+      return;
+    }
+    if (!selectedExamCode.trim()) {
+      setError("Please choose an exam.");
+      return;
+    }
+    try {
+      setSaving(true);
+      await onSave(parsed.data, structure, selectedExamCode.trim());
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to create template.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function next() {
+    setError(null);
+    if (!selectedExamCode.trim()) {
+      setError("Please choose an exam.");
+      return;
+    }
+    if (!title.trim()) {
+      setError("Please enter a template title.");
+      return;
+    }
+    setStep(2);
+  }
+
+  const rail = (
+    <LayoutBuilderRail
+      steps={wizardSteps(current, selectedExamCode !== "" && title.trim() !== "")}
+      current={current}
+      // Only back: the sections need the exam and name from the first screen.
+      onSelect={(id) => {
+        if (id === "start") setStep(1);
+      }}
+    />
+  );
+
+  if (step === 1) {
+    return (
+      <div className={boardPad}>
+        {rail}
+        <TemplateStartPanel
+          orgSlug={orgKey}
+          title={title}
+          onTitleChange={setTitle}
+          startPoint={startPoint}
+          onStartPointChange={setStartPoint}
+          options={layoutOptions}
+          layoutSectionLabel="Starting layouts"
+          examField={
+            <div>
+              <label htmlFor="station-template-exam" className={boardLabel}>
+                Exam
+              </label>
+              <AuthoringExamSelect
+                id="station-template-exam"
+                value={selectedExamCode}
+                onChange={handleExamChange}
+                required
+                emptyLabel="Select an exam…"
+                className={boardInput}
+              />
+            </div>
+          }
+        />
+        {errorAlert}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button type="button" className={boardBtn()} onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="button" className={boardBtn("primary")} onClick={next}>
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
-      <div className="px-5 py-3 sm:px-6">
-        <StepRail
-          steps={wizardSteps(current, selectedExamCode !== "" && title.trim() !== "")}
-          current={current}
-          // Only back: the sections need the exam and name from the first screen.
-          onSelect={(id) => {
-            if (id === "start") setStep(1);
-          }}
+      <label className="block">
+        <span className={boardLabel}>Title</span>
+        <input
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          maxLength={200}
+          className={boardInput}
+          aria-label="Template title"
         />
-      </div>
-      <div className="px-5 py-6 sm:px-6">
-        {step === 1 ? (
-          <TemplateStartPanel
-            orgSlug={orgKey}
-            title={title}
-            onTitleChange={setTitle}
-            startPoint={startPoint}
-            onStartPointChange={setStartPoint}
-            options={layoutOptions}
-            layoutSectionLabel="Starting layouts"
-            examField={
-              <div className="space-y-1">
-                <label
-                  htmlFor="station-template-exam"
-                  className="text-osce-caption font-medium text-ink-muted"
-                >
-                  Exam
-                </label>
-                <AuthoringExamSelect
-                  id="station-template-exam"
-                  value={selectedExamCode}
-                  onChange={handleExamChange}
-                  required
-                  emptyLabel="Select an exam…"
-                  className={`w-full ${getInputClassName()}`}
-                />
-              </div>
-            }
-          />
-        ) : (
-          <StructureBuilder
-            value={structure}
-            onChange={setStructure}
-            title={title}
-            onTitleChange={setTitle}
-            examCode={selectedExamCode}
-            allowCustomGenerationPrompt
-          />
-        )}
-        {error ? (
-          <div className="mt-4 rounded-osce-md border border-osce-danger-border bg-osce-danger-bg px-3 py-2 text-osce-body text-osce-danger-text">
-            {error}
-          </div>
-        ) : null}
-      </div>
-      <div className={platformTemplateWizardFooterClass}>
-        {step === 2 ? (
-          <Button variant="secondary" onClick={() => setStep(1)}>
-            Back
-          </Button>
-        ) : (
-          <span />
-        )}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-          <Button variant="secondary" onClick={onCancel}>
-            Cancel
-          </Button>
-          {step === 1 ? (
-            <Button
-              variant="commit"
-              onClick={() => {
-                setError(null);
-                if (!selectedExamCode.trim()) {
-                  setError("Please choose an exam.");
-                  return;
-                }
-                if (!title.trim()) {
-                  setError("Please enter a template title.");
-                  return;
-                }
-                setStep(2);
-              }}
-            >
-              Continue
-            </Button>
-          ) : (
-            <Button
-              variant="commit"
-              disabled={saving}
-              onClick={async () => {
-                setError(null);
-                const parsed = b2bTemplateTitleSchema.safeParse(title);
-                if (!parsed.success) {
-                  setError(zodErrorFirstMessage(parsed.error));
-                  return;
-                }
-                if (!selectedExamCode.trim()) {
-                  setError("Please choose an exam.");
-                  return;
-                }
-                try {
-                  setSaving(true);
-                  await onSave(parsed.data, structure, selectedExamCode.trim());
-                } catch (e: unknown) {
-                  setError(
-                    e instanceof Error ? e.message : "Failed to create template.",
-                  );
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              {saving ? "Saving…" : saveLabel}
-            </Button>
-          )}
-        </div>
+      </label>
+      <StructureBuilder
+        value={structure}
+        onChange={setStructure}
+        examCode={selectedExamCode}
+        allowCustomGenerationPrompt
+      />
+      {errorAlert}
+      <div className="flex flex-wrap items-center gap-2.5">
+        <button type="button" className={boardBtn()} onClick={() => setStep(1)}>
+          Back
+        </button>
+        <button type="button" className={boardBtn()} onClick={onCancel}>
+          Cancel
+        </button>
+        <button type="button" className={boardBtn("primary")} disabled={saving} onClick={save}>
+          {saving ? "Saving…" : saveLabel}
+        </button>
       </div>
     </>
   );

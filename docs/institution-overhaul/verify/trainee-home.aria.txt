@@ -1,0 +1,29 @@
+- main:
+  - paragraph: E2E Institute mw3om0c6
+  - heading "Hello, Tess." [level=1]
+  - text: Live
+  - region "Live consultation":
+    - heading "Live now" [level=2]
+    - paragraph: Today
+    - heading "Your station is open" [level=2]
+    - paragraph: Circuit run · Circuit run circuit. Go in and read the brief. The patient joins when the reading time ends.
+    - alert: Your browser is blocking the microphone. Allow it in the address bar, then try again. The patient cannot hear you until it works.
+    - text: Consultation 2:54 YP
+    - paragraph: Your patient
+    - paragraph: Connecting to the patient…
+    - button "Leave the room"
+    - text: Live
+  - region "Your sittings":
+    - heading "Your sittings" [level=2]
+    - link "Circuit run Examination · 0 of 1 stations completed · 06/11/2026, 15:10:53 · Your station is open · 0/1 Open now":
+      - /url: /app/e2e-mw3om0c6/trainee/sittings/115d9697-b969-4381-9a8c-d711b339a4cc
+    - heading "Past sittings" [level=2]
+    - 'link "Release run Examination · 1 of 1 stations completed · 06/11/2026, 15:10:10 · Finished: open it for your result and feedback · 1/1 Result released"':
+      - /url: /app/e2e-mw3om0c6/trainee/sittings/086c720c-30ff-4a81-9b8c-5613c33a49fa
+    - 'link "OV exam to review Examination · 1 of 1 stations completed · 06/11/2026, 15:13:36 · Finished: open it for your result and feedback · 1/1"':
+      - /url: /app/e2e-mw3om0c6/trainee/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3
+    - 'link "OV training run Practice circuit · 06/11/2026, 15:13:38 · Finished: open it for your result and feedback · 1/1"':
+      - /url: /app/e2e-mw3om0c6/trainee/sittings/0469e190-b9e0-4614-99e9-e645bb457f33
+  - heading "Practise" [level=2]
+  - link "Self practice From your organisation":
+    - /url: /app/e2e-mw3om0c6/trainee/practice

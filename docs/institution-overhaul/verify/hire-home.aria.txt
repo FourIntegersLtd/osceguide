@@ -1,0 +1,44 @@
+- main:
+  - region "Setup":
+    - paragraph: Welcome
+    - heading "Let's get E2E Employer mw3om0c6 ready for its first assessment" [level=1]
+    - paragraph: Five steps. We show one at a time, and you can come back to any of them.
+    - button "How the pieces fit" [expanded]
+    - paragraph: Step 1 of 5
+    - list:
+      - listitem:
+        - button "Set up an exam"
+      - listitem:
+        - button "Add stations"
+      - listitem:
+        - button "Add candidates"
+      - listitem:
+        - button "Invite an assessor Optional"
+      - listitem:
+        - button "Schedule your first assessment"
+    - text: Start here
+    - heading "Set up an exam" [level=2]
+    - paragraph: An exam is what you examine and how it is marked. Start from one of ours in one click, or make your own with your own marking scheme.
+    - paragraph: Why first
+    - paragraph: Stations, assessments and results all belong to an exam. When it is ready it shows "Ready to schedule".
+    - link "Set up an exam":
+      - /url: /app/e2e-hire-mw3om0c6/authoring/exams/new
+    - link "Browse OSCE Guide exams":
+      - /url: /app/e2e-hire-mw3om0c6/authoring
+    - button "Skip for now"
+    - paragraph: How the pieces fit
+    - link "Exam What is examined and how it is marked":
+      - /url: /app/e2e-hire-mw3om0c6/authoring
+    - link "Stations The cases candidates sit":
+      - /url: /app/e2e-hire-mw3om0c6/authoring/stations
+    - link "Candidates Candidates and assessors":
+      - /url: /app/e2e-hire-mw3om0c6/trainees
+    - link "Assessment One assessment day, such as the Band 6 nurse day":
+      - /url: /app/e2e-hire-mw3om0c6/sittings
+  - region "At a glance":
+    - link "Candidates 0":
+      - /url: /app/e2e-hire-mw3om0c6/trainees
+    - link "Assessors 1":
+      - /url: /app/e2e-hire-mw3om0c6/team
+    - link "Assessments 0":
+      - /url: /app/e2e-hire-mw3om0c6/sittings

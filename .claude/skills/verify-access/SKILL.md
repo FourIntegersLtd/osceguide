@@ -193,6 +193,7 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
   and read the new tab from `context.waitForEvent("page")`; say the checkout was stubbed. Payments
   re-reads `/me/entitlements` on `visibilitychange`: count those requests. Trial account: insert a
   `trial` entitlement for a fresh `@example.com` user; paid: an account with a live purchase.
+- **Board-diff of sign-in screens.** `e2e/assess/board-auth.spec.ts` scores Sign in, Forgot, Reset, Accept invitation and Register organisation at 1440 and 760 against the boards; Your account is `board-settings.spec.ts`. The invitation page needs a real token: `seedInvitationToken` adds a person to the org and reads `payload->>'token'` from `outbound_messages`. Set `localStorage` `analytics-consent` and `installPromptDismissed` in the app context or the cookie and install prompts cover the card. A shared dev server dies with 500 when another lane leaves a file unparsable (`tsc` shows it): wait or ask, do not fix their file.
 - **Preferences save per switch.** Count `PATCH /me` bodies: each switch sends only its own field,
   extra time sends the timers on confirm, then reload and check the switches persisted.
 - **Trial window (peer practice, marketplace).** A trial holds no entitlement row, so age the

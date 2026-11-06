@@ -1,5 +1,6 @@
 "use client";
 
+import { AuthoringConfirm } from "@/capabilities/authoring/parts/AuthoringConfirm";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -13,7 +14,6 @@ import {
   Alert,
   AsyncBoundary,
   Button,
-  ConfirmModal,
   FoldSection,
   Input,
   LeaveConfirmModal,
@@ -48,6 +48,9 @@ import {
   type StationVersion,
 } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
+import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
+import { boardMeta, boardStack } from "@/capabilities/authoring/parts/boardUi";
+import { boardAlert, boardBtn, boardCols, boardColsMain, boardColsRail, boardInput, boardPad } from "@/foundation/ui/boardKit";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { renamedTitle } from "@/capabilities/authoring/parts/stationTitle";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
@@ -107,6 +110,7 @@ export function StationDetail({
   onBack: () => void;
 }) {
   const scope = useAuthoringScope();
+  const board = !useAuthoringChrome().b2c;
   const router = useRouter();
   const { hrefFor } = useSurface();
   const [working, setWorking] = useState<StationVersion | null>(null);
@@ -213,7 +217,8 @@ export function StationDetail({
   // Open on the step the next action belongs to once the review is in, then stay where the
   // reader goes: a ruling makes the edits unsaved, and that must not move them off the claims.
   if (step === null && !reviewState.loading) setStep(next.step);
-  const current = step ?? next.step;
+  // The boards show the content, the brief and Publish together, so a station without a fact check has one open step.
+  const current = board && !factCheck ? "draft" : (step ?? next.step);
   const busy = checking || producing;
   const locked = unsaved || busy || action.busy !== null;
 
@@ -266,11 +271,16 @@ export function StationDetail({
 
   const nextButton = () => {
     if (!canAuthor) return null;
-    const run = (label: string, key: string, onClick: () => void, disabled = locked) => (
-      <Button size="sm" disabled={disabled} isLoading={action.busy === key} onClick={onClick}>
-        {label}
-      </Button>
-    );
+    const run = (label: string, key: string, onClick: () => void, disabled = locked) =>
+      board ? (
+        <button type="button" className={boardBtn("primary")} disabled={disabled || action.busy === key} onClick={onClick}>
+          {label}
+        </button>
+      ) : (
+        <Button size="sm" disabled={disabled} isLoading={action.busy === key} onClick={onClick}>
+          {label}
+        </Button>
+      );
     switch (next.id) {
       case "save":
         return run("Save", "save", save, saveBlocker !== null || action.busy !== null);
@@ -306,41 +316,56 @@ export function StationDetail({
   );
   const run = review ? runOf(review.run) : null;
 
-  return (
-    <div className="space-y-4">
-      <button
-        type="button"
-        onClick={unsaved ? () => setAskingBack(true) : onBack}
-        className="inline-flex items-center gap-1.5 text-osce-body font-medium text-accent hover:underline"
-      >
-        <HiOutlineArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
-        Stations
-      </button>
+  const guide = (
+    <StepGuide
+      board={board}
+      steps={steps}
+      current={current}
+      onSelect={board && !factCheck ? undefined : setStep}
+      line={next.line}
+      working={next.id === "wait"}
+    >
+      {nextButton()}
+    </StepGuide>
+  );
+  const showDraft = board || current === "draft";
+  const showPublish = board ? isDraft : current === "publish";
 
-      <Panel padding="md">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            {editable ? (
+  const header = (
+    <>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          {editable ? (
+            board ? (
+              <input
+                aria-label="Station name"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                className={`${boardInput} !text-assess-hero font-semibold`}
+              />
+            ) : (
               <Input
                 aria-label="Station name"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 className="font-semibold"
               />
-            ) : (
-              <h2 className="text-osce-body font-semibold text-ink">{savedTitle}</h2>
-            )}
-            <p className="mt-0.5 text-osce-caption text-ink-muted">
-              {station.exam_code} · version {version}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <StatusBadge status={status} />
-            <AuthoringRowActions write>
-              {/* A draft is the version being worked on: a second draft is not offered. */}
-              {isDraft ? null : (
+            )
+          ) : (
+            <h2 className={board ? "m-0 text-assess-hero font-semibold text-ink" : "text-osce-body font-semibold text-ink"}>{savedTitle}</h2>
+          )}
+          <p className={board ? boardMeta : "mt-0.5 text-osce-caption text-ink-muted"}>
+            {station.exam_code} · version {version}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusBadge status={status} />
+          <AuthoringRowActions write>
+            {/* A draft is the version being worked on: a second draft is not offered. */}
+            {isDraft ? null : (
               <AuthoringIconAction
                 label={status === "archived" ? "New draft from this" : "New draft version"}
+                text={status === "archived" ? "New draft from this" : "New draft version"}
                 busy={action.busy === "add"}
                 busyLabel="Creating…"
                 disabled={action.busy !== null}
@@ -348,50 +373,208 @@ export function StationDetail({
               >
                 <HiOutlineDocumentDuplicate className="h-4 w-4" aria-hidden />
               </AuthoringIconAction>
-              )}
-              {status === "published" ? (
-                <AuthoringIconAction
-                  variant="warning"
-                  label="Archive"
-                  busy={action.busy === "archive"}
-                  busyLabel="Archiving…"
-                  disabled={action.busy !== null}
-                  onClick={() => setConfirming("archive")}
-                >
-                  <HiOutlineArchiveBox className="h-4 w-4" aria-hidden />
-                </AuthoringIconAction>
-              ) : null}
-              {isDraft ? (
-                <AuthoringIconAction
-                  variant="danger"
-                  label="Delete draft"
-                  busy={action.busy === "delete"}
-                  busyLabel="Deleting…"
-                  disabled={action.busy !== null}
-                  onClick={() => setConfirming("delete")}
-                >
-                  <HiOutlineTrash className="h-4 w-4" aria-hidden />
-                </AuthoringIconAction>
-              ) : null}
-            </AuthoringRowActions>
-          </div>
+            )}
+            {status === "published" ? (
+              <AuthoringIconAction
+                variant="warning"
+                label="Archive"
+                text="Archive"
+                busy={action.busy === "archive"}
+                busyLabel="Archiving…"
+                disabled={action.busy !== null}
+                onClick={() => setConfirming("archive")}
+              >
+                <HiOutlineArchiveBox className="h-4 w-4" aria-hidden />
+              </AuthoringIconAction>
+            ) : null}
+            {isDraft ? (
+              <AuthoringIconAction
+                variant="danger"
+                label="Delete draft"
+                text="Delete draft"
+                busy={action.busy === "delete"}
+                busyLabel="Deleting…"
+                disabled={action.busy !== null}
+                onClick={() => setConfirming("delete")}
+              >
+                <HiOutlineTrash className="h-4 w-4" aria-hidden />
+              </AuthoringIconAction>
+            ) : null}
+          </AuthoringRowActions>
         </div>
+      </div>
 
-        {!structure && templateVersionId ? (
-          <p className="mt-3 text-osce-caption text-ink-muted">
-            Template structure is not available in the catalogue. Reload templates or edit from the template list.
+      {board ? guide : null}
+
+      {!structure && templateVersionId ? (
+        <p className="mt-3 text-osce-caption text-ink-muted">
+          Template structure is not available in the catalogue. Reload templates or edit from the template list.
+        </p>
+      ) : null}
+      {!structure && !templateVersionId ? (
+        <p className="mt-3 text-osce-caption text-ink-muted">
+          No layout is defined for exam {station.exam_code}. Create a station template for this exam
+          first.{" "}
+          <Link href={stationTemplateNewPath(hrefFor)} className="font-semibold text-accent underline">
+            Create a station template
+          </Link>
+        </p>
+      ) : null}
+    </>
+  );
+
+  const briefEditor =
+    supportsBrief(scope) && canAuthor && showDraft ? (
+      <BriefEditor
+        key={`${station.id}:${version}`}
+        board={board}
+        stationId={station.id}
+        version={version}
+        initial={readBrief(working?.content ?? station.content)}
+        onSaved={setWorking}
+      />
+    ) : null;
+
+  const content = (
+    <>
+      {showDraft ? (
+        // Remounted once a draft exists, so its panels open and fold the right way round.
+        <div key={String(drafted)} className={board ? "flex flex-col gap-5" : "space-y-4"}>
+          {factCheck && editable && !drafted ? (
+            <Panel title="What should it cover?" padding="sm">
+              {produceForm}
+            </Panel>
+          ) : null}
+          {structure ? (
+            <FoldSection board={board} title="Station content" defaultOpen={board ? status !== "archived" : drafted || !factCheck}>
+              <p className={board ? boardMeta : "mb-4 text-osce-caption text-ink-muted"}>
+                Version {version}.
+                {editable
+                  ? " Edit the sections below; Save in the bar above stores them."
+                  : " Published, so it is read only. Create a new draft version to edit. Photos stay editable."}
+              </p>
+              <LegacyStationMeta board={board} content={editContent} stationTitle={savedTitle} />
+              <StationInstanceContentPanel
+                board={board}
+                structure={structure}
+                content={editContent}
+                onChange={setEditContent}
+                readOnly={!editable}
+                media={media}
+              />
+            </FoldSection>
+          ) : null}
+          {board ? null : briefEditor}
+          {factCheck && editable && drafted ? (
+            <FoldSection board={board} title="Produce again from a brief" defaultOpen={false}>
+              {produceForm}
+            </FoldSection>
+          ) : null}
+        </div>
+      ) : null}
+
+      {current === "facts" ? (
+        <Panel title="Check the facts">
+          <AsyncBoundary state={reviewState.load}>
+            {() => (
+              <FactCheck
+                facts={facts}
+                locked={locked}
+                working={checking}
+                onCheck={checkFacts}
+                rulings={
+                  // A ruling made while the agent produces would be overwritten when it finishes.
+                  editable && facts && !busy
+                    ? {
+                        onAccept: (claim, swap) => {
+                          if (swap) setEditContent(corrected(editContent, claim, swap));
+                          rule(ruled(facts, claim.id, "accepted", swap ?? undefined));
+                        },
+                        onDismiss: (claim) => rule(ruled(facts, claim.id, "dismissed")),
+                        onReopen: (claim) => {
+                          setEditContent(uncorrected(editContent, claim));
+                          rule(reopened(facts, claim.id));
+                        },
+                      }
+                    : undefined
+                }
+              />
+            )}
+          </AsyncBoundary>
+        </Panel>
+      ) : null}
+    </>
+  );
+
+  const noBrief = isDraft && !readBrief(working?.content ?? station.content).trim();
+  const publishPanel = showPublish ? (
+    <PublishPanel board={board}>
+      <p className={board ? `m-0 ${boardMeta}` : undefined}>
+        Publishing makes v{version} the version candidates are assessed against. A published
+        version is what an attempt was marked against, so it is archived rather than deleted.
+      </p>
+      {noBrief ? (
+        board ? (
+          <p role="alert" className={boardAlert("warn")}>
+            This station has no candidate brief, so candidates see nothing during reading time.
+            You can still publish.
           </p>
-        ) : null}
-        {!structure && !templateVersionId ? (
-          <p className="mt-3 text-osce-caption text-ink-muted">
-            No layout is defined for exam {station.exam_code}. Create a station template for this exam
-            first.{" "}
-            <Link href={stationTemplateNewPath(hrefFor)} className="font-semibold text-accent underline">
-              Create a station template
-            </Link>
-          </p>
-        ) : null}
-      </Panel>
+        ) : (
+          <Alert tone="warning">
+            This station has no candidate brief, so candidates see nothing during reading time.
+            You can still publish.
+          </Alert>
+        )
+      ) : null}
+      {steps
+        .filter((entry) => entry.id !== "publish" && entry.state !== "done")
+        .map((entry) => (
+          <Alert key={entry.id} tone="warning">
+            {entry.label}: {entry.note}.
+          </Alert>
+        ))}
+      {/* Ready, the bar holds Publish; before then it stays possible from here. */}
+      {editable && (next.id !== "publish" || (board && noBrief)) ? (
+        board ? (
+          <button type="button" className={`${boardBtn()} self-start`} disabled={locked || action.busy === "publish"} onClick={publish}>
+            Publish anyway
+          </button>
+        ) : (
+          <Button
+            size="sm"
+            variant="secondary"
+            className="w-fit"
+            disabled={locked}
+            isLoading={action.busy === "publish"}
+            onClick={publish}
+          >
+            Publish anyway
+          </Button>
+        )
+      ) : null}
+    </PublishPanel>
+  ) : null;
+
+  return (
+    <div className={board ? `${boardStack} text-assess-desc leading-[normal]` : "space-y-4"} data-testid="station-builder-page">
+      <button
+        type="button"
+        onClick={unsaved ? () => setAskingBack(true) : onBack}
+        className={
+          board
+            ? "inline-flex min-h-5 items-center gap-1 self-start text-assess-label font-medium text-accent hover:underline"
+            : "inline-flex items-center gap-1.5 text-osce-body font-medium text-accent hover:underline"
+        }
+      >
+        {board ? (
+          <span aria-hidden>‹</span>
+        ) : (
+          <HiOutlineArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+        )}
+        Stations
+      </button>
+
+      {board ? <div className={boardPad}>{header}</div> : <Panel padding="md">{header}</Panel>}
 
       <LeaveConfirmModal
         isOpen={askingBack || leaveGuard.asking}
@@ -407,7 +590,7 @@ export function StationDetail({
         }}
       />
 
-      <ConfirmModal
+      <AuthoringConfirm
         isOpen={confirming !== null}
         onCancel={() => {
           if (action.busy) return;
@@ -447,9 +630,7 @@ export function StationDetail({
         }
       />
 
-      <StepGuide steps={steps} current={current} onSelect={setStep} line={next.line} working={next.id === "wait"}>
-        {nextButton()}
-      </StepGuide>
+      {board ? null : guide}
       {action.error && confirming === null ? <Alert tone="danger">{action.error}</Alert> : null}
       {review?.error && !busy ? (
         <Alert tone="danger">
@@ -471,119 +652,48 @@ export function StationDetail({
         />
       ) : null}
 
-      {current === "draft" ? (
-        // Remounted once a draft exists, so its panels open and fold the right way round.
-        <div key={String(drafted)} className="space-y-4">
-          {factCheck && editable && !drafted ? (
-            <Panel title="What should it cover?" padding="sm">
-              {produceForm}
-            </Panel>
-          ) : null}
-          {structure ? (
-            <FoldSection title="Station content" defaultOpen={drafted || !factCheck}>
-              <p className="mb-4 text-osce-caption text-ink-muted">
-                Version {version}.
-                {editable
-                  ? " Edit the sections below; Save in the bar above stores them."
-                  : " Published, so it is read only. Create a new draft version to edit. Photos stay editable."}
-              </p>
-              <LegacyStationMeta content={editContent} stationTitle={savedTitle} />
-              <StationInstanceContentPanel
-                structure={structure}
-                content={editContent}
-                onChange={setEditContent}
-                readOnly={!editable}
-                media={media}
-              />
-            </FoldSection>
-          ) : null}
-          {supportsBrief(scope) && canAuthor ? (
-            <BriefEditor
-              key={`${station.id}:${version}`}
-              stationId={station.id}
-              version={version}
-              initial={readBrief(working?.content ?? station.content)}
-              onSaved={setWorking}
-            />
-          ) : null}
-          {factCheck && editable && drafted ? (
-            <FoldSection title="Produce again from a brief" defaultOpen={false}>
-              {produceForm}
-            </FoldSection>
-          ) : null}
+      {board && status === "archived" ? (
+        // An archived station is its history alone: nothing on it can change.
+        <div className={`${boardColsMain} !gap-5`}>
+          {content}
+          <StationVersionHistory board stationId={station.id} />
         </div>
-      ) : null}
-
-      {current === "facts" ? (
-        <Panel title="Check the facts">
-          <AsyncBoundary state={reviewState.load}>
-            {() => (
-              <FactCheck
-                facts={facts}
-                locked={locked}
-                working={checking}
-                onCheck={checkFacts}
-                rulings={
-                  // A ruling made while the agent produces would be overwritten when it finishes.
-                  editable && facts && !busy
-                    ? {
-                        onAccept: (claim, swap) => {
-                          if (swap) setEditContent(corrected(editContent, claim, swap));
-                          rule(ruled(facts, claim.id, "accepted", swap ?? undefined));
-                        },
-                        onDismiss: (claim) => rule(ruled(facts, claim.id, "dismissed")),
-                        onReopen: (claim) => {
-                          setEditContent(uncorrected(editContent, claim));
-                          rule(reopened(facts, claim.id));
-                        },
-                      }
-                    : undefined
-                }
-              />
-            )}
-          </AsyncBoundary>
-        </Panel>
-      ) : null}
-
-      {current === "publish" ? (
-        <Panel title="Publish">
-          <div className="flex flex-col gap-3 text-osce-body text-ink-muted">
-            <p>
-              Publishing makes v{version} the version candidates are assessed against. A published
-              version is what an attempt was marked against, so it is archived rather than deleted.
-            </p>
-            {isDraft && !readBrief(working?.content ?? station.content).trim() ? (
-              <Alert tone="warning">
-                This station has no candidate brief, so candidates see nothing during reading time.
-                You can still publish.
-              </Alert>
-            ) : null}
-            {steps
-              .filter((entry) => entry.id !== "publish" && entry.state !== "done")
-              .map((entry) => (
-                <Alert key={entry.id} tone="warning">
-                  {entry.label}: {entry.note}.
-                </Alert>
-              ))}
-            {/* Ready, the bar holds Publish; before then it stays possible from here. */}
-            {editable && next.id !== "publish" ? (
-              <Button
-                size="sm"
-                variant="secondary"
-                className="w-fit"
-                disabled={locked}
-                isLoading={action.busy === "publish"}
-                onClick={publish}
-              >
-                Publish anyway
-              </Button>
-            ) : null}
+      ) : board ? (
+        <div className={`${boardCols} !gap-5`}>
+          <div className={`${boardColsMain} !gap-5`}>{content}</div>
+          {/* The board draws an unsaved station as the content alone, so the rail is hidden, not unmounted:
+              the typed brief and the panels' state survive until Save has stored the edit. */}
+          <div className={`${boardColsRail} min-w-0 !gap-5${unsaved ? " !hidden" : ""}`}>
+            {briefEditor}
+            {publishPanel}
+            <StationVersionHistory board stationId={station.id} />
           </div>
-        </Panel>
-      ) : null}
-
-      <StationVersionHistory stationId={station.id} />
+        </div>
+      ) : (
+        <>
+          {content}
+          {publishPanel}
+          <StationVersionHistory stationId={station.id} />
+        </>
+      )}
     </div>
+  );
+}
+
+/** The Publish step's card: the boards' rail card on the organisation arms, a console panel on the staff one. */
+function PublishPanel({ board, children }: { board: boolean; children: React.ReactNode }) {
+  if (board) {
+    return (
+      <div className={boardPad}>
+        <h2 className="m-0 text-assess-desc font-semibold text-ink">Publish</h2>
+        {children}
+      </div>
+    );
+  }
+  return (
+    <Panel title="Publish">
+      <div className="flex flex-col gap-3 text-osce-body text-ink-muted">{children}</div>
+    </Panel>
   );
 }
 
@@ -595,9 +705,11 @@ function readBrief(content: unknown): string {
 }
 
 function LegacyStationMeta({
+  board,
   content,
   stationTitle,
 }: {
+  board: boolean;
   content: Record<string, unknown>;
   stationTitle: string;
 }) {
@@ -607,6 +719,10 @@ function LegacyStationMeta({
       ? content.station_name
       : stationTitle;
   if (!legacyId && !name) return null;
+  if (board) {
+    // Low-key on the boards: the id is only worth a muted line, and only when a legacy station has one.
+    return legacyId ? <p className={boardMeta}>Station ID <span className="font-mono">{legacyId}</span></p> : null;
+  }
   return (
     <div className="mb-6 grid grid-cols-1 gap-4 rounded-osce-lg border border-border bg-surface-raised/40 p-4 md:grid-cols-2">
       {legacyId ? (

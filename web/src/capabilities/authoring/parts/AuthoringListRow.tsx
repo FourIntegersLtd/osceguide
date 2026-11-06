@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/foundation/ui/cn";
+import { boardActs, boardMeta } from "@/capabilities/authoring/parts/boardUi";
+import { boardRowWide } from "@/foundation/ui/boardKit";
 import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 
 /**
@@ -14,6 +16,7 @@ export function AuthoringListRow({
   detail,
   leading,
   onOpen,
+  linkTitle = false,
   children,
 }: {
   title: string;
@@ -22,6 +25,8 @@ export function AuthoringListRow({
   detail?: ReactNode;
   leading?: ReactNode;
   onOpen?: () => void;
+  /** Organisation arms: the title is drawn as a link (the boards' blue). */
+  linkTitle?: boolean;
   children: ReactNode;
 }) {
   const chrome = useAuthoringChrome();
@@ -39,6 +44,33 @@ export function AuthoringListRow({
       {detail}
     </>
   );
+
+  if (!chrome.b2c) {
+    return (
+      <div data-row className={boardRowWide}>
+        <span className="min-w-0 flex-[1_1_260px]">
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={onOpen}
+              className={cn("p-0 text-left font-bold", linkTitle && "font-normal text-osce-accent hover:text-osce-accent-hover")}
+            >
+              {title}
+            </button>
+          ) : (
+            <b>{title}</b>
+          )}
+          {meta ? (
+            <div className={boardMeta} title={metaTitle}>
+              {meta}
+            </div>
+          ) : null}
+          {detail}
+        </span>
+        <div className={boardActs}>{children}</div>
+      </div>
+    );
+  }
 
   return (
     <div

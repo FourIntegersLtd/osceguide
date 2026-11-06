@@ -8,6 +8,7 @@ import { Badge } from "@/foundation/ui/Badge";
 import { Button } from "@/foundation/ui/Button";
 import { EmptyState } from "@/foundation/ui/EmptyState";
 import { cardScrollBody } from "@/foundation/ui/Card";
+import { boardCardClipped } from "@/foundation/ui/boardKit";
 import * as b2bTokens from "@/foundation/ui/b2bTokens";
 
 /**
@@ -35,6 +36,7 @@ export function FoldSection({
   meta,
   actions,
   defaultOpen = true,
+  board = false,
   children,
 }: {
   title: string;
@@ -46,9 +48,25 @@ export function FoldSection({
   meta?: React.ReactNode;
   actions?: React.ReactNode;
   defaultOpen?: boolean;
+  /** The institution boards' fold: a white card, a plain summary line and a body with no divider. */
+  board?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  if (board) {
+    return (
+      <details className={boardCardClipped} open={defaultOpen}>
+        <summary className="box-content min-h-[24px] cursor-pointer px-5 py-3.5 text-assess-label font-medium text-ink">
+          {number !== undefined ? `${number}. ${title}` : title}
+          {meta ? <span className="ml-2 inline-flex gap-1">{meta}</span> : null}
+        </summary>
+        <div className="px-5 pb-4 text-assess-label text-ink-muted">
+          {description ? <p className="text-assess-meta text-ink-subtle">{description}</p> : null}
+          {children}
+        </div>
+      </details>
+    );
+  }
   return (
     <div className="overflow-hidden rounded-osce-md border border-border">
       <div className="flex flex-wrap items-center justify-between gap-2 bg-canvas px-4 py-2">
@@ -94,6 +112,7 @@ export function Panel({
   padding = "md",
   scrollable = true,
   className,
+  bodyClassName,
   children,
 }: {
   title?: string;
@@ -104,6 +123,8 @@ export function Panel({
   /** Off for a form whose in-flow dropdown would be cut off by the scroll cap. */
   scrollable?: boolean;
   className?: string;
+  /** On the body, where `flex`/`gap` must go: `className` lands on the section, which only wraps the body. */
+  bodyClassName?: string;
   children: React.ReactNode;
 }) {
   const bodyPadding =
@@ -135,7 +156,7 @@ export function Panel({
           ) : null}
         </header>
       ) : null}
-      <div className={cn(bodyPadding, scrollable && cardScrollBody)}>
+      <div className={cn(bodyPadding, scrollable && cardScrollBody, bodyClassName)}>
         {children}
       </div>
     </section>

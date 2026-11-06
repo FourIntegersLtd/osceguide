@@ -10,6 +10,7 @@ import {
   initialComments,
   initialRatings,
   machineRating,
+  machineSummaryLine,
   ratingChoices,
   ratingVariant,
   summaryDomains,
@@ -115,13 +116,31 @@ describe("the reviewers of a slot", () => {
       { status: "completed", reviewer_name: "Ms Clarke", overall: "R" },
     ];
     assert.deepEqual(finishedReviewers(items, scale), [
-      { name: "Dr Patel", rating: "G" },
-      { name: "Ms Clarke", rating: "R" },
+      { name: "Dr Patel", rating: "Green" },
+      { name: "Ms Clarke", rating: "Red" },
     ]);
   });
   it("says whether they agree only when two have finished", () => {
     assert.equal(reviewersAgreeLine(true), "Reviewers agree.");
     assert.equal(reviewersAgreeLine(false), "Reviewers disagree. The lower rating is the one shown.");
     assert.equal(reviewersAgreeLine(null), null);
+  });
+});
+
+describe("machineSummaryLine", () => {
+  it("lists the machine's rating per domain, read at the domain's own field", () => {
+    const form: ReviewForm = {
+      rubric_version_id: "v1",
+      rating: RAG,
+      required_domains: [],
+      fields: [
+        { path: "history.score", domain_id: "history", domain_label: "History taking", competency_id: null, label: "History taking", descriptors: {} },
+        { path: "comms.score", domain_id: "comms", domain_label: "Communication", competency_id: null, label: "Communication", descriptors: {} },
+        { path: "comms.rapport.score", domain_id: "comms", domain_label: "Communication", competency_id: "rapport", label: "Rapport", descriptors: {} },
+      ],
+    } as ReviewForm;
+    const payload = { history: { score: "G" }, comms: { score: "A", rapport: { score: "R" } } };
+    assert.equal(machineSummaryLine(form, payload), "History taking: Green · Communication: Amber");
+    assert.equal(machineSummaryLine(form, null), "");
   });
 });

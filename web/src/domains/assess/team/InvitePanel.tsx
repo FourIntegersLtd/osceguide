@@ -2,9 +2,9 @@
 
 import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
 import { useState } from "react";
-import { HiOutlineUserPlus } from "react-icons/hi2";
-import { Alert, Button, b2bTokens, Panel } from "@/foundation/ui";
-import { IssuedPassword, TemporaryPasswordField } from "@/foundation/ui/TemporaryPassword";
+import { b2bTokens as t, cn } from "@/foundation/ui";
+import { Note, PasswordFields, h2, hint } from "@/domains/assess/ui";
+import { IssuedPassword } from "@/foundation/ui/TemporaryPassword";
 import { useTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
 import { errorMessage } from "@/foundation/hooks";
 import { inviteMember, type SeatedMembership } from "@/domains/assess/team/api";
@@ -13,6 +13,7 @@ import {
   ASSIGNABLE_ROLES,
   type AssignableRole,
 } from "@/domains/assess/team/support";
+import { boardBtn, boardPadWide, boardInput, boardLabel } from "@/foundation/ui/boardKit";
 
 /**
  * Add a member of staff.
@@ -73,107 +74,68 @@ export function InvitePanel({
 
   if (!canManage) {
     return (
-      <Alert tone="info" title="Only an owner or admin can invite staff">
+      <Note tone="info">
+        <b className="block">Only an owner or admin can invite staff</b>
         Ask one of them to add the person you need.
-      </Alert>
+      </Note>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <Panel
-        title="Invite someone to the team"
-        description="Supervisors run circuits and mark them. Admins also manage the team and sign off results."
+    <div className="flex flex-col gap-6">
+      <form
+        className={boardPadWide}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
       >
-        <form
-          className="space-y-5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submit();
-          }}
-        >
-          <div>
-            <label
-              htmlFor="assess-invite-email"
-              className="block text-osce-body font-semibold text-b2b-headline"
-            >
-              Email address
-            </label>
-            <p className="mt-0.5 text-osce-caption text-b2b-mid">
-              If they have no account yet we create one and email them a link to choose a password.
-            </p>
-            <input
-              id="assess-invite-email"
-              type="email"
-              required
-              autoComplete="off"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="supervisor@hospital.nhs.uk"
-              className={`mt-2 ${b2bTokens.b2bInputBase}`}
-            />
-          </div>
+        <h2 className={h2}>Invite someone to the team</h2>
+        <p className={cn(t.assessMeta, "m-0")}>Supervisors run circuits and mark them. Admins also manage the team and sign off results.</p>
+        <div>
+          <label htmlFor="assess-invite-email" className={boardLabel}>Email address</label>
+          <input id="assess-invite-email" type="email" required autoComplete="off" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="supervisor@hospital.nhs.uk" className={boardInput} />
+          <div className={hint}>If they have no account yet we create one and email them a link to choose a password.</div>
+        </div>
+        <div>
+          <label htmlFor="assess-invite-role" className={boardLabel}>Their role</label>
+          <select id="assess-invite-role" value={role} onChange={(event) => setRole(event.target.value as AssignableRole)} className={boardInput}>
+            {ASSIGNABLE_ROLES.map((value) => (
+              <option key={value} value={value}>
+                {roleLabel(value)}
+              </option>
+            ))}
+          </select>
+          <div className={hint}>{ROLE_DESCRIPTIONS[role]}</div>
+        </div>
 
-          <div>
-            <label
-              htmlFor="assess-invite-role"
-              className="block text-osce-body font-semibold text-b2b-headline"
-            >
-              Their role
-            </label>
-            <p className="mt-0.5 text-osce-caption text-b2b-mid">{ROLE_DESCRIPTIONS[role]}</p>
-            <select
-              id="assess-invite-role"
-              value={role}
-              onChange={(event) => setRole(event.target.value as AssignableRole)}
-              className={`mt-2 ${b2bTokens.b2bInputBase}`}
-            >
-              {ASSIGNABLE_ROLES.map((value) => (
-                <option key={value} value={value}>
-                  {roleLabel(value)}
-                </option>
-              ))}
-            </select>
-          </div>
+        <PasswordFields {...password.field} id="assess-invite-password" disabled={busy} />
 
-          <TemporaryPasswordField {...password.field} disabled={busy} />
+        {error ? <Note tone="bad" role="alert">{error}</Note> : null}
+        <button type="submit" className={cn(boardBtn("primary"), "self-start")} disabled={busy || email.trim().length === 0 || !password.ready}>
+          {busy ? "Inviting…" : "+ Add person"}
+        </button>
+      </form>
 
-          {error ? <Alert tone="danger">{error}</Alert> : null}
-          {password.issued ? (
-            <IssuedPassword
-              email={password.issued.email}
-              password={password.issued.password}
-              onDismiss={password.dismiss}
-            />
-          ) : result ? (
-            <Alert tone="success">
-              {result.invited
-                ? `Invited ${result.email}. They have been emailed a link to choose a password.`
-                : `${result.email} already had an account and is now ${roleLabel(result.role).toLowerCase()} here.`}
-            </Alert>
-          ) : null}
+      {password.issued ? (
+        <IssuedPassword email={password.issued.email} password={password.issued.password} onDismiss={password.dismiss} />
+      ) : result ? (
+        <Note tone="ok">
+          {result.invited
+            ? `Invited ${result.email}. They have been emailed a link to choose a password.`
+            : `${result.email} already had an account and is now ${roleLabel(result.role).toLowerCase()} here.`}
+        </Note>
+      ) : null}
 
-          <Button
-            type="submit"
-            themeType="b2b"
-            variant="commit"
-            disabled={busy || email.trim().length === 0 || !password.ready}
-            className="inline-flex items-center gap-2"
-          >
-            <HiOutlineUserPlus className="h-4 w-4 shrink-0" aria-hidden />
-            {busy ? "Inviting…" : "Add person"}
-          </Button>
-        </form>
-      </Panel>
-
-      <Panel
-        title="Import a spreadsheet"
-        description="Upload a list of staff saved from Excel or Google Sheets as a .csv file. Anyone already on the team is skipped and shown to you."
-      >
-        <Button themeType="b2b" variant="secondary" onClick={() => setImportOpen(true)}>
+      <div className={boardPadWide}>
+        <h2 className={h2}>Import a spreadsheet</h2>
+        <p className={cn(t.assessMeta, "m-0")}>
+          Upload a list of staff saved from Excel or Google Sheets as a .csv file. Anyone already on the team is skipped and shown to you.
+        </p>
+        <button type="button" className={cn(boardBtn(), "self-start")} onClick={() => setImportOpen(true)}>
           Import from spreadsheet
-        </Button>
-      </Panel>
+        </button>
+      </div>
 
       <BulkInviteDialog
         orgSlug={orgSlug}

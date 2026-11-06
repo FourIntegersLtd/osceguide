@@ -272,6 +272,7 @@ def rating_read(structure: domain.RubricStructure) -> RatingRead:
         minimum=rating.minimum,
         maximum=rating.maximum,
         step=rating.step,
+        points=list(rating.points) if rating.points else None,
     )
 
 

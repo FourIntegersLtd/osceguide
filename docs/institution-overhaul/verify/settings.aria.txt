@@ -1,0 +1,17 @@
+- main:
+  - heading "Settings" [level=1]
+  - paragraph: Your organisation, how people sign in, and your own account.
+  - tablist "Settings":
+    - tab "Organisation" [selected]
+    - tab "Single sign-on"
+    - tab "Provisioning"
+    - tab "Your account"
+    - tab "Preferences"
+    - tab "Invoices"
+  - heading "Organisation" [level=2]
+  - paragraph: The web address is fixed. Contact support to change it.
+  - text: Name
+  - textbox "Name": E2E Institute mw3mzpx5
+  - text: Web address
+  - textbox "Web address": /e2e-mw3mzpx5
+  - button "Save name" [disabled]

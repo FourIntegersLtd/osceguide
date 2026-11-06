@@ -1,0 +1,29 @@
+- main:
+  - paragraph: Supervisor
+  - heading "No stations to review" [level=1]
+  - paragraph: You review the circuits you lead. Your ratings are what count; the AI mark is a starting point.
+  - paragraph: Running now
+  - heading "Circuit run · Circuit run circuit" [level=2]
+  - paragraph: Station 1 of 1 · 1 trainee · Tess Trainee
+  - link "Open console":
+    - /url: /app/e2e-mw3om0c6/circuits/84619a49-730a-4a19-9600-6f555d8d3e00
+  - link "Open the live board":
+    - /url: /app/e2e-mw3om0c6/live
+  - text: Needs a look Consultation 3:02
+  - heading "Circuits you lead" [level=2]
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - text: Nothing is assigned to you right now. A circuit appears here when an administrator names you its supervisor.
+  - heading "Coming up" [level=2]
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - text: No sittings are scheduled. An administrator can schedule one.
+  - heading "Recent sittings" [level=2]
+  - link "OV training run Training Completed":
+    - /url: /app/e2e-mw3om0c6/sittings/0469e190-b9e0-4614-99e9-e645bb457f33
+  - link "OV exam to review Formal exam Completed":
+    - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3
+  - link "Circuit run Formal exam In progress":
+    - /url: /app/e2e-mw3om0c6/sittings/115d9697-b969-4381-9a8c-d711b339a4cc
+  - link "Release run Formal exam Completed":
+    - /url: /app/e2e-mw3om0c6/sittings/086c720c-30ff-4a81-9b8c-5613c33a49fa

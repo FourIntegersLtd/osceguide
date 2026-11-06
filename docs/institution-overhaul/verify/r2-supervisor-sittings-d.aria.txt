@@ -1,0 +1,47 @@
+- main:
+  - heading "Sittings" [level=1]
+  - paragraph: A sitting is one occasion, such as the March mock. Its circuits are built for you when you schedule it.
+  - button "Filters"
+  - text: Search sittings
+  - searchbox "Search sittings"
+  - table:
+    - rowgroup:
+      - row "Sitting Kind Exam Scheduled for Status":
+        - columnheader "Sitting"
+        - columnheader "Kind"
+        - columnheader "Exam"
+        - columnheader "Scheduled for"
+        - columnheader "Status"
+    - rowgroup:
+      - row "OV training run Simulated Consultation Assessment · 1 circuit · 1 trainee Training Simulated Consultation Assessment 06/11/2026 Completed":
+        - cell "OV training run Simulated Consultation Assessment · 1 circuit · 1 trainee":
+          - link "OV training run Simulated Consultation Assessment · 1 circuit · 1 trainee":
+            - /url: /app/e2e-mw3om0c6/sittings/0469e190-b9e0-4614-99e9-e645bb457f33
+        - cell "Training"
+        - cell "Simulated Consultation Assessment"
+        - cell "06/11/2026"
+        - cell "Completed"
+      - row "OV exam to review Simulated Consultation Assessment · 1 circuit · 1 candidate Formal exam Simulated Consultation Assessment 06/11/2026 Completed":
+        - cell "OV exam to review Simulated Consultation Assessment · 1 circuit · 1 candidate":
+          - link "OV exam to review Simulated Consultation Assessment · 1 circuit · 1 candidate":
+            - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3
+        - cell "Formal exam"
+        - cell "Simulated Consultation Assessment"
+        - cell "06/11/2026"
+        - cell "Completed"
+      - row "Circuit run Simulated Consultation Assessment · 1 circuit · 1 candidate Formal exam Simulated Consultation Assessment 06/11/2026 Completed":
+        - cell "Circuit run Simulated Consultation Assessment · 1 circuit · 1 candidate":
+          - link "Circuit run Simulated Consultation Assessment · 1 circuit · 1 candidate":
+            - /url: /app/e2e-mw3om0c6/sittings/115d9697-b969-4381-9a8c-d711b339a4cc
+        - cell "Formal exam"
+        - cell "Simulated Consultation Assessment"
+        - cell "06/11/2026"
+        - cell "Completed"
+      - row "Release run Simulated Consultation Assessment · 1 circuit · 1 candidate Formal exam Simulated Consultation Assessment 06/11/2026 Completed":
+        - cell "Release run Simulated Consultation Assessment · 1 circuit · 1 candidate":
+          - link "Release run Simulated Consultation Assessment · 1 circuit · 1 candidate":
+            - /url: /app/e2e-mw3om0c6/sittings/086c720c-30ff-4a81-9b8c-5613c33a49fa
+        - cell "Formal exam"
+        - cell "Simulated Consultation Assessment"
+        - cell "06/11/2026"
+        - cell "Completed"

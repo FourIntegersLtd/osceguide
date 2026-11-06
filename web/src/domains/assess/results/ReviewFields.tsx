@@ -1,9 +1,10 @@
 "use client";
 
-import { Badge, b2bTokens, FoldSection } from "@/foundation/ui";
+import { b2bTokens } from "@/foundation/ui";
 import { ratingLabel, type RatingValue } from "@/capabilities/feedback/rubric";
 import { RatingInput } from "@/domains/assess/results/RatingInput";
 import { formDomains, machineRating, unratedRequired, type ReviewForm } from "@/domains/assess/results/reviewForm";
+import { boardInput } from "@/foundation/ui/boardKit";
 
 /**
  * The rateable fields of a review form, domain by domain.
@@ -35,7 +36,7 @@ export function ReviewFields({
   const domains = formDomains(form);
   if (!form || domains.length === 0) {
     return (
-      <p className="text-osce-body text-b2b-mid">
+      <p className="text-assess-label text-osce-ink-500">
         This station&rsquo;s marking scheme has nothing to rate, so there is nothing to agree or disagree with. Your notes are still saved.
       </p>
     );
@@ -44,12 +45,12 @@ export function ReviewFields({
   const missing = unratedRequired(form, ratings);
 
   return (
-    <div className="space-y-4">
-      <ul className="space-y-3">
+    <div className="flex flex-col gap-6">
+      <ul>
         {domains.map((domain) => {
           // A domain-level field repeats the domain's name, so its rating sits
-          // in the domain's own heading row; competency fields get a row each.
-          const own = domain.fields.filter((field) => field.competency_id === null || field.competency_id === undefined);
+          // in the domain's own row; competency fields get a row each beneath it.
+          const own = domain.fields.find((field) => field.competency_id === null || field.competency_id === undefined);
           const parts = domain.fields.filter((field) => field.competency_id !== null && field.competency_id !== undefined);
           const input = (field: (typeof domain.fields)[number]) => (
             <RatingInput
@@ -63,55 +64,55 @@ export function ReviewFields({
           const machineNote = (path: string) => {
             const machine = machineRating(form.rating, payload, path);
             return machine !== null ? (
-              <span className="text-osce-meta text-b2b-mid">Machine: {ratingLabel(form.rating, machine)}</span>
+              <div className="text-assess-meta text-osce-ink-500">Machine: {ratingLabel(form.rating, machine)}</div>
             ) : null;
           };
           return (
-            <li key={domain.id}>
-              <FoldSection
-                title={domain.label}
-                meta={domain.required ? <Badge variant="neutral" size="xs">Required</Badge> : null}
-              >
-              <div className="space-y-2">
-                {own.map((field) => (
-                  <div key={field.path} className="flex flex-wrap items-center justify-end gap-3">
-                    {machineNote(field.path)}
-                    {input(field)}
+            <li key={domain.id} className="border-t border-osce-border-light">
+              <div className={ROW}>
+                <div className="min-w-0 flex-[1_1_180px]">
+                  <div className="font-medium">
+                    {domain.label}{" "}
+                    {domain.required ? <span className={b2bTokens.assessChipNeutral}>Required</span> : null}
                   </div>
-                ))}
+                  {own ? machineNote(own.path) : null}
+                </div>
+                {own ? input(own) : null}
+              </div>
               {parts.map((field) => (
-                <div key={field.path} className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex min-w-0 flex-col">
-                    <span className="text-osce-body text-b2b-headline">{field.label}</span>
+                <div key={field.path} className={`${ROW} border-t border-osce-border-light pl-4`}>
+                  <div className="min-w-0 flex-[1_1_180px]">
+                    <div>{field.label}</div>
                     {machineNote(field.path)}
                   </div>
                   {input(field)}
                 </div>
               ))}
               {comments && onComment ? (
-                <label className="block">
+                <label className="block pb-3">
                   <span className="sr-only">Note on {domain.label}</span>
-                  <textarea
-                    rows={2}
+                  <input
+                    type="text"
                     value={comments[domain.id] ?? ""}
                     disabled={disabled}
                     onChange={(event) => onComment(domain.id, event.target.value)}
                     placeholder={`Why this rating for ${domain.label}`}
-                    className={`${b2bTokens.b2bInputBase} w-full`}
+                    className={boardInput}
                   />
                 </label>
               ) : null}
-              </div>
-              </FoldSection>
             </li>
           );
         })}
       </ul>
       {missing.length > 0 ? (
-        <p className="text-osce-meta text-b2b-mid">
+        <p className="text-assess-meta text-osce-ink-500">
           Still to rate before completing: {missing.join(", ")}.
         </p>
       ) : null}
     </div>
   );
 }
+
+/** The board's `.row` inside a card: 12px above and below, no side padding. */
+const ROW = "flex flex-wrap items-center gap-4 py-4 text-assess-label text-osce-ink-900";

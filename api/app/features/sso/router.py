@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Form, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 
 from app.core.db import SessionDep as Session
+from app.core.db import SessionOpenerDep
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.memberships import MembershipsFor
 from app.core.openapi import SAML_METADATA_MEDIA_TYPE
@@ -99,7 +100,7 @@ async def sso_login(
 async def sso_callback(
     request: Request,
     body: schemas.SsoCallbackRequest,
-    session: Session,
+    open_session: SessionOpenerDep,
     brokers: Brokers,
     memberships_for: MembershipsFor,
     settings: SettingsDep,
@@ -114,7 +115,7 @@ async def sso_callback(
     """
     await check(SSO_CALLBACK, caller_key(request))
     return await service_login.complete_callback(
-        session,
+        open_session,
         body.org_slug,
         token=body.token,
         state=body.state,

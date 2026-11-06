@@ -4066,6 +4066,7 @@
           },
           "structure": {
             "additionalProperties": true,
+            "description": "The author's marking scheme (schemaVersion 3). Writes also accept version 2.",
             "title": "Structure",
             "type": "object"
           },
@@ -5390,6 +5391,7 @@
           },
           "structure": {
             "additionalProperties": true,
+            "description": "The author's marking scheme (schemaVersion 3). Writes also accept version 2.",
             "title": "Structure",
             "type": "object"
           },
@@ -7393,6 +7395,20 @@
           }
         },
         "title": "Interventions",
+        "type": "object"
+      },
+      "InvitationLookup": {
+        "description": "What an invitation link may say before anyone signs in: who sent it, and nothing else.",
+        "properties": {
+          "organisation_name": {
+            "title": "Organisation Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organisation_name"
+        ],
+        "title": "InvitationLookup",
         "type": "object"
       },
       "InvitationRead": {
@@ -9570,6 +9586,24 @@
           "state"
         ],
         "title": "MySlotReviewWaiting",
+        "type": "object"
+      },
+      "NewRubricVersion": {
+        "properties": {
+          "from_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Version"
+          }
+        },
+        "title": "NewRubricVersion",
         "type": "object"
       },
       "NoteRead": {
@@ -14049,6 +14083,20 @@
             ],
             "title": "Minimum"
           },
+          "points": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points"
+          },
           "scale": {
             "items": {
               "type": "string"
@@ -15287,7 +15335,7 @@
         "type": "object"
       },
       "ResultsIndexRow": {
-        "description": "One sitting's decision progress. `not_decided` is candidates with no decision yet.",
+        "description": "One sitting's decision progress. `not_decided` is candidates with no decision yet;\n`sat` is those who sat at least one station (an absent candidate needs no decision).",
         "properties": {
           "candidates": {
             "title": "Candidates",
@@ -15311,6 +15359,10 @@
           },
           "released": {
             "title": "Released",
+            "type": "integer"
+          },
+          "sat": {
+            "title": "Sat",
             "type": "integer"
           },
           "scheduled_for": {
@@ -15346,6 +15398,7 @@
           "status",
           "scheduled_for",
           "candidates",
+          "sat",
           "not_decided",
           "draft",
           "signed_off",
@@ -15592,6 +15645,7 @@
         "properties": {
           "structure": {
             "additionalProperties": true,
+            "description": "The author's marking scheme (schemaVersion 3). Writes also accept version 2.",
             "title": "Structure",
             "type": "object"
           }
@@ -15913,6 +15967,7 @@
           },
           "structure": {
             "additionalProperties": true,
+            "description": "The author's marking scheme (schemaVersion 3). Writes also accept version 2.",
             "title": "Structure",
             "type": "object"
           },
@@ -25303,6 +25358,65 @@
           }
         },
         "summary": "Exchange Legacy",
+        "tags": [
+          "identity"
+        ],
+        "x-capability": "public"
+      }
+    },
+    "/api/v1/auth/invitation/{token}": {
+      "get": {
+        "operationId": "identity_look_up_invitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationLookup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_reset_token",
+            "x-codes": [
+              "invalid_reset_token"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          }
+        },
+        "summary": "Look Up Invitation",
         "tags": [
           "identity"
         ],
@@ -47113,6 +47227,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/NewRubricVersion"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "content": {
@@ -64004,6 +64135,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/NewRubricVersion"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "content": {

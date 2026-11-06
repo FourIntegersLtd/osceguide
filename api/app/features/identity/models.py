@@ -233,3 +233,8 @@ class PasswordResetToken(Base, UUIDPrimaryKey, Timestamps):
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The organisation an invitation came from, so the accept page can say who invited the person.
+    # Null for a plain reset link and for an invitation that names no organisation (the staff console's).
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True
+    )

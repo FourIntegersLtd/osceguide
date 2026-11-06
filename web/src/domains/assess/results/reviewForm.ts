@@ -208,3 +208,15 @@ export function reviewersAgreeLine(agree: boolean | null | undefined): string | 
   if (agree === false) return "Reviewers disagree. The lower rating is the one shown.";
   return null;
 }
+
+/** The machine's rating per domain on one line ("History taking: G · Communication: A"), read at each domain's own field; "" when it rated none. */
+export function machineSummaryLine(form: ReviewForm | null | undefined, payload: Record<string, unknown> | null): string {
+  if (!form) return "";
+  return formDomains(form)
+    .flatMap((domain) => {
+      const own = domain.fields.find((field) => field.competency_id === null || field.competency_id === undefined);
+      const machine = own ? machineRating(form.rating, payload, own.path) : null;
+      return machine === null ? [] : [`${domain.label}: ${ratingLabel(form.rating, machine)}`];
+    })
+    .join(" · ");
+}

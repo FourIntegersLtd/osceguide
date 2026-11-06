@@ -13,6 +13,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.core.auth import Membership
+from app.features.rubrics import domain
 from tests.support.catalog import create_exam
 from tests.support.rubrics import FULL_RUBRIC, MINIMAL_RUBRIC, PACING, SYSTEM_PROMPT, create_rubric
 from tests.support.tokens import bearer
@@ -127,7 +128,31 @@ async def test_a_new_version_is_seeded_from_the_published_one(client: AsyncClien
     assert response.status_code == 201
     draft = response.json()
     assert draft["version"] == 2 and draft["status"] == "draft"
-    assert draft["structure"] == FULL_RUBRIC
+    assert draft["structure"] == domain.authoring_form(FULL_RUBRIC)
+
+
+async def test_a_new_draft_can_be_copied_from_a_chosen_version(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    rubric = await create_rubric(client, admin, structure=FULL_RUBRIC)
+    url = f"/api/v1/platform/rubrics/{rubric['id']}/versions"
+    second = (await client.post(url, headers=bearer(admin))).json()
+    await client.patch(
+        f"{url}/2",
+        json={"structure": MINIMAL_RUBRIC, "system_prompt": SYSTEM_PROMPT, "pacing": PACING},
+        headers=bearer(admin),
+    )
+    await client.post(f"{url}/2/publish", headers=bearer(admin))
+    assert second["version"] == 2
+
+    response = await client.post(url, json={"from_version": 1}, headers=bearer(admin))
+
+    assert response.status_code == 201
+    draft = response.json()
+    assert draft["version"] == 3
+    assert draft["structure"] == domain.authoring_form(FULL_RUBRIC)
+
+    missing = await client.post(url, json={"from_version": 9}, headers=bearer(admin))
+    assert missing.status_code == 404
 
 
 async def test_a_half_written_draft_cannot_be_published(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

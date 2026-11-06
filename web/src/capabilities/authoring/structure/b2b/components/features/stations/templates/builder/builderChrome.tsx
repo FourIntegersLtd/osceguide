@@ -2,12 +2,9 @@
 
 import {
   createContext,
-  forwardRef,
   useContext,
-  type ButtonHTMLAttributes,
   type ReactNode,
 } from "react";
-import { getButtonClassName } from "@/capabilities/authoring/structure/shared/ui/buttonStyles";
 import type { StationSectionAudience } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 
 /**
@@ -150,87 +147,6 @@ export function ToneBadge({
     </span>
   );
 }
-
-/** Neutral icon tile for a field's type. */
-export function TypeBadge({
-  className = "",
-  children,
-}: {
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <span
-      className={[
-        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-osce-lg bg-osce-canvas text-ink-muted [&>svg]:h-4 [&>svg]:w-4",
-        className,
-      ].join(" ")}
-    >
-      {children}
-    </span>
-  );
-}
-
-type BuilderButtonVariant = "secondary" | "ghost" | "commit" | "danger";
-
-/** Commit is the shared black tier; the rest are the builder's quiet chrome. */
-const buttonVariant: Record<Exclude<BuilderButtonVariant, "commit">, string> = {
-  secondary:
-    "border border-osce-border bg-osce-surface text-ink-muted hover:bg-osce-canvas",
-  ghost:
-    "border border-transparent bg-transparent text-ink-muted hover:bg-osce-canvas hover:text-ink-muted",
-  danger:
-    "border border-transparent bg-transparent text-osce-danger-text hover:bg-osce-danger-bg",
-};
-
-const buttonSize = {
-  sm: "h-8 px-2.5 text-osce-caption",
-  md: "h-9 px-3.5 text-osce-body",
-} as const;
-
-export const BuilderButton = forwardRef<
-  HTMLButtonElement,
-  ButtonHTMLAttributes<HTMLButtonElement> & {
-    variant?: BuilderButtonVariant;
-    size?: keyof typeof buttonSize;
-  }
->(function BuilderButton(
-  { variant = "secondary", size = "md", className = "", type = "button", ...rest },
-  ref,
-) {
-  const classes =
-    variant === "commit"
-      ? getButtonClassName({ variant: "commit", size, className })
-      : [
-          "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-osce-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-40",
-          buttonVariant[variant],
-          buttonSize[size],
-          builderUi.focusRing,
-          className,
-        ].join(" ");
-  return <button ref={ref} type={type} className={classes} {...rest} />;
-});
-
-/** Square icon-only button; `label` doubles as the accessible name and tooltip. */
-export const BuilderIconButton = forwardRef<
-  HTMLButtonElement,
-  ButtonHTMLAttributes<HTMLButtonElement> & { label: string }
->(function BuilderIconButton({ label, className = "", type = "button", ...rest }, ref) {
-  return (
-    <button
-      ref={ref}
-      type={type}
-      aria-label={label}
-      title={label}
-      className={[
-        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-osce-lg text-ink-muted transition-colors hover:bg-osce-canvas hover:text-ink-muted disabled:pointer-events-none disabled:opacity-40 [&>svg]:h-4 [&>svg]:w-4",
-        builderUi.focusRing,
-        className,
-      ].join(" ")}
-      {...rest}
-    />
-  );
-});
 
 /* Compatibility: older call sites read hairline classes from a context. */
 

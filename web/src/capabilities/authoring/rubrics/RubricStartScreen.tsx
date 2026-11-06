@@ -10,7 +10,7 @@ import { listRubricStartingPoints, type RubricStartingPoint } from "@/capabiliti
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
-import { labelFor, RATING_KINDS } from "@/capabilities/authoring/rubrics/rubricVocabulary";
+import { STARTING_SCALE_WORDS } from "@/capabilities/authoring/rubrics/schemeModel";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
 import { copyAndOpen } from "@/capabilities/authoring/rubrics/copyAndOpen";
 import { useExamReturn } from "@/capabilities/authoring/rubrics/useExamReturn";
@@ -121,7 +121,7 @@ function StartCard({ point, selected, onSelect }: { point: RubricStartingPoint; 
       </div>
       <span className="text-osce-body font-semibold text-ink">{point.title}</span>
       <span className="text-osce-caption text-ink-muted">
-        {labelFor(RATING_KINDS, point.rating_kind)}
+        {STARTING_SCALE_WORDS[point.rating_kind] ?? point.rating_kind}
         {point.competency_count > 0 ? ` · ${point.competency_count} competencies` : ""}
       </span>
       {point.domains && point.domains.length > 0 ? (

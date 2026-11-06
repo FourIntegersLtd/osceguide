@@ -2,10 +2,10 @@
 
 import { useCallback, useState } from "react";
 import { hasCode } from "@/foundation/platform-client";
-import { b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { Dialog } from "@/domains/assess/team/chrome";
+import { PeopleDialog as Dialog } from "@/domains/assess/ui";
 import { deleteGroup, renameGroup, type TraineeGroup } from "@/domains/assess/roster/api";
+import { boardInput, boardLabel as fieldLabel } from "@/foundation/ui/boardKit";
 
 /**
  * The two things a group row can be corrected into: renamed, or removed.
@@ -94,17 +94,14 @@ function RenameForm({
       onCommit={() => void commit()}
     >
       <div>
-        <label
-          htmlFor="assess-rename-group"
-          className="block text-osce-caption font-medium text-b2b-graphite"
-        >
+        <label htmlFor="assess-rename-group" className={fieldLabel}>
           New name
         </label>
         <input
           id="assess-rename-group"
           value={label}
           onChange={(event) => setLabel(event.target.value)}
-          className={`mt-1 ${b2bTokens.b2bInputBase}`}
+          className={boardInput}
           autoComplete="off"
         />
       </div>

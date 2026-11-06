@@ -1,0 +1,28 @@
+- main:
+  - paragraph: E2E Institute mw3mzpx5
+  - heading "Good afternoon, Ada." [level=1]
+  - paragraph: No circuit is running and nothing needs you.
+  - link "Schedule a sitting":
+    - /url: /app/e2e-mw3mzpx5/sittings/new
+  - heading "Needs your attention" [level=2]
+  - text: Nothing needs you right now.
+  - link "Open Results":
+    - /url: /app/e2e-mw3mzpx5/results
+  - heading "Coming up" [level=2]
+  - link "All sittings":
+    - /url: /app/e2e-mw3mzpx5/sittings
+  - link "Circuit run 06/11/2026, 14:24:23 · Formal exam Scheduled":
+    - /url: /app/e2e-mw3mzpx5/sittings/c41520c8-9fb3-4b46-8d8c-8036a220db80
+    - img
+    - text: Circuit run 06/11/2026, 14:24:23 · Formal exam Scheduled
+  - region "At a glance":
+    - link "Exams ready to schedule 1":
+      - /url: /app/e2e-mw3mzpx5/authoring/exams
+    - link "Published stations 0":
+      - /url: /app/e2e-mw3mzpx5/authoring/stations
+    - link "Trainees 1":
+      - /url: /app/e2e-mw3mzpx5/trainees
+    - link "Supervisors 2":
+      - /url: /app/e2e-mw3mzpx5/team
+    - link "Sittings 1":
+      - /url: /app/e2e-mw3mzpx5/sittings

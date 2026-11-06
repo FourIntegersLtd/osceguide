@@ -67,9 +67,12 @@ export function AsyncBoundary<T>({
     return (
       <Alert tone="danger" title="That did not load">
         <p>{errorText(error)}</p>
-        <Button variant="secondary" size="sm" className="mt-3" onClick={reload}>
-          Try again
-        </Button>
+        {/* Nothing is there to find on a second try: a 404 is an answer, not a failure. */}
+        {"status" in error && error.status === 404 ? null : (
+          <Button variant="secondary" size="sm" className="mt-3" onClick={reload}>
+            Try again
+          </Button>
+        )}
       </Alert>
     );
   }

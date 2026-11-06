@@ -1,0 +1,33 @@
+- main:
+  - link "Sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - paragraph: Exam
+  - heading "OV exam to review" [level=1]
+  - paragraph: 6 Nov 2026, 15:13
+  - text: Completed
+  - button "Edit"
+  - link "Results":
+    - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3/results
+  - status:
+    - paragraph: Record and sign off each candidate's outcome.
+    - link "Open results":
+      - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3/results
+  - list "Steps":
+    - listitem: Schedule Date set
+    - listitem: Circuits 1 circuit
+    - listitem: Run All finished
+    - listitem: Mark 1 of 1 marked
+    - listitem: Decide 0 of 1 decided
+    - listitem: Release 0 of 1 released
+  - tablist "Sitting sections":
+    - tab "Circuits 1" [selected]
+    - tab "Candidates"
+    - tab "Results so far"
+  - heading "Circuits" [level=2]
+  - link "OV exam to review circuit Finished · 1 station · 1 trainee · No supervisor assigned":
+    - /url: /app/e2e-mw3om0c6/circuits/e611deb4-b426-46a2-b90a-152f129ad14b
+    - img
+    - text: OV exam to review circuit Finished · 1 station · 1 trainee · No supervisor assigned
+  - link "Add a circuit":
+    - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3/circuits/new
+  - paragraph: Cancel sitting is only before any circuit starts. A circuit can be deleted only if it never started.

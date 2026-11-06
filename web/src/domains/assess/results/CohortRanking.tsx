@@ -1,6 +1,7 @@
 "use client";
 
-import { Alert, B2CGroupedRow, B2CGroupedSection, Badge, Spinner } from "@/foundation/ui";
+import { boardCard, boardRow, boardChip, type BoardChipTone } from "@/foundation/ui/boardKit";
+import { Alert, Spinner, b2bTokens as t } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { readCohort } from "@/domains/assess/results/api";
 import { ReadoutExport } from "@/domains/assess/results/ReadoutExport";
@@ -9,7 +10,6 @@ import {
   candidateName,
   cohortSubtitle,
   formatCompletion,
-  priorityTone,
 } from "@/domains/assess/results/support";
 
 /**
@@ -39,24 +39,33 @@ export function CohortRanking({ orgSlug, sittingId }: { orgSlug: string; sitting
   if (candidates.length === 0) return null;
 
   return (
-    <B2CGroupedSection eyebrow="Review order" action={<ReadoutExport orgSlug={orgSlug} sittingId={sittingId} />}>
-      <p className="px-4 pt-3 text-osce-meta text-b2b-mid">
-        {summary.cohort_size} candidate{summary.cohort_size === 1 ? "" : "s"}, with unfinished reviews first, then the weakest results.
-      </p>
+    <div className={boardCard}>
+      <div className={`${boardRow} justify-between border-t-0`}>
+        <div>
+          <div className={t.assessEyebrow}>Review order</div>
+          <div className={t.assessMeta}>
+            {summary.cohort_size} candidate{summary.cohort_size === 1 ? "" : "s"}, with unfinished reviews first, then the weakest results.
+          </div>
+        </div>
+        <ReadoutExport orgSlug={orgSlug} sittingId={sittingId} />
+      </div>
       {candidates.map((candidate) => (
-        <B2CGroupedRow
-          key={candidate.trainee.user_id}
-          title={`${candidate.rank}. ${candidateName(candidate.trainee)}`}
-          meta={`${cohortSubtitle(candidate)} · ${formatCompletion(candidate.completion_rate)} complete`}
-          trailing={
-            candidate.review_priority ? (
-              <Badge variant={priorityTone(candidate.review_priority)} dot>
-                {PRIORITY_LABEL[candidate.review_priority] ?? candidate.review_priority}
-              </Badge>
-            ) : undefined
-          }
-        />
+        <div key={candidate.trainee.user_id} className={boardRow}>
+          <span className="flex-1">
+            {`${candidate.rank}. ${candidateName(candidate.trainee)}`}
+            <div className={t.assessMeta}>
+              {`${cohortSubtitle(candidate)} · ${formatCompletion(candidate.completion_rate)} complete`}
+            </div>
+          </span>
+          {candidate.review_priority ? (
+            <span className={boardChip(PRIORITY_CHIP[candidate.review_priority] ?? "neutral")}>
+              {PRIORITY_LABEL[candidate.review_priority] ?? candidate.review_priority}
+            </span>
+          ) : null}
+        </div>
       ))}
-    </B2CGroupedSection>
+    </div>
   );
 }
+
+const PRIORITY_CHIP: Record<string, BoardChipTone> = { urgent: "live", high: "warn" };

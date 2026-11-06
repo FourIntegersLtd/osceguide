@@ -1,8 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
+import { useSurface } from "@/capabilities";
 import { useMeEvents } from "@/foundation/hooks";
-import { Alert, AsyncBoundary, Badge, Button, B2CPageHeader, FoldSection, Spinner, Panel, StepGuide } from "@/foundation/ui";
+import { AsyncBoundary, Spinner, b2bTokens } from "@/foundation/ui";
+import { boardChip, boardInput, boardLabel, boardPad, boardBtn, boardAlert } from "@/foundation/ui/boardKit";
+import { reviewCard } from "@/domains/assess/results/resultsChrome";
 import { useAsync } from "@/foundation/hooks";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { type AttemptFeedbackRead } from "@/capabilities/feedback";
@@ -13,11 +17,13 @@ import { readMarking } from "@/domains/assess/results/readMarking";
 import { CandidateStepper } from "@/domains/assess/CandidateStepper";
 import { MarkingPanel } from "@/domains/assess/results/MarkingPanel";
 import { can, useSession } from "@/foundation/session";
-import { GpLeadReview, SlotReviewers, readSlotReviews } from "@/domains/assess/results";
+import { GpLeadReview, SlotReviewers, readSittingReport, readSlotReviews } from "@/domains/assess/results";
+import { candidateSteps, slotContext } from "@/domains/assess/results/candidateNeighbours";
 import { markingState, openForm, slotNextLine, slotReviewSteps } from "@/domains/assess/results/slotReviewSteps";
 import type { SlotReviews } from "@/domains/assess/results";
 import { ReviewFields } from "@/domains/assess/results/ReviewFields";
 import { fieldValuesFor, initialRatings } from "@/domains/assess/results/reviewForm";
+import { boardRailStep } from "@/domains/assess/chrome";
 
 /**
  * A station, marked three ways.
@@ -70,17 +76,40 @@ export function SlotReview({
     [orgSlug, slotId, attemptId],
   );
 
+  const { hrefFor } = useSurface();
+  // The sitting's report names the circuit and candidate and gives the neighbours to step to; it is a convenience, so a failure says so beside the form.
+  const report = useAsync(
+    (signal) => (sittingId ? readSittingReport(orgSlug, sittingId, signal) : Promise.resolve(null)),
+    [orgSlug, sittingId],
+  );
+  const candidates = report.data?.candidates ?? [];
+  const steps = candidateSteps(candidates, slotId);
+  const context = slotContext(candidates, slotId);
   return (
-    <div className="flex flex-col gap-6">
-      <B2CPageHeader
-        title="Mark this station"
-        subtitle="The automatic marking, your marks and the admin's review."
-        action={sittingId ? <CandidateStepper orgSlug={orgSlug} sittingId={sittingId} slotId={slotId} /> : undefined}
-      />
+    <section aria-label="Mark this station" className={b2bTokens.assessPage}>
+      {sittingId && context ? (
+        <div>
+          <Link href={hrefFor(`/sittings/${sittingId}/results`)} className="text-assess-label text-osce-accent">
+            ‹ {context.back}
+          </Link>
+        </div>
+      ) : null}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          {context ? <div className={b2bTokens.assessEyebrow}>{context.eyebrow}</div> : null}
+          <h1 className={b2bTokens.assessTitle}>Mark this station</h1>
+          <p className={b2bTokens.assessDesc}>The automatic marking, your marks and the admin&apos;s review.</p>
+        </div>
+        {sittingId && steps ? <CandidateStepper steps={steps} sittingId={sittingId} /> : null}
+        {report.error ? <p className="text-assess-meta text-osce-ink-500">Could not load the other candidates.</p> : null}
+      </div>
       {state.data?.hidden ? (
-        <Alert tone="warning" title="Not your circuit">
-          You are not named on this station&apos;s circuit, so its marking is hidden from you.
-        </Alert>
+        <div className={boardPad}>
+          <h2 className="text-base font-semibold leading-[1.2]">Not your circuit</h2>
+          <div role="alert" className={boardAlert("warn")}>
+            You are not named on this station&apos;s circuit, so its marking is hidden from you.
+          </div>
+        </div>
       ) : null}
       <AsyncBoundary state={state}>
         {(data) => (
@@ -95,7 +124,7 @@ export function SlotReview({
           />
         )}
       </AsyncBoundary>
-    </div>
+    </section>
   );
 }
 
@@ -210,25 +239,31 @@ function Editor({
   }, [orgSlug, slotId, initial, onSaved]);
 
   const mineReadOnly = submitted;
+  const nowId = open;
   return (
     <>
-      <StepGuide steps={steps} current={open} line={slotNextLine(open, steps)} />
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-4">
+      <div className={reviewCard}>
+        <div className="flex flex-wrap gap-2">
+          {steps.map((step) => (
+            <div key={step.id} className={boardRailStep(step.state, step.id === nowId)}>
+              <b className="block text-assess-label font-medium">{step.label}</b>
+              {step.note}
+            </div>
+          ))}
+        </div>
+        <div className="text-assess-label">{slotNextLine(open, steps)}</div>
+      </div>
+      <div className="flex flex-wrap items-start gap-6">
+        <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6">
           {/* One form per page: an admin writes the review that counts, anyone else their own marks. */}
           {open === "mine" ? (
-          <FoldSection
-            title="Your marks"
-            defaultOpen
-            meta={
-              <Badge variant={submitted ? "success" : "neutral"} dot>
-                {submitted ? "Submitted" : "Draft"}
-              </Badge>
-            }
-          >
-            <div className="flex flex-col gap-4">
-              {error && <Alert tone="danger">{assessErrorMessage(error)}</Alert>}
-              {saved && !error && <Alert tone="success">{saved}</Alert>}
+            <div className={reviewCard}>
+              <div className="flex justify-between gap-3">
+                <h2 className="text-base font-semibold leading-normal">Your marks</h2>
+                <span className={boardChip(submitted ? "ok" : "neutral")}>{submitted ? "Submitted" : "Draft"}</span>
+              </div>
+              {error && <div role="alert" className={boardAlert("bad")}>{assessErrorMessage(error)}</div>}
+              {saved && !error && <div role="status" className={boardAlert("ok")}>{saved}</div>}
 
               <ReviewFields
                 form={form}
@@ -238,51 +273,42 @@ function Editor({
                 disabled={mineReadOnly}
               />
 
-              <label className="flex flex-col gap-1.5">
-                <span className="text-osce-meta font-medium text-b2b-headline">Notes</span>
+              <label className="block">
+                <span className={`${boardLabel} !mb-2`}>Notes</span>
                 <textarea
                   rows={5}
                   value={notes}
                   disabled={mineReadOnly}
                   onChange={(event) => setNotes(event.target.value)}
-                  className="rounded-control border border-b2b-border bg-b2b-surface px-3 py-2 text-osce-body text-b2b-headline disabled:bg-canvas"
+                  className={`${boardInput} min-h-24 py-2.5 disabled:bg-canvas`}
                   placeholder="What you saw, in the words you would say to them."
                 />
               </label>
 
               {!mineReadOnly && (
-                <div className="flex justify-end gap-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2.5 border-t border-osce-border-light pt-6">
                   {initial ? (
-                    <Button themeType="b2b" variant="ghost" onClick={() => void withdraw()} disabled={busy !== null}>
+                    <button type="button" className={boardBtn("ghost")} onClick={() => void withdraw()} disabled={busy !== null}>
                       {busy === "withdraw" ? <Spinner className="text-current" /> : "Withdraw draft"}
-                    </Button>
+                    </button>
                   ) : null}
-                  <Button themeType="b2b" variant="secondary" onClick={() => persist("draft")} disabled={busy !== null}>
+                  <button type="button" className={boardBtn()} onClick={() => persist("draft")} disabled={busy !== null}>
                     {busy === "draft" ? <Spinner className="text-current" /> : "Save draft"}
-                  </Button>
-                  <Button themeType="b2b" variant="commit" onClick={() => persist("completed")} disabled={busy !== null}>
+                  </button>
+                  <button type="button" className={boardBtn("primary")} onClick={() => persist("completed")} disabled={busy !== null}>
                     {busy === "completed" ? <Spinner className="text-current" /> : "Submit review"}
-                  </Button>
+                  </button>
                 </div>
               )}
             </div>
-          </FoldSection>
           ) : (
-            <FoldSection
-              title="Admin's review"
-              defaultOpen
-              description="One overall mark for the station. This is the mark that counts."
-            >
+            <div className={reviewCard}>
               <GpLeadReview orgSlug={orgSlug} slotId={slotId} form={form} payload={payload} onStatus={setAdminStatus} />
-            </FoldSection>
+            </div>
           )}
-
-          <Panel title="What the reviewers agreed">
-            <SlotReviewers reviews={reviews} />
-          </Panel>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-6">
           <MarkingPanel
             marking={marking}
             failedReason={reviews.attempt_failed_reason}
@@ -291,11 +317,16 @@ function Editor({
             disabled={busy !== null}
             error={retryError}
             onRetry={retryMarking}
+            form={form}
           />
           {/* The marking is the machine's reading of the consultation; this is
             the consultation. A marker is asked to agree or disagree with the
             first, which is not a judgement they can make from a score alone. */}
-          <AttemptTranscript attemptId={attemptId} />
+          <AttemptTranscript attemptId={attemptId} cardClassName={reviewCard} />
+          <div className={reviewCard}>
+            <h2 className="text-base font-semibold leading-normal">What the reviewers agreed</h2>
+            <SlotReviewers reviews={reviews} />
+          </div>
         </div>
       </div>
     </>

@@ -1,0 +1,37 @@
+- main:
+  - heading "Exams" [level=1]
+  - paragraph: "Everything you examine with: the exams themselves, their stations, how they are marked, the layout a station follows, and which exams are offered for scheduling."
+  - tablist "Authoring section":
+    - tab "Exams"
+    - tab "Stations"
+    - tab "Marking schemes" [selected]
+    - tab "Station layouts"
+    - tab "Programmes"
+  - tabpanel:
+    - paragraph: The marking structure a station is assessed against.
+    - button "Create marking scheme"
+    - combobox "Filter by exam":
+      - option "All exams" [selected]
+      - option "CASC (casc)"
+      - option "Orthopaedic interview (ortho)"
+      - option "PLAB 2 (plab)"
+      - option "Simulated Consultation Assessment (sca)"
+    - text: Search marking schemes
+    - searchbox "Search marking schemes"
+    - text: Marking schemes 4
+    - button "Orthopaedic interview marking rubric OSCE Guide Live · v1":
+      - paragraph: Orthopaedic interview marking rubric
+      - text: OSCE Guide Live · v1
+    - button "Open versions"
+    - button "CASC marking rubric OSCE Guide Live · v1":
+      - paragraph: CASC marking rubric
+      - text: OSCE Guide Live · v1
+    - button "Open versions"
+    - button "PLAB 2 marking rubric OSCE Guide Live · v1":
+      - paragraph: PLAB 2 marking rubric
+      - text: OSCE Guide Live · v1
+    - button "Open versions"
+    - button "Simulated Consultation Assessment marking rubric OSCE Guide Live · v1":
+      - paragraph: Simulated Consultation Assessment marking rubric
+      - text: OSCE Guide Live · v1
+    - button "Open versions"

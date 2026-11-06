@@ -27,11 +27,48 @@ export function StepRail<Id extends string>({
   steps,
   current,
   onSelect,
+  board = false,
 }: {
   steps: RailStep<Id>[];
   current?: Id;
   onSelect?: (id: Id) => void;
+  /** The institution boards' rail: one bordered box per step, the open one outlined, a finished one green. */
+  board?: boolean;
 }) {
+  if (board) {
+    return (
+      <ol className="m-0 flex list-none flex-wrap gap-2 p-0" aria-label="Steps">
+        {steps.map((step) => {
+          const open = step.id === current;
+          const tone = open
+            ? "border-osce-accent bg-assess-hero-live-bg"
+            : step.state === "done"
+              ? "border-osce-success-bg bg-osce-success-bg"
+              : "border-osce-border bg-osce-surface";
+          const body = (
+            <>
+              <b className="block text-assess-label font-medium">{step.label}</b>
+              {step.note}
+            </>
+          );
+          const box = `box-border flex-[1_1_110px] rounded-control border px-3 py-2.5 text-left text-assess-meta leading-[normal] text-ink ${tone}`;
+          return (
+            <li key={step.id} className="flex flex-[1_1_110px]">
+              {onSelect ? (
+                <button type="button" aria-current={open ? "step" : undefined} onClick={() => onSelect(step.id)} className={box}>
+                  {body}
+                </button>
+              ) : (
+                <div aria-current={open ? "step" : undefined} className={box}>
+                  {body}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    );
+  }
   return (
     <ol className="flex flex-wrap items-start gap-x-1 gap-y-3" aria-label="Steps">
       {steps.map((step, index) => {
@@ -82,17 +119,31 @@ export function StepRail<Id extends string>({
 }
 
 /** Where things stand in one line, and the one thing to do about it. */
-export function NextStepBar({
+function NextStepBar({
   line,
   working = false,
+  board = false,
   children,
 }: {
+  /** The institution boards' bar: the line and its button on the card, with no box of its own. */
+  board?: boolean;
   line: string;
   /** A job is running: the line says what, and a spinner shows it is alive. */
   working?: boolean;
   /** The single primary action, if there is one to take from here. */
   children?: ReactNode;
 }) {
+  if (board) {
+    return (
+      <div role="status" className="flex flex-wrap items-center justify-between gap-3">
+        <p className="m-0 flex min-w-0 items-center gap-2 text-assess-desc leading-[normal] text-ink">
+          {working ? <Spinner label="Working" /> : null}
+          {line}
+        </p>
+        {children ? <div className="flex shrink-0 items-center gap-2">{children}</div> : null}
+      </div>
+    );
+  }
   return (
     <div
       role="status"
@@ -116,6 +167,7 @@ export function StepGuide<Id extends string>({
   onSelect,
   line,
   working,
+  board = false,
   children,
 }: {
   steps: RailStep<Id>[];
@@ -123,8 +175,20 @@ export function StepGuide<Id extends string>({
   onSelect?: (id: Id) => void;
   line: string;
   working?: boolean;
+  /** The boards' order and look: the rail first, then the line and its button. */
+  board?: boolean;
   children?: ReactNode;
 }) {
+  if (board) {
+    return (
+      <>
+        <StepRail board steps={steps} current={current} onSelect={onSelect} />
+        <NextStepBar board line={line} working={working}>
+          {children}
+        </NextStepBar>
+      </>
+    );
+  }
   return (
     <>
       <NextStepBar line={line} working={working}>

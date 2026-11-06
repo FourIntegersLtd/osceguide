@@ -9,10 +9,14 @@ nothing.
 
 from __future__ import annotations
 
+import contextlib
+from collections.abc import AsyncIterator
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import get_session_opener
 from app.core.ports import SsoIdentity
 from app.features.sso.service_login import get_sso_broker
 from tests.support.fakes import FakeSsoBroker
@@ -313,3 +317,40 @@ async def test_signing_in_through_sso_reopens_an_account_its_owner_closed_this_m
 
     user = await identity_repo.user_by_email(db_session, "back@bmj.com")
     assert user is not None and (user.status, user.closed_at) == ("active", None)
+
+
+async def test_the_broker_is_verified_without_an_open_database_session(
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
+    db_session: AsyncSession,
+) -> None:
+    """Exam-day A1.4: the provider call must not sit inside the request transaction."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await _enable(client, root, "bmj")
+    depth = 0
+    during_verify: list[int] = []
+
+    @contextlib.asynccontextmanager
+    async def counting_opener() -> AsyncIterator[AsyncSession]:
+        nonlocal depth
+        depth += 1
+        try:
+            yield db_session
+        finally:
+            depth -= 1
+
+    class ProbeBroker(FakeSsoBroker):
+        async def verify(
+            self, *, token: str, issuer: str | None = None, expected_nonce: str | None = None
+        ) -> SsoIdentity | None:
+            during_verify.append(depth)
+            return await super().verify(token=token, issuer=issuer, expected_nonce=expected_nonce)
+
+    fake = ProbeBroker(identity=SsoIdentity(email="doctor@bmj.com", name="Dr Who", subject="clerk_1"))
+    _use(client, fake)
+    app = client._transport.app  # type: ignore[attr-defined]
+    app.dependency_overrides[get_session_opener] = lambda: counting_opener
+
+    result = await client.post(CALLBACK, json={"org_slug": "bmj", "token": "clerk-session-token"})
+    assert result.status_code == 200, result.text
+    assert during_verify == [0], "verify ran with no session context manager held open"

@@ -19,8 +19,38 @@ const CONTAINER = process.env.E2E_PG_CONTAINER ?? "platform-api-postgres-1";
 /** CI has Postgres as a service, not a named container: E2E_DATABASE_URL points psql at it. */
 const DATABASE_URL = process.env.E2E_DATABASE_URL;
 
-function psql(sql: string): string {
+/** The database must be as local as the api: a docker container, or a URL whose host is loopback. */
+function assertLocalDatabase(): void {
+  if (!DATABASE_URL) return;
+  const url = new URL(DATABASE_URL);
+  const local = (host: string) => ["", "localhost", "127.0.0.1", "::1", "[::1]"].includes(host) || host.startsWith("/");
+  // libpq lets the query string override the authority (`?host=`, `?hostaddr=`, `?service=`): refuse those too.
+  const hosts: string[] = [url.hostname, ...["host", "hostaddr"].flatMap((key) => url.searchParams.get(key)?.split(",") ?? [])];
+  // An empty host (`postgresql:///db`) makes libpq read PGHOST, PGHOSTADDR and PGSERVICE from the environment.
+  const hostless = !hosts.some((host) => host !== "");
+  if (hostless) {
+    hosts.push(...[process.env.PGHOST, process.env.PGHOSTADDR].flatMap((value) => value?.split(",") ?? []));
+  }
+  const offender = hosts.find((host) => !local(host));
+  const service = url.searchParams.has("service") || url.searchParams.has("servicefile") || Boolean(process.env.PGSERVICE) || Boolean(process.env.PGSERVICEFILE);
+  if (offender !== undefined || service) {
+    throw new Error(`e2e writes data; refusing to run SQL against database host ${offender ?? "(a pg service)"}. Point E2E_DATABASE_URL at a local database.`);
+  }
+}
+
+/** A SQL string literal. */
+export const q = (value: string) => `'${value.replace(/'/g, "''")}'`;
+
+/** The id of the user with this email (they must exist). */
+export function userIdByEmail(email: string): string {
+  const id = psql(`select id from users where email = ${q(email)};`);
+  if (!id) throw new Error(`no user with email ${email}`);
+  return id;
+}
+
+export function psql(sql: string): string {
   assertLocalApi();
+  assertLocalDatabase();
   const [command, args]: [string, string[]] = DATABASE_URL
     ? ["psql", [DATABASE_URL, "-At", "-v", "ON_ERROR_STOP=1"]]
     : ["docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-d", "osce_platform", "-At", "-v", "ON_ERROR_STOP=1"]];
@@ -36,7 +66,7 @@ export function seedMarkedPracticeAttempt(email: string): string {
   psql(`
 DO $$
 DECLARE
-  u uuid := (select id from users where email = '${email.replace(/'/g, "''")}');
+  u uuid := (select id from users where email = ${q(email)});
   exam uuid := (select id from exams where code = 'sca');
   sv uuid := (select sv.id from station_versions sv join stations s on s.id = sv.station_id
               where s.exam_id = exam and sv.status = 'published' order by sv.created_at limit 1);
@@ -95,7 +125,7 @@ INSERT INTO plans (id, code, stripe_price_id, exam_code, amount_pence, currency,
  */
 export function seedPeerSession(doctor: string, patient: string, stationVersionId: string, phase: "preparation" | "consultation"): string {
   const id = randomUUID();
-  const user = (email: string) => `(select id from users where email = '${email.replace(/'/g, "''")}')`;
+  const user = (email: string) => `(select id from users where email = ${q(email)})`;
   psql(`
 INSERT INTO practice_sessions (id, exam_id, doctor_user_id, patient_user_id, station_version_id, status, current_phase,
     phase_ends_at, started_at, doctor_joined_at, patient_joined_at, preparation_started_at, doctor_accepted_at, patient_accepted_at)
@@ -120,21 +150,20 @@ export function endPeerSession(id: string): void {
  * `held` and `signup` go into the SQL as written, so pass literal exam codes.
  */
 export function seedSignedUpForButHolding(email: string, held: string, signup: string): string {
-  const quoted = email.replaceAll("'", "''");
   const exam = (code: string) => `(select id from exams where code = '${code}' and owner_kind = 'platform')`;
   psql(`
 DO $$
 DECLARE
-  u uuid := (select id from users where email = '${quoted}');
+  u uuid := (select id from users where email = ${q(email)});
   held_exam uuid := ${exam(held)};
   signup_exam uuid := ${exam(signup)};
 BEGIN
-  IF u IS NULL THEN RAISE EXCEPTION 'e2e seed signed-up-but-holding: no user %', '${quoted}'; END IF;
+  IF u IS NULL THEN RAISE EXCEPTION 'e2e seed signed-up-but-holding: no user %', ${q(email)}; END IF;
   IF held_exam IS NULL THEN RAISE EXCEPTION 'e2e seed signed-up-but-holding: no platform exam "${held}" (run api/scripts/seed_platform.py)'; END IF;
   IF signup_exam IS NULL THEN RAISE EXCEPTION 'e2e seed signed-up-but-holding: no platform exam "${signup}" (run api/scripts/seed_platform.py)'; END IF;
   UPDATE users SET exam_code = '${signup}' WHERE id = u;
   INSERT INTO entitlements (id, user_id, exam_id, source, starts_at, created_at, updated_at)
     VALUES (gen_random_uuid(), u, held_exam, 'purchase', now(), now(), now());
 END $$;`);
-  return psql(`select id from users where email = '${quoted}';`);
+  return userIdByEmail(email);
 }

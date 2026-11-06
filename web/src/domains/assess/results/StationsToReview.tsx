@@ -1,7 +1,8 @@
 "use client";
 
-import { LuClipboardCheck } from "react-icons/lu";
-import { B2CGroupedRowLink, B2CGroupedSection, Badge } from "@/foundation/ui";
+import { b2bTokens } from "@/foundation/ui";
+import { boardChip } from "@/foundation/ui/boardKit";
+import { BoardRow, BoardSection, RowChevron, RowText } from "@/domains/assess/dashboard/BoardParts";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { readSupervisorCircuits } from "@/domains/assess/dashboard/api";
@@ -87,7 +88,7 @@ async function readReviewOrNull(orgSlug: string, circuitId: string, signal: Abor
   }
 }
 
-/** "Stations to review", grouped by circuit. Renders nothing when there is nothing to review or publish. */
+/** "Stations to review", grouped by circuit, with how much of each circuit is reviewed. Renders nothing when there is nothing to review or publish. */
 export function StationsToReview({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
   const w = useAssessWords();
@@ -95,34 +96,32 @@ export function StationsToReview({ orgSlug }: { orgSlug: string }) {
   const rows = circuits.filter((circuit) => circuit.stations.length > 0 || circuit.readyToPublish);
   if (rows.length === 0) return null;
   return (
-    <B2CGroupedSection eyebrow="Stations to review" action={<span className="text-osce-meta text-b2b-muted">Grouped by circuit</span>}>
-      {rows.map((circuit) => {
+    <BoardSection title="Stations to review" aside={<span className={b2bTokens.assessMeta}>Grouped by circuit</span>}>
+      {rows.map((circuit, index) => {
         const first = circuit.stations[0];
+        const done = first && circuit.candidates > 0 ? Math.round(((circuit.candidates - circuit.toReview) / circuit.candidates) * 100) : 100;
         return (
-          <B2CGroupedRowLink
-            key={circuit.circuitId}
-            href={hrefFor(first ? slotReviewPath(first) : `/circuits/${circuit.circuitId}`)}
-            icon={LuClipboardCheck}
-            title={`${circuit.sittingName} · ${circuit.circuitName}`}
-            meta={
-              first
-                ? circuit.drafts > 0
-                  ? draftsWaitingLine(circuit.drafts)
-                  : stillToReviewLine(circuit.toReview, circuit.candidates, w)
-                : `Every review done. Publish circuit feedback to finalise and let ${w.trainees} read it.`
-            }
-            trailing={
-              first ? (
-                <Badge variant="warning" dot>
-                  {circuit.drafts > 0 ? `${circuit.drafts} ${circuit.drafts === 1 ? "draft" : "drafts"}` : `${circuit.stations.length} to review`}
-                </Badge>
-              ) : (
-                <Badge variant="success" dot>Ready to publish</Badge>
-              )
-            }
-          />
+          <BoardRow key={circuit.circuitId} href={hrefFor(first ? slotReviewPath(first) : `/circuits/${circuit.circuitId}`)} first={index === 0}>
+            <RowText
+              title={`${circuit.sittingName} · ${circuit.circuitName}`}
+              meta={
+                first
+                  ? circuit.drafts > 0
+                    ? draftsWaitingLine(circuit.drafts)
+                    : stillToReviewLine(circuit.toReview, circuit.candidates, w)
+                  : `Every review done. Publish circuit feedback to finalise and let ${w.trainees} read it.`
+              }
+            />
+            <div aria-hidden className="h-1.5 w-[120px] shrink-0 overflow-hidden rounded-full bg-osce-navActive">
+              <div className="h-1.5 bg-osce-accent" style={{ width: `${done}%` }} />
+            </div>
+            <span className={boardChip(first ? "warn" : "ok")}>
+              {first ? (circuit.drafts > 0 ? `${circuit.drafts} ${circuit.drafts === 1 ? "draft" : "drafts"}` : `${circuit.stations.length} to review`) : "Ready to publish"}
+            </span>
+            <RowChevron />
+          </BoardRow>
         );
       })}
-    </B2CGroupedSection>
+    </BoardSection>
   );
 }

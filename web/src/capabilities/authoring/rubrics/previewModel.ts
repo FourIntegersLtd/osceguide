@@ -1,6 +1,5 @@
 import type { MarkedResult, MarkingRubric, Rating, ResultTotals } from "@/capabilities/feedback";
 import type { RubricPreview, TrialMark } from "@/capabilities/authoring/api";
-import type { RubricStructure } from "@/capabilities/authoring/rubrics/rubricEdits";
 
 /**
  * Feeding the builder's drafts to the screens a candidate will see.
@@ -25,7 +24,7 @@ export interface FeedbackInputs {
 
 function inputs(
   rating: Rating,
-  structure: RubricStructure,
+  structure: Record<string, unknown>,
   display: Record<string, unknown>,
   payload: Record<string, unknown>,
   totals: ResultTotals | null,
@@ -52,11 +51,11 @@ function inputs(
  * The sample result a valid draft renders as, or null while the draft has
  * problems (the backend sends no sample for a structure it cannot read).
  */
-export function previewInputs(preview: RubricPreview | null, draft: RubricStructure): FeedbackInputs | null {
+export function previewInputs(preview: RubricPreview | null): FeedbackInputs | null {
   if (!preview?.valid || !preview.rating || !preview.sample_result) return null;
   return inputs(
     preview.rating,
-    preview.structure ?? draft,
+    preview.structure ?? {},
     preview.display ?? {},
     preview.sample_result,
     preview.sample_totals ?? null,
@@ -69,12 +68,12 @@ export function previewInputs(preview: RubricPreview | null, draft: RubricStruct
  * it has finished. The rubric side comes from the latest valid preview,
  * because the trial answers marks and totals only.
  */
-export function trialInputs(trial: TrialMark | null, preview: RubricPreview | null, draft: RubricStructure): FeedbackInputs | null {
+export function trialInputs(trial: TrialMark | null, preview: RubricPreview | null): FeedbackInputs | null {
   if (!trial || trial.status !== "marked" || !trial.marks) return null;
   if (!preview?.rating) return null;
   return inputs(
     preview.rating,
-    preview.structure ?? draft,
+    preview.structure ?? {},
     preview.display ?? {},
     trial.marks,
     trial.totals ?? null,

@@ -1,10 +1,11 @@
 "use client";
 
-import { AsyncBoundary, EmptyState, B2CPageHeader, Panel } from "@/foundation/ui";
+import { AsyncBoundary, b2bTokens, cn } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { listPartnerRefIds, type TrackingPage } from "@/capabilities/staff-growth/api";
 import { ReportersPanel } from "@/capabilities/staff-growth/bmj/ReportersPanel";
+import { PartnerCard, PartnerHeader, Row, RowList } from "@/domains/partner/PartnerParts";
 
 /**
  * The links a partner publishes, and who may read the numbers.
@@ -26,49 +27,45 @@ export function PartnerReporting({ partner }: { partner: string }) {
   const canManageReporters = can(session, "administer_platform");
 
   return (
-    <div className="flex flex-col gap-6">
-      <B2CPageHeader
-        title="Reporting"
-        subtitle="Your tracking references, and who can see the numbers."
-      />
+    <section aria-label="Reporting" className={cn(b2bTokens.assessPage, "!w-auto")}>
+      <PartnerHeader title="Reporting" lead="Your tracking references, and who can see the numbers." />
       <AsyncBoundary state={refIds}>{(data) => <RefIds data={data} />}</AsyncBoundary>
       {canManageReporters ? (
         <ReportersPanel partner={partner} />
       ) : (
-        <Panel title="Who can read this">
-          <p className="text-sm text-ink-muted">
+        <PartnerCard title="Who can read this">
+          <p className={cn(b2bTokens.assessMeta, "m-0")}>
             A reporter sees these numbers and nothing else. Ask OSCE Guide staff to add someone. Reporters are added by us, not by your team.
           </p>
-        </Panel>
+        </PartnerCard>
       )}
-    </div>
+    </section>
   );
 }
 
 function RefIds({ data }: { data: TrackingPage }) {
   const items = data.items ?? [];
-
   return (
-    <Panel title="Tracking references">
+    <PartnerCard title="Tracking references">
       {items.length === 0 ? (
-        <EmptyState
-          title="No references yet"
-          description="A reference appears here the first time somebody arrives through one of your links."
-        />
+        <div data-board-hide>
+          <b className="font-semibold">No references yet</b>
+          <div className={b2bTokens.assessMeta}>A reference appears here the first time somebody arrives through one of your links.</div>
+        </div>
       ) : (
-        <ul className="divide-y divide-border">
-          {items.map((item) => (
-            <li key={item.ref_id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-ink">{item.ref_id}</p>
-                <p className="truncate text-xs text-ink-subtle">
+        <RowList>
+          {items.map((item, index) => (
+            <Row key={item.ref_id} first={index === 0}>
+              <span className="min-w-0 flex-1 basis-[260px]">
+                <b className="font-semibold">{item.ref_id}</b>
+                <div className={b2bTokens.assessMeta}>
                   {item.exam_code.toUpperCase()} · {item.landing_path}
-                </p>
-              </div>
-            </li>
+                </div>
+              </span>
+            </Row>
           ))}
-        </ul>
+        </RowList>
       )}
-    </Panel>
+    </PartnerCard>
   );
 }

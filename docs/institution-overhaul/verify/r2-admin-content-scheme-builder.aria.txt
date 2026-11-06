@@ -1,0 +1,343 @@
+- main:
+  - link "Marking schemes":
+    - /url: /app/e2e-mw3om0c6/authoring/rubrics
+  - heading "R2 scheme" [level=1]:
+    - button "R2 scheme"
+  - paragraph: Exams › Marking schemes · version 1. How a station is marked, and what the candidate's feedback looks like. Publishing makes a new version; sittings already marked keep the version they used.
+  - text: Draft
+  - status:
+    - paragraph: Looks right in the preview. Publish this version.
+    - button "Save draft" [disabled]
+    - button "Publish"
+  - list "Steps":
+    - listitem: Draft Saved
+    - listitem: Preview No problems
+    - listitem: Publish Not published
+  - heading "Areas marked" [level=2]
+  - paragraph: Each domain is rated on its own
+  - button "1 Domain 1 Rated domain" [expanded]
+  - button "Move part up" [disabled]
+  - button "Move part down" [disabled]
+  - button "Remove part"
+  - text: Domain
+  - textbox "Domain":
+    - /placeholder: e.g. Data gathering
+    - text: Domain 1
+  - text: Id
+  - textbox "Id": domain_1
+  - paragraph: Lower case and underscores; results are stored under it.
+  - text: Instructions to the marker
+  - textbox "Instructions to the marker"
+  - checkbox "Judged live Can be judged while the consultation is still running."
+  - text: Judged live Can be judged while the consultation is still running.
+  - checkbox "May be left out One of several alternatives; a result may leave it empty."
+  - text: May be left out One of several alternatives; a result may leave it empty.
+  - paragraph: Competencies· 1
+  - button "1 Competency 1" [expanded]
+  - button "Move competency up" [disabled]
+  - button "Move competency down" [disabled]
+  - button "Remove competency"
+  - text: Competency
+  - textbox "Competency":
+    - /placeholder: e.g. Explores the patient's concerns
+    - text: Competency 1
+  - text: Id
+  - textbox "Id": competency_1
+  - text: What the marker looks for
+  - textbox "What the marker looks for"
+  - paragraph: What earns each grade (optional)
+  - text: G
+  - textbox "Descriptor for G":
+    - /placeholder: A G looks like…
+  - text: A
+  - textbox "Descriptor for A":
+    - /placeholder: A A looks like…
+  - text: R
+  - textbox "Descriptor for R":
+    - /placeholder: A R looks like…
+  - button "+ Add an area"
+  - paragraph: Each competency answers· 3
+  - button "Rating" [expanded]
+  - button "Move field up" [disabled]
+  - button "Move field down"
+  - button "Remove field"
+  - text: Label
+  - textbox "Label":
+    - /placeholder: What the reader sees
+    - text: Rating
+  - text: Answer
+  - combobox "Answer":
+    - option "Rating" [selected]
+    - option "Short text"
+    - option "Long text"
+    - option "List"
+    - option "Pick one"
+    - option "Group"
+    - option "Records"
+  - paragraph: The competency's grade, on the marking scheme's rating.
+  - text: Role
+  - combobox "Role":
+    - option "Rating" [selected]
+    - option "Evidence"
+    - option "Explanation"
+    - option "Strength"
+    - option "Improvement"
+    - option "Action"
+    - option "Flag"
+    - option "Summary"
+    - option "Selector"
+    - option "Other"
+  - paragraph: The grade itself.
+  - text: Id
+  - textbox "Id": score
+  - paragraph: Always the rating's field name.
+  - text: Written by
+  - combobox "Written by":
+    - option "The marker" [selected]
+    - option "The marker"
+    - option "The platform"
+  - checkbox "Required" [checked]
+  - text: Required Instructions to the marker
+  - textbox "Instructions to the marker":
+    - /placeholder: What to write here, and how.
+  - button "Evidence" [expanded]
+  - button "Move field up"
+  - button "Move field down"
+  - button "Remove field"
+  - text: Label
+  - textbox "Label":
+    - /placeholder: What the reader sees
+    - text: Evidence
+  - text: Answer
+  - combobox "Answer":
+    - option "Rating"
+    - option "Short text"
+    - option "Long text" [selected]
+    - option "List"
+    - option "Pick one"
+    - option "Group"
+    - option "Records"
+  - paragraph: "A paragraph: evidence, an explanation."
+  - text: Role
+  - combobox "Role":
+    - option "Rating"
+    - option "Evidence" [selected]
+    - option "Explanation"
+    - option "Strength"
+    - option "Improvement"
+    - option "Action"
+    - option "Flag"
+    - option "Summary"
+    - option "Selector"
+    - option "Other"
+  - paragraph: What the candidate said or did.
+  - text: Id
+  - textbox "Id": evidence
+  - text: Written by
+  - combobox "Written by":
+    - option "The marker" [selected]
+    - option "The marker"
+    - option "The platform"
+  - checkbox "Required" [checked]
+  - text: Required Instructions to the marker
+  - textbox "Instructions to the marker":
+    - /placeholder: What to write here, and how.
+  - button "Explanation" [expanded]
+  - button "Move field up"
+  - button "Move field down" [disabled]
+  - button "Remove field"
+  - text: Label
+  - textbox "Label":
+    - /placeholder: What the reader sees
+    - text: Explanation
+  - text: Answer
+  - combobox "Answer":
+    - option "Rating"
+    - option "Short text"
+    - option "Long text" [selected]
+    - option "List"
+    - option "Pick one"
+    - option "Group"
+    - option "Records"
+  - paragraph: "A paragraph: evidence, an explanation."
+  - text: Role
+  - combobox "Role":
+    - option "Rating"
+    - option "Evidence"
+    - option "Explanation" [selected]
+    - option "Strength"
+    - option "Improvement"
+    - option "Action"
+    - option "Flag"
+    - option "Summary"
+    - option "Selector"
+    - option "Other"
+  - paragraph: Why the grade was given.
+  - text: Id
+  - textbox "Id": explanation
+  - text: Written by
+  - combobox "Written by":
+    - option "The marker" [selected]
+    - option "The marker"
+    - option "The platform"
+  - checkbox "Required" [checked]
+  - text: Required Instructions to the marker
+  - textbox "Instructions to the marker":
+    - /placeholder: What to write here, and how.
+  - text: Add a field
+  - combobox "Add a field":
+    - option "+ Add a field…" [selected]
+    - option "Rating"
+    - option "Short text"
+    - option "Long text"
+    - option "List"
+    - option "Pick one"
+    - option "Group"
+    - option "Records"
+  - button "+ Rated domain"
+  - button "+ Written section"
+  - button "+ Single field"
+  - button "Marking instructions" [expanded]
+  - paragraph: Written for the AI marker and for supervisors.
+  - paragraph: Draft them for me from the areas above, then edit.
+  - button "Draft them for me"
+  - text: Marking instructions (system prompt)
+  - textbox "Marking instructions (system prompt)": You are an experienced OSCE examiner. Read the whole consultation transcript, then fill every field of the schema. Rate each competency on the rubric's own scale, quote or paraphrase the transcript as evidence, and explain each rating by what the candidate did or missed.
+  - paragraph: What the marking model reads before the transcript. A version cannot be published without it.
+  - button "Pacing, in seconds" [expanded]
+  - text: Whole station
+  - spinbutton "Whole station How long the station lasts.": "720"
+  - text: How long the station lasts. Introduction ends
+  - spinbutton "Introduction ends Must come before history ends.": "30"
+  - text: Must come before history ends. History ends
+  - spinbutton "History ends When the patient moves on from history.": "360"
+  - text: When the patient moves on from history. Safety-net window
+  - spinbutton "Safety-net window The last stretch, counted back from the end.": "120"
+  - text: The last stretch, counted back from the end.
+  - button "Examiner layout" [expanded]
+  - paragraph: The form a human reviewer fills in for a slot. What the supervisor sees when reviewing is set alongside.
+  - paragraph: Template structure
+  - button "Undo" [disabled]
+  - button "Redo" [disabled]
+  - complementary "Sections":
+    - paragraph: Sections
+    - text: "0"
+    - tablist:
+      - paragraph: No sections yet.
+    - button "Add section"
+  - main:
+    - paragraph: Start with a section
+    - paragraph: Sections group related fields. Add one, then add the fields it needs one at a time.
+    - button "Add your first section"
+  - status
+  - button "Rated as" [expanded]
+  - button "Red / Amber / Green Three grades, G best and R worst." [pressed]
+  - button "Named scale Your own grades, best first (e.g. Excellent, Good, Fair, Poor)."
+  - button "Number range A score between a minimum and a maximum, e.g. 0 to 10."
+  - button "Met / not met Each competency is either met or not."
+  - button "Grades" [expanded]
+  - text: Field name
+  - textbox "Field name": score
+  - paragraph:
+    - text: What each competency's grade is stored as, e.g.
+    - code: score
+    - text: . Renamed in every domain.
+  - paragraph: Grades G, A and R, best first. Coloured green, amber and red.
+  - button "Each domain" [expanded]
+  - paragraph: The figure each domain gets, and the line a domain must reach.
+  - text: Domain result
+  - combobox "Domain result":
+    - option "Default" [selected]
+    - option "Count each grade"
+    - option "Sum"
+    - option "Average"
+    - option "Percent achieved"
+  - text: Domain pass line
+  - spinbutton "Domain pass line"
+  - paragraph: Leave empty for no domain pass line.
+  - button "Station total and pass line" [expanded]
+  - paragraph: The one figure for the whole station, and what passes.
+  - text: Total
+  - combobox "Total":
+    - option "Default" [selected]
+    - option "Share at the best grade"
+    - option "Sum"
+    - option "Average"
+    - option "Percent achieved"
+  - text: Out of
+  - spinbutton "Out of"
+  - paragraph: "Empty: worked out from the marking scheme."
+  - text: Pass line
+  - spinbutton "Pass line"
+  - checkbox "Every domain must pass too A station passes only if each domain reaches its own pass line."
+  - text: Every domain must pass too A station passes only if each domain reaches its own pass line.
+  - button "Bands (optional)" [expanded]
+  - paragraph: Name ranges of the total, e.g. Clear pass, Borderline, Fail, each from a score.
+  - button "+ Add band"
+  - paragraph: This was the feedback template. It now lives here, with the marking it describes.
+  - button "What the candidate sees" [expanded]
+  - paragraph: Untick what the candidate does not see. An examiner still sees everything.
+  - checkbox "Overall result and band The total, outcome and band." [checked]
+  - text: Overall result and band The total, outcome and band.
+  - checkbox "Score per area The figure each domain gets." [checked]
+  - text: Score per area The figure each domain gets.
+  - checkbox "What went well Fields with the Strength role." [checked]
+  - text: What went well Fields with the Strength role.
+  - checkbox "What to work on Fields with the Improvement or Action role." [checked]
+  - text: What to work on Fields with the Improvement or Action role.
+  - checkbox "Transcript quotes Fields with the Evidence role." [checked]
+  - text: Transcript quotes Fields with the Evidence role. Tone of the written feedback
+  - combobox "Tone of the written feedback":
+    - option "Default" [selected]
+    - option "Supportive and direct"
+    - option "Formal examiner"
+    - option "Brief"
+  - paragraph: How the marker words what it writes.
+  - text: Domain chart subtitle
+  - textbox "Domain chart subtitle"
+  - paragraph: Under “Domain performance”.
+  - text: Domain pass line label
+  - textbox "Domain pass line label"
+  - paragraph: Written on the domain pass line.
+  - text: Station total title
+  - textbox "Station total title"
+  - paragraph: Heads the total on the feedback page.
+  - text: Trend chart subtitle
+  - textbox "Trend chart subtitle"
+  - paragraph: Under “Performance trend”.
+  - text: Pass line label
+  - textbox "Pass line label"
+  - paragraph: Written on the station pass line.
+  - complementary:
+    - 'heading "Preview: candidate feedback" [level=2]'
+    - paragraph: What a candidate sees, from a made-up result.
+    - tablist "Preview":
+      - tab "Feedback page" [selected]
+      - tab "Dashboard"
+    - paragraph: A made-up result, to show the layout.
+    - paragraph: Your mark
+    - paragraph: 100% of competencies graded Good
+    - heading "By domain" [level=2]
+    - heading "Domain 1" [level=3]
+    - img "Graded Good": G
+    - text: Competency 1 · Good
+    - blockquote: “Sample evidence for Competency 1.”
+    - paragraph: Sample explanation for Competency 1.
+    - img "Graded Good": G
+    - text: 1 competency graded Good
+    - paragraph: This consultation analysis is for formative training only and cannot be used as an indication of performance in the exam.
+    - heading "Problems" [level=2]
+    - text: None. Publishing is blocked while any are listed here, and each says what to fix.
+    - heading "Versions" [level=2]
+    - list:
+      - listitem: v1 Draft, edited today Draft
+    - heading "Trial mark" [level=2]
+    - paragraph: Mark a real attempt or a pasted transcript with this draft, before anyone else does.
+    - paragraph: Trial source
+    - tablist "Trial source":
+      - tab "An attempt" [selected]
+      - tab "Paste a transcript"
+    - text: Search attempts to trial-mark
+    - searchbox "Search attempts to trial-mark"
+    - radiogroup "Attempt"
+    - button "Run trial mark" [disabled]

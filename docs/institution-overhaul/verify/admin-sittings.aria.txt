@@ -1,0 +1,29 @@
+- main:
+  - heading "Sittings" [level=1]
+  - link "Schedule a sitting":
+    - /url: /app/e2e-mw3mzpx5/sittings/new
+  - button "Filters"
+  - text: Search sittings
+  - searchbox "Search sittings"
+  - paragraph: Next up
+  - heading "Circuit run" [level=2]
+  - paragraph: Simulated Consultation Assessment · 06/11/2026, 14:24:23 · 1 candidate
+  - link "Open sitting":
+    - /url: /app/e2e-mw3mzpx5/sittings/c41520c8-9fb3-4b46-8d8c-8036a220db80
+  - table:
+    - rowgroup:
+      - row "Sitting Kind Exam Scheduled for Status":
+        - columnheader "Sitting"
+        - columnheader "Kind"
+        - columnheader "Exam"
+        - columnheader "Scheduled for"
+        - columnheader "Status"
+    - rowgroup:
+      - row "Circuit run Simulated Consultation Assessment · 1 candidate Formal exam Simulated Consultation Assessment 06/11/2026 Scheduled":
+        - cell "Circuit run Simulated Consultation Assessment · 1 candidate":
+          - link "Circuit run Simulated Consultation Assessment · 1 candidate":
+            - /url: /app/e2e-mw3mzpx5/sittings/c41520c8-9fb3-4b46-8d8c-8036a220db80
+        - cell "Formal exam"
+        - cell "Simulated Consultation Assessment"
+        - cell "06/11/2026"
+        - cell "Scheduled"

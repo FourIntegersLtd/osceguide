@@ -1,4 +1,4 @@
-"""The shape of an authored rubric (structure `schemaVersion: 2`), as plain data.
+"""The shape every reader gets (structure schemaVersion 2). A stored v3 scheme compiles to this.
 
 Its own module because both halves of this slice need it: `domain.py` parses a
 stored structure into these, and `schema_builder.py` turns them into the JSON
@@ -73,11 +73,19 @@ class RatingSpec:
     minimum: float | None = None
     maximum: float | None = None
     step: str = "number"
+    # Points per scale value, best first; None means n..1 (the position).
+    points: tuple[float, ...] | None = None
 
     @property
     def is_enumerated(self) -> bool:
         """Whether a rating is one of a fixed list of values."""
         return self.kind in ("rag", "scale")
+
+    def points_for(self, value: Any) -> float | None:
+        """The points an enumerated value earns, or None when the rating has none (n..1 by position)."""
+        if self.points and self.is_enumerated and value in self.scale:
+            return float(self.points[self.scale.index(value)])
+        return None
 
 
 @dataclass(frozen=True)
@@ -150,6 +158,8 @@ class DisplayDomain:
 
     aggregate: str | None = None
     pass_at_least: float | None = None
+    # A v3 pass rule; replaces pass_at_least when set.
+    rule: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -161,6 +171,8 @@ class DisplayTotal:
     pass_at_least: float | None = None
     # Pass also needs every domain at or above the domain pass line (PLAB 2).
     require_every_domain: bool = False
+    # A v3 pass rule; replaces pass_at_least when set.
+    rule: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)

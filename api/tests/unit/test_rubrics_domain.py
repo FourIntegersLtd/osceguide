@@ -237,7 +237,7 @@ def test_a_refusal_carries_every_problem_not_just_the_first() -> None:
         domain.parse_structure(broken)
 
     assert domain.validation_errors(refused.value) == [
-        {"path": "sections[0].id", "message": validation._IDENTIFIER_MESSAGE},
+        {"path": "sections[0].id", "message": validation.IDENTIFIER_MESSAGE},
         {
             "path": "sections[0].competencies[0].descriptors.EXCELLENT",
             "message": "'EXCELLENT' is not on the rating scale (G, A, R).",

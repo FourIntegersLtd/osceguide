@@ -108,6 +108,10 @@ SIGN_IN_ADDRESS = Limit(
 # Deliberately tighter, because the cost of the request is an email to
 # somebody else's inbox: the address is the attacker's choice, not theirs.
 PASSWORD_RESET = Limit(name="password-reset", allowance=5, window_seconds=300, on_redis_error="refuse")
+# Looking up who sent an invitation, before the person has signed in. The token is the secret, so
+# this is a guess-the-token route like the one above, and fails closed for the same reason. Its own
+# bucket, so the page's lookup does not use up the allowance for choosing the password.
+INVITATION_LOOKUP = Limit(name="invitation-lookup", allowance=20, window_seconds=60, on_redis_error="refuse")
 # SEC-004: registration reaches the user table and sends a welcome email, and
 # it is unauthenticated. Sized like sign-in — a person makes one account, not ten.
 REGISTER = Limit(name="register", allowance=10, window_seconds=60)

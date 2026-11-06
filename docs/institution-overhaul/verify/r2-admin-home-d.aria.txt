@@ -1,0 +1,42 @@
+- main:
+  - paragraph: Thursday 5 November
+  - heading "Good afternoon, Ada." [level=1]
+  - paragraph: No circuit is running and two things need you.
+  - link "Schedule a sitting":
+    - /url: /app/e2e-mw3om0c6/sittings/new
+  - heading "Needs your attention" [level=2]
+  - text: Oldest first
+  - link "Record outcomes for Circuit run Every review is complete. Write the outcome and reason, then sign off. 1 decision":
+    - /url: /app/e2e-mw3om0c6/sittings/115d9697-b969-4381-9a8c-d711b339a4cc/results
+    - img
+    - text: Record outcomes for Circuit run Every review is complete. Write the outcome and reason, then sign off. 1 decision
+  - link "Record outcomes for OV exam to review Every review is complete. Write the outcome and reason, then sign off. 1 decision":
+    - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3/results
+    - img
+    - text: Record outcomes for OV exam to review Every review is complete. Write the outcome and reason, then sign off. 1 decision
+  - heading "Coming up" [level=2]
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - text: No sittings are scheduled.
+  - link "Schedule a sitting":
+    - /url: /app/e2e-mw3om0c6/sittings/new
+  - heading "Recent sittings" [level=2]
+  - link "OV training run Training · 1 circuit · 1 trainee Completed":
+    - /url: /app/e2e-mw3om0c6/sittings/0469e190-b9e0-4614-99e9-e645bb457f33
+  - link "OV exam to review Formal exam · 1 circuit · 1 candidate Completed":
+    - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3
+  - link "Circuit run Formal exam · 1 circuit · 1 candidate Completed":
+    - /url: /app/e2e-mw3om0c6/sittings/115d9697-b969-4381-9a8c-d711b339a4cc
+  - link "Release run Formal exam · 1 circuit · 1 candidate Completed":
+    - /url: /app/e2e-mw3om0c6/sittings/086c720c-30ff-4a81-9b8c-5613c33a49fa
+  - region "At a glance":
+    - link "Exams ready to schedule 1":
+      - /url: /app/e2e-mw3om0c6/authoring/exams
+    - link "Published stations 0":
+      - /url: /app/e2e-mw3om0c6/authoring/stations
+    - link "Trainees 1":
+      - /url: /app/e2e-mw3om0c6/trainees
+    - link "Supervisors 2":
+      - /url: /app/e2e-mw3om0c6/team
+    - link "Sittings 4":
+      - /url: /app/e2e-mw3om0c6/sittings

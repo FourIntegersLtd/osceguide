@@ -100,3 +100,11 @@ export function sectionSubtitle(section: "members" | "invite" | "activity"): str
       return "Who added, changed, or removed people and groups.";
   }
 }
+
+/** The single-revoke dialog's line: revoking yourself ends your own access at once, so it says so. */
+export function revokeLead(email: string | null | undefined, isSelf: boolean): string {
+  if (isSelf) {
+    return "You are revoking your own access. You will be signed out of this organisation straight away and only another admin can restore you. Nothing you have marked is deleted.";
+  }
+  return `${email ?? "This person"} will lose access to this organisation. Nothing they have marked is deleted.`;
+}

@@ -1,0 +1,57 @@
+- main:
+  - link "Sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - heading "Schedule a sitting" [level=1]
+  - paragraph: Steps unlock in order. Nothing is created until the last step.
+  - list "Steps":
+    - listitem:
+      - button "Basics The basics"
+    - listitem:
+      - button "Stations Pick the stations"
+    - listitem:
+      - button "Candidates Who is sitting it?"
+    - listitem:
+      - button "Timing Timing and breaks"
+    - listitem:
+      - button "Supervisor Who supervises?"
+    - listitem:
+      - button "Review Review and create"
+  - paragraph: Step 2 of 6
+  - heading "Pick the stations" [level=2]
+  - paragraph: Published stations from Simulated Consultation Assessment. Drag to set the order every candidate goes round. At most 12 on a formal exam circuit.
+  - list:
+    - listitem:
+      - button "Drag E2E gender voice test - male patient to reorder"
+      - text: 1. E2E gender voice test - male patient
+      - button "Move E2E gender voice test - male patient up" [disabled]
+      - button "Move E2E gender voice test - male patient down" [disabled]
+      - button "Remove E2E gender voice test - male patient"
+  - status
+  - paragraph: Find a station for Simulated Consultation Assessment
+  - link "Write a new station":
+    - /url: /app/e2e-mw3om0c6/authoring/stations/new
+  - search:
+    - text: Search stations by name
+    - searchbox "Search stations by name"
+  - list:
+    - listitem:
+      - paragraph: E2E gender voice test - male patient
+      - paragraph: Version 1
+      - text: SCA
+      - button "Added" [disabled]
+    - listitem:
+      - paragraph: E2E library station 2
+      - paragraph: Version 1
+      - text: SCA
+      - button "Add"
+    - listitem:
+      - paragraph: E2E library station 3
+      - paragraph: Version 1
+      - text: SCA
+      - button "Add"
+  - complementary "Help":
+    - paragraph: Help
+    - paragraph: Order matters
+    - paragraph: Drag a station, or use the arrows, to set the order every candidate goes round. A formal exam has at most 12 stations.
+  - button "Back"
+  - button "Continue"

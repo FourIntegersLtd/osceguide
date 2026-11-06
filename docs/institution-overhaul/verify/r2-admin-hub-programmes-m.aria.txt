@@ -1,0 +1,19 @@
+- main:
+  - heading "Exams" [level=1]
+  - paragraph: "Everything you examine with: the exams themselves, their stations, how they are marked, the layout a station follows, and which exams are offered for scheduling."
+  - tablist "Authoring section":
+    - tab "Exams"
+    - tab "Stations"
+    - tab "Marking schemes"
+    - tab "Station layouts"
+    - tab "Programmes" [selected]
+  - tabpanel:
+    - paragraph: A programme groups this institution's sittings under one exam.
+    - link "Exams the platform publishes":
+      - /url: /app/e2e-mw3om0c6/programmes
+    - button "New programme"
+    - text: Programmes 1
+    - paragraph: Simulated Consultation Assessment
+    - paragraph: sca · custom · OSCE Guide exam
+    - text: Active
+    - button "Retire"

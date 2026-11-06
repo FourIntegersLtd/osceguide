@@ -44,6 +44,7 @@ __all__ = [
     "combine_reviewers",
     "critical_count",
     "domain_fraction",
+    "domain_passed",
     "domain_value",
     "normalise_rating",
     "passed",
@@ -51,8 +52,10 @@ __all__ = [
     "rating_fraction",
     "rating_tone",
     "ratings_from_paths",
+    "rating_at_least",
     "ratings_in",
     "result_totals",
+    "rule_passes",
     "tone_for_fraction",
     "total_fraction",
     "total_value",
@@ -133,9 +136,13 @@ def rating_fraction(structure: RubricStructure, value: Any) -> float | None:
     if not is_valid_rating(rating, value):
         return None
     if rating.is_enumerated:
+        index = rating.scale.index(value)
+        earned = rating.points_for(value)
+        if earned is not None:
+            best = float(cast(tuple[float, ...], rating.points)[0])
+            return math.floor(100 * earned / best) / 100 if best else 0.0
         count = len(rating.scale)
-        position_from_worst = count - rating.scale.index(value)
-        return math.floor(100 * position_from_worst / count) / 100
+        return math.floor(100 * (count - index) / count) / 100
     if rating.kind == "boolean":
         return 1.0 if value else 0.0
     maximum = rating.maximum or 1
@@ -287,18 +294,76 @@ def _aggregate(structure: RubricStructure, aggregate: str, ratings: Sequence[Any
         return None
     fractions = [rating_fraction(structure, value) or 0.0 for value in valid_ratings]
     if aggregate in ("ragCounts", "ragShare"):
-        best_count = sum(1 for fraction in fractions if fraction >= 1)
+        if rating.is_enumerated:
+            # Best is the first level, even when points tie it with the next.
+            best_count = sum(1 for value in valid_ratings if rating.scale.index(value) == 0)
+        else:
+            best_count = sum(1 for fraction in fractions if fraction >= 1)
         return 100 * best_count / len(valid_ratings)
     if aggregate == "percentAchieved":
         return 100 * sum(fractions) / len(fractions)
     # `sum` and `mean` work in the rating's own units where it has them.
     units = [
-        float(value) if rating.kind == "range" else fraction
-        for value, fraction in zip(valid_ratings, fractions, strict=True)
+        _units_of(rating, value, fraction) for value, fraction in zip(valid_ratings, fractions, strict=True)
     ]
     if aggregate == "mean":
         return sum(units) / len(units)
     return sum(units)
+
+
+def _units_of(rating: RatingSpec, value: Any, fraction: float) -> float:
+    """One rating in the units `sum` and `mean` use: a range's number, a scale's points, else its fraction."""
+    if rating.kind == "range":
+        return float(value)
+    earned = rating.points_for(value)
+    return fraction if earned is None else earned
+
+
+def rating_at_least(structure: RubricStructure, value: Any, level: Any) -> bool:
+    """Whether a rating is `level` or better: earlier on a scale, not below a number, met for a yes."""
+    rating = structure.rating
+    if not is_valid_rating(rating, value):
+        return False
+    if rating.is_enumerated:
+        return level in rating.scale and rating.scale.index(value) <= rating.scale.index(level)
+    if rating.kind == "boolean":
+        return bool(value) or level is False
+    return isinstance(level, (int, float)) and float(value) >= float(level)
+
+
+def rule_passes(
+    structure: RubricStructure, rule: Mapping[str, Any], value: float | None, ratings: Sequence[Any]
+) -> bool:
+    """Whether a pass rule is met: a score to reach, or a count (or share) of ratings at a level or better."""
+    at_least = float(rule["atLeast"])
+    if rule.get("type") == "labels":
+        valid = [rating for rating in ratings if is_valid_rating(structure.rating, rating)]
+        if not valid:
+            return False
+        hits = sum(1 for rating in valid if rating_at_least(structure, rating, rule.get("value")))
+        reached = 100 * hits / len(valid) if rule.get("of") == "percent" else float(hits)
+        return reached + _PASS_TOLERANCE >= at_least
+    return value is not None and value + _PASS_TOLERANCE >= at_least
+
+
+def _meets(
+    structure: RubricStructure, node: Mapping[str, Any], value: float | None, ratings: Sequence[Any]
+) -> bool | None:
+    """Whether a value meets a display node's rule or pass line; None when the node sets neither."""
+    rule = node.get("rule")
+    line = node.get("passAtLeast")
+    if rule is None and line is None:
+        return None
+    if rule is not None:
+        return value is not None and rule_passes(structure, rule, value, ratings)
+    return value is not None and value + _PASS_TOLERANCE >= float(cast(Any, line))
+
+
+def domain_passed(
+    structure: RubricStructure, display: Mapping[str, Any], ratings: Sequence[Any]
+) -> bool | None:
+    """Whether one domain passes under the display's domain rule or line, or None when it sets neither."""
+    return _meets(structure, display["domain"], domain_value(structure, display, ratings), ratings)
 
 
 def domain_value(
@@ -362,17 +427,16 @@ def passed(
     `domain.passAtLeast` (PLAB 2 fails a station with one weak domain however
     high the total).
     """
-    total_pass_line = display["total"].get("passAtLeast")
     total = total_value(structure, display, ratings_by_domain)
-    if total_pass_line is None or total is None:
+    every_rating = [value for domain_ratings in ratings_by_domain.values() for value in domain_ratings]
+    total_met = _meets(structure, display["total"], total, every_rating)
+    if total_met is None or total is None:
         return None
-    if total + _PASS_TOLERANCE < float(total_pass_line):
+    if not total_met:
         return False
-    domain_pass_line = display["domain"].get("passAtLeast")
-    if display["total"].get("requireEveryDomain") and domain_pass_line is not None:
+    if display["total"].get("requireEveryDomain"):
         for domain_ratings in ratings_by_domain.values():
-            value = domain_value(structure, display, domain_ratings)
-            if value is None or value + _PASS_TOLERANCE < float(domain_pass_line):
+            if domain_passed(structure, display, domain_ratings) is False:
                 return False
     return True
 
@@ -410,7 +474,6 @@ def result_totals(
 ) -> ResultTotals:
     """A marked result's domains, total, pass and critical count, as the display reads them."""
     ratings_by_domain = ratings_in(structure, result)
-    domain_pass_line = display["domain"].get("passAtLeast")
     domain_totals: list[DomainTotal] = []
     for domain in structure.domains:
         if domain.id not in ratings_by_domain:
@@ -423,8 +486,8 @@ def result_totals(
                 value=value,
                 counts=rating_counts(structure, ratings_by_domain[domain.id]),
                 passed=None
-                if domain_pass_line is None or value is None
-                else value + _PASS_TOLERANCE >= float(domain_pass_line),
+                if value is None
+                else domain_passed(structure, display, ratings_by_domain[domain.id]),
             )
         )
     total = total_value(structure, display, ratings_by_domain)

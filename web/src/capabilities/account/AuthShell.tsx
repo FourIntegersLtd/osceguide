@@ -1,75 +1,33 @@
 import type { ReactNode } from "react";
-import {
-  LuBuilding2,
-  LuCircleCheck,
-  LuKeyRound,
-  LuLoaderCircle,
-  LuLock,
-  LuMail,
-  LuMailCheck,
-  LuShieldCheck,
-  LuTriangleAlert,
-  LuUserPlus,
-} from "react-icons/lu";
 import { cn } from "@/foundation/ui/cn";
-import { Eyebrow, IconTile } from "@/foundation/ui";
-import { authCard, authSubtitle, authTitle } from "@/foundation/ui/authTheme";
-
-const ICONS = {
-  lock: LuLock,
-  shield: LuShieldCheck,
-  signup: LuUserPlus,
-  key: LuKeyRound,
-  mail: LuMail,
-  "mail-check": LuMailCheck,
-  warning: LuTriangleAlert,
-  done: LuCircleCheck,
-  building: LuBuilding2,
-  working: LuLoaderCircle,
-} as const;
-
-export type AuthIconName = keyof typeof ICONS;
+import { authSubtitle, authTitle } from "@/foundation/ui/authTheme";
+import { boardPad } from "@/foundation/ui/boardKit";
 
 type AuthShellProps = {
   title: string;
   subtitle?: string;
-  eyebrow?: string;
+  /** The subtitle at 14px (the invitation and set-up screens) instead of the 13px meta line. */
+  lead?: boolean;
+  /** A short state card: its title is the board's 16px h2 rather than the 26px sign-in title. */
+  compact?: boolean;
   /** `split` is the card beside the navy panel (`sidePanel`); `card` is the card alone. */
   variant: "split" | "card";
-  /** The tile above the title. */
-  icon?: AuthIconName;
-  /** A card that holds a longer form. */
-  wide?: boolean;
   children: ReactNode;
   sidePanel?: ReactNode;
   className?: string;
 };
 
-export default function AuthShell({
-  title,
-  subtitle,
-  eyebrow,
-  variant,
-  icon = "lock",
-  wide = false,
-  children,
-  sidePanel,
-  className,
-}: AuthShellProps) {
-  const Icon = ICONS[icon];
+/**
+ * The sign-in card, drawn as the SignIn board's `.card.pad`: 460px, 20px padding and 14px between
+ * its parts. It wears the assess skin's tokens (`data-surface`) though the page around it is the
+ * public site's, so every sign-in screen is the same card.
+ */
+export default function AuthShell({ title, subtitle, lead = false, compact = false, variant, children, sidePanel, className }: AuthShellProps) {
   const card = (
-    <section className={cn("min-w-0", authCard)}>
-      <header>
-        <div className="mb-4 flex items-center gap-3">
-          <IconTile>
-            <Icon />
-          </IconTile>
-          {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-        </div>
-        <h1 className={authTitle}>{title}</h1>
-        {subtitle ? <p className={authSubtitle}>{subtitle}</p> : null}
-      </header>
-      <div className="mt-7 space-y-5">{children}</div>
+    <section data-surface="assess" className={cn("w-full min-w-0 max-w-[460px] self-start justify-self-center text-osce-ink-900", boardPad)}>
+      <h1 className={authTitle(compact)}>{title}</h1>
+      {subtitle ? <p className={authSubtitle(lead)}>{subtitle}</p> : null}
+      {children}
     </section>
   );
 
@@ -87,7 +45,5 @@ export default function AuthShell({
     );
   }
 
-  return (
-    <div className={cn("mx-auto w-full flex-1", wide ? "max-w-[640px]" : "max-w-[460px]", className)}>{card}</div>
-  );
+  return <div className={cn("mx-auto w-full max-w-[460px] flex-1", className)}>{card}</div>;
 }

@@ -1,18 +1,22 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, B2CPageHeader, Button, EmptyState, StatGrid, StatTile, StepGuide } from "@/foundation/ui";
+import { AsyncBoundary, b2bTokens as t } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { downloadSittingResults, readSittingReport } from "@/domains/assess/results/api";
 import type { CandidateReport, SittingReport } from "@/domains/assess/results/api";
-import { CandidateCard } from "@/domains/assess/results/CandidateCard";
+import { CandidateDetail, CandidateRow } from "@/domains/assess/results/CandidateCard";
 import { ReleaseAll } from "@/domains/assess/results/ReleaseAll";
 import { CohortRanking } from "@/domains/assess/results/CohortRanking";
 import { countsFromReport, sittingNext, sittingSteps, type SittingStepsInput } from "@/domains/assess/sittingSteps";
 import { can, useSession } from "@/foundation/session";
 import { releasable } from "@/domains/assess/results/support";
+import { boardCard, boardHeadRow, boardPad, boardTile , boardBtn, boardAlert } from "@/foundation/ui/boardKit";
+import { boardTile6, boardTileNumber } from "@/domains/assess/results/resultsChrome";
+import { boardRailStep } from "@/domains/assess/chrome";
 
 /**
  * What a course lead reads back after an examination.
@@ -29,7 +33,7 @@ export function Results({ orgSlug, sittingId }: { orgSlug: string; sittingId: st
   );
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5">
+    <section aria-label="Results" className={t.assessPage}>
       <AsyncBoundary state={state}>
         {(report) => (
           <Report
@@ -40,7 +44,7 @@ export function Results({ orgSlug, sittingId }: { orgSlug: string; sittingId: st
           />
         )}
       </AsyncBoundary>
-    </div>
+    </section>
   );
 }
 
@@ -69,6 +73,9 @@ function Report({
   const waiting = progress.can.signOff && !progress.training ? candidates.filter(releasable) : [];
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  // One candidate's decision is open at a time, below the table, as on the board.
+  const [openId, setOpenId] = useState<string | null>(null);
+  const opened = candidates.find((candidate) => candidate.user_id === openId) ?? null;
 
   const downloadCsv = useCallback(async () => {
     setDownloading(true);
@@ -83,75 +90,96 @@ function Report({
     }
   }, [orgSlug, sittingId]);
 
+  const steps = sittingSteps(progress);
+  const nowId = steps.find((step) => step.state !== "done")?.id;
+
   return (
     <>
-      <B2CPageHeader
-        back={{ href: hrefFor(`/sittings/${sittingId}`), label: "Sitting" }}
-        eyebrow={report.sitting.name}
-        title="Results"
-        subtitle={`${report.totals.stations_marked} of ${report.totals.stations} stations marked · ${report.totals.decisions_released} of ${report.totals.candidates} released`}
-        action={
-          can(session, "export_results") ? (
-            <Button
-              themeType="b2b"
-              variant="secondary"
-              isLoading={downloading}
-              disabled={downloading}
-              onClick={() => downloadCsv()}
-            >
-              Export CSV
-            </Button>
-          ) : undefined
-        }
-      />
-      {downloadError ? <Alert tone="danger">{downloadError}</Alert> : null}
+      <div>
+        <Link href={hrefFor(`/sittings/${sittingId}`)} className="text-assess-label text-osce-accent">
+          ‹ Sitting
+        </Link>
+      </div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className={t.assessEyebrow}>{report.sitting.name}</div>
+          <h1 className={t.assessTitle}>Results</h1>
+          <p className={t.assessDesc}>
+            {`${report.totals.stations_marked} of ${report.totals.stations} stations marked · ${report.totals.decisions_released} of ${report.totals.candidates} released`}
+          </p>
+        </div>
+        {can(session, "export_results") ? (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button type="button" className={boardBtn()} disabled={downloading} onClick={() => downloadCsv()}>
+              Download CSV
+            </button>
+          </div>
+        ) : null}
+      </div>
+      {downloadError ? <div role="alert" className={boardAlert("bad")}>{downloadError}</div> : null}
 
-      <h2 className="text-osce-body font-medium text-b2b-headline">Outcomes</h2>
       <OutcomeTiles candidates={candidates} awaitingMarking={report.totals.awaiting_marking} />
       {candidates.length === 0 ? (
-        <EmptyState title="Nobody has sat this yet." />
+        <div className={boardPad}>
+          <h2 className="text-base font-semibold leading-normal">Nobody has sat this yet.</h2>
+        </div>
       ) : (
         <>
-
-          {waiting.length === 0 ? <StepGuide steps={sittingSteps(progress)} line={sittingNext(progress).line} /> : null}
-          {waiting.length > 0 ? (
-            <ReleaseAll
-              orgSlug={orgSlug}
-              sittingId={sittingId}
-              waiting={waiting}
-              onChanged={onChanged}
-              progress={progress}
-            />
-          ) : null}
+          <div className={boardPad}>
+            <div className="flex flex-wrap gap-2">
+              {steps.map((step) => (
+                <div key={step.id} className={boardRailStep(step.state, step.id === nowId)}>
+                  <b className="block text-assess-label font-medium">{step.label}</b>
+                  {step.note}
+                </div>
+              ))}
+            </div>
+            <div className="text-assess-label">{sittingNext(progress).line}</div>
+            {waiting.length > 0 ? (
+              <ReleaseAll
+                orgSlug={orgSlug}
+                sittingId={sittingId}
+                waiting={waiting}
+                onChanged={onChanged}
+                progress={progress}
+              />
+            ) : null}
+          </div>
 
           {report.sitting.mode === "exam" ? <CohortRanking orgSlug={orgSlug} sittingId={sittingId} /> : null}
 
-          <section aria-label="Candidates" className="overflow-x-auto rounded-panel border border-b2b-border bg-b2b-surface">
-            <table className="w-full min-w-[720px] border-collapse text-left">
-              <thead>
-                <tr className="border-b border-b2b-border text-osce-meta font-medium text-b2b-mid">
-                  <th scope="col" className="px-4 py-3 font-medium">Candidate</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Score</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Outcome</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Status</th>
-                  <th scope="col" className="px-4 py-3"><span className="sr-only">Actions</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {candidates.map((candidate) => (
-                  <CandidateCard
-                    key={candidate.user_id}
-                    orgSlug={orgSlug}
-                    sittingId={sittingId}
-                    candidate={candidate}
-                    rating={report.rating ?? null}
-                    hire={report.sitting.mode === "exam"}
-                    onChanged={onChanged}
-                  />
-                ))}
-              </tbody>
-            </table>
+          <section aria-label="Candidates" className={`${boardCard} overflow-hidden`}>
+            <div className={boardHeadRow}>
+              <span className="w-8" />
+              <span className="flex-[1_1_220px]">Candidate</span>
+              <span className="w-[90px]">Score</span>
+              <span className="w-[110px]">Outcome</span>
+              <span className="w-[100px]">Status</span>
+              <span className="w-[60px]" />
+            </div>
+            {candidates.map((candidate) => (
+              <CandidateRow
+                key={candidate.user_id}
+                orgSlug={orgSlug}
+                sittingId={sittingId}
+                candidate={candidate}
+                rating={report.rating ?? null}
+                open={candidate.user_id === openId}
+                onToggle={() => setOpenId(candidate.user_id === openId ? null : candidate.user_id)}
+              />
+            ))}
           </section>
+          {opened ? (
+            <CandidateDetail
+              key={opened.user_id}
+              orgSlug={orgSlug}
+              sittingId={sittingId}
+              candidate={opened}
+              rating={report.rating ?? null}
+              hire={report.sitting.mode === "exam"}
+              onChanged={onChanged}
+            />
+          ) : null}
         </>
       )}
     </>
@@ -180,10 +208,13 @@ function OutcomeTiles({
     { label: "Awaiting marking", value: awaitingMarking },
   ];
   return (
-    <StatGrid label="Outcomes" columns={6}>
+    <div role="group" aria-label="Outcomes" className={boardTile6}>
       {tiles.map((tile) => (
-        <StatTile key={tile.label} label={tile.label} value={tile.value} />
+        <div key={tile.label} className={boardTile}>
+          {tile.label}
+          <b className={boardTileNumber}>{tile.value}</b>
+        </div>
       ))}
-    </StatGrid>
+    </div>
   );
 }

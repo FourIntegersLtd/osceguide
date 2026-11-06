@@ -1,12 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Alert, AsyncBoundary, Button, b2bTokens, Panel } from "@/foundation/ui";
-import Table, { type Column, type TableMore } from "@/foundation/table/Table";
-import { b2cTableCellText } from "@/foundation/ui/productTokens";
-import { cn } from "@/foundation/ui/cn";
+import { AsyncBoundary, b2bTokens as t, cn } from "@/foundation/ui";
+import { Chip, Note, card, fields, h2, row, th } from "@/domains/assess/ui";
 import { errorMessage, useAsync, useCursorPages, useSearchQuery } from "@/foundation/hooks";
-import { formatWhen } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
 import {
   grantEntitlement,
@@ -15,8 +12,9 @@ import {
   revokeEntitlement,
   type Entitlement,
 } from "@/domains/assess/roster/api";
-import { displayName, sortTrainees } from "@/domains/assess/roster/support";
+import { displayName, shortDay, sortTrainees } from "@/domains/assess/roster/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { boardBtn, boardPadWide, boardInput, boardLabel, boardButtonSmall } from "@/foundation/ui/boardKit";
 
 /**
  * Exam access for a trainee between sittings.
@@ -96,58 +94,40 @@ export function AccessPanel({
   );
 
   return (
-    <div className="space-y-6">
-      {error ? <Alert tone="danger">{error}</Alert> : null}
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
+    <div className="flex flex-col gap-6">
+      {error ? <Note tone="bad">{error}</Note> : null}
 
       {canManage ? (
-        <Panel
-          title="Grant exam access"
-          description={`Lets ${w.trainees} practise between ${w.sittings}. They do not need it to take an exam they are booked on.`}
+        <form
+          className={boardPadWide}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void grant();
+          }}
         >
-          <form
-            className="grid grid-cols-1 gap-4 sm:grid-cols-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void grant();
-            }}
-          >
-            <div className="sm:col-span-2">
-              <label
-                htmlFor="assess-access-person"
-                className="block text-osce-body font-semibold text-b2b-headline"
-              >
+          <h2 className={h2}>Grant exam access</h2>
+          <p className={cn(t.assessMeta, "m-0")}>
+            {`Lets ${w.trainees} practise between ${w.sittings}. They do not need it to take an exam they are booked on.`}
+          </p>
+          <div className={fields}>
+            <div>
+              <label htmlFor="assess-access-person" className={boardLabel}>
                 Who
               </label>
-              <select
-                id="assess-access-person"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className={`mt-2 ${b2bTokens.b2bInputBase}`}
-                required
-              >
+              <select id="assess-access-person" value={email} onChange={(event) => setEmail(event.target.value)} className={boardInput} required>
                 <option value="">Choose a {w.trainee}…</option>
                 {sortTrainees(trainees).map((trainee) => (
                   <option key={trainee.id} value={trainee.email}>
-                    {displayName(trainee)} ({trainee.email})
+                    {sameNameAsAnother(trainees, trainee) ? `${displayName(trainee)} (${trainee.email})` : displayName(trainee)}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label
-                htmlFor="assess-access-exam"
-                className="block text-osce-body font-semibold text-b2b-headline"
-              >
+              <label htmlFor="assess-access-exam" className={boardLabel}>
                 Exam
               </label>
-              <select
-                id="assess-access-exam"
-                value={examCode}
-                onChange={(event) => setExamCode(event.target.value)}
-                className={`mt-2 ${b2bTokens.b2bInputBase}`}
-                required
-              >
+              <select id="assess-access-exam" value={examCode} onChange={(event) => setExamCode(event.target.value)} className={boardInput} required>
                 <option value="">Choose…</option>
                 {(exams.data?.items ?? []).map((exam) => (
                   <option key={exam.id} value={exam.code}>
@@ -157,52 +137,34 @@ export function AccessPanel({
               </select>
             </div>
             <div>
-              <label
-                htmlFor="assess-access-ends"
-                className="block text-osce-body font-semibold text-b2b-headline"
-              >
+              <label htmlFor="assess-access-ends" className={boardLabel}>
                 Until (optional)
               </label>
-              <input
-                id="assess-access-ends"
-                type="date"
-                value={endsAt}
-                onChange={(event) => setEndsAt(event.target.value)}
-                className={`mt-2 ${b2bTokens.b2bInputBase}`}
-              />
+              <input id="assess-access-ends" type="date" value={endsAt} onChange={(event) => setEndsAt(event.target.value)} className={boardInput} />
             </div>
-            <div className="flex items-end sm:col-span-3">
-              <Button
-                type="submit"
-                themeType="b2b"
-                variant="commit"
-                disabled={busy || !email || !examCode}
-              >
-                {busy ? "Granting…" : "Grant access"}
-              </Button>
-            </div>
-          </form>
-        </Panel>
+          </div>
+          <button type="submit" className={cn(boardBtn("primary"), "self-start")} disabled={busy || !email || !examCode}>
+            {busy ? "Granting…" : "Grant access"}
+          </button>
+        </form>
       ) : null}
 
-      <div>
-        <label htmlFor="assess-access-search" className="sr-only">
-          Search grants
-        </label>
-        <input
-          id="assess-access-search"
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by person or exam…"
-          className={b2bTokens.b2bInputBase}
-        />
-      </div>
+      {notice ? <Note tone="ok">{notice}</Note> : null}
+
+      <input
+        id="assess-access-search"
+        type="search"
+        aria-label="Search grants"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="Search by person or exam…"
+        className={cn(boardInput, "max-w-[360px]")}
+      />
 
       <AsyncBoundary state={pages.state}>
         {(entitlements) =>
           entitlements.length === 0 && !query ? (
-            <p className="text-osce-body text-b2b-mid">
+            <p className={cn(t.assessMeta, "m-0")}>
               No practice access given yet. {w.Trainees} can still take every exam they are booked on.
             </p>
           ) : (
@@ -236,7 +198,7 @@ function GrantsTable({
   onRevoke,
 }: {
   entitlements: Entitlement[];
-  more: TableMore;
+  more: { hasMore: boolean; loadingMore: boolean; moreError: Error | null; loadMore: () => void };
   trainees: Trainee[];
   canManage: boolean;
   onRevoke: (entitlement: Entitlement) => Promise<void>;
@@ -256,73 +218,60 @@ function GrantsTable({
   );
 
   const whoLabel = useCallback(
-    (entitlement: Entitlement) => {
-      const trainee = byUserId.get(entitlement.user_id);
-      return trainee ? displayName(trainee) : "Not on this roster";
-    },
+    (entitlement: Entitlement) => byUserId.get(entitlement.user_id)?.email ?? "Not on this roster",
     [byUserId],
   );
 
-  const columns = useMemo<Column<Entitlement>[]>(
-    () => [
-      {
-        header: "Who",
-        key: (entitlement) => (
-          <span className={cn(b2cTableCellText, "font-medium")}>{whoLabel(entitlement)}</span>
-        ),
-        priority: "primary",
-      },
-      {
-        header: "Exam",
-        key: (entitlement) => <span className="text-b2b-graphite">{entitlement.exam_code}</span>,
-      },
-      {
-        header: "Status",
-        key: (entitlement) =>
-          entitlement.live ? (
-            <span className="text-osce-caption font-medium text-b2b-success-text">Live</span>
-          ) : (
-            <span className="text-osce-caption font-medium text-b2b-warning-text/90">
-              {entitlement.revoked_at ? "Revoked" : "Expired"}
-            </span>
-          ),
-      },
-      {
-        header: "From",
-        key: (entitlement) => <span className="text-b2b-mid">{formatWhen(entitlement.starts_at)}</span>,
-        priority: "detail",
-      },
-      {
-        header: "Until",
-        key: (entitlement) => (
-          <span className="text-b2b-mid">
-            {entitlement.ends_at ? formatWhen(entitlement.ends_at) : "No end date"}
-          </span>
-        ),
-        priority: "detail",
-      },
-      {
-        header: "Actions",
-        key: (entitlement) =>
-          canManage && entitlement.live ? (
-            <Button themeType="b2b" variant="secondary" size="sm" onClick={() => onRevoke(entitlement)}>
-              Revoke
-            </Button>
-          ) : null,
-      },
-    ],
-    [whoLabel, canManage, onRevoke],
-  );
+  if (entitlements.length === 0) {
+    return (
+      <div className={boardPadWide}>
+        <div className={t.assessMeta}>Search with no match</div>
+        <div>No grants match.</div>
+      </div>
+    );
+  }
 
   return (
-    <Table<Entitlement>
-      rows={entitlements}
-      more={more}
-      themeType="b2b"
-      columns={columns}
-      idField="id"
-      minWidthClassName="min-w-[640px]"
-      empty={{ title: "No grants match." }}
-    />
+    <div role="table" className={card}>
+      <div role="row" className={th}>
+        <span className="flex-[1_1_180px]">Who</span>
+        <span className="w-[100px]">Exam</span>
+        <span className="w-20">Status</span>
+        <span className="w-[90px]">From</span>
+        <span className="w-[110px]">Until</span>
+        <span className="w-20">Actions</span>
+      </div>
+      {entitlements.map((entitlement) => (
+        <div key={entitlement.id} role="row" className={row}>
+          <span className="flex-[1_1_180px]">{whoLabel(entitlement)}</span>
+          <span className="w-[100px]">{entitlement.exam_code}</span>
+          <span className="w-20">
+            {entitlement.live ? <Chip tone="ok">Live</Chip> : <Chip>{entitlement.revoked_at ? "Revoked" : "Expired"}</Chip>}
+          </span>
+          <span className="w-[90px]">{shortDay(entitlement.starts_at)}</span>
+          <span className="w-[110px]">{entitlement.ends_at ? shortDay(entitlement.ends_at) : "No end date"}</span>
+          {canManage && entitlement.live ? (
+            <button type="button" className={boardButtonSmall} onClick={() => void onRevoke(entitlement)}>
+              Revoke
+            </button>
+          ) : (
+            <span className="w-20" />
+          )}
+        </div>
+      ))}
+      {more.hasMore || more.moreError ? (
+        <div className={cn(row, "justify-center")}>
+          <button type="button" className={boardButtonSmall} disabled={more.loadingMore} onClick={more.loadMore}>
+            {more.loadingMore ? "Loading…" : "Load more"}
+          </button>
+          {more.moreError ? <span className="text-osce-danger-text">{more.moreError.message}</span> : null}
+        </div>
+      ) : null}
+    </div>
   );
+}
+
+/** The board lists names only; two people who share one need their address to tell them apart. */
+function sameNameAsAnother(all: Trainee[], one: Trainee): boolean {
+  return all.some((other) => other.id !== one.id && displayName(other) === displayName(one));
 }

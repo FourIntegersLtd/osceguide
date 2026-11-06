@@ -1,0 +1,7 @@
+- main:
+  - button "Back"
+  - paragraph: Your review
+  - heading "Station feedback" [level=1]
+  - status:
+    - paragraph: Not marked yet
+    - text: Your result is out, but the review of this station is not finished yet. It appears here when it is.

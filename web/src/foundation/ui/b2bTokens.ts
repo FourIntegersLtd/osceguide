@@ -8,6 +8,7 @@
  * primary and B2B's accent. Same colours, opposite frequency. Merging them
  * would mean picking one arm's reading and quietly restyling the other.
  */
+import { boardCard, boardChip } from "@/foundation/ui/boardKit";
 import { getCardSurfaceClasses } from "@/foundation/ui/Card";
 import { getInputClassName } from "@/foundation/ui/inputStyles";
 /** * Shared Tailwind class strings for B2B surfaces (Cursor-inspired tokens in tailwind `b2b-*`). * Primary CTAs: black (`B2BButton variant="commit"`). * Accent / links: blue (`b2b-accent`, `B2BButton variant="primary"`). * Note this is the inverse of B2C, where blue is the ordinary primary and black is reserved for the one committing action on a screen. * Here black is the default and blue the exception — 92 call sites to 8. * * Modals: use `B2BModal` (`capabilities/authoring/structure/b2b/components/ui`) For B2B dialogs (`chrome="titlebar"` For confirms, `chrome="plain"` For * large custom bodies). */ const b2bIconFocus =
@@ -59,8 +60,8 @@ export const b2bSectionTitle = "text-osce-subheading font-semibold tracking-[-0.
 export const b2bSegmentedControl =
   "inline-flex max-w-full min-w-0 flex-nowrap items-center gap-0.5 self-start overflow-x-auto rounded-control bg-canvas p-0.5";
 export const b2bSegmentedTab =
-  "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-[7px] px-3 text-[13px] font-medium leading-none whitespace-nowrap transition-colors sm:h-7";
-export const b2bSegmentedTabActive = `${b2bSegmentedTab} bg-b2b-surface text-b2b-headline shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.04)]`;
+  "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-board-sm px-3 text-[13px] font-medium leading-none whitespace-nowrap transition-colors sm:h-7";
+export const b2bSegmentedTabActive = `${b2bSegmentedTab} bg-b2b-surface text-b2b-headline shadow-osce-segmented`;
 export const b2bSegmentedTabInactive = `${b2bSegmentedTab} text-b2b-mid hover:text-b2b-headline`; /** Secondary tabs flush under page header (Team, Partner Users, etc.). */
 export const b2bWorkspaceTabStrip =
   "flex flex-wrap items-stretch border-b border-b2b-border";
@@ -222,3 +223,49 @@ export const b2bSemanticInfo =
 /** Auth route canvas — classic landing gradient on quiet surfaces (login, change-password). */
 export const b2bAuthCanvas =
   "bg-[linear-gradient(180deg,#F5F7FA_0%,#FBFCFD_62%,#FFFFFF_100%)]";
+
+/**
+ * The assess skin, from the institution boards (docs/institution-overhaul/boards). The boards are
+ * the specification, so these are their literal values; see DESIGN.md. Sizes come from the
+ * `text-assess-*` scale in tailwind.config.ts.
+ */
+export const assessPage = "flex w-full max-w-assess-page flex-col gap-6";
+export const assessEyebrow = "text-assess-eyebrow font-normal uppercase text-osce-ink-500";
+export const assessTitle = "my-1.5 text-assess-h1 font-semibold text-osce-ink-900";
+export const assessDesc = "text-assess-desc text-osce-ink-500";
+export const assessMeta = "text-assess-meta text-osce-ink-500";
+export const assessCard = boardCard;
+export const assessChipNeutral = boardChip("neutral");
+export const assessChipInfo = boardChip("info");
+export const assessHelpButton =
+  "box-border inline-flex h-11 w-11 shrink-0 items-center px-1.5 py-px !leading-[normal] justify-center rounded-full border border-osce-border bg-osce-surface text-assess-desc text-osce-ink-700 hover:bg-osce-surface";
+const assessStepBase =
+  "box-border flex min-h-12 w-full items-center gap-3 rounded-control px-3.5 py-3 text-left text-assess-label";
+export const assessStepRow = `${assessStepBase} text-osce-ink-700 hover:bg-osce-canvas`;
+export const assessStepRowOn = `${assessStepBase} bg-osce-navActive font-medium text-osce-ink-900`;
+const assessDot =
+  "box-border flex h-assess-dot w-assess-dot shrink-0 items-center justify-center rounded-full border text-assess-chip";
+export const assessDotIdle = `${assessDot} border-osce-border bg-osce-surface text-osce-ink-500`;
+export const assessDotCurrent = `${assessDot} border-osce-accent bg-osce-surface text-osce-accent`;
+export const assessDotDone = `${assessDot} border-osce-success-solid bg-osce-success-solid text-white`;
+export const assessWhyPanel =
+  "flex flex-col gap-2 rounded-control border border-osce-border-light bg-osce-surface-inset px-[18px] py-4";
+export const assessStat =
+  "box-border flex min-w-[180px] flex-[1_1_180px] flex-col px-5 py-assess-stat hover:bg-osce-canvas";
+export const assessStatNumber = "text-assess-num font-semibold tabular-nums text-osce-ink-900";
+
+/*
+ * The assess skin's vertical rhythm (user feedback 2026-11-05, an exception to the boards: see
+ * DESIGN.md "Spacing rhythm"). One scale for every form and wizard on assess/hire/partner:
+ * 8px label to control, 28px between fields, 16px between option cards, 24px between sections,
+ * 32px above a footer divider.
+ */
+export const assessFormStack = "flex flex-col gap-7";
+/** A heading and its lead: 8px apart; the stack's gap separates it from the first field. */
+export const assessFormHeading = "flex flex-col gap-2";
+/** A list of option cards (a radio group drawn as cards). */
+export const assessOptionStack = "grid gap-4";
+/** Helper text under a control or a button, kept clear of the divider below it. */
+export const assessHelper = "text-assess-meta text-osce-ink-500";
+/** A form or wizard footer: 32px of air above the divider, 32px below it before the buttons. */
+export const assessFooter = "mt-1 flex flex-wrap items-center justify-between gap-3 border-t border-osce-border pt-8";

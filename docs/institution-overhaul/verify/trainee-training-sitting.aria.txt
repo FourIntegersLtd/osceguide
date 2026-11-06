@@ -1,0 +1,19 @@
+- main:
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/trainee
+  - paragraph: Friday 6 Nov
+  - heading "OV training run" [level=1]
+  - paragraph: Practice circuit · 1 station
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/trainee
+  - status:
+    - paragraph: Check your microphone
+    - paragraph: Test it now so the room can open straight away.
+    - button "Test microphone"
+  - status:
+    - paragraph: How a practice circuit works
+    - text: Your supervisor opens the room. Only the person whose turn it is speaks with the patient. Each station's review appears here as soon as your supervisor completes it.
+  - heading "Your turns" [level=2]
+  - text: Turn 1 · E2E gender voice test - male patient Read this one back below. A finished station cannot be re-entered. Completed
+  - link "Review station":
+    - /url: /app/e2e-mw3om0c6/attempts/da0d64be-6f56-4810-9b16-e6c0d7dec1f6

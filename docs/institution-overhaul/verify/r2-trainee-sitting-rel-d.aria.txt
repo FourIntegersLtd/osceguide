@@ -1,0 +1,18 @@
+- main:
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/trainee
+  - paragraph: Friday 6 Nov
+  - heading "Release run" [level=1]
+  - paragraph: Formal exam · 1 station
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/trainee
+  - heading "Your stations" [level=2]
+  - text: Station 1 · E2E gender voice test - male patient Read this one back below. A finished station cannot be re-entered. Completed
+  - link "Review station":
+    - /url: /app/e2e-mw3om0c6/attempts/49d0651d-e845-4b80-a081-9c246f0bb2a8
+  - link "Station feedback":
+    - /url: /app/e2e-mw3om0c6/trainee/reviews/e6ab06d2-fa40-43cb-881f-d459916a4425
+  - status:
+    - paragraph: Your result has been released
+    - link "Read your result":
+      - /url: /app/e2e-mw3om0c6/trainee/results/086c720c-30ff-4a81-9b8c-5613c33a49fa

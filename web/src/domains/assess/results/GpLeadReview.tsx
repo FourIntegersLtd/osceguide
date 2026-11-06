@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Alert, Badge, Button, Spinner, b2bTokens } from "@/foundation/ui";
+import { boardChip, boardInput, boardLabel, boardSeg, boardSegChoice , boardBtn, boardAlert } from "@/foundation/ui/boardKit";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Spinner, b2bTokens } from "@/foundation/ui";
+
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { hasCode } from "@/foundation/platform-client";
@@ -27,6 +29,7 @@ const VERDICTS = [
   { value: "R", label: "Red" },
 ] as const;
 type Verdict = (typeof VERDICTS)[number]["value"];
+const TONE = { G: "success", A: "warning", R: "danger" } as const;
 
 function asVerdict(value: string | null | undefined): Verdict | "" {
   return VERDICTS.find((verdict) => verdict.value === value)?.value ?? "";
@@ -67,8 +70,8 @@ export function GpLeadReview({
   // `null` (no review yet) is the ordinary case; the editor then saves revision zero.
   const state = useAsync((signal) => readGpLeadReview(orgSlug, slotId, signal), [orgSlug, slotId]);
 
-  if (state.loading) return <Spinner />;
-  if (state.error) return <Alert tone="danger">{errorMessage(state.error)}</Alert>;
+  if (state.loading) return <><LeadHeading /><Spinner /></>;
+  if (state.error) return <><LeadHeading /><div role="alert" className={boardAlert("bad")}>{errorMessage(state.error)}</div></>;
 
   // Loaded once. A save answers with the stored review, which the editor keeps;
   // reloading here would remount the editor and wipe its "saved" note (R-3).
@@ -143,20 +146,20 @@ function Editor({
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={completed ? "success" : "neutral"} dot>
-          {completed ? "Completed" : "Draft"}
-        </Badge>
-        {review ? (
-          <span className="text-osce-caption text-b2b-mid">Revision {review.revision}</span>
-        ) : null}
-      </div>
+    <>
+      <LeadHeading
+        status={
+          <span className="text-assess-meta text-osce-ink-500">
+            <span className={boardChip(completed ? "ok" : "neutral")}>{completed ? "Completed" : "Draft"}</span>
+            {review ? ` Revision ${review.revision}` : null}
+          </span>
+        }
+      />
 
       {failure ? (
-        <Alert tone={stale ? "warning" : "danger"}>{failure}</Alert>
+        <div role="alert" className={boardAlert(stale ? "warn" : "bad")}>{failure}</div>
       ) : note ? (
-        <Alert tone="success">{note}</Alert>
+        <div role="status" className={boardAlert("ok")}>{note}</div>
       ) : null}
 
       <ReviewFields
@@ -168,62 +171,61 @@ function Editor({
         onComment={(domainId, text) => setComments((current) => ({ ...current, [domainId]: text }))}
       />
 
-      <div className="space-y-1.5">
-        <span className="text-osce-meta font-medium text-b2b-headline">Overall</span>
+      <div>
+        <span className={`${boardLabel} !mb-2`}>Overall</span>
         <VerdictRow value={overall || null} onPick={setOverall} />
       </div>
 
       <label className="block">
-        <span className="text-osce-meta font-medium text-b2b-headline">Notes</span>
+        <span className={`${boardLabel} !mb-2`}>Notes</span>
         <textarea
           rows={4}
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
           placeholder="What you saw, in the words you would say to them."
-          className={`${b2bTokens.b2bInputBase} mt-1 w-full`}
+          className={`${boardInput} min-h-24 py-2.5`}
         />
       </label>
 
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button
-          themeType="b2b"
-          variant="secondary"
-          isLoading={busy === "draft"}
-          disabled={busy !== null}
-          onClick={() => save("draft")}
-        >
-          Save draft
-        </Button>
-        <Button
-          themeType="b2b"
-          variant="commit"
-          isLoading={busy === "completed"}
-          disabled={busy !== null}
-          onClick={() => save("completed")}
-        >
-          {completed ? "Save changes" : "Complete review"}
-        </Button>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <button type="button" className={boardBtn()} disabled={busy !== null} onClick={() => save("draft")}>
+          {busy === "draft" ? <Spinner className="text-current" /> : "Save draft"}
+        </button>
+        <button type="button" className={boardBtn("primary")} disabled={busy !== null} onClick={() => save("completed")}>
+          {busy === "completed" ? <Spinner className="text-current" /> : completed ? "Save changes" : "Complete review"}
+        </button>
       </div>
 
-      <p className="text-osce-caption text-b2b-mid">
-        Rate every required area before completing the review, so candidates never see a half-finished one.
-      </p>
-    </div>
+      <div className={b2bTokens.assessMeta}>
+        Rate every required area before completing the review, so candidates never see a half-finished one. A completed admin review stays editable (Save changes).
+      </div>
+    </>
+  );
+}
+
+/** The card's title row and its one-line purpose, drawn in every state of the form. */
+function LeadHeading({ status }: { status?: ReactNode }) {
+  return (
+    <>
+      <div className="flex flex-wrap justify-between gap-3">
+        <h2 className="text-base font-semibold leading-normal">Admin&apos;s review</h2>
+        {status}
+      </div>
+      <div className={b2bTokens.assessMeta}>One overall mark for the station. This is the mark that counts.</div>
+    </>
   );
 }
 
 function VerdictRow({ value, onPick }: { value: Verdict | null; onPick: (verdict: Verdict) => void }) {
   return (
-    <div className={b2bTokens.b2bSegmentedControl} role="group" aria-label="Overall">
+    <div className={boardSeg} role="group" aria-label="Overall">
       {VERDICTS.map((verdict) => (
         <button
           key={verdict.value}
           type="button"
           aria-pressed={value === verdict.value}
           onClick={() => onPick(verdict.value)}
-          className={
-            value === verdict.value ? b2bTokens.b2bSegmentedTabActive : b2bTokens.b2bSegmentedTabInactive
-          }
+          className={boardSegChoice(value === verdict.value, TONE[verdict.value])}
         >
           {verdict.label}
         </button>

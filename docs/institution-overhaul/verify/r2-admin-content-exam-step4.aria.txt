@@ -1,0 +1,24 @@
+- main:
+  - link "Close":
+    - /url: /app/e2e-mw3om0c6/authoring/exams
+  - paragraph: Your progress is saved after each step
+  - heading "New exam" [level=1]
+  - list "Steps":
+    - listitem: Name
+    - listitem: Marking scheme
+    - listitem: Timings
+    - listitem: Publish
+  - paragraph: Step 4 of 4
+  - heading "Ready to publish" [level=2]
+  - paragraph: Publishing makes the exam available for scheduling. Add stations next.
+  - term: Exam
+  - definition: R2 Exam · r2x
+  - term: Marking scheme
+  - definition: Orthopaedic interview marking rubric · v1
+  - term: Timings
+  - definition: 3 min reading · 10 min consultation
+  - term: Available for scheduling
+  - definition: On after publishing
+  - paragraph: If a step fails, the exam is kept as it is and this screen says which step to retry. Nothing is half made.
+  - button "Back"
+  - button "Publish exam"

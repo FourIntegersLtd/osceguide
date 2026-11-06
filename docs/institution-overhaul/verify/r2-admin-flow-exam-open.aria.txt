@@ -1,0 +1,34 @@
+- main:
+  - link "Exams":
+    - /url: /app/e2e-mw3om0c6/authoring/exams
+  - paragraph: casc Not available
+  - heading "CASC" [level=1]
+  - paragraph: 0 published stations · Marking scheme v1 · 0 sittings
+  - paragraph: Available for scheduling
+  - paragraph: "Off: existing sittings carry on, but no new ones can be scheduled."
+  - switch "Available for scheduling"
+  - heading "Stations" [level=2]
+  - link "Add station":
+    - /url: /app/e2e-mw3om0c6/authoring/stations/new?exam=casc
+  - paragraph: No stations yet. Create one with Add station.
+  - link "See all 0 stations":
+    - /url: /app/e2e-mw3om0c6/authoring/stations?exam=casc
+  - heading "Sittings" [level=2]
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - paragraph: No sittings scheduled for this exam yet.
+  - heading "Marking scheme" [level=2]
+  - paragraph: CASC marking rubric
+  - paragraph: Version 1, published 1 Nov. 4 areas.
+  - link "Open scheme":
+    - /url: /app/e2e-mw3om0c6/authoring/rubrics/56bc9068-49b9-4980-ae45-95d977c959d6/versions/1?exam=71881310-ec17-4ea4-8335-1d9f8dc2fbd1
+  - link "Change scheme":
+    - /url: /app/e2e-mw3om0c6/authoring/exams/71881310-ec17-4ea4-8335-1d9f8dc2fbd1/settings
+  - heading "Station layouts (optional)" [level=2]
+  - paragraph: Simulation scenario (ASPiH) · CASC station
+  - link "Manage layouts":
+    - /url: /app/e2e-mw3om0c6/authoring/station-templates
+  - heading "Settings" [level=2]
+  - paragraph: 1 min reading · 7 min consultation · Patient voice and feedback style
+  - link "Edit settings":
+    - /url: /app/e2e-mw3om0c6/authoring/exams/71881310-ec17-4ea4-8335-1d9f8dc2fbd1/settings

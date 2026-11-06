@@ -1,12 +1,12 @@
 "use client";
 
-import { Button } from "@/foundation/ui";
 import type { Trainee } from "@/domains/assess/api";
 import {
   accessActive,
   invitationNotAccepted,
   invitationResendable,
 } from "@/domains/assess/roster/support";
+import { boardBtn, boardButtonSmall } from "@/foundation/ui/boardKit";
 
 /**
  * The per-row controls, kept out of the table's column list so the table stays
@@ -50,44 +50,32 @@ export function TraineeRowActions({
   const inviteLabel = invitationNotAccepted(trainee) ? "Send invitation" : "Resend invitation";
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      <Button
-        themeType="b2b"
-        variant="secondary"
-        size="sm"
+    <div className="flex flex-[1_1_100%] flex-wrap items-center justify-end gap-2.5">
+      <button type="button" className={boardButtonSmall}
         title="Change their name, email or cohort."
         onClick={onEdit}
       >
         Edit
-      </Button>
+      </button>
       {invitationResendable(trainee) ? (
         invitationSettled ? (
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            size="sm"
+          <button type="button" className={boardButtonSmall}
             disabled
             title="That person has already set up their account, so there is no invitation to resend."
           >
             Already joined
-          </Button>
+          </button>
         ) : (
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            size="sm"
+          <button type="button" className={boardButtonSmall}
             disabled={busy}
             title="Email them a fresh link to set up their account."
             onClick={onResend}
           >
             {busy ? "Sending…" : inviteLabel}
-          </Button>
+          </button>
         )
       ) : null}
-      <Button
-        themeType="b2b"
-        variant="secondary"
-        size="sm"
+      <button type="button" className={boardButtonSmall}
         title={
           accessActive(trainee)
             ? "Stop them sitting or signing in. Their records are kept."
@@ -96,30 +84,24 @@ export function TraineeRowActions({
         onClick={onAccess}
       >
         {accessActive(trainee) ? "Revoke" : "Restore"}
-      </Button>
-      <Button
-        themeType="b2b"
-        variant="danger"
-        size="sm"
+      </button>
+      <button type="button" className={boardBtn("danger", true)}
         title="Remove them from the roster. Refused once a result is decided."
         onClick={onDelete}
       >
         Delete
-      </Button>
+      </button>
       {trainee.anonymised ? (
-        <Button themeType="b2b" variant="secondary" size="sm" disabled title="Already anonymised">
+        <button type="button" className={boardButtonSmall} disabled title="Already anonymised">
           Anonymised
-        </Button>
+        </button>
       ) : (
-        <Button
-          themeType="b2b"
-          variant="secondary"
-          size="sm"
+        <button type="button" className={boardButtonSmall}
           title="Erase their personal details but keep the results."
           onClick={onAnonymise}
         >
           Anonymise
-        </Button>
+        </button>
       )}
     </div>
   );

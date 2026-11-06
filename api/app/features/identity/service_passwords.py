@@ -26,6 +26,7 @@ from app.features.identity.errors import (
 from app.features.identity.schemas import TokenPair
 from app.features.identity.tokens import hash_password, hash_token, new_token, verify_password
 from app.features.notifications import service as notifications
+from app.features.tenancy import service as tenancy
 
 
 async def begin_password_reset(
@@ -138,3 +139,24 @@ async def change_password(
     await session.refresh(user)
     memberships = await memberships_for(session, user.id)
     return await service_sessions.issue(session, user, settings=settings, now=now, memberships=memberships)
+
+
+async def invitation_organisation_name(session: AsyncSession, *, token: str, now: datetime) -> str:
+    """The name of the organisation behind a live invitation token.
+
+    Refuses `invalid_reset_token` for every other case alike (unknown, spent, expired, a plain
+    reset link that names no organisation, an account SSO has since taken the password from), so
+    the answer tells a token-tester nothing `confirm_password_reset` would not. Writes nothing.
+    """
+    record = await repository.reset_token_by_hash(session, hash_token(token))
+    if record is None or record.used_at is not None or now >= record.expires_at:
+        raise InvalidResetToken()
+    if record.organization_id is None:
+        raise InvalidResetToken()
+    user = await repository.user_by_id(session, record.user_id)
+    if user is None or user.password_login_disabled:
+        raise InvalidResetToken()
+    org = await tenancy.org_ref_by_id(session, record.organization_id)
+    if org is None:
+        raise InvalidResetToken()
+    return org.name

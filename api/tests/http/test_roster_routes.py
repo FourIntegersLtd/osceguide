@@ -365,6 +365,21 @@ async def test_a_spreadsheet_is_rostered_in_one_request(client: AsyncClient, mak
     assert len(listed["items"]) == 3
 
 
+async def test_a_spreadsheet_lists_in_the_order_it_was_uploaded(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """One import stamps every row in a single transaction; the list must not shuffle them."""
+    _, admin = await org_with_admin(client, make_actor)
+    emails = [f"p{n}@example.com" for n in (5, 3, 9, 1, 7, 2, 8, 4)]
+    created = await client.post(
+        "/api/v1/orgs/kings/trainees/bulk",
+        json={"trainees": [{"email": email} for email in emails]},
+        headers=bearer(admin),
+    )
+    assert created.status_code == 201, created.text
+
+    listed = (await client.get("/api/v1/orgs/kings/trainees", headers=bearer(admin))).json()
+    assert [t["email"] for t in listed["items"]] == emails
+
+
 async def test_an_empty_upload_is_invalid(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     _, admin = await org_with_admin(client, make_actor)
     response = await client.post(

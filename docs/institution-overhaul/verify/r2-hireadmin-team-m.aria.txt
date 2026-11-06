@@ -1,0 +1,23 @@
+- main:
+  - heading "Candidates" [level=1]
+  - paragraph: Everyone in your organisation. Candidates sit assessments; staff (supervisors and admins) run circuits and mark them.
+  - button "Add candidates"
+  - tablist "People sections":
+    - tab "Candidates 1"
+    - tab "Staff" [selected]
+    - tab "Groups and year groups"
+    - tab "Exam access"
+    - tab "History"
+  - paragraph: 1 staff account
+  - text: Search staff
+  - searchbox "Search staff"
+  - text: e2e-hire-admin-mw3om0c6@example.com
+  - term: Select
+  - definition:
+    - checkbox "Select e2e-hire-admin-mw3om0c6@example.com"
+  - term: Role
+  - definition: Admin
+  - term: Circuits led
+  - definition: "1"
+  - term: Access
+  - definition: Active

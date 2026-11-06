@@ -14,19 +14,23 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ports import RoomAgents
 from app.features.attempts import service_reads as attempts
 from app.features.dashboard.schemas_live import LiveBoard, LiveCircuit, LivePerson, LiveRunRead, LiveStation
 from app.features.health import service as health
 from app.features.identity import service as identity
 from app.features.sittings import service_catchup
 from app.features.sittings import service_reads as sittings
+from app.features.sittings.service_run import get_room_agents as get_room_agents
 from app.features.stations import service_reads as stations
 
 
-async def build_live_board(session: AsyncSession, org_id: uuid.UUID, *, now: datetime) -> LiveBoard:
+async def build_live_board(
+    session: AsyncSession, org_id: uuid.UUID, *, now: datetime, agents: RoomAgents
+) -> LiveBoard:
     """Every circuit this organisation has running, with its clock and its alerts."""
     # The board is what the api reads when the worker is down: advance first, then show.
-    await service_catchup.advance_due(session, org_id=org_id, now=now)
+    await service_catchup.advance_due(session, org_id=org_id, now=now, agents=agents)
     worker_running = await health.worker_running(session, now=now)
     details = await sittings.live_circuits(session, org_id)
     if not details:

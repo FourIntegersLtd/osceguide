@@ -1,0 +1,39 @@
+- main:
+  - link "Exams":
+    - /url: /app/ov-fresh-mw3o1ru2/authoring/exams
+  - paragraph: paed Ready to schedule
+  - heading "Paediatrics block" [level=1]
+  - paragraph: 0 published stations · Marking scheme v1 · 0 sittings
+  - link "Schedule a sitting":
+    - /url: /app/ov-fresh-mw3o1ru2/sittings/new
+  - paragraph: Available for scheduling
+  - paragraph: "On: this exam can be picked when you schedule a sitting."
+  - switch "Available for scheduling" [checked]
+  - heading "Stations" [level=2]
+  - link "Add station":
+    - /url: /app/ov-fresh-mw3o1ru2/authoring/stations/new?exam=paed
+  - paragraph: No stations yet. Create one with Add station.
+  - link "See all 0 stations":
+    - /url: /app/ov-fresh-mw3o1ru2/authoring/stations?exam=paed
+  - heading "Sittings" [level=2]
+  - link "All sittings":
+    - /url: /app/ov-fresh-mw3o1ru2/sittings
+  - paragraph: No sittings scheduled for this exam yet.
+  - heading "Marking scheme" [level=2]
+  - paragraph: Simulated Consultation Assessment marking rubric
+  - paragraph: Version 1, published 1 Nov. 3 areas, rated G, A or R.
+  - link "Open scheme":
+    - /url: /app/ov-fresh-mw3o1ru2/authoring/rubrics/d07dbafd-7aa4-45e9-84b2-95f4955925de/versions/1?exam=3c78d4e7-e001-4a7d-bd76-7e9964e33608
+  - link "Change scheme":
+    - /url: /app/ov-fresh-mw3o1ru2/authoring/exams/3c78d4e7-e001-4a7d-bd76-7e9964e33608/settings
+  - heading "Station layouts (optional)" [level=2]
+  - paragraph: Simulation scenario (ASPiH)
+  - link "Manage layouts":
+    - /url: /app/ov-fresh-mw3o1ru2/authoring/station-templates
+  - heading "Settings" [level=2]
+  - paragraph: 3 min reading · 10 min consultation · Patient voice and feedback style
+  - link "Edit settings":
+    - /url: /app/ov-fresh-mw3o1ru2/authoring/exams/3c78d4e7-e001-4a7d-bd76-7e9964e33608/settings
+  - heading "Retire or delete" [level=2]
+  - button "Retire exam"
+  - button "Delete exam"

@@ -14,7 +14,7 @@ from app.core.db import SessionOpenerDep
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
-from app.core.ports import ClockDep, EventBus
+from app.core.ports import ClockDep, EventBus, RoomAgents
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
 from app.core.tenancy import OrgAdmin, OrgStaff, OrgStaffRunning, may_run_circuit_policy, resolve_workspace
@@ -28,6 +28,7 @@ from app.features.dashboard import (
     service,
     service_cohort,
     service_console,
+    service_live,
     service_org,
     service_performance,
     service_readout,
@@ -40,6 +41,8 @@ from app.features.dashboard import (
 )
 
 router = APIRouter(tags=["dashboard"])
+
+Agents = Annotated[RoomAgents, Depends(service_live.get_room_agents)]
 
 
 @router.get(
@@ -128,13 +131,19 @@ async def read_supervisor_circuits(workspace: OrgStaff, session: Session) -> sch
     responses=error_responses(Forbidden, errors.CircuitNotFound),
 )
 async def read_circuit_console(
-    circuit_id: uuid.UUID, workspace: OrgStaffRunning, session: Session, clock: ClockDep
+    circuit_id: uuid.UUID,
+    workspace: OrgStaffRunning,
+    session: Session,
+    clock: ClockDep,
+    agents: Agents,
 ) -> schemas_org.CircuitConsole:
     """The screen an examination is run from: session, stations, trainees, staff and feedback state.
 
     Reading it may advance this circuit if its clock ran out (S-7), like the live board.
     """
-    return await service_console.build_console(session, workspace.org_id, circuit_id, now=clock.now())
+    return await service_console.build_console(
+        session, workspace.org_id, circuit_id, now=clock.now(), agents=agents
+    )
 
 
 @router.get(
@@ -235,6 +244,7 @@ async def stream_circuit_console(
     bus: Annotated[EventBus, Depends(get_event_bus)],
     open_session: SessionOpenerDep,
     clock: ClockDep,
+    agents: Agents,
 ) -> StreamingResponse:
     """The console, pushed. Every frame is a whole `CircuitConsole`, so a client renders a
     stream and a poll with the same code.
@@ -254,7 +264,13 @@ async def stream_circuit_console(
         )
     return StreamingResponse(
         service_streams.console_stream(
-            workspace.org_id, circuit_id, principal, bus=bus, open_session=open_session, clock=clock
+            workspace.org_id,
+            circuit_id,
+            principal,
+            bus=bus,
+            open_session=open_session,
+            clock=clock,
+            agents=agents,
         ),
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,

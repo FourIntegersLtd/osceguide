@@ -4,7 +4,7 @@
  * advancing it does not (LiveKit), so a journey starts the circuit and then
  * ends it, which completes the sitting without any station being spoken.
  */
-import { call, login, PASSWORD, switchWorkspace } from "./api";
+import { call, login, orgPath, PASSWORD, switchWorkspace } from "./api";
 import { world } from "./world";
 
 export interface BuiltSitting {
@@ -23,7 +23,7 @@ export async function adminToken(): Promise<string> {
 export async function buildSitting(name: string, mode: "exam" | "training"): Promise<BuiltSitting> {
   const w = world();
   const token = await adminToken();
-  const sitting = await call(token, `/api/v1/orgs/${w.slug}/sittings`, {
+  const sitting = await call(token, orgPath(w.slug, `/sittings`), {
     method: "POST",
     body: {
       name,
@@ -33,7 +33,7 @@ export async function buildSitting(name: string, mode: "exam" | "training"): Pro
       scheduled_for: new Date(Date.now() + 86_400_000).toISOString(),
     },
   });
-  const circuit = await call(token, `/api/v1/orgs/${w.slug}/sittings/${sitting.id}/circuits`, {
+  const circuit = await call(token, orgPath(w.slug, `/sittings/${sitting.id}/circuits`), {
     method: "POST",
     body: {
       name: `${name} circuit`,
@@ -48,14 +48,14 @@ export async function buildSitting(name: string, mode: "exam" | "training"): Pro
 
 async function firstSlotId(token: string, circuitId: string): Promise<string> {
   const slug = world().slug;
-  const console_ = await call(token, `/api/v1/orgs/${slug}/circuits/${circuitId}/console`);
+  const console_ = await call(token, orgPath(slug, `/circuits/${circuitId}/console`));
   const slot = ((console_.slots ?? []) as { id: string }[])[0];
   if (!slot) throw new Error(`circuit ${circuitId} has no slots: ${Object.keys(console_).join(",")}`);
   return slot.id;
 }
 
 export const startCircuit = (s: BuiltSitting) =>
-  call(s.token, `/api/v1/orgs/${world().slug}/circuits/${s.circuitId}/start`, { method: "POST" });
+  call(s.token, orgPath(world().slug, `/circuits/${s.circuitId}/start`), { method: "POST" });
 
 export const endCircuit = (s: BuiltSitting) =>
-  call(s.token, `/api/v1/orgs/${world().slug}/circuits/${s.circuitId}/end`, { method: "POST" });
+  call(s.token, orgPath(world().slug, `/circuits/${s.circuitId}/end`), { method: "POST" });

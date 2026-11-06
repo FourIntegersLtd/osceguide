@@ -39,7 +39,9 @@ export function circuitReviewSteps(
     { id: "results", label: "Results", state: "todo", note: "Admin decides and releases" },
   ];
   const line =
-    left > 0
+    sat.length === 0
+      ? "No one sat this circuit, so there is nothing to mark."
+      : left > 0
       ? `Mark the ${left === 1 ? "station" : `${left} stations`} left, then share one summary with the candidate.`
       : published
         ? "Everything is marked and shared. The admin decides and releases the result."

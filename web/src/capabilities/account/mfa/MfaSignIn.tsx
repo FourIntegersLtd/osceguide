@@ -12,7 +12,8 @@ import {
 import { Alert, Input } from "@/foundation/ui";
 import AuthButton from "@/capabilities/account/AuthButton";
 import { errorMessage } from "@/foundation/hooks";
-import { authInput, authLink } from "@/foundation/ui/authTheme";
+import { authLink } from "@/foundation/ui/authTheme";
+import { boardInput } from "@/foundation/ui/boardKit";
 import { cn } from "@/foundation/ui/cn";
 import { AuthenticatorSetup } from "@/capabilities/account/mfa/AuthenticatorSetup";
 import { RecoveryCodes } from "@/capabilities/account/mfa/RecoveryCodes";
@@ -113,8 +114,8 @@ function MfaCodeStep({
   if (failure?.expired) return <Expired message={failure.message} onRestart={onRestart} />;
 
   return (
-    <form className="space-y-5" onSubmit={(event) => void submit(event)} noValidate>
-      <p className="text-base text-site-muted">
+    <form className="flex flex-col gap-3.5" onSubmit={(event) => void submit(event)} noValidate>
+      <p className="m-0 text-assess-meta text-osce-ink-500">
         {mode === "code"
           ? "Enter the six-digit code from your authenticator app."
           : "Enter one of the recovery codes you saved when you set up two-factor sign-in. Each code works once."}
@@ -133,12 +134,12 @@ function MfaCodeStep({
         value={value}
         onChange={(event) => setValue(event.target.value)}
         error={failure?.message}
-        className={cn(authInput, "pl-3.5", mode === "code" && "text-center font-landing-mono text-2xl font-semibold tracking-[0.4em]")}
+        className={cn(boardInput, mode === "code" && "text-center font-landing-mono text-2xl font-semibold tracking-[0.4em]")}
       />
       <AuthButton isLoading={busy} disabled={!ready}>
         {busy ? "Checking…" : "Continue"}
       </AuthButton>
-      <div className="flex flex-col items-center gap-2 text-osce-meta">
+      <div className="flex flex-col items-start gap-2 text-assess-meta">
         <button
           type="button"
           className={authLink}
@@ -224,7 +225,7 @@ function MfaEnrolStep({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-3.5">
       <p className="text-osce-body text-ink">
         Your account needs two-factor sign-in. Set up an authenticator app on your phone to
         finish signing in. It takes about a minute.

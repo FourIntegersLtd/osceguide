@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, Input, Panel } from "@/foundation/ui";
+import { AsyncBoundary, b2bTokens as t, cn } from "@/foundation/ui";
+import { card, Chip, Note, row } from "@/domains/assess/ui";
+import { SettingsCard } from "@/domains/assess/settings/SettingsCard";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { formatLongDateTime } from "@/foundation/format";
 import { issueScimToken, listScimTokens, revokeScimToken, type ScimTokenIssued } from "@/domains/assess/api";
+import { boardBtn, boardInput, boardButtonSmall } from "@/foundation/ui/boardKit";
 
 /**
  * The connectors that provision this organisation's people from its identity provider.
@@ -34,69 +37,65 @@ export function ScimTokens({ orgSlug }: { orgSlug: string }) {
   }
 
   return (
-    <Panel
-      title="Provisioning"
-      description="Let your identity provider add and remove people here. Give each connector its own token."
-    >
-      <div className="flex max-w-xl flex-col gap-4">
-        {failure ? <Alert tone="danger">{failure}</Alert> : null}
-        {issued ? (
-          <Alert tone="warning">
-            Copy this token now; it cannot be shown again. <code className="break-all">{issued.token}</code>{" "}
-            <Button variant="secondary" size="sm" onClick={() => setIssued(null)}>
-              Dismiss
-            </Button>
-          </Alert>
-        ) : null}
-        <form
-          className="flex items-end gap-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!label.trim()) return;
-            void act(async () => {
-              setIssued(await issueScimToken(orgSlug, label.trim()));
-              setLabel("");
-            });
-          }}
-        >
-          <Input label="Connector name" value={label} onChange={(event) => setLabel(event.target.value)} />
-          <Button type="submit" disabled={busy || !label.trim()}>
-            Create token
-          </Button>
-        </form>
-        <AsyncBoundary state={tokens}>
-          {(items) =>
-            items.length === 0 ? (
-              <p className="text-osce-body text-b2b-mid">No tokens yet.</p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {items.map((token) => (
-                  <li key={token.id} className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-osce-body font-medium text-b2b-headline">{token.label}</p>
-                      <p className="text-osce-meta text-b2b-mid">
-                        {token.token_prefix}… · {token.last_used_at ? `last used ${formatLongDateTime(token.last_used_at)}` : "never used"}
-                      </p>
+    <SettingsCard title="Provisioning" lead="Let your identity provider add and remove people here. Give each connector its own token.">
+      {failure ? <Note tone="bad" role="alert">{failure}</Note> : null}
+      {issued ? (
+        <Note tone="warn">
+          Copy this token now; it cannot be shown again. <code className="break-all">{issued.token}</code>{" "}
+          <button type="button" className={boardButtonSmall} onClick={() => setIssued(null)}>
+            Dismiss
+          </button>
+        </Note>
+      ) : null}
+      <form
+        className="flex flex-wrap gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!label.trim()) return;
+          void act(async () => {
+            setIssued(await issueScimToken(orgSlug, label.trim()));
+            setLabel("");
+          });
+        }}
+      >
+        <input
+          aria-label="Connector name"
+          className={cn(boardInput, "min-w-0 flex-[1_1_240px]")}
+          placeholder="Connector name"
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+        />
+        <button type="submit" className={boardBtn("primary")} disabled={busy || !label.trim()}>
+          Create token
+        </button>
+      </form>
+      <AsyncBoundary state={tokens}>
+        {(items) =>
+          items.length === 0 ? (
+            <p className={cn(t.assessMeta, "m-0")}>No tokens yet.</p>
+          ) : (
+            <div className={card}>
+              {items.map((token, index) => (
+                <div key={token.id} className={cn(row, index === 0 && "border-t-0")}>
+                  <span className="min-w-0 flex-1">
+                    {token.label}
+                    <div className={t.assessMeta}>
+                      {token.token_prefix}… · {token.last_used_at ? `last used ${formatLongDateTime(token.last_used_at)}` : "never used"}
                     </div>
-                    {token.revoked_at ? (
-                      <Badge variant="neutral">Revoked</Badge>
-                    ) : (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => void act(() => revokeScimToken(orgSlug, token.id))}
-                      >
-                        Revoke
-                      </Button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )
-          }
-        </AsyncBoundary>
-      </div>
-    </Panel>
+                  </span>
+                  {token.revoked_at ? (
+                    <Chip>Revoked</Chip>
+                  ) : (
+                    <button type="button" className={boardButtonSmall} disabled={busy} onClick={() => void act(() => revokeScimToken(orgSlug, token.id))}>
+                      Revoke
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+        }
+      </AsyncBoundary>
+    </SettingsCard>
   );
 }

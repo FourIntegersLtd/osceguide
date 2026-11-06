@@ -1,0 +1,26 @@
+- main:
+  - link "Close":
+    - /url: /app/ov-fresh-mw3o1ru2/authoring/exams
+  - paragraph: Your progress is saved after each step
+  - heading "New exam" [level=1]
+  - list "Steps":
+    - listitem: Name
+    - listitem: Marking scheme
+    - listitem: Timings
+    - listitem: Publish
+  - paragraph: Step 2 of 4
+  - heading "How will it be marked?" [level=2]
+  - paragraph: The marking scheme lists the areas reviewers rate and how. You can change it later as a new version.
+  - radiogroup "Marking scheme":
+    - radio "Use one of your marking schemes Orthopaedic interview marking rubric · v1, CASC marking rubric · v1, PLAB 2 marking rubric · v1, Simulated Consultation Assessment marking rubric · v1" [checked]
+    - radio "Copy one from OSCE Guide Start from a tested scheme and change what you need."
+    - radio "Write a new marking scheme Name the areas, the ratings and what each means."
+  - text: Marking scheme version
+  - combobox "Marking scheme version":
+    - option "None yet" [selected]
+    - option "Orthopaedic interview marking rubric · v1"
+    - option "CASC marking rubric · v1"
+    - option "PLAB 2 marking rubric · v1"
+    - option "Simulated Consultation Assessment marking rubric · v1"
+  - button "Back"
+  - button "Continue" [disabled]

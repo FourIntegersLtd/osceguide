@@ -1,0 +1,50 @@
+- main:
+  - heading "People" [level=1]
+  - paragraph: Everyone in your organisation. Trainees sit sittings; staff (supervisors and admins) run circuits and mark them.
+  - button "Add people"
+  - tablist "People sections":
+    - tab "Trainees 1"
+    - tab "Staff"
+    - tab "Groups and year groups"
+    - tab "Exam access"
+    - tab "History" [selected]
+  - text: Done by
+  - textbox "Done by":
+    - /placeholder: name@hospital.nhs.uk
+  - text: Action
+  - textbox "Action":
+    - /placeholder: e.g. membership.
+  - button "Filter"
+  - list:
+    - listitem:
+      - paragraph: Circuit OV training run circuit ended by hand
+      - time: 5 Nov 2026, 15:13
+      - paragraph: By e2e-admin-mw3om0c6@example.com
+    - listitem:
+      - paragraph: Circuit OV exam to review circuit ended by hand
+      - time: 5 Nov 2026, 15:13
+      - paragraph: By e2e-admin-mw3om0c6@example.com
+    - listitem:
+      - paragraph: Circuit Release run circuit ended by hand
+      - time: 5 Nov 2026, 15:10
+      - paragraph: By e2e-admin-mw3om0c6@example.com
+    - listitem:
+      - paragraph: Added e2e-trainee-mw3om0c6@example.com to the roster
+      - time: 5 Nov 2026, 15:09
+      - paragraph: By e2e-admin-mw3om0c6@example.com
+    - listitem:
+      - paragraph: Granted trainee to e2e-trainee-mw3om0c6@example.com
+      - time: 5 Nov 2026, 15:09
+      - paragraph: By walkthrough@example.com
+    - listitem:
+      - paragraph: Granted supervisor to e2e-sup-mw3om0c6@example.com
+      - time: 5 Nov 2026, 15:09
+      - paragraph: By walkthrough@example.com
+    - listitem:
+      - paragraph: Granted institution_admin to e2e-admin-mw3om0c6@example.com
+      - time: 5 Nov 2026, 15:09
+      - paragraph: By walkthrough@example.com
+    - listitem:
+      - paragraph: Provisioned institution e2e-mw3om0c6
+      - time: 5 Nov 2026, 15:09
+      - paragraph: By walkthrough@example.com

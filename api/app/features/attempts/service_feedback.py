@@ -10,6 +10,7 @@ platform rubric for an imported `legacy-b2c` row).
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -134,7 +135,7 @@ async def _scoring_rubric_for(
     if attempt.exam_id not in exam_versions:
         exam = await catalog.exam_for_attempt(session, attempt.exam_id)
         exam_versions[attempt.exam_id] = exam.rubric_version_id
-    key = (attempt.exam_id, repr(snapshot))
+    key = (attempt.exam_id, json.dumps(snapshot, sort_keys=True, default=str))
     if key in unfrozen:
         return unfrozen[key]
     found = await rubrics.scoring_rubric(

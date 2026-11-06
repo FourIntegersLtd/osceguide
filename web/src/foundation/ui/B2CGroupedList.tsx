@@ -88,6 +88,7 @@ export function B2CGroupedRowLink({
       href={href}
       scroll={scroll}
       aria-current={row.active ? "page" : undefined}
+      data-row
       className={cn(b2cGroupedRow, className)}
     >
       <RowBody {...row} chevron />
@@ -99,13 +100,13 @@ export function B2CGroupedRowLink({
 export function B2CGroupedRow({ onClick, className, ...row }: RowProps & { onClick?: () => void }) {
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className={cn(b2cGroupedRow, "w-full text-left", className)}>
+      <button type="button" onClick={onClick} data-row className={cn(b2cGroupedRow, "w-full text-left", className)}>
         <RowBody {...row} chevron />
       </button>
     );
   }
   return (
-    <div className={cn(b2cGroupedRow, "hover:bg-transparent", className)}>
+    <div data-row className={cn(b2cGroupedRow, "hover:bg-transparent", className)}>
       <RowBody {...row} chevron={false} />
     </div>
   );

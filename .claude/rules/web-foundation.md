@@ -85,6 +85,13 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
 - No polling: a screen waits on SSE (`useMeEvents`); a timer may change display copy, never call the api. `web/scripts/check-no-polling.mjs` (in `npm run ci`) fails on `setInterval(` or a `setTimeout(` that calls the api or itself; its allow-list carries a reason per file and only shrinks. `PaymentReturn.tsx` is a known entry still to move to SSE.
 - Open items: `docs/BACKLOG.md`; delete a row when you land it.
 
+## Boards win on the institution surfaces
+- Assess, hire and partner are drawn from `docs/institution-overhaul/boards/*.dc.html`; where DESIGN.md disagrees, change DESIGN.md. Use the `assess*` tokens in `b2bTokens.ts` and the `text-assess-*` sizes, never `text-[Npx]`.
+- A new `text-assess-*` size must also be listed in the font-size group of `foundation/ui/cn.ts`, or `cn()` drops it next to a text colour. Tailwind colour keys are camelCase (`bg-osce-navActive`); a kebab name silently renders nothing.
+- Prove with `e2e/support/board-diff.ts` (see the verify skill). The boards' `support.js` is not in the repo; `board-runtime.js` stands in. The harness pins the board sidebar to an integer width, because a fractional page x changes every glyph's anti-aliasing. The learner shell's `-webkit-font-smoothing: antialiased` is switched off on assess/hire/partner so text matches the boards.
+
+- Named exceptions to the boards (user feedback 2026-11-05, in DESIGN.md "Spacing rhythm and quiet selection"): ample vertical spacing from the `assessForm*` tokens, and selection/focus as a 1px light-blue border plus a soft ring (`--assess-select-border`, `--assess-focus-ring`), never a saturated accent border. `Panel` gap classes go in `bodyClassName`; on `className` they silently do nothing.
+
 ## What a failure looks like here
 - A load failure rendered as "no data", or a branch on `message` instead of `code`.
 - A tier imported upwards, a bare `fetch`, or a hand-declared API type.

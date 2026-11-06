@@ -1,0 +1,70 @@
+- main:
+  - link "OV formal finals":
+    - /url: /app/e2e-mw3mzpx5/sittings/16a0fd6f-f4d9-43cc-8334-f81bafedda27
+  - heading "Add a circuit" [level=1]
+  - paragraph: OV formal finals · exam
+  - heading "Details" [level=2]
+  - text: Name
+  - textbox "Name":
+    - /placeholder: Morning circuit
+  - heading "Candidates" [level=2]
+  - tablist "Pick from":
+    - tab "People" [selected]
+    - tab "Groups"
+    - tab "Year groups"
+  - text: Search by name or email
+  - textbox "Search by name or email"
+  - list:
+    - listitem:
+      - paragraph: Tess Trainee
+      - paragraph: e2e-trainee-mw3mzpx5@example.com
+      - text: Signed in
+      - button "Pick"
+  - heading "Stations (0)" [level=2]
+  - paragraph: At most 12 on a formal exam circuit
+  - paragraph: Find a station for sca
+  - link "Write a new station":
+    - /url: /app/e2e-mw3mzpx5/authoring/stations/new
+  - search:
+    - text: Search stations by name
+    - searchbox "Search stations by name"
+  - list:
+    - listitem:
+      - paragraph: E2E gender voice test - male patient
+      - paragraph: Version 1
+      - text: SCA
+      - button "Add"
+    - listitem:
+      - paragraph: E2E library station 2
+      - paragraph: Version 1
+      - text: SCA
+      - button "Add"
+    - listitem:
+      - paragraph: E2E library station 3
+      - paragraph: Version 1
+      - text: SCA
+      - button "Add"
+  - heading "Timing" [level=2]
+  - text: Reading time (minutes)
+  - spinbutton "Reading time (minutes)": "3"
+  - paragraph: 1 to 30 minutes.
+  - text: Consultation (minutes)
+  - spinbutton "Consultation (minutes)": "10"
+  - paragraph: 1 to 180 minutes.
+  - text: Default break length (minutes)
+  - spinbutton "Default break length (minutes)": "5"
+  - paragraph: A break goes between two stations, never after the last one. Everyone on the circuit pauses during it.
+  - paragraph: Breaks
+  - button "Add a break" [disabled]
+  - paragraph: Each break is 1 to 60 minutes.
+  - heading "Supervisor" [level=2]
+  - text: Supervisor
+  - combobox "Supervisor":
+    - option "Unassigned" [selected]
+    - option "e2e-admin-mw3mzpx5@example.com (institution_admin)"
+    - option "e2e-sup-mw3mzpx5@example.com (supervisor)"
+  - paragraph:
+    - text: No supervisors yet?
+    - link "Invite staff":
+      - /url: /app/e2e-mw3mzpx5/team
+  - button "Create circuit" [disabled]

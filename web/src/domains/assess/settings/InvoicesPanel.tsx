@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, EmptyState, Input, LeaveConfirmModal, Panel } from "@/foundation/ui";
+import { AsyncBoundary, b2bTokens as t, cn, LeaveConfirmModal } from "@/foundation/ui";
+import { cardTitle } from "@/domains/assess/settings/SettingsCard";
+import { card, Chip, hint, Note, row, th } from "@/domains/assess/ui";
 import { errorMessage, useAsync, useCursorPages, useDirtyGuard } from "@/foundation/hooks";
 import { formatMoney, formatShortDate } from "@/foundation/format";
 import { PlatformError } from "@/foundation/platform-client";
@@ -16,6 +18,7 @@ import {
   describeInvoiceStatus,
   PO_NUMBER_MAX,
 } from "@/domains/assess/settings/invoiceView";
+import { boardBtn, boardPadWide, boardInput, boardLabel, type BoardChipTone, boardButtonSmall } from "@/foundation/ui/boardKit";
 
 /**
  * The invoices OSCE Guide has raised for this organisation (org admin only), on `/settings/invoices`.
@@ -25,15 +28,18 @@ import {
  */
 export function InvoiceBrowser({ orgSlug, setDirty }: { orgSlug: string; setDirty: (dirty: boolean) => void }) {
   const [openId, setOpenId] = useState<string | null>(null);
-  return (
-    <Panel>
-      {openId ? (
-        <InvoiceDetail key={openId} orgSlug={orgSlug} invoiceId={openId} setDirty={setDirty} onBack={() => setOpenId(null)} />
-      ) : (
-        <InvoiceList orgSlug={orgSlug} onOpen={setOpenId} />
-      )}
-    </Panel>
+  return openId ? (
+    <InvoiceDetail key={openId} orgSlug={orgSlug} invoiceId={openId} setDirty={setDirty} onBack={() => setOpenId(null)} />
+  ) : (
+    <InvoiceList orgSlug={orgSlug} onOpen={setOpenId} />
   );
+}
+
+/** The invoice status as the board's chip. */
+function StatusChip({ status }: { status: string }) {
+  const described = describeInvoiceStatus(status);
+  const tone: BoardChipTone = described.tone === "success" ? "ok" : described.tone === "info" ? "info" : "neutral";
+  return <Chip tone={tone}>{described.label}</Chip>;
 }
 
 function InvoiceList({ orgSlug, onOpen }: { orgSlug: string; onOpen: (id: string) => void }) {
@@ -44,65 +50,44 @@ function InvoiceList({ orgSlug, onOpen }: { orgSlug: string; onOpen: (id: string
       {(items) => {
         if (items.length === 0) {
           return (
-            <EmptyState
-              bare
-              title="No invoices yet."
-              description="Invoices OSCE Guide raises for your organisation appear here."
-            />
+            <div className={cn(boardPadWide)}>
+              <h2 className={cardTitle}>No invoices yet.</h2>
+              <p className={cn(t.assessMeta, "m-0")}>Invoices OSCE Guide raises for your organisation appear here.</p>
+            </div>
           );
         }
         return (
-          <div className="flex flex-col gap-3">
-            {pages.moreError ? <Alert tone="danger">{errorMessage(pages.moreError)}</Alert> : null}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-osce-body">
-                <thead className="text-osce-caption uppercase text-ink-muted">
-                  <tr>
-                    <th className="py-2 pr-4 font-medium">Invoice</th>
-                    <th className="py-2 pr-4 font-medium">Issued</th>
-                    <th className="py-2 pr-4 font-medium">Due</th>
-                    <th className="py-2 pr-4 font-medium">Total</th>
-                    <th className="py-2 pr-4 font-medium">Status</th>
-                    <th className="py-2 pr-4 font-medium">PO number</th>
-                    <th className="py-2 font-medium">
-                      <span className="sr-only">Open</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((invoice) => {
-                    const status = describeInvoiceStatus(invoice.status);
-                    return (
-                      <tr key={invoice.id} className="border-t border-border">
-                        <td className="py-3 pr-4 font-medium text-ink">{invoice.invoice_number}</td>
-                        <td className="py-3 pr-4 text-ink-muted">{formatShortDate(invoice.issued_at)}</td>
-                        <td className="py-3 pr-4 text-ink-muted">{formatShortDate(invoice.due_at)}</td>
-                        <td className="py-3 pr-4">{formatMoney(invoice.total_pence, invoice.currency)}</td>
-                        <td className="py-3 pr-4">
-                          <Badge variant={status.tone}>{status.label}</Badge>
-                        </td>
-                        <td className="py-3 pr-4 text-ink-muted">{invoice.po_number ?? "Not set"}</td>
-                        <td className="py-3">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            aria-label={`Open ${invoice.invoice_number}`}
-                            onClick={() => onOpen(invoice.id)}
-                          >
-                            Open
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          <div className={card}>
+            {pages.moreError ? <Note tone="bad">{errorMessage(pages.moreError)}</Note> : null}
+            <div className={th}>
+              <span className="min-w-40 flex-[1_1_160px]">Invoice</span>
+              <span className="w-[110px]">Issued</span>
+              <span className="w-[110px]">Due</span>
+              <span className="w-[100px]">Total</span>
+              <span className="w-20">Status</span>
+              <span className="w-[110px]">PO number</span>
+              <span className="w-[60px]" />
             </div>
+            {items.map((invoice) => (
+              <div key={invoice.id} className={row}>
+                <span className="min-w-40 flex-[1_1_160px] font-medium">{invoice.invoice_number}</span>
+                <span className={cn("w-[110px]", t.assessMeta)}>{formatShortDate(invoice.issued_at)}</span>
+                <span className={cn("w-[110px]", t.assessMeta)}>{formatShortDate(invoice.due_at)}</span>
+                <span className="w-[100px]">{formatMoney(invoice.total_pence, invoice.currency)}</span>
+                <span className="w-20">
+                  <StatusChip status={invoice.status} />
+                </span>
+                <span className={cn("w-[110px]", t.assessMeta)}>{invoice.po_number ?? "Not set"}</span>
+                <button type="button" className={boardButtonSmall} aria-label={`Open ${invoice.invoice_number}`} onClick={() => onOpen(invoice.id)}>
+                  Open
+                </button>
+              </div>
+            ))}
             {pages.hasMore ? (
-              <div className="flex justify-center">
-                <Button variant="secondary" size="sm" disabled={pages.loadingMore} onClick={pages.loadMore}>
+              <div className={cn(row, "justify-center")}>
+                <button type="button" className={boardButtonSmall} disabled={pages.loadingMore} onClick={pages.loadMore}>
                   {pages.loadingMore ? "Loading…" : "Load more"}
-                </Button>
+                </button>
               </div>
             ) : null}
           </div>
@@ -125,7 +110,7 @@ function InvoiceDetail({
 }) {
   const state = useAsync((signal) => readInvoice(orgSlug, invoiceId, signal), [orgSlug, invoiceId]);
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <AsyncBoundary state={state}>
         {(invoice) => (
           <InvoiceBody
@@ -140,9 +125,9 @@ function InvoiceDetail({
       </AsyncBoundary>
       {state.data ? null : (
         <div>
-          <Button variant="ghost" size="sm" onClick={onBack}>
+          <button type="button" className={boardBtn("ghost", true)} onClick={onBack}>
             Back to invoices
-          </Button>
+          </button>
         </div>
       )}
     </div>
@@ -193,80 +178,73 @@ function InvoiceBody({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <section className={boardPadWide}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-osce-data font-semibold text-ink">{invoice.invoice_number}</h3>
-          <p className="text-osce-meta text-ink-muted">
+          <h2 className={cardTitle}>{invoice.invoice_number}</h2>
+          <div className={t.assessMeta}>
             {invoice.customer_name} · issued {formatShortDate(invoice.issued_at)} · due {formatShortDate(invoice.due_at)}
-          </p>
+          </div>
         </div>
-        <Badge variant={status.tone}>{status.label}</Badge>
+        <StatusChip status={invoice.status} />
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-osce-body">
-          <thead className="text-osce-caption uppercase text-ink-muted">
-            <tr>
-              <th className="py-2 pr-4 font-medium">Line</th>
-              <th className="py-2 pr-4 font-medium">Qty</th>
-              <th className="py-2 font-medium">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoice.lines.map((line) => (
-              <tr key={line.position} className="border-t border-border">
-                <td className="py-3 pr-4">{line.description}</td>
-                <td className="py-3 pr-4">{line.quantity}</td>
-                <td className="py-3">{formatMoney(line.amount_pence, invoice.currency)}</td>
-              </tr>
-            ))}
-            <tr className="border-t border-border font-semibold">
-              <td className="py-3 pr-4">Total</td>
-              <td className="py-3 pr-4" />
-              <td className="py-3">{formatMoney(invoice.total_pence, invoice.currency)}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div className={card}>
+        <div className={th}>
+          <span className="flex-1">Line</span>
+          <span className="w-[60px]">Qty</span>
+          <span className="w-[100px]">Amount</span>
+        </div>
+        {invoice.lines.map((line) => (
+          <div key={line.position} className={row}>
+            <span className="flex-1">{line.description}</span>
+            <span className="w-[60px]">{line.quantity}</span>
+            <span className="w-[100px]">{formatMoney(line.amount_pence, invoice.currency)}</span>
+          </div>
+        ))}
+        <div className={row}>
+          <b className="flex-1">Total</b>
+          <span className="w-[60px]" />
+          <b className="w-[100px]">{formatMoney(invoice.total_pence, invoice.currency)}</b>
+        </div>
       </div>
-      {failure ? <Alert tone="danger">{failure}</Alert> : null}
+      {failure ? <Note tone="bad" role="alert">{failure}</Note> : null}
       {status.poEditable ? (
         <form
-          className="flex max-w-xl flex-col gap-2"
           onSubmit={(event) => {
             event.preventDefault();
             void save();
           }}
         >
-          <div className="flex items-end gap-3">
-            <Input
-              label="Purchase order number"
+          <label htmlFor="invoice-po" className={boardLabel}>
+            Purchase order number
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="invoice-po"
+              className={cn(boardInput, "max-w-[260px]")}
               value={po}
               maxLength={PO_NUMBER_MAX}
               onChange={(event) => setPo(event.target.value)}
             />
-            <Button type="submit" disabled={busy || !checked.ok || unchanged}>
+            <button type="submit" className={boardBtn("primary")} disabled={busy || !checked.ok || unchanged}>
               {busy ? "Saving…" : "Save PO number"}
-            </Button>
+            </button>
           </div>
           {edited && !checked.ok ? (
-            <p role="alert" className="text-osce-meta text-danger">
+            <p role="alert" className="mt-1.5 text-assess-meta text-osce-danger-text">
               {checked.reason} To remove one, contact support.
             </p>
           ) : null}
-          <p className="text-osce-caption text-ink-muted">
-            Your finance team&apos;s reference. It can change until the invoice is paid or void.
-          </p>
+          <div className={hint}>Your finance team&apos;s reference. It can change until the invoice is paid or void.</div>
         </form>
       ) : (
-        <p className="text-osce-body text-ink-muted">Purchase order number: {invoice.po_number ?? "Not set"}</p>
+        <p className={cn(t.assessMeta, "m-0")}>Purchase order number: {invoice.po_number ?? "Not set"}</p>
       )}
-      {invoice.notes ? <p className="text-osce-meta text-ink-muted">Notes from OSCE Guide: {invoice.notes}</p> : null}
-      <div>
-        <Button variant="ghost" size="sm" onClick={() => (edited ? setLeaving(true) : onBack())}>
-          Back to invoices
-        </Button>
-      </div>
+      {invoice.notes ? <div className={t.assessMeta}>Notes from OSCE Guide: {invoice.notes}</div> : null}
+      <button type="button" className={cn(boardBtn("ghost", true), "self-start")} onClick={() => (edited ? setLeaving(true) : onBack())}>
+        Back to invoices
+      </button>
       <LeaveConfirmModal isOpen={leaving} onStay={() => setLeaving(false)} onLeave={onBack} />
-    </div>
+    </section>
   );
 }

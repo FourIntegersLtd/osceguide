@@ -19,6 +19,10 @@ describe("circuit review steps", () => {
     assert.equal(steps[2]?.note, "Admin decides and releases");
     assert.equal(line, "Mark the 2 stations left, then share one summary with the candidate.");
   });
+  it("does not claim stations are marked when nobody sat any", () => {
+    const { line } = circuitReviewSteps([st(1, "not_sat"), st(2, "not_sat")], false);
+    assert.equal(line, "No one sat this circuit, so there is nothing to mark.");
+  });
   it("lists unmarked stations first", () => {
     assert.deepEqual(stationsToMark(four).map((s) => s.position), [5, 6, 1, 2, 3, 4]);
   });

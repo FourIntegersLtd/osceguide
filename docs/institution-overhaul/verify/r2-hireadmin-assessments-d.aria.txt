@@ -1,0 +1,25 @@
+- main:
+  - heading "Assessments" [level=1]
+  - paragraph: An assessment is one occasion, such as the March mock. Its circuits are built for you when you schedule it.
+  - link "Schedule an assessment":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/new
+  - button "Filters"
+  - text: Search assessments
+  - searchbox "Search assessments"
+  - table:
+    - rowgroup:
+      - row "Assessment Kind Exam Scheduled for Status":
+        - columnheader "Assessment"
+        - columnheader "Kind"
+        - columnheader "Exam"
+        - columnheader "Scheduled for"
+        - columnheader "Status"
+    - rowgroup:
+      - row "R2 hire assessment Simulated Consultation Assessment · 1 circuit · 1 candidate Formal exam Simulated Consultation Assessment Not scheduled Scheduled":
+        - cell "R2 hire assessment Simulated Consultation Assessment · 1 circuit · 1 candidate":
+          - link "R2 hire assessment Simulated Consultation Assessment · 1 circuit · 1 candidate":
+            - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26
+        - cell "Formal exam"
+        - cell "Simulated Consultation Assessment"
+        - cell "Not scheduled"
+        - cell "Scheduled"

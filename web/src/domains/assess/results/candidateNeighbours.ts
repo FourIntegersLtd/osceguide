@@ -10,6 +10,8 @@ interface StepStation {
   attempt_id: string | null;
   circuit_id: string;
   slot_index: number;
+  circuit_name?: string;
+  station_title?: string | null;
 }
 
 interface StepCandidate {
@@ -61,4 +63,17 @@ export function candidateSteps(candidates: StepCandidate[], slotId: string): Can
     previous: steps[index - 1] ?? null,
     next: steps[index + 1] ?? null,
   };
+}
+
+/** Who and what a station review is of, for its back link and eyebrow ("Circuit 1 · Amara Okoye", "Amara Okoye · Station 2 · Breaking bad news"). */
+export function slotContext(candidates: StepCandidate[], slotId: string): { back: string; eyebrow: string } | null {
+  for (const candidate of candidates) {
+    const station = (candidate.stations ?? []).find((entry) => entry.slot_id === slotId);
+    if (!station) continue;
+    const who = candidate.name ?? "Candidate";
+    const circuit = station.circuit_name ? `${station.circuit_name} · ${who}` : who;
+    const title = station.station_title ? ` · ${station.station_title}` : "";
+    return { back: circuit, eyebrow: `${who} · Station ${station.slot_index + 1}${title}` };
+  }
+  return null;
 }

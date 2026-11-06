@@ -1,0 +1,66 @@
+- main:
+  - link "Release run":
+    - /url: /app/e2e-mw3om0c6/sittings/086c720c-30ff-4a81-9b8c-5613c33a49fa
+  - heading "Release run circuit" [level=1]
+  - paragraph: Tess Trainee · Ended · 1 of 1 stations sat · No supervisor assigned
+  - button "Observing an examination"
+  - text: Ended
+  - list:
+    - listitem:
+      - paragraph: Start the circuit
+      - paragraph: Ended
+    - listitem:
+      - paragraph: On station
+      - paragraph: 1 of 1 stations sat
+    - listitem:
+      - text: "3"
+      - paragraph: Reading time
+      - paragraph: Once somebody is on station
+    - listitem:
+      - text: "4"
+      - paragraph: Consultation
+      - paragraph: After reading time
+  - paragraph: This circuit has ended. Its stations can still be marked and its record read.
+  - heading "Station progress" [level=2]
+  - table:
+    - rowgroup:
+      - row "Candidate Station Phase Left Marking":
+        - columnheader "Candidate"
+        - columnheader "Station"
+        - columnheader "Phase"
+        - columnheader "Left"
+        - columnheader "Marking"
+    - rowgroup:
+      - row "Tess Trainee 1 · E2E gender voice test - male patient Completed Marked Review":
+        - cell "Tess Trainee":
+          - paragraph: Tess Trainee
+        - cell "1 · E2E gender voice test - male patient"
+        - cell "Completed Marked"
+        - cell
+        - cell "Review":
+          - link "Review":
+            - /url: /app/e2e-mw3om0c6/slots/e6ab06d2-fa40-43cb-881f-d459916a4425/review?attempt=49d0651d-e845-4b80-a081-9c246f0bb2a8
+  - text: The room Not connected
+  - button "Listen in" [disabled]
+  - paragraph: You can hear the consultation without being heard in it. Nothing you do here reaches the candidate or the patient.
+  - region "Marking and review":
+    - status:
+      - paragraph: Every station is marked. Share one summary with the candidate.
+    - list "Steps":
+      - listitem: Mark each station 1 of 1 marked
+      - listitem: Share the circuit's feedback Not published yet
+      - listitem: Results Admin decides and releases
+    - heading "Stations to mark" [level=2]
+    - link "1 · E2E gender voice test - male patient Marked Review":
+      - /url: /app/e2e-mw3om0c6/slots/e6ab06d2-fa40-43cb-881f-d459916a4425/review?attempt=49d0651d-e845-4b80-a081-9c246f0bb2a8
+    - heading "The record" [level=3]
+    - paragraph: Transcripts and automatic marking for each station open from its row. Only the supervisor named on this circuit can read what was said.
+  - heading "Share this circuit's feedback" [level=2]
+  - paragraph: Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one.
+  - paragraph: Marked on 1 of 1 station
+  - text: Notes on the circuit as a whole
+  - textbox "Notes on the circuit as a whole":
+    - /placeholder: Anything to say about the circuit as a whole (optional)
+  - paragraph: Not published yet.
+  - button "Publish circuit feedback"
+  - button "What was changed by hand Show"

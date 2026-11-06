@@ -1,5 +1,6 @@
-import type { LiveCircuit, OrgSetup, OrgSittingRow } from "@/domains/assess/dashboard/api";
+import type { LiveCircuit, OrgSittingRow } from "@/domains/assess/dashboard/api";
 import type { ResultsIndexRow } from "@/domains/assess/results/api";
+import { undecided } from "@/domains/assess/results/support";
 import type { AssessWords } from "@/domains/assess/vocabulary";
 
 /**
@@ -8,113 +9,6 @@ import type { AssessWords } from "@/domains/assess/vocabulary";
  * One request answers the setup flags, so a failed fetch cannot read as "you have no
  * trainees"; these are the judgements left over.
  */
-
-export type AssistantStepId = "exam" | "stations" | "trainees" | "supervisor" | "sitting";
-
-export type AssistantStep = {
-  id: AssistantStepId;
-  label: string;
-  optional: boolean;
-  done: boolean;
-  tag: string;
-  title: string;
-  body: string;
-  whyTitle: string;
-  why: string;
-  cta: string;
-  /** Surface-relative; the caller runs it through `hrefFor`. */
-  href: string;
-  alt?: string;
-  altHref?: string;
-  /** The alternative downloads the spreadsheet template instead of linking. */
-  altDownload?: boolean;
-};
-
-/** "a supervisor", "an assessor". */
-const withArticle = (word: string) => `${/^[aeiou]/i.test(word) ? "an" : "a"} ${word}`;
-
-/** Where the assistant sends "Set up an exam" (the New exam sheet's route). */
-export const NEW_EXAM_PATH = "/authoring/exams/new";
-/** Where the assistant sends "Schedule a sitting"; Phase 3 moves the wizard here, per ScheduleSitting.md. */
-export const SCHEDULE_SITTING_PATH = "/sittings/new";
-
-/**
- * The five steps to a first sitting, from the flags `/dashboard` already returns. The exam step
- * is done when an exam is published, has a marking scheme and a programme offers it.
- */
-export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[] {
-  return [
-    {
-      id: "exam", label: `Set up an ${w.exam}`, optional: false, done: setup.programme_exam_rubric_ready,
-      tag: "Start here", title: `Set up an ${w.exam}`,
-      body: `An ${w.exam} is what you examine and how it is marked. Start from one of ours in one click, or make your own with your own marking scheme.`,
-      whyTitle: "Why first",
-      why: `Stations, ${w.sittings} and results all belong to an ${w.exam}. When it is ready it shows "Ready to schedule".`,
-      cta: `Set up an ${w.exam}`, href: NEW_EXAM_PATH, alt: `Browse OSCE Guide ${w.exams}`, altHref: "/authoring",
-    },
-    {
-      id: "stations", label: "Add stations", optional: false, done: setup.stations_available,
-      tag: "Next", title: `Add stations to your ${w.exam}`,
-      body: "Write your own, import a PDF or Word file, ask the AI to draft one from a brief, or copy ours. Publish each one when it is ready.",
-      whyTitle: "What counts",
-      why: `Only published stations for this ${w.exam} can go into a ${w.sitting}. A formal ${w.exam} takes up to 12.`,
-      cta: "Add a station", href: "/authoring/stations",
-    },
-    {
-      id: "trainees", label: `Add ${w.trainees}`, optional: false, done: setup.trainees_added,
-      tag: "Next", title: `Add your ${w.trainees}`,
-      body: `Add one person, or upload a spreadsheet. Each ${w.trainee} gets an invitation email and joins when they set a password.`,
-      whyTitle: "Tip",
-      why: `Put ${w.trainees} in a ${w.yearGroup} as you add them. You can schedule a whole ${w.yearGroup} in one step later.`,
-      cta: `Add ${w.trainees}`, href: "/trainees", alt: "Download the spreadsheet template", altDownload: true,
-    },
-    {
-      id: "supervisor", label: `Invite ${withArticle(w.supervisor)}`, optional: true, done: setup.team_invited,
-      tag: "Optional", title: `Invite ${withArticle(w.supervisor)}`,
-      body: `${w.Supervisors} run circuits on the day and review recordings. You can be the ${w.supervisor} yourself, so this step can wait.`,
-      whyTitle: `${w.Supervisors} are your examiners`,
-      why: `They review the recordings of the circuits they lead. Administrators can do everything ${w.supervisors} can.`,
-      cta: "Invite staff", href: "/team",
-    },
-    {
-      id: "sitting", label: `Schedule your first ${w.sitting}`, optional: false, done: setup.sitting_scheduled,
-      tag: "Last step", title: `Schedule your first ${w.sitting}`,
-      body: `Pick the ${w.exam}, its stations and the people sitting it. We build the circuits for you.`,
-      whyTitle: `${w.formalExam} or ${w.training.toLowerCase()}`,
-      why: `A ${w.formalExam.toLowerCase()} is marked, signed off and released. ${w.training} gives feedback only.`,
-      cta: w.scheduleSitting, href: SCHEDULE_SITTING_PATH,
-    },
-  ];
-}
-
-/**
- * Why a step's button is disabled, with the link that fixes it; null when it can be used.
- * Only the sitting step has a prerequisite: nothing can be scheduled before an exam is ready.
- * The assistant is shown to people who manage the team, who hold every permission a step needs.
- */
-export function stepBlock(
-  step: AssistantStep,
-  setup: OrgSetup,
-  w: AssessWords,
-): { reason: string; fixLabel: string; fixHref: string } | null {
-  if (step.id !== "sitting" || setup.ready_to_run) return null;
-  return {
-    reason: `Nothing can be scheduled until ${withArticle(w.exam)} is ready.`,
-    fixLabel: `Set up ${withArticle(w.exam)}`,
-    fixHref: NEW_EXAM_PATH,
-  };
-}
-
-/** Setup is over when every required step is done; the optional supervisor step never holds it open. */
-export function setupComplete(steps: AssistantStep[]): boolean {
-  return steps.every((step) => step.done || step.optional);
-}
-
-/** The step to open first: the first one not done. */
-export function firstOpenStep(steps: AssistantStep[]): number {
-  const index = steps.findIndex((step) => !step.done);
-  return index === -1 ? steps.length - 1 : index;
-}
 
 /** "Formal exam" or "Training": the words for a sitting's mode. */
 export function modeLabel(mode: string, w: AssessWords): string {
@@ -156,6 +50,7 @@ export function notJoinedItem(count: number, w: AssessWords): AttentionItem | nu
         : `${w.Trainees} who have not accepted their invitation`,
     body: "They cannot be scheduled until they set a password. Resend in one step.",
     href: "/people",
+    tone: "neutral",
   };
 }
 
@@ -166,6 +61,8 @@ export type AttentionItem = {
   body: string;
   /** Surface-relative. */
   href: string;
+  /** The tag chip's tone on the Today board. */
+  tone?: "warn" | "ok" | "neutral";
 };
 
 /**
@@ -177,7 +74,7 @@ export type AttentionItem = {
 export function attentionFromResults(rows: readonly ResultsIndexRow[], w: AssessWords): AttentionItem[] {
   const items: AttentionItem[] = [];
   for (const row of rows.slice().reverse()) {
-    const decisions = decidable(row) ? row.not_decided + row.draft : 0;
+    const decisions = decidable(row) ? undecided(row) + row.draft : 0;
     if (decisions > 0) {
       const href = `/sittings/${row.sitting_id}/results`;
       items.push(
@@ -193,8 +90,9 @@ export function attentionFromResults(rows: readonly ResultsIndexRow[], w: Assess
               key: `${row.sitting_id}-decide`,
               tag: `${decisions} ${decisions === 1 ? "decision" : "decisions"}`,
               title: `Record outcomes for ${row.name}`,
-              body: `Every review is complete. Write the outcome and reason, then sign off.`,
+              body: `Write the outcome and reason for each person, then sign off.`,
               href,
+              tone: "warn",
             },
       );
     }
@@ -205,6 +103,7 @@ export function attentionFromResults(rows: readonly ResultsIndexRow[], w: Assess
         title: `Release results for ${row.name}`,
         body: `Signed off. ${w.Trainees} see nothing until you release.`,
         href: `/sittings/${row.sitting_id}/results`,
+        tone: "ok",
       });
     }
   }
@@ -391,4 +290,12 @@ export function circuitsBySitting<T extends { sitting_id: string; sitting_name: 
         ? `${group.title} · ${group.rows[0]?.circuit_name ?? ""}`
         : `${group.title} · ${group.rows.length} circuits`,
   }));
+}
+
+/** "Good afternoon, Dr Okafor": the Today board's greeting, the account's name as written (no usable name: just the greeting). */
+export function todayGreeting(name: string | null | undefined, now: Date): string {
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const who = (name ?? "").trim();
+  return who && !who.includes("@") ? `${greeting}, ${who}` : greeting;
 }

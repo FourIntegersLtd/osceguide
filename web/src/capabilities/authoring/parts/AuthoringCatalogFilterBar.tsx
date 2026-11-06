@@ -6,10 +6,13 @@ import {
   PlatformFilterDivider,
   PlatformFilterSearch,
   PlatformFilterSelect,
+  Select,
 } from "@/foundation/ui";
 import { STATION_STATUS_FILTERS, type StationStatusFilter } from "@/capabilities/authoring/parts/stationListUrl";
 import { AUTHORING_ALL_EXAMS } from "@/capabilities/authoring/parts/examCatalogFilter";
+import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
+import { boardInput } from "@/foundation/ui/boardKit";
 
 export function AuthoringCatalogFilterBar({
   examCode,
@@ -38,6 +41,52 @@ export function AuthoringCatalogFilterBar({
   className?: string;
 }) {
   const { options, loading, error } = useAuthoringExamCatalog();
+  const chrome = useAuthoringChrome();
+
+  if (!chrome.b2c) {
+    return (
+      <div className={`flex flex-wrap gap-2 ${className ?? ""}`}>
+        {leading}
+        <Select
+          aria-label="Filter by exam"
+          value={examCode}
+          onChange={(e) => onExamCodeChange(e.target.value)}
+          className="max-w-[200px]"
+        >
+          <option value={AUTHORING_ALL_EXAMS}>{loading ? "Loading exams…" : error ? "Exams unavailable" : "All exams"}</option>
+          {options.map((exam) => (
+            <option key={exam.code} value={exam.code}>
+              {exam.label}
+            </option>
+          ))}
+        </Select>
+        {status && onStatusChange ? (
+          <Select
+            aria-label="Filter by status"
+            value={status}
+            onChange={(e) => onStatusChange(e.target.value as StationStatusFilter)}
+            className="max-w-[160px]"
+          >
+            {STATION_STATUS_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        ) : null}
+        {onSearchChange ? (
+          <input
+            value={search ?? ""}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchAriaLabel}
+            className={`${boardInput} flex-[1_1_240px]`}
+          />
+        ) : null}
+        {trailing}
+      </div>
+    );
+  }
 
   return (
     <PlatformFilterBar leading={leading} trailing={trailing} className={className}>

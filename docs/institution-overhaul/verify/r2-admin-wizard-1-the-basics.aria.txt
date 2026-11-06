@@ -1,0 +1,48 @@
+- main:
+  - link "Sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - heading "Schedule a sitting" [level=1]
+  - paragraph: Steps unlock in order. Nothing is created until the last step.
+  - list "Steps":
+    - listitem:
+      - button "Basics The basics"
+    - listitem:
+      - button "Stations Pick the stations"
+    - listitem:
+      - button "Candidates Who is sitting it?"
+    - listitem:
+      - button "Timing Timing and breaks"
+    - listitem:
+      - button "Supervisor Who supervises?"
+    - listitem:
+      - button "Review Review and create"
+  - paragraph: Step 1 of 6
+  - heading "The basics" [level=2]
+  - paragraph: What this sitting is, which exam it uses and when it happens.
+  - text: Name
+  - textbox "Name":
+    - /placeholder: Summer finals
+    - text: R2 wizard fail
+  - text: Exam
+  - combobox "Exam":
+    - option "Simulated Consultation Assessment · Ready to schedule" [selected]
+  - paragraph:
+    - text: Only exams that are ready to schedule show here. Missing one?
+    - link "Set up an exam":
+      - /url: /app/e2e-mw3om0c6/programmes
+  - group "Kind":
+    - text: Kind
+    - button "Formal exam Marked, signed off and released" [pressed]
+    - button "Training Feedback straight to the trainee"
+  - text: Date
+  - textbox "Date"
+  - paragraph: You can leave it blank and set it later.
+  - text: Year group
+  - combobox "Year group":
+    - option "None" [selected]
+  - complementary "Help":
+    - paragraph: Help
+    - paragraph: What a sitting is
+    - paragraph: One occasion, such as the March mock. Its circuits are built for you when you create it. Only exams that are ready to schedule can be picked.
+  - button "Back" [disabled]
+  - button "Continue"

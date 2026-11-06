@@ -1,0 +1,32 @@
+- main:
+  - link "Sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - paragraph: Exam
+  - heading "R2 wizard fail" [level=1]
+  - paragraph: No date set
+  - text: Completed
+  - button "Edit"
+  - link "Results":
+    - /url: /app/e2e-mw3om0c6/sittings/6d3091bf-2a0c-4bfa-b500-47f5f9bd321d/results
+  - status:
+    - paragraph: Set a date so candidates know when to come.
+    - button "Set a date"
+  - list "Steps":
+    - listitem: Schedule No date
+    - listitem: Circuits 1 circuit
+    - listitem: Run All finished
+    - listitem: Mark 0 of 1 marked
+    - listitem: Decide 0 of 1 decided
+    - listitem: Release 0 of 1 released
+  - tablist "Sitting sections":
+    - tab "Circuits 1" [selected]
+    - tab "Candidates"
+    - tab "Results so far"
+  - heading "Circuits" [level=2]
+  - link "Exam – Tess Trainee Finished · 1 station · 1 trainee · Supervisor Ada Admin Your circuit":
+    - /url: /app/e2e-mw3om0c6/circuits/aa4453bf-f63f-4031-a965-5768a7a54d98
+    - img
+    - text: Exam – Tess Trainee Finished · 1 station · 1 trainee · Supervisor Ada Admin Your circuit
+  - link "Add a circuit":
+    - /url: /app/e2e-mw3om0c6/sittings/6d3091bf-2a0c-4bfa-b500-47f5f9bd321d/circuits/new
+  - paragraph: Cancel sitting is only before any circuit starts. A circuit can be deleted only if it never started.

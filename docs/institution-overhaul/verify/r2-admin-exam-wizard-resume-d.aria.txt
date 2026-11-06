@@ -1,0 +1,24 @@
+- main:
+  - link "Close":
+    - /url: /app/e2e-mw3om0c6/authoring/exams
+  - paragraph: Your progress is saved after each step
+  - heading "New exam" [level=1]
+  - list "Steps":
+    - listitem: Name
+    - listitem: Marking scheme
+    - listitem: Timings
+    - listitem: Publish
+  - paragraph: Step 3 of 4
+  - heading "Timings and settings" [level=2]
+  - paragraph: These are the defaults for every circuit. You can change them per circuit when you schedule.
+  - text: Reading time
+  - spinbutton "Reading time 1 to 30 min": "3"
+  - text: 1 to 30 min Consultation
+  - spinbutton "Consultation 1 to 180 min": "10"
+  - text: 1 to 180 min Break
+  - spinbutton "Break 1 to 60 min, formal exams"
+  - text: 1 to 60 min, formal exams Attempts per station
+  - spinbutton "Attempts per station": "3"
+  - button "More settings"
+  - button "Back"
+  - button "Continue"

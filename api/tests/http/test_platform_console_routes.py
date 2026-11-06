@@ -394,6 +394,7 @@ async def test_an_organisations_only_active_administrator_cannot_be_deactivated(
         "second-admin@example.com",
         memberships=(Membership(org_id=org_id, org_slug="kings", role="institution_admin"),),
         active_org_slug="kings",
+        signed_in=True,
     )
     first_id = (await client.get("/api/v1/me", headers=bearer(first))).json()["id"]
     second_id = (await client.get("/api/v1/me", headers=bearer(second))).json()["id"]

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { HiOutlineCheckCircle, HiOutlineShieldCheck } from "react-icons/hi2";
 import { hasCode } from "@/foundation/platform-client";
-import { AsyncBoundary, Button, Input, Modal, Panel } from "@/foundation/ui";
+import { AsyncBoundary, Button, Input, Modal } from "@/foundation/ui";
+import { AccountButton, AccountCard, useBoardSkin } from "@/capabilities/account/settings/AccountKit";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import {
   confirmMyMfa,
@@ -53,6 +54,7 @@ export function TwoFactorPanel() {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const toast = useToast();
+  const board = useBoardSkin();
 
   const start = async () => {
     setStarting(true);
@@ -73,34 +75,38 @@ export function TwoFactorPanel() {
 
   return (
     <>
-      <Panel
-        title="Two-factor sign-in"
-        description="Ask for a code from your authenticator app at every sign-in"
-      >
+      <AccountCard title="Two-factor sign-in" description="Ask for a code from your authenticator app at every sign-in">
         <AsyncBoundary state={status}>
           {(mfa: MfaStatus) => (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0 flex-1 space-y-1">
+            <div className={board ? "flex flex-wrap items-center gap-3 py-4" : "flex flex-wrap items-center justify-between gap-3"}>
+              <div className={board ? "min-w-0 flex-1 text-assess-label text-ink" : "min-w-0 flex-1 space-y-1"}>
                 {mfa.enabled ? (
-                  <>
-                    <p className="flex items-center gap-1.5 text-osce-body font-medium text-success">
-                      <HiOutlineCheckCircle className="h-5 w-5" aria-hidden />
-                      Enabled
+                  board ? (
+                    <p className="m-0">
+                      <b className="font-semibold text-osce-success-text">{"\u2713"} Enabled</b> You sign in with your password and a code from your authenticator app.{" "}
+                      {mfa.recovery_codes_remaining} recovery {mfa.recovery_codes_remaining === 1 ? "code" : "codes"} left.
                     </p>
-                    <p className={settingsSub}>
-                      You sign in with your password and a code from your authenticator app.{" "}
-                      {mfa.recovery_codes_remaining} recovery{" "}
-                      {mfa.recovery_codes_remaining === 1 ? "code" : "codes"} left.
-                    </p>
-                  </>
+                  ) : (
+                    <>
+                      <p className="flex items-center gap-1.5 text-osce-body font-medium text-success">
+                        <HiOutlineCheckCircle className="h-5 w-5" aria-hidden />
+                        Enabled
+                      </p>
+                      <p className={settingsSub}>
+                        You sign in with your password and a code from your authenticator app.{" "}
+                        {mfa.recovery_codes_remaining} recovery{" "}
+                        {mfa.recovery_codes_remaining === 1 ? "code" : "codes"} left.
+                      </p>
+                    </>
+                  )
                 ) : (
-                  <p className={settingsSub}>Add a code from an authenticator app when you sign in.</p>
+                  <p className={board ? "m-0" : settingsSub}>Add a code from an authenticator app when you sign in.</p>
                 )}
                 {mfa.required && mfa.required_reason ? (
-                  <p className={settingsMeta}>{REQUIRED_BECAUSE[mfa.required_reason]}</p>
+                  <p className={board ? "m-0 text-assess-meta text-ink-muted" : settingsMeta}>{REQUIRED_BECAUSE[mfa.required_reason]}</p>
                 ) : null}
                 {startError ? (
-                  <p role="alert" className="text-osce-meta text-danger">
+                  <p role="alert" className={board ? "m-0 text-assess-meta text-osce-danger-text" : "text-osce-meta text-danger"}>
                     {startError}
                   </p>
                 ) : null}
@@ -108,26 +114,25 @@ export function TwoFactorPanel() {
               <div className="flex shrink-0 flex-wrap gap-2">
                 {mfa.enabled ? (
                   <>
-                    <Button variant="secondary" onClick={() => setDialog({ kind: "regenerate" })}>
+                    <AccountButton variant="secondary" small onClick={() => setDialog({ kind: "regenerate" })}>
                       New recovery codes
-                    </Button>
+                    </AccountButton>
                     {!mfa.required ? (
-                      <Button variant="secondary" onClick={() => setDialog({ kind: "disable" })}>
+                      <AccountButton variant="secondary" small onClick={() => setDialog({ kind: "disable" })}>
                         Turn off
-                      </Button>
+                      </AccountButton>
                     ) : null}
                   </>
                 ) : (
-                  <Button variant="secondary" disabled={starting} onClick={() => start()} className="gap-2">
-                    <HiOutlineShieldCheck className="h-4 w-4" aria-hidden />
+                  <AccountButton variant="secondary" icon={HiOutlineShieldCheck} disabled={starting} onClick={() => start()}>
                     {starting ? "Starting…" : "Set up"}
-                  </Button>
+                  </AccountButton>
                 )}
               </div>
             </div>
           )}
         </AsyncBoundary>
-      </Panel>
+      </AccountCard>
 
       {dialog ? (
         <Modal width="440px" title={DIALOG_TITLES[dialog.kind]} onClose={close}>

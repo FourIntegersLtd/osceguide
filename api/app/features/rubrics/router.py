@@ -132,9 +132,14 @@ async def rename_platform_rubric(
     responses=error_responses(Unauthenticated, Forbidden, *_NOT_FOUND),
 )
 async def add_platform_version(
-    rubric_id: uuid.UUID, admin: PlatformAdmin, session: Session
+    rubric_id: uuid.UUID,
+    admin: PlatformAdmin,
+    session: Session,
+    body: schemas.NewRubricVersion | None = None,
 ) -> schemas.RubricVersionRead:
-    return await service.add_version(session, None, rubric_id)
+    return await service.add_version(
+        session, None, rubric_id, from_version=body.from_version if body else None
+    )
 
 
 # Rewrite a draft platform version's body. Refused once it is published.

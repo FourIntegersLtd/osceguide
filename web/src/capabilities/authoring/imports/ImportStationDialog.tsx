@@ -3,7 +3,10 @@
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import { HiOutlineCloudArrowUp } from "react-icons/hi2";
-import { Alert, Badge, Select, Spinner, TextLink } from "@/foundation/ui";
+import Link from "next/link";
+import { Alert, Select, b2bTokens } from "@/foundation/ui";
+import { boardAlert, boardBtn, boardCardClipped, boardLabel, boardRow, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { BoardChip, boardMeta } from "@/capabilities/authoring/parts/boardUi";
 import { importStatusChip, importStatusLine, uploadFailureMessage } from "@/capabilities/authoring/imports/importCopy";
 import { errorMessage, useAsync, useMeEvents } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
@@ -17,7 +20,6 @@ import {
   type StationImport,
   type StationTemplate,
 } from "@/capabilities/authoring/api";
-import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog";
 import { AuthoringExamSelect } from "@/capabilities/authoring/parts/AuthoringExamSelect";
 import { matchesExamFilter } from "@/capabilities/authoring/parts/examCatalogFilter";
@@ -227,10 +229,35 @@ function ImportStationDialogBody({
       commitDisabled={chosenFiles.length === 0 || examCode === "" || templates.data === null}
       onClose={onClose}
       onCommit={() => void upload()}
+      after={
+        <>
+          {imports.error ? <Alert tone="danger">{imports.error.message}</Alert> : null}
+          {recent.length > 0 ? (
+            <section aria-label="Recent imports" className="flex flex-col gap-[15px]">
+              <h3 className={b2bTokens.assessEyebrow}>Recent imports</h3>
+              <ul className={boardCardClipped}>
+                {recent.map((stationImport) => (
+                  <ImportRow
+                    key={stationImport.id}
+                    stationImport={stationImport}
+                    templatePublished={
+                      stationImport.template_version_id != null &&
+                      publishedVersionIds.has(stationImport.template_version_id)
+                    }
+                    onStarted={reloadImports}
+                  />
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </>
+      }
     >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className="block text-osce-meta font-medium text-ink-muted" htmlFor="import-exam">
-          Exam
+      <div className="flex flex-wrap gap-4">
+        <div className="flex-[1_1_200px]">
+          <label className={boardLabel} htmlFor="import-exam">
+            Exam
+          </label>
           <AuthoringExamSelect
             id="import-exam"
             value={examCode}
@@ -240,13 +267,16 @@ function ImportStationDialogBody({
               setPickedTemplate(null);
             }}
             required
+            className="[&>select]:min-h-11 [&>select]:text-assess-desc"
           />
-        </label>
-        <label className="block text-osce-meta font-medium text-ink-muted" htmlFor="import-template">
-          Template
+        </div>
+        <div className="flex-[1_1_200px]">
+          <label className={boardLabel} htmlFor="import-template">
+            Template
+          </label>
           <Select
             id="import-template"
-            className="mt-1"
+            className="[&>select]:min-h-11 [&>select]:text-assess-desc"
             value={templateVersionId}
             onChange={(event) => {
               setPickedTemplate(event.target.value);
@@ -262,55 +292,33 @@ function ImportStationDialogBody({
             ))}
             <option value={NEW_TEMPLATE}>Make a new template from this file</option>
           </Select>
-        </label>
+        </div>
       </div>
 
       <div
         {...getRootProps()}
-        className={`cursor-pointer rounded-panel border border-dashed border-border p-6 text-center transition-colors ${
+        className={`cursor-pointer rounded-panel border border-dashed border-osce-border p-7 text-center transition-colors ${
           isDragActive ? "bg-osce-accent-muted" : "bg-osce-surface hover:bg-osce-surface-alt"
         }`}
       >
         <input {...getInputProps()} />
-        <HiOutlineCloudArrowUp className="mx-auto h-7 w-7 text-ink-subtle" aria-hidden />
-        <p className="mt-2 text-osce-body font-medium text-ink">
-          {chosenFiles.length > 0
-            ? chosenFiles.map((file) => file.name).join(", ")
-            : isDragActive
-              ? "Drop the file here"
-              : allowsSeveralFiles
-                ? "Drop your station files, or click to choose"
-                : "Drop one station file, or click to choose"}
+        <HiOutlineCloudArrowUp className="mx-auto h-6 w-6 text-ink-subtle" aria-hidden />
+        <p className="text-assess-desc text-ink !leading-[normal]">
+          {isDragActive
+            ? "Drop the file here"
+            : allowsSeveralFiles
+              ? "Drop your station files, or click to choose"
+              : "Drop one station file, or click to choose"}
         </p>
-        <p className="mt-1 text-osce-meta text-ink-subtle">
+        <p className={boardMeta}>
           PDF or Word (.docx), one station per file, up to 10MB each.
           {allowsSeveralFiles
             ? " You can add several files at once."
             : " Your first file sets the template. After you publish it you can add the rest together."}
         </p>
       </div>
+      {chosenFiles.length > 0 ? <p className={boardMeta}>{chosenFiles.map((file) => file.name).join(", ")}</p> : null}
 
-      {imports.error ? <Alert tone="danger">{imports.error.message}</Alert> : null}
-      {recent.length > 0 ? (
-        <section aria-label="Recent imports" className="space-y-2">
-          <h3 className="text-osce-meta font-semibold uppercase tracking-wide text-ink-subtle">
-            Recent imports
-          </h3>
-          <ul className="divide-y divide-border rounded-panel border border-border">
-            {recent.map((stationImport) => (
-              <ImportRow
-                key={stationImport.id}
-                stationImport={stationImport}
-                templatePublished={
-                  stationImport.template_version_id != null &&
-                  publishedVersionIds.has(stationImport.template_version_id)
-                }
-                onStarted={reloadImports}
-              />
-            ))}
-          </ul>
-        </section>
-      ) : null}
     </AuthoringDialog>
   );
 }
@@ -355,65 +363,52 @@ function ImportRow({
     }
   }
 
+  const reviewHref = canCreateStation ? stationTemplateEditPath(hrefFor, templateId, DRAFTED_TEMPLATE_VERSION) : "";
+
   return (
-    <li className="space-y-2 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 truncate text-osce-body font-medium text-ink">
-          {stationImport.original_filename}
-        </p>
-        <p className="flex items-center gap-2 text-osce-meta text-ink-subtle" role="status">
-          {drafting ? <Spinner label="Working" /> : null}
+    <li className={boardRow}>
+      <div className="flex min-w-0 flex-[1_1_260px] flex-col">
+        <b className="truncate">{stationImport.original_filename}</b>
+        <div className={boardMeta} role="status">
           {importStatusLine(status, templatePublished)}
-          {chip ? (
-            <Badge tone="danger" size="sm">
-              {chip}
-            </Badge>
-          ) : null}
-        </p>
+          {status === "completed" ? <CheckNotes stationImport={stationImport} /> : null}
+        </div>
+        {status === "failed" && stationImport.error ? (
+          <p className={boardAlert("bad")}>{stationImport.error}</p>
+        ) : null}
+        {failure ? <p className={boardAlert("bad")}>{failure}</p> : null}
       </div>
-
-      {status === "failed" && stationImport.error ? (
-        <Alert tone="danger">{stationImport.error}</Alert>
-      ) : null}
-      {failure ? <Alert tone="danger">{failure}</Alert> : null}
-
-      {status === "completed" ? <CheckNotes stationImport={stationImport} /> : null}
-      {status === "completed" && stationImport.station_id ? (
-        <TextLink
-          variant="muted"
-          className="text-osce-meta"
-          href={stationListUrl(stationsListPath(hrefFor), { status: "active", station: stationImport.station_id })}
-        >
-          Open
-        </TextLink>
-      ) : null}
-
-      {canCreateStation ? (
-        <div className="flex flex-wrap items-center gap-3">
-          {status === "template_ready" && !templatePublished ? (
-            <TextLink
-              variant="muted"
-              className="text-osce-meta"
-              target="_blank"
-              href={stationTemplateEditPath(hrefFor, templateId, DRAFTED_TEMPLATE_VERSION)}
-            >
-              Review the template
-            </TextLink>
-          ) : null}
-          <AuthoringButton
-            variant="secondary"
-            size="sm"
-            disabled={busy}
-            onClick={() => createStation()}
+      <div className="flex flex-wrap items-center gap-2.5">
+        {drafting ? (
+          <BoardChip>
+            <span aria-hidden>…</span>
+            <span className="sr-only">Working</span>
+          </BoardChip>
+        ) : null}
+        {chip ? <BoardChip tone="warn">{chip}</BoardChip> : null}
+        {status === "completed" && stationImport.station_id ? (
+          <Link
+            className={boardButtonSmall}
+            href={stationListUrl(stationsListPath(hrefFor), { status: "active", station: stationImport.station_id })}
           >
+            Open
+          </Link>
+        ) : null}
+        {canCreateStation && status === "template_ready" && !templatePublished ? (
+          <Link className={boardButtonSmall} target="_blank" href={reviewHref}>
+            Review the template
+          </Link>
+        ) : null}
+        {canCreateStation ? (
+          <button type="button" className={boardBtn("primary", true)} disabled={busy} onClick={() => createStation()}>
             {busy
               ? "Starting…"
               : templatePublished
                 ? "Create the station"
                 : "Publish template and create the station"}
-          </AuthoringButton>
-        </div>
-      ) : null}
+          </button>
+        ) : null}
+      </div>
     </li>
   );
 }
@@ -424,25 +419,27 @@ function CheckNotes({ stationImport }: { stationImport: StationImport }) {
   const reworded = stationImport.reworded_block_ids ?? [];
   if (empty.length === 0 && reworded.length === 0) {
     return (
-      <p className="text-osce-meta text-ink-subtle">
+      <>
+        <br />
         Every part of the template was filled word for word from your file.
-      </p>
+      </>
     );
   }
   return (
-    <div className="space-y-1 text-osce-meta text-ink-muted">
+    <>
       {empty.length > 0 ? (
-        <p>
+        <>
+          <br />
           Left empty because your file had nothing for them: {empty.map(readableBlockId).join(", ")}.
-        </p>
+        </>
       ) : null}
       {reworded.length > 0 ? (
-        <p>
-          Check these against your file, the wording may differ:{" "}
-          {reworded.map(readableBlockId).join(", ")}.
-        </p>
+        <>
+          <br />
+          Check these against your file, the wording may differ: {reworded.map(readableBlockId).join(", ")}.
+        </>
       ) : null}
-    </div>
+    </>
   );
 }
 

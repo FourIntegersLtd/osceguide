@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, AsyncBoundary, Badge, B2CGroupedRow, B2CGroupedSection, Button } from "@/foundation/ui";
+import { AsyncBoundary, b2bTokens } from "@/foundation/ui";
+import { boardAlert, boardCardClipped, boardRow, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { BoardChip, boardActs, boardMeta, boardStack } from "@/capabilities/authoring/parts/boardUi";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { importPlatformExam, listPlatformCatalogue } from "@/domains/assess/programmes/api";
@@ -43,32 +45,32 @@ export function PlatformExams({ orgSlug, onAdopted }: { orgSlug: string; onAdopt
     <AsyncBoundary state={catalogue}>
       {(data) =>
         data.items.length === 0 ? null : (
-          <div className="flex flex-col gap-3">
-            {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
-            <B2CGroupedSection eyebrow="Exams the platform publishes">
-              {data.items.map((exam) => (
-                <B2CGroupedRow
-                  key={exam.exam_id}
-                  title={exam.title}
-                  meta={`${exam.code} · ${exam.station_count} library ${exam.station_count === 1 ? "station" : "stations"}`}
-                  trailing={
-                    exam.already_imported ? (
-                      <Badge tone="success">Adopted</Badge>
+          <div className={boardStack}>
+            {notice ? (
+              <p role={notice.tone === "danger" ? "alert" : "status"} className={boardAlert(notice.tone === "danger" ? "bad" : "ok")}>
+                {notice.text}
+              </p>
+            ) : null}
+            <h2 className={`m-0 ${b2bTokens.assessEyebrow}`}>Exams the platform publishes</h2>
+            <div className={boardCardClipped}>
+              {data.items.map((exam, index) => (
+                <div key={exam.exam_id} data-row className={`${boardRow} ${index === 0 ? "border-t-0" : ""}`}>
+                  <span className="min-w-[260px] flex-[1_1_260px]">
+                    <b className="font-semibold">{exam.title}</b>
+                    <div className={boardMeta}>{`${exam.code} · ${exam.station_count} library ${exam.station_count === 1 ? "station" : "stations"}`}</div>
+                  </span>
+                  <div className={boardActs}>
+                    {exam.already_imported ? (
+                      <BoardChip tone="ok">Adopted</BoardChip>
                     ) : mayAdopt ? (
-                      <Button
-                        themeType="b2b"
-                        variant="secondary"
-                        size="sm"
-                        disabled={busy !== null}
-                        onClick={() => void adopt(exam.exam_id, exam.title)}
-                      >
+                      <button type="button" className={boardButtonSmall} disabled={busy !== null} onClick={() => void adopt(exam.exam_id, exam.title)}>
                         {busy === exam.exam_id ? "Adopting…" : "Adopt"}
-                      </Button>
-                    ) : null
-                  }
-                />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               ))}
-            </B2CGroupedSection>
+            </div>
           </div>
         )
       }

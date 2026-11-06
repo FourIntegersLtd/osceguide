@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useSurface } from "@/capabilities";
 import { createExam, listExams, type Exam, type Programme } from "@/capabilities/authoring/api";
 import { errorMessage } from "@/foundation/hooks";
+import { isPlatformError } from "@/foundation/platform-client/errors";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { applyStep, saveExam } from "@/capabilities/authoring/exams/offer";
 import { examDetailPath } from "@/capabilities/authoring/exams/paths";
-import { resumeStep, timingProblem, toMinutes } from "@/capabilities/authoring/exams/newExam";
+import { codeTakenMessage, resumeStep, timingProblem, toMinutes } from "@/capabilities/authoring/exams/newExam";
 import { examResumePath } from "@/capabilities/authoring/templates/paths";
 import { loadExam } from "@/capabilities/authoring/exams/useExam";
 import { blankExam, examToDraft, type ExamDraft } from "@/capabilities/authoring/sections/ExamFields";
@@ -77,14 +78,26 @@ export function useNewExam(first: Exam | null, firstProgramme: Programme | null)
           }
         }
         setCreateSent(true);
+        const code = draft.code.trim();
         const made = await createExam(scope, {
-          code: draft.code.trim(),
+          code,
           name: draft.name.trim(),
           default_reading_seconds: Number(draft.reading),
           default_simulation_seconds: Number(draft.simulation),
           station_attempt_limit: Number(draft.attempts),
           partner_pilot: false,
           settings: draft.settings,
+        }).catch(async (cause: unknown) => {
+          // A taken code (409): say which exam holds it. Any other failure, or a failed lookup, keeps the original error.
+          if (!isPlatformError(cause) || cause.status !== 409) throw cause;
+          let holder: Exam | undefined;
+          try {
+            // The list has no code filter; codes are unique per organisation, compared without case.
+            holder = (await listExams(scope, { status: "all" })).items.find((item) => item.code.toLowerCase() === code.toLowerCase());
+          } catch {
+            throw cause;
+          }
+          throw holder ? new Error(codeTakenMessage(code, holder.name, holder.status)) : cause;
         });
         // Its own address: a reload or a later visit resumes this draft.
         router.replace(examResumePath(hrefFor, made.id));

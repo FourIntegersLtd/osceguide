@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { passRateLabel, readOrgReporting } from "@/domains/assess/reporting/api";
+import { passRateLabel, readOrgReporting, reportingLine } from "@/domains/assess/reporting/api";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -21,5 +21,13 @@ describe("institution reporting", () => {
   it("says nothing is released yet rather than a pass rate of zero", () => {
     assert.equal(passRateLabel({ released: 0, passed: 0, pass_rate: null }), "Nothing released yet");
     assert.equal(passRateLabel({ released: 4, passed: 3, pass_rate: 75 }), "75% (3 of 4 released)");
+  });
+});
+
+describe("reportingLine", () => {
+  it("counts in the singular for one", () => {
+    const row = { sittings: 1, candidates: 1, released: 0, passed: 0, pass_rate: null };
+    assert.equal(reportingLine(row), "1 sitting · 1 candidate · Nothing released yet");
+    assert.equal(reportingLine({ ...row, sittings: 2, candidates: 5 }), "2 sittings · 5 candidates · Nothing released yet");
   });
 });

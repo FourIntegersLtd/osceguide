@@ -7,13 +7,22 @@ import {
   Alert,
   AsyncBoundary,
   B2CPageHeader,
-  Badge,
-  Button,
   ButtonLink,
-  Panel,
-  Switch,
-  TextLink,
 } from "@/foundation/ui";
+import {
+  boardBtn,
+  boardCard,
+  boardCardClipped,
+  boardCols,
+  boardColsMain,
+  boardColsRail,
+  boardKnob,
+  boardRailCard,
+  boardRow,
+  boardToggle,
+  type BoardChipTone,
+} from "@/foundation/ui/boardKit";
+import { BoardChip, boardMeta } from "@/capabilities/authoring/parts/boardUi";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
@@ -119,6 +128,17 @@ function stationState(status: string, version: number): string {
   return status === "published" ? `Published v${version}` : "Draft";
 }
 
+/** The board's chip colour for a sitting's state. */
+function sittingTone(status: string): BoardChipTone {
+  if (status === "scheduled") return "info";
+  if (status === "running" || status === "live") return "warn";
+  return "neutral";
+}
+
+const cardHead = "flex flex-wrap items-center justify-between gap-3 px-5 py-4";
+const cardTitle = "text-assess-hero font-semibold leading-snug text-ink";
+const railEyebrow = "text-assess-eyebrow font-normal uppercase text-ink-subtle";
+
 function sentence(value: string): string {
   const spaced = value.replace(/_/g, " ");
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
@@ -180,18 +200,14 @@ function ExamDetailBody({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-[1080px] flex-col gap-6" data-testid="exam-detail-page">
       <B2CPageHeader
+        board="tight"
+        className="!mb-0"
         eyebrow={
-          <span className="inline-flex items-center gap-2">
-            {exam.code}
-            <Badge
-              tone={chip === "Ready to schedule" ? "success" : "warning"}
-              size="sm"
-              dot
-            >
-              {chip}
-            </Badge>
+          <span className="flex items-center gap-2.5 font-sans normal-case tracking-normal">
+            <span className="text-assess-eyebrow font-normal uppercase tracking-[0.06em] text-ink-subtle">{exam.code}</span>
+            <BoardChip tone={chip === "Ready to schedule" ? "ok" : "warn"}>{chip}</BoardChip>
           </span>
         }
         title={exam.name}
@@ -214,241 +230,172 @@ function ExamDetailBody({
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
 
-      <Panel className="flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <p className="text-osce-body font-semibold text-ink">
-            Available for scheduling
-          </p>
-          <p className="text-osce-caption text-ink-muted">
+      <div className={`${boardCard} flex flex-wrap items-center gap-4 px-5 py-[18px]`}>
+        <div className="min-w-[280px] flex-1">
+          <p className="text-assess-desc font-medium !leading-[normal] text-ink">Available for scheduling</p>
+          <p className={boardMeta}>
             {exam.status === "published"
               ? toggleHelp(on)
               : "Finish setting the exam up and publish it, then switch this on."}
           </p>
           {exam.status === "draft" && canAuthor ? (
-            <TextLink
-              href={examResumePath(hrefFor, exam.id)}
-              variant="muted"
-              className="text-osce-meta"
-            >
+            <Link href={examResumePath(hrefFor, exam.id)} className={`${boardMeta} text-osce-accent`}>
               Continue setup
-            </TextLink>
+            </Link>
           ) : null}
         </div>
-        <Switch
-          checked={on}
-          onChange={toggle}
-          label="Available for scheduling"
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-label="Available for scheduling"
           disabled={!mayToggle || action.busy !== null}
-        />
-      </Panel>
-
-      <Panel className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-osce-body font-semibold text-ink">Stations</h2>
-          {canAuthor ? (
-            <TextLink
-              href={stationNewForExamPath(hrefFor, exam.code)}
-              variant="muted"
-              className="text-osce-meta"
-            >
-              Add station
-            </TextLink>
-          ) : null}
-        </div>
-        {stations.length === 0 ? (
-          <p className="text-osce-body text-ink-muted">
-            No stations yet. Create one with Add station.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {stations.slice(0, 3).map((station) => {
-              const layout = layoutName(templates, station.template_version_id);
-              return (
-                <li key={station.id}>
-                  <Link
-                    href={`${stationsListPath(hrefFor)}?station=${encodeURIComponent(station.id)}`}
-                    className="flex items-center justify-between gap-3 py-2 hover:bg-canvas"
-                  >
-                    <span className="min-w-0 truncate text-osce-body text-ink">
-                      {station.title}
-                      {layout ? (
-                        <span className="block text-osce-meta text-ink-muted">
-                          {layout}
-                        </span>
-                      ) : null}
-                    </span>
-                    <Badge
-                      tone={
-                        station.status === "published" ? "success" : "warning"
-                      }
-                      size="sm"
-                    >
-                      {stationState(station.status, station.version)}
-                    </Badge>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        <TextLink
-          href={stationsForExamPath(hrefFor, exam.code)}
-          variant="muted"
-          className="text-osce-meta"
+          onClick={() => toggle(!on)}
+          className={boardToggle(on)}
         >
-          {`See all ${stations.length >= COUNT_LIMIT ? `${COUNT_LIMIT}+` : stations.length} stations`}
-        </TextLink>
-      </Panel>
+          <span className={boardKnob} aria-hidden />
+        </button>
+      </div>
 
-      <Panel className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-osce-body font-semibold text-ink">Sittings</h2>
-          <TextLink
-            href={
-              programme
-                ? `${hrefFor("/sittings")}?exam=${encodeURIComponent(programme.id)}`
-                : hrefFor("/sittings")
-            }
-            variant="muted"
-            className="text-osce-meta"
-          >
-            All sittings
-          </TextLink>
-        </div>
-        {sittings.length === 0 ? (
-          <p className="text-osce-body text-ink-muted">
-            No sittings scheduled for this exam yet.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {sittings.slice(0, 2).map((sitting) => (
-              <li key={sitting.id}>
-                <Link
-                  href={hrefFor(`/sittings/${encodeURIComponent(sitting.id)}`)}
-                  className="flex items-center justify-between gap-3 py-2 hover:bg-canvas"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-osce-body text-ink">
-                      {sitting.name}
-                    </span>
-                    <span className="block text-osce-caption text-ink-muted">
-                      {`${sitting.scheduled_for ? `${shortDay(sitting.scheduled_for)} · ` : ""}${sentence(sitting.sitting_type)}`}
-                    </span>
-                  </span>
-                  <Badge tone="neutral" size="sm">
-                    {sentence(sitting.status)}
-                  </Badge>
+      <div className={boardCols}>
+        <div className={boardColsMain}>
+          <div className={boardCardClipped}>
+            <div className={cardHead}>
+              <h2 className={cardTitle}>Stations</h2>
+              {canAuthor ? (
+                <Link href={stationNewForExamPath(hrefFor, exam.code)} className={boardBtn()}>
+                  Add station
                 </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Panel>
+              ) : null}
+            </div>
+            {stations.length === 0 ? (
+              <p className={`${boardRow} ${boardMeta}`}>No stations yet. Create one with Add station.</p>
+            ) : (
+              stations.slice(0, 3).map((station) => {
+                const layout = layoutName(templates, station.template_version_id);
+                return (
+                  <Link
+                    key={station.id}
+                    href={`${stationsListPath(hrefFor)}?station=${encodeURIComponent(station.id)}`}
+                    className={`${boardRow} hover:bg-osce-canvas`}
+                  >
+                    <span className="min-w-[220px] flex-1 font-medium">{station.title}</span>
+                    {layout ? <span className={boardMeta}>{layout}</span> : null}
+                    <BoardChip tone={station.status === "published" ? "ok" : "neutral"}>
+                      {stationState(station.status, station.version)}
+                    </BoardChip>
+                  </Link>
+                );
+              })
+            )}
+            <div className={boardRow}>
+              <Link href={stationsForExamPath(hrefFor, exam.code)} className="text-osce-accent">
+                {`See all ${stations.length >= COUNT_LIMIT ? `${COUNT_LIMIT}+` : stations.length} stations`}
+              </Link>
+            </div>
+          </div>
 
-      <Panel className="flex flex-col gap-2">
-        <h2 className="text-osce-body font-semibold text-ink">
-          Marking scheme
-        </h2>
-        <p className="text-osce-body text-ink">
-          {scheme ? scheme.title : "None chosen yet."}
-        </p>
-        {scheme ? (
-          <p className="text-osce-caption text-ink-muted">
-            {schemeLine(scheme.version)}
-          </p>
-        ) : null}
-        <div className="flex flex-wrap gap-3">
-          <TextLink
-            href={
-              scheme
-                ? rubricEditPath(
-                    hrefFor,
-                    scheme.rubricId,
-                    scheme.version.version,
-                    exam.id,
-                  )
-                : `${rubricsListPath(hrefFor)}?exam=${encodeURIComponent(exam.code)}`
-            }
-            variant="muted"
-            className="text-osce-meta"
-          >
-            Open scheme
-          </TextLink>
-          {canAuthor ? (
-            <TextLink
-              href={examSettingsPath(hrefFor, exam.id)}
-              variant="muted"
-              className="text-osce-meta"
-            >
-              Change scheme
-            </TextLink>
+          <div className={boardCardClipped}>
+            <div className={cardHead}>
+              <h2 className={cardTitle}>Sittings</h2>
+              <Link
+                href={
+                  programme
+                    ? `${hrefFor("/sittings")}?exam=${encodeURIComponent(programme.id)}`
+                    : hrefFor("/sittings")
+                }
+                className="text-assess-label text-osce-accent"
+              >
+                All sittings
+              </Link>
+            </div>
+            {sittings.length === 0 ? (
+              <p className={`${boardRow} ${boardMeta}`}>No sittings scheduled for this exam yet.</p>
+            ) : (
+              sittings.slice(0, 2).map((sitting) => (
+                <Link
+                  key={sitting.id}
+                  href={hrefFor(`/sittings/${encodeURIComponent(sitting.id)}`)}
+                  className={`${boardRow} hover:bg-osce-canvas`}
+                >
+                  <span className="min-w-[220px] flex-1 truncate font-medium">{sitting.name}</span>
+                  <span className={boardMeta}>
+                    {`${sitting.scheduled_for ? `${shortDay(sitting.scheduled_for)} · ` : ""}${sentence(sitting.sitting_type)}`}
+                  </span>
+                  <BoardChip tone={sittingTone(sitting.status)}>{sentence(sitting.status)}</BoardChip>
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className={boardColsRail}>
+          <div className={boardRailCard}>
+            <h2 className={railEyebrow}>Marking scheme</h2>
+            <p className="text-assess-desc font-medium !leading-[normal]">{scheme ? scheme.title : "None chosen yet."}</p>
+            {scheme ? <p className={boardMeta}>{schemeLine(scheme.version)}</p> : null}
+            <div className="flex flex-wrap gap-2.5">
+              <Link
+                href={
+                  scheme
+                    ? rubricEditPath(hrefFor, scheme.rubricId, scheme.version.version, exam.id)
+                    : `${rubricsListPath(hrefFor)}?exam=${encodeURIComponent(exam.code)}`
+                }
+                className={boardBtn()}
+              >
+                Open scheme
+              </Link>
+              {canAuthor ? (
+                <Link href={examSettingsPath(hrefFor, exam.id)} className={boardBtn()}>
+                  Change scheme
+                </Link>
+              ) : null}
+            </div>
+          </div>
+
+          <div className={boardRailCard}>
+            <h2 className={railEyebrow}>Station layouts (optional)</h2>
+            {layouts.length > 0 ? <p className={boardMeta}>{layouts.join(" · ")}</p> : null}
+            <Link href={stationTemplatesListPath(hrefFor)} className="text-assess-label text-osce-accent">
+              Manage layouts
+            </Link>
+          </div>
+
+          <div className={boardRailCard}>
+            <h2 className={railEyebrow}>Settings</h2>
+            <p className={boardMeta}>
+              {`${timingsLine({ reading: String(toMinutes(exam.default_reading_seconds)), simulation: String(toMinutes(exam.default_simulation_seconds)), breakMin: exam.settings?.default_break_minutes ? String(exam.settings.default_break_minutes) : "" })} · Patient voice and feedback style`}
+            </p>
+            <Link href={examSettingsPath(hrefFor, exam.id)} className="text-assess-label text-osce-accent">
+              Edit settings
+            </Link>
+          </div>
+
+          {canAuthor && !locked ? (
+            <div className={boardRailCard}>
+              <h2 className={railEyebrow}>Retire or delete</h2>
+              {exam.status === "published" ? (
+                <button type="button" className={boardBtn()} disabled={action.busy !== null} onClick={() => setRetiring(exam)}>
+                  Retire exam
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className={boardBtn("danger")}
+                disabled={action.busy !== null || inUse}
+                onClick={() => setDeleting(exam)}
+              >
+                Delete exam
+              </button>
+              {inUse ? (
+                <p className={boardMeta}>
+                  Can&apos;t delete: this exam has sittings and recordings. Retire it instead, and its records stay.
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
-      </Panel>
-
-      <Panel className="flex flex-col gap-2">
-        <h2 className="text-osce-body font-semibold text-ink">
-          Station layouts (optional)
-        </h2>
-        {layouts.length > 0 ? (
-          <p className="text-osce-body text-ink-muted">{layouts.join(" · ")}</p>
-        ) : null}
-        <TextLink
-          href={stationTemplatesListPath(hrefFor)}
-          variant="muted"
-          className="text-osce-meta"
-        >
-          Manage layouts
-        </TextLink>
-      </Panel>
-
-      <Panel className="flex flex-col gap-2">
-        <h2 className="text-osce-body font-semibold text-ink">Settings</h2>
-        <p className="text-osce-body text-ink-muted">
-          {`${timingsLine({ reading: String(toMinutes(exam.default_reading_seconds)), simulation: String(toMinutes(exam.default_simulation_seconds)), breakMin: exam.settings?.default_break_minutes ? String(exam.settings.default_break_minutes) : "" })} · Patient voice and feedback style`}
-        </p>
-        <TextLink
-          href={examSettingsPath(hrefFor, exam.id)}
-          variant="muted"
-          className="text-osce-meta"
-        >
-          Edit settings
-        </TextLink>
-      </Panel>
-
-      {canAuthor && !locked ? (
-        <Panel className="flex flex-col gap-3">
-          <h2 className="text-osce-body font-semibold text-ink">
-            Retire or delete
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            {exam.status === "published" ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={action.busy !== null}
-                onClick={() => setRetiring(exam)}
-              >
-                Retire exam
-              </Button>
-            ) : null}
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={action.busy !== null || inUse}
-              onClick={() => setDeleting(exam)}
-            >
-              Delete exam
-            </Button>
-          </div>
-          {inUse ? (
-            <p className="text-osce-caption text-ink-muted">
-              Can&apos;t delete: this exam has sittings and recordings. Retire
-              it instead, and its records stay.
-            </p>
-          ) : null}
-        </Panel>
-      ) : null}
+      </div>
 
       <ExamConfirm
         kind="retire"

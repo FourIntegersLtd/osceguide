@@ -1,0 +1,22 @@
+- main:
+  - link "Exams":
+    - /url: /app/ov-fresh-mw3o1ru2/authoring/exams
+  - heading "Programmes" [level=1]
+  - paragraph: A programme is an exam you run sittings against. Adopt one the platform publishes or add your own, activate it, and it is offered when you schedule a sitting.
+  - heading "Exams the platform publishes" [level=2]
+  - text: CASC casc · 0 library stations
+  - button "Adopt"
+  - text: Orthopaedic interview ortho · 0 library stations
+  - button "Adopt"
+  - text: PLAB 2 plab · 0 library stations
+  - button "Adopt"
+  - text: Simulated Consultation Assessment sca · 3 library stations
+  - button "Adopt"
+  - heading "Your programmes" [level=2]
+  - paragraph: A programme groups this institution's sittings under one exam.
+  - link "Exams the platform publishes":
+    - /url: /app/ov-fresh-mw3o1ru2/programmes
+  - button "New programme"
+  - text: Programmes 0
+  - paragraph: No programmes yet
+  - paragraph: Add a programme for each exam you run sittings against.

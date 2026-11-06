@@ -13,7 +13,8 @@ from typing import Any
 
 import pytest
 
-from app.features.rubrics.validation import _IDENTIFIER_MESSAGE, validate_structure
+from app.features.rubrics import authoring, scheme
+from app.features.rubrics.validation import IDENTIFIER_MESSAGE, validate_structure
 
 VALID: dict[str, Any] = {
     "schemaVersion": 2,
@@ -97,7 +98,7 @@ RULES: list[tuple[str, Mutation, str, str]] = [
         "rating.kind",
         "The rating kind must be one of rag, scale, range, boolean.",
     ),
-    ("rating field id", _set(("rating", "field"), "Score"), "rating.field", _IDENTIFIER_MESSAGE),
+    ("rating field id", _set(("rating", "field"), "Score"), "rating.field", IDENTIFIER_MESSAGE),
     (
         "rag scale",
         _set(("rating", "scale"), ["G", "A"]),
@@ -162,7 +163,7 @@ RULES: list[tuple[str, Mutation, str, str]] = [
         "section id",
         _set(("sections", 1, "id"), "Feedback!"),
         "sections[1].id",
-        _IDENTIFIER_MESSAGE,
+        IDENTIFIER_MESSAGE,
     ),
     (
         "top-level id repeated",
@@ -493,3 +494,134 @@ def test_a_structure_that_is_not_an_object_is_refused() -> None:
     assert validate_structure(["not", "a", "rubric"]) == [
         {"path": "", "message": "A rubric structure must be an object."}
     ]
+
+
+# --- The author's scheme (schemaVersion 3): problems at their v3 paths -------------
+
+
+def _second_domain_on_marks(structure: dict[str, Any]) -> None:
+    structure["scales"].append({"id": "marks", "name": "0 to 10", "from": 0, "to": 10, "step": "whole"})
+    structure["outline"].append(
+        {
+            "block": "domain",
+            "id": "domain_2",
+            "title": "Domain 2",
+            "scale": "marks",
+            "competencies": [{"id": "competency_2", "label": "Competency 2"}],
+        }
+    )
+
+
+SCHEME_RULES: list[tuple[str, Mutation, str, str]] = [
+    (
+        "competency_id",
+        _set(("outline", 0, "competencies", 0, "id"), "Bad Id"),
+        "outline[0].competencies[0].id",
+        IDENTIFIER_MESSAGE,
+    ),
+    (
+        "unknown_scale",
+        _set(("outline", 0, "scale"), "nope"),
+        "outline[0].scale",
+        "This domain uses a scale the scheme does not have.",
+    ),
+    (
+        "rising_points",
+        _set(("scales", 0, "levels", 1, "points"), 9),
+        "scales[0].levels[1].points",
+        "Points must not rise down the list: put the best level first.",
+    ),
+    (
+        "rule_missing_level",
+        _set(
+            ("pass",),
+            {
+                "domain": {
+                    "score": "labels",
+                    "rule": {"type": "labels", "atLeast": 1, "of": "count", "value": "X"},
+                }
+            },
+        ),
+        "pass.domain.rule.value",
+        "The rule names a level the scale does not have.",
+    ),
+    (
+        "mixed_scales",
+        _second_domain_on_marks,
+        "outline[1].scale",
+        "Domains use different scales. Use one scale for every domain for now.",
+    ),
+    (
+        "no_outline",
+        _set(("outline",), []),
+        "outline",
+        "Add a domain: the scheme would ask the marker for nothing.",
+    ),
+    (
+        "every_domain_without_rule",
+        _set(("pass",), {"overall": {"score": "labels", "everyDomainPasses": True}}),
+        "pass.overall.everyDomainPasses",
+        "Every domain must pass needs a domain pass rule.",
+    ),
+    (
+        "bad_kind",
+        _set(("competencyFeedback", 0, "kind"), "evidence"),
+        "competencyFeedback[0].kind",
+        "Pick what this feedback is: one of strengths, improvements, actions, quotes, "
+        "summary, flags, reason, note.",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("mutation", "path", "message"),
+    [rule[1:] for rule in SCHEME_RULES],
+    ids=[rule[0] for rule in SCHEME_RULES],
+)
+def test_each_scheme_rule_says_what_is_wrong_and_where(mutation: Mutation, path: str, message: str) -> None:
+    structure = copy.deepcopy(authoring.blank_scheme())
+    mutation(structure)
+
+    assert scheme.validate_scheme(structure) == [{"path": path, "message": message}]
+
+
+def test_the_blank_scheme_has_no_problems() -> None:
+    assert scheme.validate_scheme(authoring.blank_scheme()) == []
+
+
+def test_a_compiled_problem_is_reported_at_its_block() -> None:
+    assert scheme.scheme_path("sections[2].competencyFields[1].id") == "outline[2]"
+    assert scheme.scheme_path("sections[0].competencies[3].label") == "outline[0].competencies[3]"
+    assert scheme.scheme_path("rating.scale") == "scales"
+    assert scheme.scheme_path("display.total.passAtLeast") == "pass.overall"
+    assert scheme.scheme_path("display.domain.max") == "pass.domain"
+    assert scheme.scheme_path("schemaVersion") == ""
+
+
+def test_points_and_rule_in_the_compiled_form() -> None:
+    wrong_length = copy.deepcopy(VALID)
+    wrong_length["rating"] = {"kind": "rag", "field": "score", "points": [3, 2]}
+    assert validate_structure(wrong_length) == [
+        {"path": "rating.points", "message": "Points must give one number for each scale value."}
+    ]
+    ruled = copy.deepcopy(VALID)
+    ruled["display"] = {
+        "domain": {"rule": {"type": "labels", "atLeast": 1, "of": "count", "value": "A"}},
+        "total": {"requireEveryDomain": True},
+    }
+    assert validate_structure(ruled) == []
+
+
+def test_a_labels_rule_must_name_a_level_of_the_scale() -> None:
+    ruled = copy.deepcopy(VALID)
+    ruled["display"] = {
+        "domain": {"rule": {"type": "labels", "atLeast": 1, "of": "count", "value": "X"}},
+        "total": {},
+    }
+    assert [problem["path"] for problem in validate_structure(ruled)] != []
+
+
+def test_requiring_every_domain_needs_a_domain_line_or_rule() -> None:
+    ruled = copy.deepcopy(VALID)
+    ruled["display"] = {"domain": {}, "total": {"requireEveryDomain": True}}
+    assert validate_structure(ruled) != []

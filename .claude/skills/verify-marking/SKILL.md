@@ -154,3 +154,5 @@ mark on an already-marked attempt.
 - In a fresh worktree `poetry run` builds an empty venv: run the main checkout's venv binaries
   directly, and regenerate `openapi.json` with `PYTHONPATH=. <venv>/bin/python scripts/export_openapi.py`,
   then `npm run platform:types`. A new test file must match an `OWNERS.md` row or the ownership guard fails.
+- **Board-diff specs: run one per call, never in parallel.** Five at once hit `login 429 too_many_requests` (admin-totp) and fail at 0ms; wait a minute and rerun. A spec over 120s must go to the background (macOS has no `timeout`; poll with an until-loop). The harness overwrites `docs/institution-overhaul/verify/board-diff/<name>.*.png` each run: copy as-shipped and stand-in PNGs to suffixed names first.
+- **A rag rating is labelled Green/Amber/Red** (`ratingLabel`); specs and tests that look for "G"/"A"/"R" buttons break. A rubric domain needs one competency and one rating field, so the board's collapsed "Approach" row cannot be removed without dropping an input.

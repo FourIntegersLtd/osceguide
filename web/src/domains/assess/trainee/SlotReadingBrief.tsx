@@ -4,7 +4,11 @@ import Markdown from "react-markdown";
 import { AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { StationBrief } from "@/capabilities/attempt-runner/material/StationBrief";
-import { readSlotBrief, type MySlot, type SlotBrief } from "@/domains/assess/trainee/api";
+import {
+  readSlotBrief,
+  type MySlot,
+  type SlotBrief,
+} from "@/domains/assess/trainee/api";
 
 /**
  * The reading brief for one slot, during the reading phase and after.
@@ -25,7 +29,9 @@ export function SlotReadingBrief({ slot }: { slot: MySlot }) {
           <StationBrief brief={brief} />
         ) : brief.text ? (
           <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
-            <h3 className="text-osce-body font-semibold text-b2b-headline mb-3">Reading brief</h3>
+            <h3 className="text-osce-body font-semibold text-b2b-headline mb-3">
+              Reading brief
+            </h3>
             <div className="max-w-3xl text-sm leading-6 text-ink">
               <Markdown>{brief.text}</Markdown>
             </div>

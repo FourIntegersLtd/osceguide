@@ -55,6 +55,13 @@ Use platform-web's `verify` skill (`web/.claude/skills/verify/`):
 authoring. The test account `walkthrough@example.com` owns `kings` and is
 institution admin of `st-marys`; write data only there, and say so in the run log.
 
+Board vs app: a screen drawn from a board in `docs/institution-overhaul/boards/` is proved against it with
+`cd web && E2E_REUSE_SERVER=1 npx playwright test e2e/assess/board-home.spec.ts` (part of `npm run e2e:assess`).
+`web/e2e/support/board-diff.ts` renders the board (a stand-in `board-runtime.js` replaces the missing
+`support.js`), diffs the same region pixel by pixel (under 0.5%, no cluster over 24px), compares computed styles
+read from the board's own DOM, and writes PNGs and `scores.json` to `docs/institution-overhaul/verify/board-diff/`.
+Add a spec per board with the same helpers. Hide board-only design text on the board side (`.page>.note`, `.page>.meta`, the build-spec `details.fold`, the board's extra tab); set the viewport height to 1700 so element screenshots are not clipped by the app shell; the first run after a long gap may need a minute for the register 429. Data-driven differences (the board ticks earlier steps whatever the data) are listed, not hidden.
+
 Check the request count too: a screen that renders right while looping
 requests is still broken. Then run `node scripts/smoke.mjs` if you touched an `api.ts`.
 
@@ -116,3 +123,24 @@ requests is still broken. Then run `node scripts/smoke.mjs` if you touched an `a
 - A capability with `staffHiddenOn` plus `Capability` using `includeHidden` must not 404 staff (guard in `capabilities/registry.ts`).
 - A trainee lands on `/app/<org>/dashboard`; `AssessDashboard` must render TraineeHome when `run_circuits` is false.
 - An exam circuit is one candidate's sitting. Playwright through a route proxy hangs on SSE: `process.exit` at the end.
+- Walking a new org by hand: org registration is only a request. Provision with `POST /api/v1/platform/organizations` and `.../{slug}/memberships` as the platform admin, then read the invitation token from `outbound_messages.payload` (`select payload from outbound_messages where recipient=...`) and open `/accept-invitation?token=...`. A token works once; a second accept is a 422. The wizard saves a draft on step one, so re-running it hits a 409 (now named as "already used by the draft"); resume from the exam row. Paths are `/app/<org>/team`, `/trainees`, `/authoring/exams`, not `/people`. Revoking yourself works when an invited, unaccepted admin remains: restore with `update memberships set status='active', revoked_at=null`.
+
+## Board-diff specs on a second server
+
+- Run your own web server on a spare port and point the spec at it: `E2E_REUSE_SERVER=1 VERIFY_WEB_URL=http://localhost:3107 npx playwright test e2e/assess/<spec> --reporter=line > $TMPDIR/x.txt 2>&1`. Without `E2E_REUSE_SERVER=1` Playwright refuses a port already in use.
+- Finished sittings with decisions: `seedResultsOrg` in `web/e2e/support/seed-results.ts` (it has no numeric scores, reviews or real station titles; name those as data exceptions).
+- macOS has no `timeout`; `sed -i` needs `''`. A board `.row` with `min-height` is content-box, so match it with `min-h-[<n+29>px]` in the app (border-box).
+- `tsc` also reads other agents' `.next-*` folders: filter with `grep -v '^\.next'`.
+- A board with a wizard (ScheduleSitting): run one state per foreground call (`--grep "<state> matches ScheduleSitting, desktop" --reporter=line`); a full 26-test run is auto-backgrounded after 180s. Fill the step in the app after moving to it, and re-wrap the board region after the last board click (see exam-day.md, Schedule wizard board spec).
+- A decision block scored against a board with the 28px/8px spacing override is dominated by spacing (18%). Score it twice: as shipped (informational) and with `.gap-7`/`.gap-2` overridden to 12px/6px on the app side only (`board-sitting-results.spec.ts`, carries the 10% bar). 14px scored worse than 12px: tune the stand-in by measurement.
+- `seedResultsOrg`: `decide(..., null, "draft")` makes an outcome-less draft. `board-slot-review.spec.ts` is `test.fixme` with its baseline until SlotReview is rebuilt.
+- Start the web server for board specs with `PLATFORM_API_URL=http://127.0.0.1:8002 NEXT_DIST_DIR=.next-3107 npx next dev --port 3107 --turbopack`; it must run in the background (the only background command).
+- Exams board spec: one `--grep` per call on its own port (`NEXT_DIST_DIR=.next-exams npx next dev --port 3104`, run with `VERIFY_WEB_URL=http://localhost:3104 E2E_REUSE_SERVER=1`), `--output $TMPDIR/pw-exams`. Dump text and box rects from both sides to find offsets rather than eyeballing the PNG; the failure PNG in `--output` may show the board, not the app. Tabs 1-5 stay at 10-14% by the spacing exception (see the spec header).
+- Before calling a board rewrite done, run `build-sitting.spec.ts` too (pixels never see an `aria-label`). ScheduleSitting logs an as-shipped score (asserted) and a `STAND-IN` score (board rhythm 18/6/10px, no footer divider, extra people rows hidden; never asserted): `bash` loop one `--grep "<state> matches ScheduleSitting, <viewport>"` per call, ~30s each.
+- Board seeds share one set of helpers (`web/e2e/support/api.ts`: `createOrg`, `register`, `orgPath`; `db.ts`: `q`, `userIdByEmail`). `register` waits out the sign-up 429 itself, so a spec calls `seedPeopleOrg()` once, with no retry wrapper. Board addresses repeat across runs: `last_login_at` is reset when people are added and set only by `haveSignedIn`. Board invoice numbers use four digits, the api six. `assertLocalDatabase` also refuses `?host=`/`?hostaddr=`/`?service=` in `E2E_DATABASE_URL`.
+
+- Board-diff runs share the api with other lanes' Playwright, so `pgrep playwright` never goes quiet: wait on the output file or `board-diff/scores.json`, one case per call (`--grep "<case>, desktop"`).
+
+- Trainee board specs (`board-trainee*.spec.ts`, `board-self-practice.spec.ts`) sign in as Amara and share one cached org from `seed-trainee.ts` (delete `$TMPDIR/board-trainee-org.json` after changing the seed). Hold `**/join-token` or `JoinRoom` replaces the hero. A review "ready" tab needs a `gp_lead_reviews` row for an exam slot; SelfPractice needs published org stations. After a trainee restyle run `build-sitting.spec.ts` and `run-circuit.spec.ts`; ASSESS-2's "Patient Biodata" failure was identical with the trainee files stashed to HEAD (another lane's uncommitted api/`useCountdown` change), so it is not the restyle.
+
+Running several board specs: `$TMPDIR` and `e2e/.auth/world.json` are shared with other agents, so run one spec per call in the background, writing to a unique `$TMPDIR/inst-<spec>.txt` ending in `done exit=N`, and poll that file (foreground calls time out at 120s). Do not pkill playwright: it may be another agent's run.

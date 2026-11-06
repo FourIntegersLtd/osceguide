@@ -1,0 +1,32 @@
+- main:
+  - heading "Candidates" [level=1]
+  - paragraph: Everyone in your organisation. Candidates sit assessments; staff (supervisors and admins) run circuits and mark them.
+  - button "Add candidates"
+  - tablist "People sections":
+    - tab "Candidates 1" [selected]
+    - tab "Staff"
+    - tab "Groups and year groups"
+    - tab "Exam access"
+    - tab "History"
+  - heading "1 candidate across 1 programme" [level=2]
+  - paragraph: 0 stations sat so far.
+  - paragraph: 1 candidate
+  - text: Search candidates
+  - searchbox "Search candidates"
+  - checkbox "Select all on this page"
+  - text: Select all on this page Cass Candidate e2e-hire-candidate-mw3om0c6@example.com
+  - term: Select
+  - definition:
+    - checkbox "Select Cass Candidate"
+  - term: Year group
+  - definition: No group
+  - term: Programme
+  - definition: Simulated Consultation Assessment
+  - term: Sat
+  - definition: "0"
+  - term: Status
+  - definition: Booked
+  - paragraph:
+    - text: Looking for supervisors and admins? They are on the
+    - button "Staff"
+    - text: tab.

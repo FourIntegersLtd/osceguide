@@ -9,6 +9,7 @@ import {
   isAwaitingInvite,
   resendSummary,
   revokableStaff,
+  revokeLead,
   staffRevokeTitle,
 } from "@/domains/assess/team/support";
 import { PlatformError } from "@/foundation/platform-client";
@@ -159,5 +160,12 @@ describe("staff bulk revoke", () => {
       ROLE_CHOICE_HELP,
       "Supervisor: runs circuits and marks the candidates on them. Admin: also manages the team and the organisation's settings, and signs off results.",
     );
+  });
+});
+
+describe("revokeLead", () => {
+  it("warns when you revoke yourself and names anyone else", () => {
+    assert.match(revokeLead("me@x.org", true), /your own access/);
+    assert.match(revokeLead("a@x.org", false), /^a@x\.org will lose access/);
   });
 });

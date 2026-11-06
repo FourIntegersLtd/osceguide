@@ -2,8 +2,7 @@
 
 import { HiOutlineCheckCircle, HiOutlineExclamationTriangle } from "react-icons/hi2";
 import { parsePath, pathText } from "@/capabilities/authoring/rubrics/jsonPath";
-import { placeLabel, type Problem } from "@/capabilities/authoring/rubrics/problems";
-import type { RubricStructure } from "@/capabilities/authoring/rubrics/rubricEdits";
+import { placeLabel, type Problem, type Scheme } from "@/capabilities/authoring/rubrics/schemeModel";
 
 /**
  * Bring the input a problem names into view.
@@ -32,12 +31,12 @@ export function revealPath(path: string): void {
  */
 export function ProblemList({
   problems,
-  structure,
+  scheme,
   checking,
   onPick,
 }: {
   problems: readonly Problem[];
-  structure: RubricStructure;
+  scheme: Scheme;
   checking: boolean;
   onPick: (problem: Problem) => void;
 }) {
@@ -63,7 +62,7 @@ export function ProblemList({
               onClick={() => onPick(problem)}
               className="w-full rounded-osce-sm px-2 py-1 text-left hover:bg-osce-surface"
             >
-              <span className="block text-osce-caption font-medium text-ink-muted">{placeLabel(structure, problem.path)}</span>
+              <span className="block text-osce-caption font-medium text-ink-muted">{placeLabel(scheme, problem.path)}</span>
               <span className="block text-osce-meta text-ink">{problem.message}</span>
             </button>
           </li>

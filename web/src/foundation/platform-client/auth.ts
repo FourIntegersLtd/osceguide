@@ -535,6 +535,23 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
 }
 
 /**
+ * The organisation that sent an invitation, for the accept page's greeting.
+ *
+ * Null for every refusal alike (and for a failed lookup): the page then keeps its plain wording,
+ * and says nothing about why. Route not in the generated types until `openapi.json` is regenerated.
+ */
+export async function invitationOrganisation(token: string): Promise<string | null> {
+  try {
+    const found = await platformRequest<{ organisation_name: string }>(
+      `/api/v1/auth/invitation/${encodeURIComponent(token)}`,
+    );
+    return found.organisation_name;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Ask for a confirmation link to a new sign-in address. The answer is the same
  * whether or not the address is held, so the form cannot probe for accounts.
  * Route not in the generated types until `openapi.json` is regenerated.

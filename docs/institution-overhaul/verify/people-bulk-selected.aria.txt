@@ -1,0 +1,80 @@
+- main:
+  - heading "People" [level=1]
+  - paragraph: Everyone in your organisation. Trainees sit sittings; staff (supervisors and admins) run circuits and mark them.
+  - button "Add people"
+  - tablist "People sections":
+    - tab "Trainees 3" [selected]
+    - tab "Staff"
+    - tab "Groups and year groups"
+    - tab "Exam access"
+    - tab "History"
+  - heading "3 trainees across 1 programme" [level=2]
+  - paragraph: 0 stations sat so far.
+  - paragraph: 3 trainees
+  - text: Search trainees
+  - searchbox "Search trainees"
+  - button "Invite everyone not signed in on this page (2)"
+  - checkbox "Select all on this page"
+  - text: Select all on this page 2 selected
+  - button "Resend invitations"
+  - combobox "Move to year group":
+    - option "Move to year group…" [selected]
+    - option "No year group"
+  - button "Revoke access"
+  - button "Clear"
+  - table:
+    - rowgroup:
+      - row "Select Name Year group Programme Sat Status Actions":
+        - columnheader "Select"
+        - columnheader "Name"
+        - columnheader "Year group"
+        - columnheader "Programme"
+        - columnheader "Sat"
+        - columnheader "Status"
+        - columnheader "Actions"
+    - rowgroup:
+      - row "Select Tess Trainee Tess Trainee e2e-trainee-mw3mzpx5@example.com No group Simulated Consultation Assessment 0 Booked Edit Revoke Delete Anonymise":
+        - cell "Select Tess Trainee":
+          - checkbox "Select Tess Trainee"
+        - cell "Tess Trainee e2e-trainee-mw3mzpx5@example.com"
+        - cell "No group"
+        - cell "Simulated Consultation Assessment"
+        - cell "0"
+        - cell "Booked"
+        - cell "Edit Revoke Delete Anonymise":
+          - button "Edit"
+          - button "Revoke"
+          - button "Delete"
+          - button "Anonymise"
+      - row "Select Bulk One Bulk One ov-bulk-one-mw3on9wv@example.com No group No programme 0 Invited, not accepted Edit Resend invitation Revoke Delete Anonymise":
+        - cell "Select Bulk One":
+          - checkbox "Select Bulk One" [checked]
+        - cell "Bulk One ov-bulk-one-mw3on9wv@example.com"
+        - cell "No group"
+        - cell "No programme"
+        - cell "0"
+        - cell "Invited, not accepted"
+        - cell "Edit Resend invitation Revoke Delete Anonymise":
+          - button "Edit"
+          - button "Resend invitation"
+          - button "Revoke"
+          - button "Delete"
+          - button "Anonymise"
+      - row "Select Bulk Two Bulk Two ov-bulk-two-mw3on9wv@example.com No group No programme 0 Invited, not accepted Edit Resend invitation Revoke Delete Anonymise":
+        - cell "Select Bulk Two":
+          - checkbox "Select Bulk Two" [checked]
+        - cell "Bulk Two ov-bulk-two-mw3on9wv@example.com"
+        - cell "No group"
+        - cell "No programme"
+        - cell "0"
+        - cell "Invited, not accepted"
+        - cell "Edit Resend invitation Revoke Delete Anonymise":
+          - button "Edit"
+          - button "Resend invitation"
+          - button "Revoke"
+          - button "Delete"
+          - button "Anonymise"
+  - paragraph:
+    - text: Looking for supervisors and admins? They are on the
+    - button "Staff"
+    - text: tab.

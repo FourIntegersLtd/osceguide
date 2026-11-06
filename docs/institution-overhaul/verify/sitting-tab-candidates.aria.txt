@@ -1,0 +1,27 @@
+- main:
+  - link "Sittings":
+    - /url: /app/e2e-mw3mzpx5/sittings
+  - paragraph: Exam
+  - heading "OV formal finals" [level=1]
+  - paragraph: No date set
+  - text: Scheduled
+  - button "Edit"
+  - button "Cancel sitting"
+  - link "Results":
+    - /url: /app/e2e-mw3mzpx5/sittings/16a0fd6f-f4d9-43cc-8334-f81bafedda27/results
+  - status:
+    - paragraph: Set a date so candidates know when to come.
+    - button "Set a date"
+  - list "Steps":
+    - listitem: Schedule No date
+    - listitem: Circuits 1 circuit
+    - listitem: Run Not started
+    - listitem: Mark 0 of 1 marked
+    - listitem: Decide 0 of 1 decided
+    - listitem: Release 0 of 1 released
+  - tablist "Sitting sections":
+    - tab "Circuits 1"
+    - tab "Candidates" [selected]
+    - tab "Results so far"
+  - heading "Candidates" [level=2]
+  - text: Tess Trainee signed in Exam – Tess Trainee

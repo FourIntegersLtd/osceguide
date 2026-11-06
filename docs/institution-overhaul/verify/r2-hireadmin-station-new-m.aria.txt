@@ -1,0 +1,24 @@
+- main:
+  - link "Stations":
+    - /url: /app/e2e-hire-mw3om0c6/authoring/stations
+  - heading "New station" [level=1]
+  - text: For exam
+  - combobox "For exam":
+    - option "Select an exam…" [selected]
+    - option "CASC"
+    - option "Orthopaedic interview"
+    - option "PLAB 2"
+    - option "Simulated Consultation Assessment"
+  - paragraph: Only exams that are ready show here. A station can only go into sittings of its own exam.
+  - paragraph: How do you want to start?
+  - radiogroup "How do you want to start?":
+    - radio "From a layout Yours, or one of OSCE Guide’s. Sections are set out for you." [checked]
+    - radio "Import a PDF or Word file We read your document and draft the station from it."
+    - radio "Draft with AI from a brief Pick a layout, then describe the case in a few lines."
+    - radio "Copy from the library Copy one of OSCE Guide’s stations into your organisation."
+    - radio "Start blank Write every section yourself."
+  - paragraph: What happens next
+  - paragraph: "Pick a layout, then write the station in the builder: patient, examiner, marking, photos, preview and versions."
+  - button "Cancel"
+  - paragraph: Choose an exam to continue.
+  - button "Choose a layout" [disabled]

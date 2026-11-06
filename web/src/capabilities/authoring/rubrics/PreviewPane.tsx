@@ -26,7 +26,7 @@ export function PreviewPane({
   emptyMessage: string;
 }) {
   const [view, setView] = useState<PreviewView>("feedback");
-  const items: { id: PreviewView; label: string }[] = [{ id: "feedback", label: "Feedback page" }];
+  const items: { id: PreviewView; label: string }[] = [{ id: "feedback", label: "Candidate feedback" }];
   if (Dashboard) items.push({ id: "dashboard", label: "Dashboard" });
   const shown: PreviewView = Dashboard ? view : "feedback";
   return (
@@ -43,7 +43,7 @@ export function PreviewPane({
       ) : (
         <div className="max-h-[70vh] overflow-y-auto rounded-osce-md border border-osce-border bg-osce-canvas p-3">
           <p className="mb-2 text-osce-caption text-ink-subtle">A made-up result, to show the layout.</p>
-          <RubricFeedback rubric={inputs.rubric} result={inputs.result} narrow />
+          <RubricFeedback rubric={inputs.rubric} result={inputs.result} narrow trainingNote={false} />
         </div>
       )}
     </div>

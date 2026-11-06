@@ -10,6 +10,7 @@ import { examAuthHref, normalizeExamCode } from "@/foundation/session/examCode";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { can, useSession } from "@/foundation/session";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
+import { boardAlert } from "@/foundation/ui/boardKit";
 import AuthShell from "@/capabilities/account/AuthShell";
 import AuthButton from "@/capabilities/account/AuthButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
@@ -176,7 +177,6 @@ export default function Login() {
     return (
       <AuthShell
         variant="split"
-        icon="shield"
         title="Two-step sign-in"
         subtitle={
           challenge.status === "mfa_required"
@@ -234,7 +234,7 @@ export default function Login() {
         </Alert>
       ) : null}
       {showPasswordForm && (
-        <form className="space-y-5" method="post" onSubmit={handleFormSubmission} noValidate>
+        <form className="flex flex-col gap-3.5" method="post" onSubmit={handleFormSubmission} noValidate>
           <AuthFormField
             label="Email"
             name="email"
@@ -257,9 +257,9 @@ export default function Login() {
             error={fieldErrors.password}
           />
           {formError ? (
-            <p role="alert" className="text-center text-osce-meta text-osce-danger">
+            <div role="alert" className={boardAlert("bad")}>
               {formError}
-            </p>
+            </div>
           ) : null}
           <AuthButton isLoading={isSubmitting}>
             {isSubmitting ? "Signing you in…" : "Sign in"}
@@ -269,7 +269,7 @@ export default function Login() {
 
 
       {sso ? (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3.5">
           {/*
            * The organisation's own wording, from the discovery answer.
            *
@@ -309,9 +309,9 @@ export default function Login() {
           </AuthButton>
           {ssoReason ? <Alert tone="info">{ssoReason}</Alert> : null}
           {ssoNotice ? (
-            <p role="alert" className="text-center text-osce-meta text-osce-danger">
+            <div role="alert" className={boardAlert("bad")}>
               {ssoNotice}
-            </p>
+            </div>
           ) : null}
           {!showPasswordForm ? (
             <p className={authFooterLink}>

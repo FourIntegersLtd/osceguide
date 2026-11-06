@@ -1,6 +1,7 @@
 "use client";
 
-import { Badge, EmptyState, b2bTokens } from "@/foundation/ui";
+import { EmptyState } from "@/foundation/ui";
+import { boardChip } from "@/foundation/ui/boardKit";
 import { passWord, ratingLabel } from "@/capabilities/feedback/rubric";
 import type { SlotReviews } from "@/domains/assess/results/api";
 import { finishedReviewers, ratingVariant, reviewersAgreeLine, summaryDomains } from "@/domains/assess/results/reviewForm";
@@ -19,6 +20,8 @@ import { finishedReviewers, ratingVariant, reviewersAgreeLine, summaryDomains } 
  * Drafts are counted and not shown. A half-written judgement of somebody is
  * not something to put in front of the next reviewer.
  */
+const CHIP_TONE = { success: "ok", warning: "warn", danger: "live", neutral: "neutral" } as const;
+
 export function SlotReviewers({
   reviews,
 }: {
@@ -45,46 +48,46 @@ export function SlotReviewers({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-osce-meta text-b2b-mid">
+        <span className="text-assess-meta text-osce-ink-500">
           {completed} completed review{completed === 1 ? "" : "s"}
           {drafts > 0 ? ` · ${drafts} still in progress` : ""}
         </span>
         {summary.overall_rag !== null && summary.overall_rag !== undefined ? (
-          <Badge variant={ratingVariant(rating, summary.overall_rag)}>
+          <span className={boardChip(CHIP_TONE[ratingVariant(rating, summary.overall_rag)])}>
             Agreed: {ratingLabel(rating, summary.overall_rag)}
-          </Badge>
+          </span>
         ) : null}
-        {outcome ? <Badge variant={summary.passed ? "success" : "danger"}>{outcome}</Badge> : null}
+        {outcome ? <span className={boardChip(summary.passed ? "ok" : "live")}>{outcome}</span> : null}
       </div>
 
       {reviewers.length > 0 ? (
-        <ul className="divide-y divide-b2b-border">
+        <ul className="divide-y divide-osce-border-light">
           {reviewers.map((reviewer, index) => (
             <li key={`${index}-${reviewer.name}`} className="flex items-center justify-between gap-3 py-2.5">
-              <span className="min-w-0 truncate text-osce-meta font-medium text-b2b-headline">{reviewer.name}</span>
-              <span className="text-osce-meta text-b2b-mid">{reviewer.rating}</span>
+              <span className="min-w-0 truncate text-assess-meta font-medium text-osce-ink-900">{reviewer.name}</span>
+              <span className="text-assess-meta text-osce-ink-500">{reviewer.rating}</span>
             </li>
           ))}
         </ul>
       ) : null}
-      {agreeLine ? <p className={b2bTokens.b2bGroupedRowSubtitle}>{agreeLine}</p> : null}
+      {agreeLine ? <p className="text-assess-meta text-osce-ink-500">{agreeLine}</p> : null}
 
       {byDomain.length > 0 ? (
-        <ul className="divide-y divide-b2b-border">
+        <ul className="divide-y divide-osce-border-light">
           {byDomain.map((domain) => (
             <li key={domain.id} className="flex items-center justify-between gap-3 py-2.5">
-              <span className="min-w-0 truncate text-osce-meta font-medium text-b2b-headline">
+              <span className="min-w-0 truncate text-assess-meta font-medium text-osce-ink-900">
                 {domain.label}
               </span>
-              <Badge variant={ratingVariant(rating, domain.value)} dot>{ratingLabel(rating, domain.value)}</Badge>
+              <span className={boardChip(CHIP_TONE[ratingVariant(rating, domain.value)])}>{ratingLabel(rating, domain.value)}</span>
             </li>
           ))}
         </ul>
       ) : null}
 
-      <p className={b2bTokens.b2bGroupedRowSubtitle}>
+      <p className="text-assess-meta text-osce-ink-500">
         Where reviewers disagreed, the lower rating is the one shown.
       </p>
     </div>

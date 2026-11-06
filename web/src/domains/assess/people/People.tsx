@@ -1,13 +1,13 @@
 "use client";
 
+import { boardCard, boardTab, boardTabs, boardBtn } from "@/foundation/ui/boardKit";
 import type { AssessWords } from "@/domains/assess/vocabulary";
 import { useState } from "react";
-import { AsyncBoundary, Button, B2CGroupedRow, B2CGroupedSection, B2CHero, B2CPageHeader, LoadMore } from "@/foundation/ui";
+import { AsyncBoundary, LoadMore, b2bTokens as t, cn } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { readOrgDashboard } from "@/domains/assess/dashboard/api";
-import { notJoinedItem } from "@/domains/assess/dashboard/support";
 import { can, useSession } from "@/foundation/session";
-import { TabStrip } from "@/domains/assess/team/chrome";
+import { Note } from "@/domains/assess/ui";
 import { MembersPanel } from "@/domains/assess/team/MembersPanel";
 import { ActivityPanel } from "@/domains/assess/team/ActivityPanel";
 import { TraineesPanel } from "@/domains/assess/roster/TraineesPanel";
@@ -43,41 +43,62 @@ export function People({ orgSlug, initialTab }: { orgSlug: string; initialTab: P
     useRosterData(orgSlug);
   const loadedAll = !hasMore;
 
-  return (
-    <div className="flex flex-col gap-6">
-      <B2CPageHeader
-        title={w.People}
-        subtitle={`Everyone in your organisation. ${w.Trainees} sit ${w.sittings}; staff (supervisors and admins) run circuits and mark them.`}
-        action={
-          canManage ? (
-            <Button
-              themeType="b2b"
-              variant="commit"
-              onClick={() => setAdding(tab === "staff" ? "staff" : "trainees")}
-            >
-              {w.addPeople}
-            </Button>
-          ) : null
-        }
+  const org = useAsync((signal) => readOrgDashboard(orgSlug, signal), [orgSlug]);
+  const orgName = org.data?.name ?? "your organisation";
+
+  if (adding) {
+    return (
+      <AddPeopleSheet
+        orgSlug={orgSlug}
+        initialKind={adding}
+        cohorts={state.data?.cohorts ?? []}
+        canManage={canManage}
+        onTraineesAdded={reloadAfter("trainees", "groups", "cohorts")}
+        onStaffAdded={() => setStaffKey((key) => key + 1)}
+        onClose={() => setAdding(null)}
       />
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 max-w-assess-page flex-col gap-6" data-testid="people-page">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className={t.assessEyebrow}>Organise</div>
+          <h1 className={t.assessTitle}>{w.People}</h1>
+          <p className={cn(t.assessDesc, "m-0")}>
+            {`Everyone in ${orgName}. ${w.Trainees} sit ${w.sittings}; staff (supervisors and admins) run circuits and mark them.`}
+          </p>
+        </div>
+        {canManage ? (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button type="button" className={boardBtn("primary")} onClick={() => setAdding(tab === "staff" ? "staff" : "trainees")}>
+              {w.addPeople}
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       {!canManage ? (
-        <p className="text-osce-caption text-b2b-mid">
-          <span className="font-medium">Supervisor (read only)</span>. Only an owner or admin can
-          add {w.trainees}. Ask one of them to add the people you need on the roster.
-        </p>
+        <Note tone="warn">
+          <b>Supervisor (read only)</b>. Only an owner or admin can add {w.trainees}. Ask one of them to add the people you need on the roster.
+        </Note>
       ) : null}
 
-      {canManage ? <NotJoinedRow orgSlug={orgSlug} w={w} /> : null}
-
-      <TabStrip
-        tabs={tabs.map((entry) =>
-          entry.key === "trainees" ? { ...entry, count: trainees.total } : entry,
-        )}
-        active={tab}
-        onSelect={setTab}
-        label="People sections"
-      />
+      <div className={boardTabs} role="tablist" aria-label="People sections">
+        {tabs.map((entry) => (
+          <button
+            key={entry.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === entry.key}
+            onClick={() => setTab(entry.key)}
+            className={boardTab(tab === entry.key)}
+          >
+            {entry.label}
+          </button>
+        ))}
+      </div>
 
       {tab === "staff" ? (
         <MembersPanel
@@ -96,9 +117,14 @@ export function People({ orgSlug, initialTab }: { orgSlug: string; initialTab: P
               {tab === "trainees" ? (
                 <>
                   {trainees.total > 0 ? (
-                    <B2CHero title={rosterHeadline(trainees.rows, trainees.total, loadedAll, w)}>
-                      {loadedAll ? rosterDetail(trainees.rows) : null}
-                    </B2CHero>
+                    <div className={cn(boardCard, "flex flex-wrap items-center justify-between gap-5 p-6")}>
+                      <div>
+                        <h2 className="m-0 text-assess-hero font-semibold text-osce-ink-900">
+                          {rosterHeadline(trainees.rows, trainees.total, loadedAll, w)}
+                        </h2>
+                        {loadedAll ? <div className={t.assessMeta}>{rosterDetail(trainees.rows)}</div> : null}
+                      </div>
+                    </div>
                   ) : null}
                   <TraineesPanel
                     orgSlug={orgSlug}
@@ -109,9 +135,9 @@ export function People({ orgSlug, initialTab }: { orgSlug: string; initialTab: P
                     onChanged={reloadAfter("trainees", "groups")}
                   />
                   {canManage ? (
-                    <p className="text-osce-caption text-b2b-mid">
+                    <p className={cn(t.assessMeta, "m-0")}>
                       Looking for supervisors and admins? They are on the{" "}
-                      <button type="button" className="underline" onClick={() => setTab("staff")}>
+                      <button type="button" className="text-osce-accent hover:text-osce-accent-hover" onClick={() => setTab("staff")}>
                         Staff
                       </button>{" "}
                       tab.
@@ -149,17 +175,6 @@ export function People({ orgSlug, initialTab }: { orgSlug: string; initialTab: P
         </AsyncBoundary>
       ) : null}
 
-      {adding ? (
-        <AddPeopleSheet
-          orgSlug={orgSlug}
-          initialKind={adding}
-          cohorts={state.data?.cohorts ?? []}
-          canManage={canManage}
-          onTraineesAdded={reloadAfter("trainees", "groups", "cohorts")}
-          onStaffAdded={() => setStaffKey((key) => key + 1)}
-          onClose={() => setAdding(null)}
-        />
-      ) : null}
     </div>
   );
 }
@@ -175,18 +190,6 @@ function rosterHeadline(trainees: Trainee[], total: number, loadedAll: boolean, 
   if (!loadedAll) return people;
   const count = programmeCount(trainees);
   return `${people} across ${count} ${count === 1 ? "programme" : "programmes"}`;
-}
-
-/** The server's count of invited people who have not set a password, from the org counts. */
-function NotJoinedRow({ orgSlug, w }: { orgSlug: string; w: AssessWords }) {
-  const state = useAsync((signal) => readOrgDashboard(orgSlug, signal), [orgSlug]);
-  const item = state.data ? notJoinedItem(state.data.counts.invited_not_joined, w) : null;
-  if (!item) return null;
-  return (
-    <B2CGroupedSection eyebrow="Invitations">
-      <B2CGroupedRow title={item.tag} meta={`${item.title}. ${item.body}`} />
-    </B2CGroupedSection>
-  );
 }
 
 function rosterDetail(trainees: Trainee[]): string {

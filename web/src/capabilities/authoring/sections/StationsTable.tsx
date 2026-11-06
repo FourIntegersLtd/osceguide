@@ -13,16 +13,19 @@ import {
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { usedByCell } from "@/capabilities/authoring/sections/StationUsedBy";
 import { cn } from "@/foundation/ui/cn";
+import { BoardChip, boardMeta } from "@/capabilities/authoring/parts/boardUi";
+import { boardCardClipped, boardRowWide, boardHeadRowWide, boardPadWide, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 
-function stationCreatedAtLabel(station: Station): string {
+function stationCreatedAtLabel(station: Station, short = false): string {
   const raw = station.content?.created_at;
   const iso = typeof raw === "string" ? raw : null;
   if (!iso) return "-";
   const normalized = /[zZ]$/.test(iso) || /[+-]\d{2}/.test(iso) ? iso : `${iso}Z`;
   const date = new Date(normalized);
   if (!Number.isFinite(date.getTime())) return "-";
-  return date.toLocaleString("en-GB");
+  return short ? date.toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" }) : date.toLocaleString("en-GB");
 }
 
 /** Whether an editor has signed a published station into the library. A draft has nothing to approve. */
@@ -61,6 +64,7 @@ export function StationsTable({
   onToggleApproval?: (station: Station) => void;
 }) {
   const canAuthor = useCanAuthor();
+  const org = !useAuthoringChrome().b2c;
   const columns = useMemo(
     () => [
       {
@@ -163,6 +167,77 @@ export function StationsTable({
     ],
     [busy, onArchive, onOpen, onToggleApproval],
   );
+
+  if (org) {
+    const emptyState = search
+      ? { title: "No matching stations", description: "Try a different name, or clear the exam filter." }
+      : { title: "No stations yet", description: canAuthor ? "Create one with New station, from a template or straight from a prompt." : READER_EMPTY_TEXT };
+    if (stations.length === 0) {
+      return (
+        <div className={boardPadWide}>
+          <h2 className="m-0 text-osce-body font-semibold !leading-[normal] text-ink">{emptyState.title}</h2>
+          <p className={`m-0 ${boardMeta}`}>{emptyState.description}</p>
+        </div>
+      );
+    }
+    return (
+      <div className={boardCardClipped}>
+        <div className={boardHeadRowWide}>
+          <span className="flex-[1_1_200px]">Station name</span>
+          <span className="w-20">Exam</span>
+          <span className="w-[200px]">Status</span>
+          <span className="w-[90px]">Used by</span>
+          <span className="w-[130px]">Created at</span>
+          <span className="w-[150px]">Actions</span>
+        </div>
+        {stations.map((station) => (
+          <div key={station.id} data-row className={boardRowWide}>
+            <span className="flex-[1_1_200px]">
+              <button type="button" onClick={() => onOpen(station)} className="p-0 text-left text-osce-accent hover:text-osce-accent-hover">
+                {station.title}
+              </button>
+            </span>
+            <span className="w-20">
+              <BoardChip tone="info">{station.exam_code.toUpperCase()}</BoardChip>
+            </span>
+            <span className="w-[200px]">
+              <StatusBadge status={station.status} />
+              {station.status === "published" ? (
+                <>
+                  {" "}
+                  <BoardChip tone={station.approved ? "ok" : "warn"}>{station.approved ? "Approved" : "Awaiting approval"}</BoardChip>
+                </>
+              ) : null}
+            </span>
+            <span className="w-[90px]">{usedByCell(station.used_by_count)}</span>
+            <span className={`w-[130px] ${boardMeta}`}>{stationCreatedAtLabel(station, true)}</span>
+            <span className="w-[150px]">
+              {onToggleApproval && station.status === "published" ? (
+                <button type="button" disabled={busy !== null} onClick={() => onToggleApproval(station)} className={boardButtonSmall}>
+                  {station.approved ? "Withdraw approval" : "Approve"}
+                </button>
+              ) : null}
+              {station.status === "published" && canAuthor ? (
+                <button type="button" disabled={busy !== null} onClick={() => onArchive(station)} className={boardButtonSmall}>
+                  {busy === `archive:${station.id}` ? "Archiving…" : "Archive"}
+                </button>
+              ) : null}
+              <button type="button" onClick={() => onOpen(station)} className={boardButtonSmall}>
+                Open versions ›
+              </button>
+            </span>
+          </div>
+        ))}
+        {more.hasMore ? (
+          <div className={cn(boardRowWide, "justify-center")}>
+            <button type="button" disabled={more.loadingMore} onClick={more.loadMore} className={boardButtonSmall}>
+              {more.loadingMore ? "Loading…" : "Load more"}
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <Table<Station>

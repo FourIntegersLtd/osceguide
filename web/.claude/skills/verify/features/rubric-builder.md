@@ -2,7 +2,8 @@
 
 ## Sub-features
 - Start chooser: blank, a platform rubric, or (in an org) one of its own; server-side search; the title is set here only.
-- Builder tabs Structure / Rating / Results & dashboard / Marking, each with a problem count.
+- Builder tabs Domains / Scale / Pass rule / Feedback / Advanced / Trial mark / Versions (`?tab=`), each with a problem count; Back/Next footer.
+- Domains tab: dnd outline of domains and competencies, Add menu, row menu, detail panel (inline at xl, modal below).
 - Problems: every backend `{path, message}` pinned under its input (`[data-path]`), plus the list in the aside;
   Publish disabled with the reason in the status bar.
 - Preview (Feedback page / Dashboard) from the backend's sample result; Trial mark (pasted transcript or attempt id) over SSE.
@@ -18,9 +19,8 @@ await open(run, "/staff/authoring/rubrics/new", { ready: (p) => p.getByRole("rad
 await page.getByLabel("Title").fill("Verify SCA copy");
 await page.getByRole("radio").filter({ hasText: "Simulated Consultation" }).first().click();
 await page.getByRole("button", { name: "Copy and edit" }).click();          // "Start blank" for the blank card
-await page.getByRole("tablist", { name: "Rubric editor" }).waitFor();
-await page.getByRole("textbox", { name: "Id", exact: true }).first().fill(""); // pinned: "An id uses lower-case letters…"
-await page.getByRole("tab", { name: "Dashboard", exact: true }).click();     // exact: "Results & dashboard" also matches
+await page.getByRole("tablist", { name: "Marking scheme" }).waitFor();
+await page.getByRole("tab", { name: /Trial mark$/ }).click();               // tab names may carry a problem count: anchor with $
 await page.getByLabel("Transcript").fill("Doctor: …\nPatient: …");
 await page.getByRole("button", { name: "Trial mark" }).click();
 await page.locator("text=/^(Marked|Failed) ·/").first().waitFor({ timeout: 240_000 }); // ~45 s, real model
@@ -32,7 +32,8 @@ The org run needs an org: `review-slot-fixture.sql` (`verify-r3`), removed by `r
 `docker exec -i platform-api-postgres-1 psql -U postgres -d osce_platform < file`.
 
 ## Gotchas
-- **Full-page screenshots are ~25k px tall** (every competency is expanded). Use viewport shots and scroll.
+- **Rows are collapsed**: a competency is edited in the detail panel after clicking its row. Viewport shots are enough.
+- **Publish is a ConfirmModal** and the "Published" notice lives in `?published=1`, so it survives the reload.
 - **Publish stays disabled after a valid edit until it is saved** ("Save your changes to publish."): the backend
   publishes the saved version. Restoring a field to its saved value makes the draft clean again.
 - **A trial marks the saved version**, so the builder saves a dirty draft first; it is rate-limited (20 an hour).

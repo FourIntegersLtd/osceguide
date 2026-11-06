@@ -4,7 +4,7 @@ import type { RailStep } from "@/foundation/ui";
 
 export type ExamStepId = "scheme" | "publish";
 
-type ExamState = { status: string; rubric_version_id?: string | null };
+type ExamState = { status: string; rubric_version_id?: string | null; owner_kind?: string | null };
 
 /** Picking a marking scheme, then publishing. "Used by a programme" is not known here, so it is not a step. */
 export function examSteps(exam: ExamState): RailStep<ExamStepId>[] {
@@ -29,12 +29,14 @@ export function examSteps(exam: ExamState): RailStep<ExamStepId>[] {
 
 type ProgrammeState = { status: string } | null | undefined;
 
-export type ExamChip = "Draft" | "Needs a marking scheme" | "Ready to schedule" | "Not available";
+export type ExamChip = "Draft" | "Needs a marking scheme" | "Ready to schedule" | "Not available" | "Not adopted yet";
 
 /** The exam, its marking scheme and its programme joined into one status. */
 export function examChip(exam: ExamState, programme: ProgrammeState): ExamChip {
   if (exam.status === "draft") return exam.rubric_version_id ? "Draft" : "Needs a marking scheme";
   if (exam.status === "published" && programme?.status === "active") return "Ready to schedule";
+  // A platform exam this organisation has not taken up has no programme of its own: not "unavailable".
+  if (exam.owner_kind === "platform" && !programme) return "Not adopted yet";
   return "Not available";
 }
 

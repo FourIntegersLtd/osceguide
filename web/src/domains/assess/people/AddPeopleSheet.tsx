@@ -1,19 +1,25 @@
 "use client";
 
+import { boardTab, boardTabs, boardBtn, boardPadWide } from "@/foundation/ui/boardKit";
 import { useState } from "react";
-import { Modal, ModalContent, ModalSecondaryButton, ModalFooterActions, ModalTitle } from "@/foundation/ui";
-import { TabStrip } from "@/domains/assess/team/chrome";
+import { b2bTokens as t, cn } from "@/foundation/ui";
+import { BulkImportDialog } from "@/domains/assess/roster/BulkImportDialog";
 import { AddTraineePanel } from "@/domains/assess/roster/AddTraineePanel";
+import { BulkInviteDialog } from "@/domains/assess/team/BulkInviteDialog";
 import { InvitePanel } from "@/domains/assess/team/InvitePanel";
 import type { Cohort } from "@/domains/assess/roster/api";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { h2 } from "@/domains/assess/ui";
 
 export type AddKind = "trainees" | "staff";
 
+type Mode = "trainee" | "trainee-sheet" | "staff" | "staff-sheet";
+
 /**
- * The one "Add people" sheet: trainees (one person or a spreadsheet) or staff
- * (an invitation or a spreadsheet). It wraps the two existing panels, so their
- * rules (duplicates reported, never fatal) stay where they were.
+ * The one "Add people" page (AddPeople.dc.html): a back link, a title and four states: one trainee,
+ * a trainee spreadsheet, a staff invitation, a staff spreadsheet. It wraps the two existing panels, so
+ * their rules (duplicates reported, never fatal) stay where they were. The spreadsheet states are the
+ * existing import dialogs, opened over a card that names them.
  */
 export function AddPeopleSheet({
   orgSlug,
@@ -33,40 +39,113 @@ export function AddPeopleSheet({
   onClose: () => void;
 }) {
   const w = useAssessWords();
-  const [kind, setKind] = useState<AddKind>(initialKind);
+  const [mode, setMode] = useState<Mode>(
+    initialKind === "staff" ? "staff" : "trainee",
+  );
+  const modes: { key: Mode; label: string }[] = [
+    { key: "trainee", label: `${w.Trainee}: one person` },
+    { key: "trainee-sheet", label: `${w.Trainees}: spreadsheet` },
+    { key: "staff", label: "Staff: invite" },
+    { key: "staff-sheet", label: "Staff: spreadsheet" },
+  ];
+  const sheet = mode === "trainee-sheet" || mode === "staff-sheet";
+  const back = mode === "trainee-sheet" ? "trainee" : "staff";
+
   return (
-    <Modal onClose={onClose} title={w.addPeople} width="48rem">
-      <ModalContent>
-        <ModalTitle>{w.addPeople}</ModalTitle>
-        <p className="mt-1 text-osce-body text-b2b-mid">
-          Add the {w.trainees} who will sit your exams or training sessions, or invite staff to run
-          and mark them.
-        </p>
-        <div className="mt-4 flex flex-col gap-4">
-          <TabStrip
-            tabs={[
-              { key: "trainees" as const, label: w.Trainees },
-              { key: "staff" as const, label: "Staff" },
-            ]}
-            active={kind}
-            onSelect={setKind}
-            label="Who to add"
-          />
-          {kind === "trainees" ? (
-            <AddTraineePanel
-              orgSlug={orgSlug}
-              cohorts={cohorts}
-              canManage={canManage}
-              onAdded={onTraineesAdded}
-            />
-          ) : (
-            <InvitePanel orgSlug={orgSlug} canManage={canManage} onInvited={onStaffAdded} />
-          )}
+    <div
+      data-testid="addpeople-page"
+      className="flex min-w-0 max-w-assess-page flex-col gap-6"
+    >
+      <div>
+        <button
+          type="button"
+          className="text-assess-label text-osce-accent hover:text-osce-accent-hover"
+          onClick={onClose}
+        >
+          ‹ People
+        </button>
+      </div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className={t.assessEyebrow}>Organise</div>
+          <h1 className={t.assessTitle}>{w.addPeople}</h1>
+          <p className={t.assessDesc}>
+            Add the {w.trainees} who will sit your exams or training sessions,
+            or invite staff to run and mark them.
+          </p>
         </div>
-        <ModalFooterActions className="mt-6">
-          <ModalSecondaryButton onClick={onClose}>Done</ModalSecondaryButton>
-        </ModalFooterActions>
-      </ModalContent>
-    </Modal>
+        {/* The board's (empty) actions slot: it wraps under the text on a narrow screen, as drawn. */}
+        <div aria-hidden className="flex flex-wrap items-center gap-2.5" />
+      </div>
+      <div
+        className={boardTabs}
+        role="tablist"
+        aria-label="Who to add"
+      >
+        {modes.map((entry) => (
+          <button
+            key={entry.key}
+            type="button"
+            role="tab"
+            aria-selected={mode === entry.key}
+            onClick={() => setMode(entry.key)}
+            className={boardTab(mode === entry.key)}
+          >
+            {entry.label}
+          </button>
+        ))}
+      </div>
+      {mode === "trainee" ? (
+        <AddTraineePanel
+          orgSlug={orgSlug}
+          cohorts={cohorts}
+          canManage={canManage}
+          onAdded={onTraineesAdded}
+        />
+      ) : null}
+      {mode === "staff" ? (
+        <InvitePanel
+          orgSlug={orgSlug}
+          canManage={canManage}
+          onInvited={onStaffAdded}
+        />
+      ) : null}
+      {sheet ? (
+        <div className={boardPadWide}>
+          <h2 className={h2}>
+            {mode === "trainee-sheet" ? `Add ${w.trainees} from a spreadsheet` : "Add staff from a spreadsheet"}
+          </h2>
+          <p className={cn(t.assessMeta, "m-0")}>
+            {mode === "trainee-sheet"
+              ? `One spreadsheet of ${w.trainees}, saved as .csv. The first row must name the columns.`
+              : "One spreadsheet of supervisors and admins, saved as .csv. The first row must name the columns."}
+          </p>
+          <button
+            type="button"
+            className={cn(boardBtn(), "self-start")}
+            onClick={() => setMode(back)}
+          >
+            Back to adding one person
+          </button>
+        </div>
+      ) : null}
+      {mode === "trainee-sheet" ? (
+        <BulkImportDialog
+          orgSlug={orgSlug}
+          open
+          cohorts={cohorts}
+          onClose={() => setMode("trainee")}
+          onImported={onTraineesAdded}
+        />
+      ) : null}
+      {mode === "staff-sheet" ? (
+        <BulkInviteDialog
+          orgSlug={orgSlug}
+          open
+          onClose={() => setMode("staff")}
+          onImported={onStaffAdded}
+        />
+      ) : null}
+    </div>
   );
 }

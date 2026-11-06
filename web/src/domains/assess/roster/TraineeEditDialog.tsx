@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
-import { Dialog } from "@/domains/assess/team/chrome";
+import { Note, PeopleDialog as Dialog, fields, hint } from "@/domains/assess/ui";
 import type { Trainee } from "@/domains/assess/api";
 import { updateTrainee, type Cohort } from "@/domains/assess/roster/api";
+import { boardInput, boardLabel } from "@/foundation/ui/boardKit";
 
 /**
  * Correct a roster entry — the old `TraineeMembersEditModal`.
@@ -107,59 +107,24 @@ function Form({
       onCommit={() => void commit()}
     >
       <div>
-        <p className="text-osce-caption font-semibold text-b2b-mid">Member</p>
-        <p className="mt-1 text-osce-body font-medium text-b2b-headline">{trainee.email}</p>
+        <label htmlFor="assess-trainee-edit-email" className={boardLabel}>Member</label>
+        <input id="assess-trainee-edit-email" readOnly value={trainee.email} className={boardInput} />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-panel border border-b2b-border bg-b2b-cream/60 p-4 sm:grid-cols-2">
+      <div className={fields}>
         <div>
-          <label
-            htmlFor="assess-trainee-edit-first"
-            className="block text-osce-caption font-medium text-b2b-graphite"
-          >
-            First name
-          </label>
-          <input
-            id="assess-trainee-edit-first"
-            value={firstName}
-            onChange={(event) => setFirstName(event.target.value)}
-            className={`mt-1 ${b2bTokens.b2bInputBase}`}
-            autoComplete="off"
-          />
+          <label htmlFor="assess-trainee-edit-first" className={boardLabel}>First name</label>
+          <input id="assess-trainee-edit-first" value={firstName} onChange={(event) => setFirstName(event.target.value)} className={boardInput} autoComplete="off" />
         </div>
         <div>
-          <label
-            htmlFor="assess-trainee-edit-last"
-            className="block text-osce-caption font-medium text-b2b-graphite"
-          >
-            Last name
-          </label>
-          <input
-            id="assess-trainee-edit-last"
-            value={lastName}
-            onChange={(event) => setLastName(event.target.value)}
-            className={`mt-1 ${b2bTokens.b2bInputBase}`}
-            autoComplete="off"
-          />
+          <label htmlFor="assess-trainee-edit-last" className={boardLabel}>Last name</label>
+          <input id="assess-trainee-edit-last" value={lastName} onChange={(event) => setLastName(event.target.value)} className={boardInput} autoComplete="off" />
         </div>
       </div>
 
       <div>
-        <label
-          htmlFor="assess-trainee-edit-cohort"
-          className="block text-osce-caption font-medium text-b2b-graphite"
-        >
-          Cohort
-        </label>
-        <p className="mt-0.5 text-osce-caption text-b2b-mid">
-          An intake. Choose an existing one; year groups are created under Groups and year groups.
-        </p>
-        <select
-          id="assess-trainee-edit-cohort"
-          value={cohortId}
-          onChange={(event) => setCohortId(event.target.value)}
-          className={`mt-1 ${b2bTokens.b2bInputBase}`}
-        >
+        <label htmlFor="assess-trainee-edit-cohort" className={boardLabel}>Year group</label>
+        <select id="assess-trainee-edit-cohort" value={cohortId} onChange={(event) => setCohortId(event.target.value)} className={boardInput}>
           <option value="">No year group</option>
           {cohorts.map((cohort) => (
             <option key={cohort.id} value={cohort.id}>
@@ -167,11 +132,9 @@ function Form({
             </option>
           ))}
         </select>
+        <div className={hint}>An intake. Choose an existing one; year groups are created under Groups and year groups.</div>
         {cohorts.length === 0 ? (
-          <Alert tone="info" className="mt-2">
-            No cohorts in the organisation yet. Create one under Groups, then
-            come back to set it here.
-          </Alert>
+          <Note tone="info">No year groups in the organisation yet. Create one under Groups, then come back to set it here.</Note>
         ) : null}
       </div>
     </Dialog>

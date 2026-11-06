@@ -1,0 +1,24 @@
+- main:
+  - paragraph: E2E Institute mw3mzpx5
+  - heading "Hello, Tess." [level=1]
+  - text: Live
+  - region "Live consultation":
+    - heading "Live now" [level=2]
+    - paragraph: Today
+    - heading "Your station is open" [level=2]
+    - paragraph: OV formal finals · Exam – Tess Trainee. Go in and read the brief. The patient joins when the reading time ends.
+    - alert: Your browser is blocking the microphone. Allow it in the address bar, then try again. The patient cannot hear you until it works.
+    - text: Reading 2:48 YP
+    - paragraph: Your patient
+    - paragraph: Connecting to the patient…
+    - button "Leave the room"
+    - text: Live
+  - region "Your sittings":
+    - heading "Your sittings" [level=2]
+    - link "OV formal finals Examination · 0 of 1 stations completed · Your station is open · 0/1 Open now":
+      - /url: /app/e2e-mw3mzpx5/trainee/sittings/16a0fd6f-f4d9-43cc-8334-f81bafedda27
+    - link "Circuit run Examination · 0 of 1 stations completed · 06/11/2026, 14:24:23 · Not started · 0/1":
+      - /url: /app/e2e-mw3mzpx5/trainee/sittings/c41520c8-9fb3-4b46-8d8c-8036a220db80
+  - heading "Practise" [level=2]
+  - link "Self practice From your organisation":
+    - /url: /app/e2e-mw3mzpx5/trainee/practice

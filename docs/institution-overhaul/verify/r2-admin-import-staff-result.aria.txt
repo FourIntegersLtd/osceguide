@@ -1,0 +1,18 @@
+- dialog "Import staff":
+  - heading "Import staff" [level=2]
+  - button "Close dialog"
+  - heading "Import staff" [level=3]
+  - paragraph: One spreadsheet of supervisors and admins, saved as .csv. The first row must name the columns.
+  - paragraph: Required columns
+  - list:
+    - listitem: email. Their email address
+    - listitem: role. Either supervisor or admin
+  - paragraph: Example
+  - text: email,role supervisor@hospital.nhs.uk,supervisor admin@hospital.nhs.uk,admin
+  - button "file upload"
+  - paragraph: staff.csv
+  - paragraph: 0.1 KB
+  - status: 2 added, 0 skipped.
+  - paragraph: 2 people were emailed a link to choose a password. They cannot sign in until they use it.
+  - button "Cancel"
+  - button "Done"

@@ -104,6 +104,33 @@ async def test_counts_use_each_candidates_latest_decision(
     )
 
 
+async def test_sat_counts_only_candidates_who_started_a_station(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import update
+
+    from app.features.sittings.models import Slot
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings", mode="exam")
+    stations = [await published_station(client, admin, "kings", "S0")]
+    users = [await a_trainee(db_session, email) for email in ("sat@example.com", "absent@example.com")]
+    for user in users:
+        await a_circuit(
+            client,
+            admin,
+            "kings",
+            sitting_id=sitting["id"],
+            trainee_ids=[str(user)],
+            station_version_ids=stations,
+        )
+    await db_session.execute(update(Slot).where(Slot.trainee_id == users[0]).values(status="completed"))
+    await db_session.commit()
+
+    [row] = (await client.get("/api/v1/orgs/kings/results", headers=bearer(admin))).json()["rows"]
+    assert (row["candidates"], row["sat"]) == (2, 1)
+
+
 async def test_other_orgs_and_cancelled_sittings_are_absent(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]

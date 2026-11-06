@@ -1,0 +1,182 @@
+- main:
+  - heading "Mark this station" [level=1]
+  - paragraph: The automatic marking, your marks and the admin's review.
+  - status:
+    - paragraph: Rate each area, then submit your marks.
+  - list "Steps":
+    - listitem: Automatic marking Not taken
+    - listitem: Your marks Not started
+  - button "Your marks Draft" [expanded]
+  - list:
+    - listitem:
+      - button "Global skills Required" [expanded]
+      - group "Global skills":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Structures consultation
+      - group "Structures consultation":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Avoids repetition
+      - group "Avoids repetition":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Progresses through tasks
+      - group "Progresses through tasks":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Recognises ethical implications
+      - group "Recognises ethical implications":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Finishes data gathering
+      - group "Finishes data gathering":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Uses clear language
+      - group "Uses clear language":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Remains responsive to patient
+      - group "Remains responsive to patient":
+        - button "G"
+        - button "A"
+        - button "R"
+    - listitem:
+      - button "Tasks Required" [expanded]
+      - group "Tasks":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Opens consultation
+      - group "Opens consultation":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Discovers psychosocial context
+      - group "Discovers psychosocial context":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Identifies cues
+      - group "Identifies cues":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Discovers ice
+      - group "Discovers ice":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Interprets tests
+      - group "Interprets tests":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Generates hypotheses
+      - group "Generates hypotheses":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Rules in out disease
+      - group "Rules in out disease":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Reaches diagnosis
+      - group "Reaches diagnosis":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Offers management plan
+      - group "Offers management plan":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Manages comorbidity
+      - group "Manages comorbidity":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Provides safety net
+      - group "Provides safety net":
+        - button "G"
+        - button "A"
+        - button "R"
+    - listitem:
+      - button "Relating to others Required" [expanded]
+      - group "Relating to others":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Clarifies cues
+      - group "Clarifies cues":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Listens curiosity
+      - group "Listens curiosity":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Generates rapport
+      - group "Generates rapport":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Uses open questions
+      - group "Uses open questions":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Uses closed questions
+      - group "Uses closed questions":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Explains rationale
+      - group "Explains rationale":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Verbalises diagnosis
+      - group "Verbalises diagnosis":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Shares ice plan
+      - group "Shares ice plan":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Negotiates psychosocial plan
+      - group "Negotiates psychosocial plan":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Shares risks
+      - group "Shares risks":
+        - button "G"
+        - button "A"
+        - button "R"
+      - text: Supports decision making
+      - group "Supports decision making":
+        - button "G"
+        - button "A"
+        - button "R"
+  - paragraph: "Still to rate before completing: Global skills, Tasks, Relating to others."
+  - text: Notes
+  - textbox "Notes":
+    - /placeholder: What you saw, in the words you would say to them.
+  - button "Save draft"
+  - button "Submit review"
+  - heading "What the reviewers agreed" [level=2]
+  - paragraph: Nobody has finished a review of this station.
+  - paragraph: Nobody has taken this station, so there is no automatic marking.

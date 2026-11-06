@@ -30,6 +30,8 @@ interface ModalPropType {
   closeOnBackdrop?: boolean;
   /** Browser Back closes instead of leaving the page (default true when onClose is set). */
   closeOnBack?: boolean;
+  /** `board` is the institution dialog (see boardModalPanel); the default is the product modal. */
+  variant?: "default" | "board";
   className?: string;
   panelClassName?: string;
   closeBarClassName?: string;
@@ -47,7 +49,13 @@ export const b2cModalOverlayBackdrop = "osce-modal-scrim absolute inset-0";
 
 /** Bottom sheet on mobile; centered card on md+. */
 export const b2cModalPanel =
-  "relative z-[100] mx-2 flex w-full max-h-[90dvh] flex-col overflow-hidden rounded-t-osce-2xl border border-b2c-border bg-osce-surface shadow-[0_24px_64px_rgba(16,24,40,0.18)] md:mx-auto md:max-h-[min(90dvh,calc(100dvh-2rem))] md:rounded-osce-2xl focus:outline-none";
+  "relative z-[100] mx-2 flex w-full max-h-[90dvh] flex-col overflow-hidden rounded-t-osce-2xl border border-b2c-border bg-osce-surface shadow-osce-modal md:mx-auto md:max-h-[min(90dvh,calc(100dvh-2rem))] md:rounded-osce-2xl focus:outline-none";
+
+/** The institution boards' `.dlg`: 14px radius, no border, 24px padding. */
+export const boardModalPanel =
+  "relative z-[100] flex w-full max-h-[90dvh] flex-col overflow-hidden rounded-board-lg bg-osce-surface shadow-board-dialog focus:outline-none md:max-h-[min(90dvh,calc(100dvh-2rem))]";
+const boardModalBody =
+  "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-6 pb-6 pt-[25px] [-webkit-overflow-scrolling:touch]";
 
 export const b2cModalPanelBody =
   "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] [-webkit-overflow-scrolling:touch] sm:p-6";
@@ -68,6 +76,7 @@ const Modal = ({
   closeOnEscape = true,
   closeOnBackdrop = true,
   closeOnBack = true,
+  variant = "default",
   className = "",
   panelClassName = "",
   closeBarClassName = "",
@@ -95,12 +104,13 @@ const Modal = ({
   const resolvedWidth = resolveModalWidth(width);
   const fitContent = isFitContentHeight(height);
   const showClose = Boolean(onClose) && !hideCloseButton;
+  const board = variant === "board";
   const titleId = labelledBy ?? (title ? generatedTitleId : undefined);
 
   if (!mounted) return null;
 
   return createPortal(
-    <div className={cn(b2cModalOverlayRoot, className)}>
+    <div className={cn(b2cModalOverlayRoot, board && "items-center p-4", className)}>
       <div
         className={b2cModalOverlayBackdrop}
         aria-hidden="true"
@@ -116,7 +126,7 @@ const Modal = ({
         aria-labelledby={titleId}
         aria-describedby={describedBy}
         className={cn(
-          b2cModalPanel,
+          board ? boardModalPanel : b2cModalPanel,
           "w-[min(100%,calc(100vw-1rem))] md:w-[var(--modal-width)] md:max-w-[min(var(--modal-width),calc(100vw-2rem))]",
           panelClassName,
         )}
@@ -148,7 +158,7 @@ const Modal = ({
           </div>
         ) : null}
         {/* The close bar already holds the top edge; full body padding under it left a blank band. */}
-        <div className={cn(b2cModalPanelBody, showClose && "pt-2 sm:pt-2", bodyClassName)}>{children}</div>
+        <div className={cn(board ? boardModalBody : b2cModalPanelBody, showClose && "pt-2 sm:pt-2", bodyClassName)}>{children}</div>
       </div>
     </div>,
     document.body,

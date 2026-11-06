@@ -1,16 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import {
-  HiArrowPathRoundedSquare,
-  HiChevronDoubleRight,
-  HiOutlineClock,
-  HiPause,
-  HiPlay,
-  HiStop,
-} from "react-icons/hi2";
-import { Alert, Button } from "@/foundation/ui";
+import { Alert, Button, ButtonLink } from "@/foundation/ui";
 import { can, useSession } from "@/foundation/session";
+import { assessMeta } from "@/foundation/ui/b2bTokens";
 import { overrides, runControls, setAutoAdvance } from "@/domains/assess/sessions/api";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import { OverrideDialog, type OverrideRequest } from "@/domains/assess/sessions/OverrideDialog";
@@ -43,6 +36,7 @@ export function SupervisorControls({
   onDismissFailure: () => void;
 }) {
   const { session } = useSession();
+  const canMark = can(session, "sign_off_results");
   const [request, setRequest] = useState<OverrideRequest | null>(null);
   // A new dialog must not open on the last action's failure.
   const openRequest = (next: OverrideRequest) => {
@@ -64,17 +58,21 @@ export function SupervisorControls({
 
   if (ended) {
     return (
-      <div className="rounded-panel border border-b2b-border bg-canvas/40 px-4 py-3">
-        <p className="text-osce-body text-b2b-mid">
-          This circuit has ended.
-          {can(session, "sign_off_results") ? " Its stations can still be marked and its record read." : ""}
-        </p>
-      </div>
+      <>
+        {canMark ? (
+          <>
+            <p className={assessMeta}>Its stations can still be marked and its record read.</p>
+            <ButtonLink href="#circuit-review" themeType="b2b" variant="secondary" className="self-start">
+              Mark a finished station
+            </ButtonLink>
+          </>
+        ) : null}
+      </>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3.5">
       {failure ? (
         <Alert tone="danger">
           <span className="flex flex-wrap items-center justify-between gap-2">
@@ -90,7 +88,13 @@ export function SupervisorControls({
         </Alert>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
+      {started ? null : (
+        <p className={assessMeta}>
+          Starting begins reading time for station 1. Every override asks for a reason, kept with the record.
+        </p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2.5">
         {!started ? (
           <Button
             themeType="b2b"
@@ -99,7 +103,7 @@ export function SupervisorControls({
             disabled={working}
             onClick={() => run("start", () => runControls.start(orgSlug, circuitId))}
           >
-            <HiPlay className="h-4 w-4 shrink-0" aria-hidden /> Start circuit
+            Start circuit
           </Button>
         ) : (
           <>
@@ -110,7 +114,7 @@ export function SupervisorControls({
               disabled={working}
               onClick={() => run("advance", () => runControls.advance(orgSlug, circuitId))}
             >
-              <HiChevronDoubleRight className="h-4 w-4 shrink-0" aria-hidden /> Next station
+              Next station
             </Button>
 
             <Button
@@ -121,11 +125,6 @@ export function SupervisorControls({
                 openRequest(circuit.paused ? resumeRequest(orgSlug, circuitId) : pauseRequest(orgSlug, circuitId))
               }
             >
-              {circuit.paused ? (
-                <HiPlay className="h-4 w-4 shrink-0" aria-hidden />
-              ) : (
-                <HiPause className="h-4 w-4 shrink-0" aria-hidden />
-              )}
               {circuit.paused ? "Resume" : "Pause"}
             </Button>
 
@@ -135,7 +134,7 @@ export function SupervisorControls({
               disabled={working}
               onClick={() => openRequest(extendRequest(orgSlug, circuitId))}
             >
-              <HiOutlineClock className="h-4 w-4 shrink-0" aria-hidden /> Extend the clock
+              Extend the clock
             </Button>
 
             <Button
@@ -152,8 +151,7 @@ export function SupervisorControls({
               variant="secondary"
               disabled={working}
               onClick={() => openRequest(resendRequest(orgSlug, circuitId))}
-            >
-              <HiArrowPathRoundedSquare className="h-4 w-4 shrink-0" aria-hidden /> Resend the
+            >Resend the
               patient
             </Button>
 
@@ -162,22 +160,14 @@ export function SupervisorControls({
               variant="danger"
               disabled={working}
               onClick={() => openRequest(endRequest(orgSlug, circuitId))}
-            >
-              <HiStop className="h-4 w-4 shrink-0" aria-hidden /> End circuit
+            >End circuit
             </Button>
           </>
         )}
       </div>
 
-      {started ? null : (
-        <p className="text-osce-caption text-b2b-mid">
-          Not started yet? One button: Start circuit. Every override asks for a reason, kept with the record.
-          {" "}Starting begins reading time for station 1.
-        </p>
-      )}
-
       {started ? (
-        <label className="flex items-center gap-2 text-osce-caption text-b2b-mid">
+        <label className="flex min-h-8 items-start gap-2.5 text-assess-label text-osce-ink-900">
           <input
             type="checkbox"
             checked={circuit.auto_advance}
@@ -187,7 +177,7 @@ export function SupervisorControls({
                 setAutoAdvance(orgSlug, circuitId, event.target.checked),
               )
             }
-            className="h-4 w-4 rounded border-b2b-border text-b2b-accent"
+            className="mt-0.5 h-[18px] w-[18px]"
           />
           Moves to the next station automatically when time is up. When off, the circuit waits for you before each new station.
         </label>

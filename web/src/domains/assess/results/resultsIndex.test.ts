@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { attentionItems, filterResultsRows } from "@/domains/assess/results/support";
+import { attentionItems, filterResultsRows, undecided } from "@/domains/assess/results/support";
 
 const row = (
   name: string,
@@ -61,5 +61,18 @@ describe("filterResultsRows", () => {
   });
   it("shows everything under All", () => {
     assert.equal(filterResultsRows(rows, "all").length, 4);
+  });
+});
+
+describe("an absent candidate needs no decision", () => {
+  const absent = { sitting_id: "x", name: "Mock", mode: "exam", not_decided: 1, draft: 0, signed_off: 0, released: 0, sat: 0 };
+  it("caps undecided by who sat", () => {
+    assert.equal(undecided(absent), 0);
+    assert.equal(undecided({ ...absent, not_decided: 3, sat: 2, draft: 1 }), 1);
+    assert.equal(undecided({ ...absent, sat: undefined }), 1);
+  });
+  it("leaves the sitting out of the tab and the attention list", () => {
+    assert.deepEqual(filterResultsRows([absent], "needs_decision"), []);
+    assert.deepEqual(attentionItems([absent], []), []);
   });
 });

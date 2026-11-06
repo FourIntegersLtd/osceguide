@@ -1,21 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  anchoredPhaseDeadline,
+  secondsUntilPhaseDeadline,
+  type ServerCountdownAnchor,
+} from "@/foundation/ui/phaseCountdown";
 
-export interface CountdownAnchor {
-  /** When the server says the phase began, in the server's clock. */
-  startedAtMs: number;
-  /** The server's clock minus this device's, when the brief arrived. */
-  serverOffsetMs: number;
-}
+export type CountdownAnchor = ServerCountdownAnchor;
 
 /** The device time at which `totalSeconds` from the server's start runs out. */
 export function anchoredDeadline(totalSeconds: number, anchor: CountdownAnchor): number {
-  return anchor.startedAtMs + totalSeconds * 1000 - anchor.serverOffsetMs;
+  return anchoredPhaseDeadline(totalSeconds, anchor);
 }
 
 export function secondsUntil(deadlineMs: number, nowMs: number): number {
-  return Math.max(0, Math.round((deadlineMs - nowMs) / 1000));
+  return secondsUntilPhaseDeadline(deadlineMs, nowMs);
 }
 
 /** The anchor a brief gives, or `undefined` while the server has not started the phase. */

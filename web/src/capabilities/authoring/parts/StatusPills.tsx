@@ -1,6 +1,9 @@
 "use client";
 
 import { Badge, type BadgeTone } from "@/foundation/ui";
+import { BoardChip, boardMeta } from "@/capabilities/authoring/parts/boardUi";
+import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
+import { statusChip } from "@/capabilities/authoring/parts/boardTokens";
 
 /**
  * The publish state of a versioned thing, in the words the old screens used.
@@ -20,6 +23,37 @@ export function PublishStatusLine({
   draft?: { version: number } | null;
   archivedOnly?: boolean;
 }) {
+  const chrome = useAuthoringChrome();
+  if (!chrome.b2c) {
+    return (
+      <div className={boardMeta}>
+        {kindLabel ? (
+          <>
+            <BoardChip tone={kindLabel === "OSCE Guide" ? "neutral" : "info"}>
+              {kindLabel === "OSCE Guide" ? kindLabel : kindLabel.toUpperCase()}
+            </BoardChip>{" "}
+          </>
+        ) : null}
+        {published ? (
+          <BoardChip tone="ok">● Live · v{published.version}</BoardChip>
+        ) : (
+          <BoardChip tone="warn">● Not live</BoardChip>
+        )}
+        {draft ? (
+          <>
+            {" "}
+            <BoardChip>Draft · v{draft.version}</BoardChip>
+          </>
+        ) : null}
+        {archivedOnly ? (
+          <>
+            {" "}
+            <BoardChip>Archived only</BoardChip>
+          </>
+        ) : null}
+      </div>
+    );
+  }
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
       {kindLabel ? (
@@ -62,6 +96,11 @@ const ROW_STATUS: Record<string, { label: string; tone: BadgeTone }> = {
 
 /** A row's own status — published, draft, retired, archived, or active. */
 export function StatusBadge({ status }: { status: string | undefined }) {
+  const chrome = useAuthoringChrome();
+  if (!chrome.b2c) {
+    const chip = statusChip(status);
+    return <BoardChip tone={chip.tone}>{chip.label}</BoardChip>;
+  }
   const badge = ROW_STATUS[status ?? "draft"] ?? DRAFT_BADGE;
   return (
     <Badge tone={badge.tone} size="sm" dot>

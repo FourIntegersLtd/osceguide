@@ -1,0 +1,35 @@
+- main:
+  - link "Sitting":
+    - /url: /app/e2e-mw3om0c6/sittings/0469e190-b9e0-4614-99e9-e645bb457f33
+  - paragraph: OV training run
+  - heading "Results" [level=1]
+  - paragraph: 1 of 1 stations marked · 0 of 1 released
+  - button "Export CSV"
+  - heading "Outcomes" [level=2]
+  - region "Outcomes": Passed 0 Failed 0 Inconclusive 0 Withheld 0 Undecided 1 Awaiting marking 0
+  - status:
+    - paragraph: Every station has been marked.
+  - list "Steps":
+    - listitem: Schedule Date set
+    - listitem: Circuits Candidates sat
+    - listitem: Run All finished
+    - listitem: Mark 1 of 1 marked
+  - region "Candidates":
+    - table:
+      - rowgroup:
+        - row "Candidate Score Outcome Status Actions":
+          - columnheader "Candidate"
+          - columnheader "Score"
+          - columnheader "Outcome"
+          - columnheader "Status"
+          - columnheader "Actions"
+      - rowgroup:
+        - row "Tess Trainee 1 of 1 stations marked No automatic score Not decided Marked Open Tess Trainee":
+          - cell "Tess Trainee 1 of 1 stations marked":
+            - paragraph: Tess Trainee
+            - paragraph: 1 of 1 stations marked
+          - cell "No automatic score"
+          - cell "Not decided"
+          - cell "Marked"
+          - cell "Open Tess Trainee":
+            - button "Open Tess Trainee": Open

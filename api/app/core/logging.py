@@ -63,6 +63,17 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     return structlog.get_logger(name)  # type: ignore[no-any-return]
 
 
+_SECRET_PATH_PREFIXES = ("/api/v1/auth/invitation/",)
+
+
+def _loggable_path(path: str) -> str:
+    """The request path with any one-time token in it blanked, so logs never hold a usable link."""
+    for prefix in _SECRET_PATH_PREFIXES:
+        if path.startswith(prefix):
+            return f"{prefix}[token]"
+    return path
+
+
 class RequestContextMiddleware(BaseHTTPMiddleware):
     """Binds a request id (and the method and path) into every log line the request emits."""
 
@@ -74,7 +85,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(
-            request_id=request_id, method=request.method, path=request.url.path
+            request_id=request_id, method=request.method, path=_loggable_path(request.url.path)
         )
         response = await call_next(request)
         response.headers[REQUEST_ID_HEADER] = request_id

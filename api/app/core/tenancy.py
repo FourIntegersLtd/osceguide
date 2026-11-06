@@ -159,13 +159,6 @@ def forget_org_active(session: AsyncSession, org_slug: str) -> None:
     cache.forget_after_commit(session, org_active_key(org_slug))
 
 
-class _OrgNotCacheable(Exception):  # noqa: N818 - control flow out of `get_or_load`, never an error
-    """Raised by a load whose answer must not be stored: the organisation is missing or not active."""
-
-    def __init__(self, org: OrgRef | None) -> None:
-        self.org = org
-
-
 async def _refuse_if_org_inactive(session: AsyncSession, org_slug: str, *, now: datetime) -> None:
     """Raise `OrgNotFound` or `OrgSuspended` unless the organisation may act now.
 
@@ -177,24 +170,21 @@ async def _refuse_if_org_inactive(session: AsyncSession, org_slug: str, *, now: 
     lookup = _bound_org_lookup()
     ttl = get_settings().auth_status_cache_seconds
 
-    async def load() -> str:
-        """Read the organisation, refusing to hand back anything but "active" for storing."""
+    async def confirm_active() -> None:
+        """Turns away a request for an organisation that is no longer active."""
         org = await lookup(session, org_slug, now=now)
         if org is None or not org.active:
-            raise _OrgNotCacheable(org)  # a raised load is never stored
-        return "active"
+            raise cache.ActiveOnlyRefusal(org)
 
-    try:
-        if (
-            ttl > 0
-            and await cache.get_or_load(org_active_key(org_slug), ttl, load, dump=str, parse=str) == "active"
-        ):
-            return
-        await load()
-    except _OrgNotCacheable as inactive:
-        if inactive.org is None:
-            raise OrgNotFound() from None
-        raise OrgSuspended() from None
+    refusal = await cache.confirm_active_cached(
+        org_active_key(org_slug), ttl, fresh=False, confirm_active=confirm_active
+    )
+    if refusal is None:
+        return
+    org = refusal.detail
+    if org is None:
+        raise OrgNotFound() from None
+    raise OrgSuspended() from None
 
 
 class OrgGate:

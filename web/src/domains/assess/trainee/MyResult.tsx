@@ -1,17 +1,20 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { Alert, AsyncBoundary, Button, ButtonLink } from "@/foundation/ui";
 import {
-  Alert,
-  AsyncBoundary,
-  B2CHero,
-  B2CPageHeader,
-  Button,
-  ButtonLink,
-} from "@/foundation/ui";
+  TraineeHead,
+  TraineeHero,
+  TraineePage,
+} from "@/domains/assess/trainee/traineeBoard";
+import { whenWords } from "@/domains/assess/trainee/support";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
-import { acknowledgeResult, downloadMyResult, readMyResult } from "@/domains/assess/trainee/api";
+import {
+  acknowledgeResult,
+  downloadMyResult,
+  readMyResult,
+} from "@/domains/assess/trainee/api";
 import { ResultView } from "@/domains/assess/trainee/ResultView";
 import { useSurface } from "@/capabilities";
 
@@ -29,7 +32,10 @@ import { useSurface } from "@/capabilities";
  */
 export function MyResult({ sittingId }: { sittingId: string }) {
   const { hrefFor } = useSurface();
-  const state = useAsync((signal) => readMyResult(sittingId, signal), [sittingId]);
+  const state = useAsync(
+    (signal) => readMyResult(sittingId, signal),
+    [sittingId],
+  );
   const [acknowledging, setAcknowledging] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -62,49 +68,53 @@ export function MyResult({ sittingId }: { sittingId: string }) {
   }, [sittingId, reload]);
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-6">
-      <B2CPageHeader
-        className="!mb-0"
+    <TraineePage label="Assessment outcome">
+      <TraineeHead
         eyebrow={
           state.data?.released_at
-            ? `Released ${new Date(state.data.released_at).toLocaleDateString()}`
+            ? `Released ${whenWords(state.data.released_at)}`
             : "Your result"
         }
         title="Assessment outcome"
-        action={
+        acts={
           state.data?.released_at ? (
-            <button
-              type="button"
+            <Button
+              themeType="b2b"
+              variant="secondary"
               onClick={() => void downloadPdf()}
               disabled={downloading}
-              className="inline-flex items-center justify-center rounded-control border border-b2b-border bg-b2b-surface px-3 py-2 text-osce-meta font-medium text-b2b-headline hover:bg-canvas focus:outline-none disabled:opacity-60"
             >
               {downloading ? "Preparing…" : "Download PDF"}
-            </button>
+            </Button>
           ) : null
         }
       />
 
       {!state.loading && !state.error && state.data === null ? (
         <Alert tone="info" title="Not released yet">
-          Your organisation has not released this result. When it is, we email you at the address your organisation holds for you.
+          Your organisation has not released this result. When it is, we email
+          you at the address your organisation holds for you.
         </Alert>
       ) : null}
       <AsyncBoundary state={state}>
         {(result) =>
           result.released_at === null ? (
             <Alert tone="info" title="Not released yet">
-              Your organisation has not released this result. When it is, we email you at the address your organisation holds for you.
+              Your organisation has not released this result. When it is, we
+              email you at the address your organisation holds for you.
             </Alert>
           ) : (
             <>
-              {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+              {error ? (
+                <Alert tone="danger">{errorMessage(error)}</Alert>
+              ) : null}
               <ResultView
                 result={result}
                 actions={
                   result.acknowledged_at ? (
                     <p className="text-osce-meta text-b2c-text-muted">
-                      You read this on {new Date(result.acknowledged_at).toLocaleDateString()}.
+                      You read this on{" "}
+                      {new Date(result.acknowledged_at).toLocaleDateString()}.
                     </p>
                   ) : (
                     <Button
@@ -118,28 +128,25 @@ export function MyResult({ sittingId }: { sittingId: string }) {
                   )
                 }
               />
-              <B2CHero
+              <TraineeHero
                 eyebrow="Keep practising"
                 title="Practise on your own"
                 action={
-                  <>
-                    <ButtonLink
-                      themeType="b2b"
-                      variant="secondary"
-                      size="sm"
-                      href={hrefFor("/trainee/practice")}
-                    >
-                      Self practice
-                    </ButtonLink>
-                  </>
+                  <ButtonLink
+                    themeType="b2b"
+                    variant="secondary"
+                    href={hrefFor("/trainee/practice")}
+                  >
+                    Self practice
+                  </ButtonLink>
                 }
               >
                 Nothing you do here is marked for the record.
-              </B2CHero>
+              </TraineeHero>
             </>
           )
         }
       </AsyncBoundary>
-    </div>
+    </TraineePage>
   );
 }

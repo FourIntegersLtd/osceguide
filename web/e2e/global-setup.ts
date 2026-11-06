@@ -1,7 +1,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { ADMIN, API, assertLocalApi, call, login, PASSWORD, register, stamp, switchWorkspace } from "./support/api";
+import { ADMIN, API, assertLocalApi, call, login, orgPath, PASSWORD, register, stamp, switchWorkspace } from "./support/api";
 import { ensureScaPlanOnSale } from "./support/db";
+import { ensureTitledStations } from "./support/seed-sittings";
 import { stagingWorld } from "./support/staging";
 import { WORLD_FILE, type Role, type World } from "./support/world";
 
@@ -11,56 +12,10 @@ function writeWorld(built: World): void {
 }
 
 /**
- * A brief the trainee can read: the SCA template's required patient blocks, and the candidate's biodata.
- * The history is as long as a real station's, so a phone has to scroll to the end of it (TRAIN-8).
+ * The stations every run sits: ours by title, never whatever a dev database happens to list first
+ * (a leftover station without the SCA template blocks has an empty brief: ASSESS-2).
  */
-const LIBRARY_CONTENT = {
-  patient_biodata: "Sam Reid, 54",
-  gender: "male",
-  opening_sentence: "I've had this cough for three weeks.",
-  expanded_history: [
-    "Dry cough for three weeks, worse at night and when lying flat; it wakes you two or three times a night.",
-    "No phlegm, no blood, no weight loss, no night sweats. Mildly short of breath walking up the hill to the shops.",
-    "You had a cold beforehand that settled. You stopped smoking ten years ago after twenty years of ten a day.",
-    "You take ramipril 5 mg for blood pressure, started about two months ago. No allergies. You live with your wife.",
-    "You are worried because your brother was diagnosed with lung cancer last year, and you want a chest X-ray today.",
-    "If asked, the cough began a week or two after the ramipril, and you have not mentioned it to anyone yet.",
-  ].join(" "),
-  doctor_patient_biodata: "Sam Reid, 54, retired teacher",
-};
-
-/**
- * A fresh database has no station library (seed_platform.py imports none), so a run on one
- * authors three minimal SCA stations as the platform admin, on the SCA platform template
- * (scripts/seed_station_templates.py) so the brief has sections. Skipped when the library has them.
- */
-async function ensureLibrary(platform: string): Promise<string[]> {
-  const ids = async () => ((await call(platform, "/api/v1/stations?exam_code=sca&limit=3")).items as { version_id: string }[]).map((item) => item.version_id);
-  let have = await ids();
-  if (have.length < 3) {
-    const templates = (await call(platform, "/api/v1/platform/station-templates?exam_code=sca&published_only=true")).items as {
-      exam_code: string | null;
-      versions: { id: string; status: string }[];
-    }[];
-    // The filter also answers templates for any exam (the ASPiH one), which have no SCA blocks.
-    const templateVersionId = templates
-      .filter((t) => t.exam_code === "sca")
-      .flatMap((t) => t.versions).find((v) => v.status === "published")?.id;
-    if (!templateVersionId) throw new Error("no published SCA station template: run scripts/seed_station_templates.py --apply");
-    for (let n = have.length; n < 3; n += 1) {
-      const title = `E2E library station ${n + 1}`;
-      const created = await call(platform, "/api/v1/platform/stations", {
-        method: "POST",
-        body: { title, exam_code: "sca", template_version_id: templateVersionId, content: { title, ...LIBRARY_CONTENT } },
-      });
-      await call(platform, `/api/v1/platform/stations/${created.id}/versions/1/publish`, { method: "POST" });
-      // The library shows approved stations only, so an editor's sign-off follows the publish.
-      await call(platform, `/api/v1/platform/stations/${created.id}/approve`, { method: "POST" });
-    }
-    have = await ids();
-  }
-  return have;
-}
+const LIBRARY_TITLES = ["E2E library station 1", "E2E library station 2", "E2E library station 3"];
 
 export default async function globalSetup(): Promise<void> {
   if (process.env.E2E_TARGET === "staging") {
@@ -140,8 +95,8 @@ export default async function globalSetup(): Promise<void> {
 
   // The admin sets the institution up the way the console would.
   const admin = await switchWorkspace(await login(accounts.admin.email, PASSWORD), slug);
-  const programme = await call(admin, `/api/v1/orgs/${slug}/programmes`, { method: "POST", body: { exam_code: "sca" } });
-  await call(admin, `/api/v1/orgs/${slug}/programmes/${programme.id}`, { method: "PATCH", body: { status: "active" } });
+  const programme = await call(admin, orgPath(slug, `/programmes`), { method: "POST", body: { exam_code: "sca" } });
+  await call(admin, orgPath(slug, `/programmes/${programme.id}`), { method: "PATCH", body: { status: "active" } });
   // The setup guide counts a template only once the organisation holds its own copy of one.
   const platformTemplates = (await call(platform, "/api/v1/platform/station-templates?exam_code=sca&published_only=true")).items as {
     id: string;
@@ -149,12 +104,12 @@ export default async function globalSetup(): Promise<void> {
   }[];
   const scaTemplate = platformTemplates.find((t) => t.exam_code === "sca");
   if (!scaTemplate) throw new Error("no published SCA station template: run scripts/seed_station_templates.py --apply");
-  await call(admin, `/api/v1/orgs/${slug}/station-templates/${scaTemplate.id}/copy`, { method: "POST" });
-  const trainee = await call(admin, `/api/v1/orgs/${slug}/trainees`, {
+  await call(admin, orgPath(slug, `/station-templates/${scaTemplate.id}/copy`), { method: "POST" });
+  const trainee = await call(admin, orgPath(slug, `/trainees`), {
     method: "POST",
     body: { email: accounts.trainee.email, first_name: "Tess", last_name: "Trainee" },
   });
-  const stationVersionIds = await ensureLibrary(platform);
+  const stationVersionIds = await ensureTitledStations(LIBRARY_TITLES);
   if (stationVersionIds.length === 0) throw new Error("no published SCA stations: run scripts/seed_platform.py");
   ensureScaPlanOnSale();
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { AuthoringConfirm } from "@/capabilities/authoring/parts/AuthoringConfirm";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { HiOutlineCloudArrowUp, HiOutlinePlusCircle } from "react-icons/hi2";
@@ -12,8 +13,10 @@ import {
   type StationStatusFilter,
 } from "@/capabilities/authoring/parts/stationListUrl";
 import { stationNewPath } from "@/capabilities/authoring/stations/paths";
-import { Alert, ConfirmModal } from "@/foundation/ui";
-import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
+import { Alert } from "@/foundation/ui";
+import { AuthoringLeadButton } from "@/capabilities/authoring/parts/AuthoringLeadButton";
+import { boardStack } from "@/capabilities/authoring/parts/boardUi";
+import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";
 import { AuthoringSectionLead } from "@/capabilities/authoring/parts/AuthoringSectionLead";
 import {
@@ -46,6 +49,7 @@ import { StationUsedBy } from "@/capabilities/authoring/sections/StationUsedBy";
  */
 export function StationsSection() {
   const scope = useAuthoringScope();
+  const org = !useAuthoringChrome().b2c;
   const { session } = useSession();
   const router = useRouter();
   const { hrefFor } = useSurface();
@@ -128,34 +132,22 @@ export function StationsSection() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className={org ? boardStack : "space-y-4"}>
       <AuthoringSectionLead
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <AuthoringButton
-              variant="secondary"
-              size="sm"
-              className="gap-2"
-              onClick={() => setImporting(true)}
-            >
-              <HiOutlineCloudArrowUp className="h-4 w-4 shrink-0" aria-hidden />
+          <>
+            <AuthoringLeadButton icon={HiOutlineCloudArrowUp} onClick={() => setImporting(true)}>
               Import from PDF or Word
-            </AuthoringButton>
-            <AuthoringButton
-              variant="commit"
-              size="sm"
-              className="gap-2"
-              onClick={() => router.push(stationNewPath(hrefFor))}
-            >
-              <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+            </AuthoringLeadButton>
+            <AuthoringLeadButton primary icon={HiOutlinePlusCircle} onClick={() => router.push(stationNewPath(hrefFor))}>
               New station
-            </AuthoringButton>
-          </div>
+            </AuthoringLeadButton>
+          </>
         }
       >
         Published station cases for sessions and practice.
         {stations.data ? (
-          <span className="block text-osce-data font-normal text-ink-muted">
+          <span className={org ? "block text-assess-label font-bold text-ink" : "block text-osce-data font-normal text-ink-muted"}>
             {visibleCount}
             {pages.hasMore ? "+" : ""} station{visibleCount === 1 && !pages.hasMore ? "" : "s"}
             {published.length > 0 ? ` · ${published.length} template${published.length === 1 ? "" : "s"} available` : ""}
@@ -220,7 +212,7 @@ export function StationsSection() {
         }}
       />
 
-      <ConfirmModal
+      <AuthoringConfirm
         isOpen={archiveConfirm !== null}
         onCancel={() => {
           if (action.busy) return;
@@ -244,6 +236,7 @@ export function StationsSection() {
             : "Archive station?"
         }
         confirmText="Archive"
+        tone="danger"
         message={
           <>
             {archiveConfirm ? (

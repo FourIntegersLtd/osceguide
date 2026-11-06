@@ -205,12 +205,23 @@ async def _provision(
     invited = False
     if person is None:
         person = await invitations.invite_user(
-            session, email=email, name=email, invited_to=org_name, now=now, practice_exam_title=exam.name
+            session,
+            email=email,
+            name=email,
+            invited_to=org_name,
+            now=now,
+            practice_exam_title=exam.name,
+            organization_id=org_id,
         )
         invited = True
     elif person.invitation_pending:
         invited = await invitations.reissue_invitation(
-            session, user_id=person.id, invited_to=org_name, now=now, practice_exam_title=exam.name
+            session,
+            user_id=person.id,
+            invited_to=org_name,
+            now=now,
+            practice_exam_title=exam.name,
+            organization_id=org_id,
         )
     entitlement = await repository.grant(
         session,

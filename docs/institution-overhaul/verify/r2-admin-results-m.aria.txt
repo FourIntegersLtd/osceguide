@@ -1,0 +1,68 @@
+- main:
+  - heading "Results" [level=1]
+  - paragraph: Each sitting with how far its decisions have got.
+  - heading "Needs your attention" [level=2]
+  - 'link "OV training run: 1 candidate needs a decision Decide"':
+    - /url: /app/e2e-mw3om0c6/sittings/0469e190-b9e0-4614-99e9-e645bb457f33/results
+    - img
+    - text: "OV training run: 1 candidate needs a decision Decide"
+  - 'link "OV exam to review: 1 candidate needs a decision Decide"':
+    - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3/results
+    - img
+    - text: "OV exam to review: 1 candidate needs a decision Decide"
+  - 'link "Circuit run: 1 candidate needs a decision Decide"':
+    - /url: /app/e2e-mw3om0c6/sittings/115d9697-b969-4381-9a8c-d711b339a4cc/results
+    - img
+    - text: "Circuit run: 1 candidate needs a decision Decide"
+  - tablist "Filter results":
+    - tab "Needs a decision" [selected]
+    - tab "Ready to release"
+    - tab "All"
+  - link "OV training run":
+    - /url: /app/e2e-mw3om0c6/sittings/0469e190-b9e0-4614-99e9-e645bb457f33/results
+  - term: Date
+  - definition: 06/11/2026
+  - term: Kind
+  - definition: Training
+  - term: Candidates
+  - definition: "1"
+  - term: Not decided
+  - definition: "1"
+  - term: Draft
+  - definition: "0"
+  - term: Signed off
+  - definition: "0"
+  - term: Released
+  - definition: "0"
+  - link "OV exam to review":
+    - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3/results
+  - term: Date
+  - definition: 06/11/2026
+  - term: Kind
+  - definition: Formal exam
+  - term: Candidates
+  - definition: "1"
+  - term: Not decided
+  - definition: "1"
+  - term: Draft
+  - definition: "0"
+  - term: Signed off
+  - definition: "0"
+  - term: Released
+  - definition: "0"
+  - link "Circuit run":
+    - /url: /app/e2e-mw3om0c6/sittings/115d9697-b969-4381-9a8c-d711b339a4cc/results
+  - term: Date
+  - definition: 06/11/2026
+  - term: Kind
+  - definition: Formal exam
+  - term: Candidates
+  - definition: "1"
+  - term: Not decided
+  - definition: "1"
+  - term: Draft
+  - definition: "0"
+  - term: Signed off
+  - definition: "0"
+  - term: Released
+  - definition: "0"

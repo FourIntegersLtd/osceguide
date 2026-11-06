@@ -1,0 +1,19 @@
+- main:
+  - link "Marking schemes":
+    - /url: /app/e2e-mw3om0c6/authoring/rubrics
+  - heading "New marking scheme" [level=1]
+  - paragraph: Start blank or from a published marking scheme. You get a draft to edit; nothing is used until you publish it.
+  - text: Title
+  - textbox "Title":
+    - /placeholder: e.g. Consultation skills
+  - paragraph: Set here; a marking scheme keeps its title across versions.
+  - text: Search starting points
+  - searchbox "Search starting points"
+  - radiogroup "Start from":
+    - radio "Blank Blank rubric Red / Amber / Green · 1 competencies Domain 1" [checked]
+    - radio "OSCE Guide v1 CASC marking rubric Met / not met · 20 competencies History · Examination · Management · Communication"
+    - radio "OSCE Guide v1 Orthopaedic interview marking rubric Number range · 20 competencies Clinical skills · Communication skills · Portfolio skills · Prioritisation skills"
+    - radio "OSCE Guide v1 PLAB 2 marking rubric Number range · 12 competencies Data gathering · Clinical management · Interpersonal skills"
+    - radio "OSCE Guide v1 Simulated Consultation Assessment marking rubric Red / Amber / Green · 29 competencies Global skills · Tasks · Relating to others"
+  - button "Cancel"
+  - button "Start blank"

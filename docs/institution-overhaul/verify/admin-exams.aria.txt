@@ -1,0 +1,37 @@
+- main:
+  - heading "Exams" [level=1]
+  - paragraph: "Everything you examine with: the exams themselves, their stations, how they are marked, the layout a station follows, and which exams are offered for scheduling."
+  - tablist "Authoring section":
+    - tab "Exams" [selected]
+    - tab "Stations"
+    - tab "Marking schemes"
+    - tab "Station layouts"
+    - tab "Programmes"
+  - tabpanel:
+    - checkbox "Drafts only"
+    - text: Drafts only
+    - link "Adopt from OSCE Guide":
+      - /url: /app/e2e-mw3mzpx5/programmes
+    - link "Create exam":
+      - /url: /app/e2e-mw3mzpx5/authoring/exams/new
+    - text: Exams 4
+    - button "CASC casc · 1 min reading · 7 min station · OSCE Guide":
+      - paragraph: CASC
+      - paragraph: casc · 1 min reading · 7 min station · OSCE Guide
+    - text: Published Not available
+    - button "OSCE Guide exams are edited in the staff catalogue" [disabled]
+    - button "Orthopaedic interview ortho · 2 min reading · 10 min station · OSCE Guide":
+      - paragraph: Orthopaedic interview
+      - paragraph: ortho · 2 min reading · 10 min station · OSCE Guide
+    - text: Published Not available
+    - button "OSCE Guide exams are edited in the staff catalogue" [disabled]
+    - button "PLAB 2 plab · 2 min reading · 8 min station · OSCE Guide":
+      - paragraph: PLAB 2
+      - paragraph: plab · 2 min reading · 8 min station · OSCE Guide
+    - text: Published Not available
+    - button "OSCE Guide exams are edited in the staff catalogue" [disabled]
+    - button "Simulated Consultation Assessment sca · 2 min reading · 12 min station · OSCE Guide":
+      - paragraph: Simulated Consultation Assessment
+      - paragraph: sca · 2 min reading · 12 min station · OSCE Guide
+    - text: Published Ready to schedule
+    - button "OSCE Guide exams are edited in the staff catalogue" [disabled]

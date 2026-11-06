@@ -1,0 +1,39 @@
+- main:
+  - link "Exams":
+    - /url: /app/e2e-hire-mw3om0c6/authoring/exams
+  - paragraph: sca Ready to schedule
+  - heading "Simulated Consultation Assessment" [level=1]
+  - paragraph: 0 published stations · Marking scheme v1 · 1 sitting
+  - link "Schedule a sitting":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/new
+  - paragraph: Available for scheduling
+  - paragraph: "On: this exam can be picked when you schedule a sitting."
+  - switch "Available for scheduling" [checked]
+  - heading "Stations" [level=2]
+  - link "Add station":
+    - /url: /app/e2e-hire-mw3om0c6/authoring/stations/new?exam=sca
+  - paragraph: No stations yet. Create one with Add station.
+  - link "See all 0 stations":
+    - /url: /app/e2e-hire-mw3om0c6/authoring/stations?exam=sca
+  - heading "Sittings" [level=2]
+  - link "All sittings":
+    - /url: /app/e2e-hire-mw3om0c6/sittings?exam=f79b9592-6435-47c2-9436-5814fcbeb2e5
+  - list:
+    - listitem:
+      - link "R2 hire assessment Group training Scheduled":
+        - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26
+  - heading "Marking scheme" [level=2]
+  - paragraph: Simulated Consultation Assessment marking rubric
+  - paragraph: Version 1, published 1 Nov. 3 areas, rated G, A or R.
+  - link "Open scheme":
+    - /url: /app/e2e-hire-mw3om0c6/authoring/rubrics/d07dbafd-7aa4-45e9-84b2-95f4955925de/versions/1?exam=ef163c92-ca87-4591-8510-2c8818c084a5
+  - link "Change scheme":
+    - /url: /app/e2e-hire-mw3om0c6/authoring/exams/ef163c92-ca87-4591-8510-2c8818c084a5/settings
+  - heading "Station layouts (optional)" [level=2]
+  - paragraph: Simulation scenario (ASPiH) · SCA consultation station
+  - link "Manage layouts":
+    - /url: /app/e2e-hire-mw3om0c6/authoring/station-templates
+  - heading "Settings" [level=2]
+  - paragraph: 2 min reading · 12 min consultation · Patient voice and feedback style
+  - link "Edit settings":
+    - /url: /app/e2e-hire-mw3om0c6/authoring/exams/ef163c92-ca87-4591-8510-2c8818c084a5/settings

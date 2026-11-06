@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { hasCode } from "@/foundation/platform-client";
-import { b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { Dialog } from "@/domains/assess/team/chrome";
+import { PeopleDialog as Dialog, hint } from "@/domains/assess/ui";
 import { deleteCohort, renameCohort, type Cohort } from "@/domains/assess/roster/api";
 import { cohortDeleteLead } from "@/domains/assess/roster/support";
+import { boardInput, boardLabel } from "@/foundation/ui/boardKit";
 
 /**
  * The two things a cohort row can be corrected into: renamed, or removed.
@@ -92,38 +92,30 @@ function RenameForm({
       onCommit={() => void commit()}
     >
       <div>
-        <label
-          htmlFor="assess-rename-cohort-name"
-          className="block text-osce-caption font-medium text-b2b-graphite"
-        >
+        <label htmlFor="assess-rename-cohort-name" className={boardLabel}>
           New name
         </label>
         <input
           id="assess-rename-cohort-name"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          className={`mt-1 ${b2bTokens.b2bInputBase}`}
+          className={boardInput}
           autoComplete="off"
         />
       </div>
       <div>
-        <label
-          htmlFor="assess-rename-cohort-year"
-          className="block text-osce-caption font-medium text-b2b-graphite"
-        >
+        <label htmlFor="assess-rename-cohort-year" className={boardLabel}>
           Academic year
         </label>
-        <p className="mt-0.5 text-osce-caption text-b2b-mid">
-          Leave blank to take the year off this intake.
-        </p>
         <input
           id="assess-rename-cohort-year"
           value={academicYear}
           onChange={(event) => setAcademicYear(event.target.value)}
-          className={`mt-1 ${b2bTokens.b2bInputBase}`}
+          className={boardInput}
           placeholder="2026/27"
           autoComplete="off"
         />
+        <div className={hint}>Leave blank to take the year off this intake.</div>
       </div>
     </Dialog>
   );

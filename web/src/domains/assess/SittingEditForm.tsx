@@ -16,7 +16,7 @@ import {
   sittingModeOf,
   type SittingFormValues,
 } from "@/domains/assess/support";
-import { Dialog } from "@/domains/assess/team/chrome";
+import { PeopleDialog as Dialog } from "@/domains/assess/ui";
 
 /**
  * Correcting a sitting that has already been scheduled.

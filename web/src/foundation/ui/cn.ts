@@ -24,6 +24,14 @@ const twMerge = extendTailwindMerge({
         "text-osce-display-sm",
         "text-osce-display",
         "text-osce-display-lg",
+        "text-assess-h1",
+        "text-assess-h2",
+        "text-assess-desc",
+        "text-assess-meta",
+        "text-assess-label",
+        "text-assess-chip",
+        "text-assess-eyebrow",
+        "text-assess-num",
       ],
       "text-color": [
         {

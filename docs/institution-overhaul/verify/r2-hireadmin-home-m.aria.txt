@@ -1,0 +1,30 @@
+- main:
+  - paragraph: E2E Employer mw3om0c6
+  - heading "Overview" [level=1]
+  - paragraph: Your assessments, candidates and results.
+  - link "Schedule an assessment":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/new
+  - heading "Needs your attention" [level=2]
+  - text: Oldest first Nothing needs you right now.
+  - link "Open Results":
+    - /url: /app/e2e-hire-mw3om0c6/results
+  - heading "Your next circuit" [level=2]
+  - paragraph: R2 hire assessment · R2 hire circuit
+  - paragraph: Formal exam · 1 station
+  - link "Open the console":
+    - /url: /app/e2e-hire-mw3om0c6/circuits/9a2530b1-34d3-4f56-aaf9-43ed9581a5b6
+  - paragraph: The console opens when the assessment starts. Any staff member can run any circuit on the day; reviewing stays with the circuit's assessor.
+  - heading "Coming up" [level=2]
+  - link "All assessments":
+    - /url: /app/e2e-hire-mw3om0c6/sittings
+  - link "R2 hire assessment Formal exam · 1 circuit · 1 candidate Scheduled":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26
+    - img
+    - text: R2 hire assessment Formal exam · 1 circuit · 1 candidate Scheduled
+  - region "At a glance":
+    - link "Candidates 1":
+      - /url: /app/e2e-hire-mw3om0c6/trainees
+    - link "Assessors 1":
+      - /url: /app/e2e-hire-mw3om0c6/team
+    - link "Assessments 1":
+      - /url: /app/e2e-hire-mw3om0c6/sittings

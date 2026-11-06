@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,6 +46,7 @@ async def add_trainee(
     now: datetime,
     actor: Principal | Connector,
     temporary_password: str | None = None,
+    created_at: datetime | None = None,
 ) -> TraineeRead:
     """Add a trainee to an organisation's roster and invite them, if needed.
 
@@ -63,6 +64,7 @@ async def add_trainee(
         first_name=first_name,
         last_name=last_name,
         cohort_id=cohort_id,
+        created_at=created_at,
     )
     if trainee is None:
         raise errors.TraineeExists()
@@ -80,6 +82,7 @@ async def add_trainee(
             invited_to=org.name if org else "your institution",
             temporary_password=temporary_password,
             now=now,
+            organization_id=org_id,
         )
         how = seating_note(relayed=relayed)
     await tenancy_audit.record_for_owner(
@@ -380,7 +383,7 @@ async def add_trainees(
         )
     outcome = BulkTraineesResult()
     seen: set[str] = set()
-    for entry in entries:
+    for position, entry in enumerate(entries):
         key = entry.email.strip().lower()
         if key in seen:
             outcome.skipped.append(SkippedTrainee(email=entry.email, code=errors.TraineeExists.code))
@@ -396,6 +399,7 @@ async def add_trainees(
                 cohort_id=entry.cohort_id,
                 now=now,
                 actor=actor,
+                created_at=now + timedelta(microseconds=position),
             )
         except errors.TraineeExists as exc:
             outcome.skipped.append(SkippedTrainee(email=entry.email, code=exc.code))

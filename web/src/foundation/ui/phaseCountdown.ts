@@ -13,3 +13,18 @@ export function phaseDeadline(durationSeconds: number, elapsedSeconds: number, n
 export function secondsLeft(deadlineMs: number, nowMs: number): number {
   return Math.max(0, Math.ceil((deadlineMs - nowMs) / 1000));
 }
+
+/** When the server says a phase started and how far its clock is ahead of this device. */
+export interface ServerCountdownAnchor {
+  startedAtMs: number;
+  serverOffsetMs: number;
+}
+
+/** The device time at which `totalSeconds` from the server's start runs out. */
+export function anchoredPhaseDeadline(totalSeconds: number, anchor: ServerCountdownAnchor): number {
+  return anchor.startedAtMs + totalSeconds * 1000 - anchor.serverOffsetMs;
+}
+
+export function secondsUntilPhaseDeadline(deadlineMs: number, nowMs: number): number {
+  return Math.max(0, Math.round((deadlineMs - nowMs) / 1000));
+}

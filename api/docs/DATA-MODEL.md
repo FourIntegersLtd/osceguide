@@ -268,7 +268,9 @@ token that never existed, so the leaked chain stays alive.
 
 **Growth:** unbounded. **Retention:** GAP: used and expired tokens are never deleted; one row per reset request.
 `user_id` → `users.id` CASCADE, `token_hash varchar(64) not null unique`,
-`expires_at timestamptz not null`, `used_at timestamptz null`.
+`expires_at timestamptz not null`, `used_at timestamptz null`,
+`organization_id` → `organizations.id` SET NULL, null: the organisation that sent an invitation (the
+invitation page names it); null for a plain reset link.
 
 ### `user_mfa`
 
@@ -1480,7 +1482,7 @@ A time someone is free to practise with a peer. Carries the `Addressed` columns.
 The session a claim creates. Two people, one room, one appointed time.
 
 `post_id` → `availability_posts.id` SET NULL (nullable),
-`owner_user_id` and `claimer_user_id` → `users.id` CASCADE (indexed together),
+`owner_user_id` and `claimer_user_id` → `users.id` CASCADE (indexed together; `claimer_user_id` also indexed alone),
 `exam_id` → `exams.id` RESTRICT, `starts_at timestamptz not null`,
 `room_name varchar(200) null`, `status varchar(16) not null default 'scheduled'`,
 `practice_session_id` → `practice_sessions.id` SET NULL (nullable — filled once the

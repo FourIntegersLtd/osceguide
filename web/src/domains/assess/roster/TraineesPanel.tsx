@@ -1,25 +1,14 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import {
-  Alert,
-  Badge,
-  Button,
-  EmptyState,
-  PlatformFilterBar,
-  PlatformFilterSearch,
-  b2bTokens,
-} from "@/foundation/ui";
-import Table from "@/foundation/table/Table";
-import { b2cTableCellText } from "@/foundation/ui/productTokens";
-import { cn } from "@/foundation/ui/cn";
+import { useCallback, useState } from "react";
+import { b2bTokens as t, cn } from "@/foundation/ui";
+import { Chip, Note, card, h2, row, th, PeopleDialog as Dialog } from "@/domains/assess/ui";
 import { hasCode } from "@/foundation/platform-client";
 import {
   errorMessage,
   useCursorPages,
   useSearchQuery,
 } from "@/foundation/hooks";
-import { Dialog } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
 import {
   anonymiseTrainee,
@@ -52,6 +41,7 @@ import {
   traineeStatus,
 } from "@/domains/assess/roster/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { boardBtn, boardPadWide, boardInput, boardAvatar, boardButtonSmall } from "@/foundation/ui/boardKit";
 
 type Pending = {
   kind: "revoke" | "restore" | "delete" | "anonymise";
@@ -259,178 +249,37 @@ export function TraineesPanel({
     [orgSlug, onChanged],
   );
 
-  const columns = useMemo(
-    () => [
-      ...(canManage
-        ? [
-            {
-              header: "Select",
-              key: "id" as keyof Trainee,
-              render: (trainee: Trainee) => (
-                <input
-                  type="checkbox"
-                  aria-label={`Select ${displayName(trainee)}`}
-                  checked={selected.has(trainee.id)}
-                  disabled={bulkBusy}
-                  onChange={() => toggle(trainee.id)}
-                />
-              ),
-            },
-          ]
-        : []),
-      {
-        header: "Name",
-        key: "first_name" as keyof Trainee,
-        priority: "primary" as const,
-        render: (trainee: Trainee) => (
-          <span className="flex items-center gap-3">
-            <span
-              aria-hidden
-              className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-canvas text-osce-meta text-b2b-mid"
-            >
-              {displayName(trainee).trim().charAt(0).toUpperCase()}
-            </span>
-            <span className="flex min-w-0 flex-col">
-              <span
-                className={cn(
-                  b2cTableCellText,
-                  "font-medium text-b2b-headline",
-                )}
-              >
-                {trainee.first_name || trainee.last_name
-                  ? displayName(trainee)
-                  : trainee.email}
-              </span>
-              {trainee.first_name || trainee.last_name ? (
-                <span className="truncate text-osce-meta text-b2b-mid">
-                  {trainee.email}
-                </span>
-              ) : null}
-            </span>
-          </span>
-        ),
-      },
-      {
-        header: "Year group",
-        key: "cohort_id" as keyof Trainee,
-        render: (trainee: Trainee) => (
-          <span className={cn(b2cTableCellText, "text-b2b-mid")}>
-            {cohortName(cohorts, trainee.cohort_id)}
-          </span>
-        ),
-      },
-      {
-        header: "Programme",
-        key: "programme_names" as keyof Trainee,
-        render: (trainee: Trainee) => (
-          <span className={cn(b2cTableCellText, "text-b2b-mid")}>
-            {trainee.programme_names?.length
-              ? trainee.programme_names.join(", ")
-              : "No programme"}
-          </span>
-        ),
-      },
-      {
-        header: "Sat",
-        key: "stations_sat" as keyof Trainee,
-        render: (trainee: Trainee) => (
-          <span className={cn(b2cTableCellText, "tabular-nums text-b2b-mid")}>
-            {trainee.stations_sat}
-          </span>
-        ),
-      },
-      {
-        header: "Status",
-        key: "id" as keyof Trainee,
-        render: (trainee: Trainee) => {
-          const status = traineeStatus(trainee);
-          return (
-            <Badge variant={status.attention ? "warning" : "success"} dot>
-              {status.attention ?? status.label}
-            </Badge>
-          );
-        },
-      },
-      {
-        header: "Actions",
-        key: "user_id" as keyof Trainee,
-        priority: "detail" as const,
-        render: (trainee: Trainee) => (
-          <TraineeRowActions
-            trainee={trainee}
-            invitationSettled={settled.has(trainee.id)}
-            canManage={canManage}
-            busy={resending === trainee.id}
-            onEdit={() => {
-              setError(null);
-              setNotice(null);
-              setEditing(trainee);
-            }}
-            onResend={() => void resend(trainee)}
-            onAccess={() => {
-              setError(null);
-              setPending({
-                kind: accessActive(trainee) ? "revoke" : "restore",
-                trainee,
-              });
-            }}
-            onDelete={() => {
-              setError(null);
-              setPending({ kind: "delete", trainee });
-            }}
-            onAnonymise={() => {
-              setError(null);
-              setPending({ kind: "anonymise", trainee });
-            }}
-          />
-        ),
-      },
-    ],
-    [
-      canManage,
-      cohorts,
-      settled,
-      resending,
-      resend,
-      selected,
-      bulkBusy,
-      toggle,
-    ],
-  );
-
   const revoking = pending?.kind === "revoke";
   const deleting = pending?.kind === "delete";
   const anonymising = pending?.kind === "anonymise";
   const named = pending ? displayName(pending.trainee) : "";
 
   return (
-    <div className="min-w-0 space-y-4">
-      {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
+    <div className="flex min-w-0 flex-col gap-6">
+      {notice ? <Note tone={notice.tone === "success" ? "ok" : notice.tone === "warning" ? "warn" : "bad"}>{notice.text}</Note> : null}
 
-      <PlatformFilterBar
-        leading={
-          rows.length > 0 || query ? (
-            <p className={b2bTokens.b2bEyebrow}>
-              {traineeCountLabel(rows.length, w)}
-              {pages.hasMore ? "+" : ""}
-            </p>
-          ) : null
-        }
-      >
-        <PlatformFilterSearch
+      <div className="flex flex-wrap items-center gap-3">
+        {rows.length > 0 || query ? (
+          <span className={t.assessEyebrow}>
+            {traineeCountLabel(rows.length, w)}
+            {pages.hasMore ? "+" : ""}
+          </span>
+        ) : null}
+        <input
+          className={cn(boardInput, "flex-[1_1_260px] !w-auto")}
+          type="search"
           value={search}
-          onChange={(value) => {
-            setSearch(value);
+          onChange={(event) => {
+            setSearch(event.target.value);
             setSelected(new Set());
           }}
           placeholder={`Search ${w.trainees}…`}
           aria-label={`Search ${w.trainees}`}
         />
         {canManage && awaiting.length > 0 ? (
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            size="sm"
+          <button
+            type="button"
+            className={boardBtn()}
             disabled={bulkBusy}
             onClick={() =>
               void runBulk(
@@ -445,9 +294,9 @@ export function TraineesPanel({
             }
           >
             {`Invite everyone not signed in on this page (${awaiting.length})`}
-          </Button>
+          </button>
         ) : null}
-      </PlatformFilterBar>
+      </div>
 
       {canManage && rows.length > 0 ? (
         <TraineeBulkBar
@@ -494,55 +343,122 @@ export function TraineesPanel({
       ) : null}
 
       {pages.state.error ? (
-        <Alert tone="danger">
-          Could not load {w.trainees}.
-          <button
-            type="button"
-            className="ml-2 underline"
-            onClick={() => pages.state.reload()}
-          >
-            Retry
-          </button>
-        </Alert>
+        <div className={boardPadWide}>
+          <Note tone="bad" role="alert">
+            Could not load {w.trainees}.{" "}
+            <button type="button" className="text-osce-accent hover:text-osce-accent-hover" onClick={() => pages.state.reload()}>
+              Retry
+            </button>
+          </Note>
+        </div>
       ) : null}
 
       {pages.state.loading && !pages.state.data ? (
-        <p className="text-osce-body text-b2c-text-secondary" role="status">
+        <p className="text-osce-body text-osce-ink-500" role="status">
           Loading {w.trainees}…
         </p>
       ) : rows.length === 0 ? (
         query ? (
-          <p className="text-osce-body text-b2b-mid">
-            No {w.trainees} match &ldquo;{query}&rdquo;.
-          </p>
+          <div className={boardPadWide}>
+            <div className={t.assessMeta}>Search with no match</div>
+            <div>No {w.trainees} match &ldquo;{query}&rdquo;.</div>
+          </div>
         ) : (
-          <EmptyState
-            title={`No ${w.trainees} yet`}
-            description={`Add ${w.trainees} so you can put them on ${w.hiring ? "an assessment" : "an exam or training circuit"}.`}
-            action={
-              canManage ? (
-                <Button themeType="b2b" variant="commit" onClick={onAddPeople}>
-                  {w.addPeople}
-                </Button>
-              ) : undefined
-            }
-          />
+          <div className={boardPadWide}>
+            <h2 className={h2}>No {w.trainees} yet</h2>
+            <p className={cn(t.assessMeta, "m-0")}>
+              Add {w.trainees} so you can put them on {w.hiring ? "an assessment" : "an exam or training circuit"}.
+            </p>
+            {canManage ? (
+              <button type="button" className={cn(boardBtn("primary"), "self-start")} onClick={onAddPeople}>
+                {w.addPeople}
+              </button>
+            ) : null}
+          </div>
         )
       ) : (
-        <Table<Trainee>
-          rows={rows}
-          more={pages}
-          themeType="b2b"
-          columns={columns}
-          idField="id"
-        />
+        <div role="table" className={card}>
+          <div role="row" className={th}>
+            {canManage ? <span className="w-4">Select</span> : null}
+            <span className="w-8" />
+            <span className="flex-[1_1_180px]">Name</span>
+            <span className="w-20">Year group</span>
+            <span className="w-[130px]">Programme</span>
+            <span className="w-[50px]">Sat</span>
+            <span className="w-[170px]">Status</span>
+          </div>
+          {rows.map((trainee) => {
+            const status = traineeStatus(trainee);
+            const named = trainee.first_name || trainee.last_name;
+            return (
+              <div key={trainee.id} role="row" data-testid="trainee-row" className={row}>
+                {canManage ? (
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${displayName(trainee)}`}
+                    checked={selected.has(trainee.id)}
+                    disabled={bulkBusy}
+                    onChange={() => toggle(trainee.id)}
+                  />
+                ) : null}
+                <div aria-hidden className={boardAvatar}>
+                  {displayName(trainee).trim().charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-[1_1_180px]">
+                  <div className="font-medium">{named ? displayName(trainee) : trainee.email}</div>
+                  {named ? <div className={cn(t.assessMeta, "truncate")}>{trainee.email}</div> : null}
+                </div>
+                <span className="w-20">{cohortName(cohorts, trainee.cohort_id)}</span>
+                <span className={cn(t.assessMeta, "w-[130px]")}>
+                  {trainee.programme_names?.length ? trainee.programme_names.join(", ") : "No programme"}
+                </span>
+                <span className="w-[50px] tabular-nums">{trainee.stations_sat}</span>
+                <span className="w-[170px]">
+                  <Chip tone={status.attention ? "warn" : "ok"}>{`● ${status.attention ?? status.label}`}</Chip>
+                </span>
+                <TraineeRowActions
+                  trainee={trainee}
+                  invitationSettled={settled.has(trainee.id)}
+                  canManage={canManage}
+                  busy={resending === trainee.id}
+                  onEdit={() => {
+                    setError(null);
+                    setNotice(null);
+                    setEditing(trainee);
+                  }}
+                  onResend={() => void resend(trainee)}
+                  onAccess={() => {
+                    setError(null);
+                    setPending({ kind: accessActive(trainee) ? "revoke" : "restore", trainee });
+                  }}
+                  onDelete={() => {
+                    setError(null);
+                    setPending({ kind: "delete", trainee });
+                  }}
+                  onAnonymise={() => {
+                    setError(null);
+                    setPending({ kind: "anonymise", trainee });
+                  }}
+                />
+              </div>
+            );
+          })}
+          {pages.hasMore || pages.moreError ? (
+            <div className={cn(row, "justify-center")}>
+              <button type="button" className={boardButtonSmall} disabled={pages.loadingMore} onClick={pages.loadMore}>
+                {pages.loadingMore ? "Loading…" : "Load more"}
+              </button>
+              {pages.moreError ? <span className="text-osce-danger-text">{pages.moreError.message}</span> : null}
+            </div>
+          ) : null}
+        </div>
       )}
 
       {!canManage ? (
-        <p className="text-osce-caption text-b2b-icon">
-          <span className="font-medium">Supervisor (read only)</span>. Contact an owner or admin to
-          change who has access.
-        </p>
+        <div className={boardPadWide}>
+          <div className={t.assessMeta}>Supervisor (read only)</div>
+          <div>Contact an owner or admin to change who has access.</div>
+        </div>
       ) : null}
 
       <Dialog

@@ -1,0 +1,72 @@
+- main:
+  - link "R2 hire assessment":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26
+  - heading "Add a circuit" [level=1]
+  - paragraph: R2 hire assessment · exam
+  - paragraph: Used for Edit on an existing circuit and for Add a circuit on a sitting. The Schedule wizard builds the first circuits.
+  - heading "Details" [level=2]
+  - text: Name
+  - textbox "Name":
+    - /placeholder: Morning circuit
+  - heading "Candidates" [level=2]
+  - paragraph: "0 of 1 selected. A formal exam circuit is one candidate's sitting: they go through every station."
+  - tablist "Pick from":
+    - tab "People" [selected]
+    - tab "Groups"
+    - tab "Year groups"
+  - text: Find a candidate
+  - textbox "Find a candidate":
+    - /placeholder: Name or email
+  - list:
+    - listitem:
+      - paragraph: Cass Candidate
+      - paragraph: e2e-hire-candidate-mw3om0c6@example.com
+      - text: Signed in
+      - button "Pick"
+  - heading "Stations (0)" [level=2]
+  - paragraph: At most 12 on a formal exam circuit. The picker loads more with Load more.
+  - paragraph: Find a station for sca
+  - link "Write a new station":
+    - /url: /app/e2e-hire-mw3om0c6/authoring/stations/new
+  - search:
+    - text: Search stations by name
+    - searchbox "Search stations by name"
+  - list:
+    - listitem:
+      - paragraph: E2E gender voice test - male patient
+      - paragraph: Version 1
+      - text: SCA
+      - button "Add"
+    - listitem:
+      - paragraph: E2E library station 2
+      - paragraph: Version 1
+      - text: SCA
+      - button "Add"
+    - listitem:
+      - paragraph: E2E library station 3
+      - paragraph: Version 1
+      - text: SCA
+      - button "Add"
+  - heading "Timing" [level=2]
+  - text: Reading time (minutes)
+  - spinbutton "Reading time (minutes)": "3"
+  - paragraph: 1 to 30 minutes.
+  - text: Consultation (minutes)
+  - spinbutton "Consultation (minutes)": "10"
+  - paragraph: 1 to 180 minutes.
+  - text: Default break length (minutes)
+  - spinbutton "Default break length (minutes)": "5"
+  - paragraph: A break goes between two stations, never after the last one. Everyone on the circuit pauses during it.
+  - paragraph: Breaks
+  - button "Add a break" [disabled]
+  - paragraph: Each break is 1 to 60 minutes.
+  - heading "Supervisor" [level=2]
+  - text: Supervisor
+  - combobox "Supervisor":
+    - option "Unassigned" [selected]
+    - option "e2e-hire-admin-mw3om0c6@example.com (institution_admin)"
+  - paragraph:
+    - text: No supervisors yet?
+    - link "Invite staff":
+      - /url: /app/e2e-hire-mw3om0c6/team
+  - button "Create circuit" [disabled]

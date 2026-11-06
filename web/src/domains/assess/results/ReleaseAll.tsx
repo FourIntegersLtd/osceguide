@@ -2,15 +2,16 @@
 
 import { toggleInSet } from "@/domains/assess/support";
 import { useCallback, useMemo, useState } from "react";
-import { Alert, Panel, StepGuide } from "@/foundation/ui";
+import { b2bTokens as t } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { releaseDecisions } from "@/domains/assess/results/api";
 import type { CandidateReport } from "@/domains/assess/results/api";
 import { ReleaseButton } from "@/domains/assess/results/DecisionParts";
-import { sittingNext, sittingSteps, type SittingStepsInput } from "@/domains/assess/sittingSteps";
+import { boardCard, boardRow, boardAlert } from "@/foundation/ui/boardKit";
+import { boardCheck } from "@/domains/assess/results/resultsChrome";
+import { sittingNext, type SittingStepsInput } from "@/domains/assess/sittingSteps";
 import {
   UNLINKED_REASON,
-  outcomeLabel,
   releaseFailureLine,
   releaseRefusal,
   splitByAccount,
@@ -81,9 +82,44 @@ export function ReleaseAll({
   }, [orgSlug, sittingId, chosen, onChanged]);
 
   return (
-    <div className="space-y-3">
-      <StepGuide steps={sittingSteps(progress)} line={next.line}>
-        {next.actionable && next.id === "release" ? (
+    <>
+      <div className={boardCard}>
+        <div className={`${boardRow} justify-between border-t-0`}>
+          <h2 className="text-base font-semibold leading-normal">Candidates to release</h2>
+          <span className={t.assessMeta}>Untick anyone to hold their result back.</span>
+        </div>
+        <fieldset className="m-0 min-w-0 border-0 p-0">
+          <legend className="sr-only">Candidates to release</legend>
+          {waiting.length > 1 ? (
+            <label className={`${boardRow} ${boardCheck}`}>
+              <input
+                type="checkbox"
+                className="mt-0.5 h-[18px] w-[18px]"
+                checked={allPicked}
+                disabled={busy}
+                onChange={() =>
+                  setHeld(allPicked ? new Set(waiting.map((candidate) => candidate.user_id)) : new Set())
+                }
+              />
+              All {waiting.length}
+            </label>
+          ) : null}
+          {waiting.map((candidate) => (
+            <label key={candidate.user_id} className={`${boardRow} ${boardCheck}`}>
+              <input
+                type="checkbox"
+                className="mt-0.5 h-[18px] w-[18px]"
+                checked={picked.has(candidate.user_id)}
+                disabled={busy}
+                onChange={() => toggle(candidate.user_id)}
+              />
+              {candidate.name ?? candidate.email ?? "Candidate"}
+            </label>
+          ))}
+        </fieldset>
+      </div>
+      {next.actionable && next.id === "release" ? (
+        <div className="flex flex-wrap items-center gap-2.5">
           <ReleaseButton
             busy={busy}
             disabled={busy || chosen.length === 0}
@@ -91,63 +127,23 @@ export function ReleaseAll({
             label={`Release ${chosen.length} signed-off ${chosen.length === 1 ? "result" : "results"}`}
             onConfirm={() => void release()}
           />
-        ) : null}
-      </StepGuide>
-
-      <Panel title="Candidates to release" description="Untick anyone to hold their result back." padding="sm">
-      <fieldset className="space-y-2">
-        <legend className="sr-only">Candidates to release</legend>
-        {waiting.length > 1 ? (
-          <label className="flex items-center gap-2 text-osce-meta font-medium text-b2b-headline">
-            <input
-              type="checkbox"
-              checked={allPicked}
-              disabled={busy}
-              onChange={() =>
-                setHeld(allPicked ? new Set(waiting.map((candidate) => candidate.user_id)) : new Set())
-              }
-            />
-            All {waiting.length}
-          </label>
-        ) : null}
-        <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-          {waiting.map((candidate) => (
-            <li key={candidate.user_id}>
-              <label className="flex items-center gap-2 text-osce-body text-b2b-headline">
-                <input
-                  type="checkbox"
-                  checked={picked.has(candidate.user_id)}
-                  disabled={busy}
-                  onChange={() => toggle(candidate.user_id)}
-                />
-                <span>
-                  {candidate.name ?? candidate.email ?? "Candidate"}
-                  <span className="block text-osce-meta font-normal text-b2b-mid">
-                    {candidate.decision?.assessment_outcome ? `${outcomeLabel(candidate.decision.assessment_outcome)} · ` : ""}
-                    signed off
-                  </span>
-                </span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      </fieldset>
-      </Panel>
-
+        </div>
+      ) : null}
       {released !== null ? (
-        <Alert tone={failures.length === 0 ? "success" : "warning"}>
+        <div role="status" className={boardAlert(failures.length === 0 ? "ok" : "warn")}>
           {released} released{failures.length > 0 ? `, ${failures.length} refused.` : "."}
-        </Alert>
+        </div>
       ) : null}
       {failures.length > 0 ? (
-        <Alert tone="danger" title="Not released">
-          <ul className="list-inside list-disc space-y-1">
+        <div role="alert" className={boardAlert("bad")}>
+          <b className="block font-medium">Not released</b>
+          <ul className="m-0 list-inside list-disc space-y-1 p-0">
             {failures.map((failure) => (
               <li key={failure}>{failure}</li>
             ))}
           </ul>
-        </Alert>
+        </div>
       ) : null}
-    </div>
+    </>
   );
 }

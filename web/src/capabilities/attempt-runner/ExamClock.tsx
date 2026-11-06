@@ -52,6 +52,7 @@ export function ExamClock({
   className,
   tick = false,
   paused = false,
+  plain = false,
 }: {
   secondsLeft: number;
   label: string;
@@ -59,10 +60,21 @@ export function ExamClock({
   /** Count down between pushes. For a clock fed straight from the server. */
   tick?: boolean;
   paused?: boolean;
+  /** Just the time as text, for a row that draws its own surroundings (the institution home boards). */
+  plain?: boolean;
 }) {
   const shown = useServerClock(secondsLeft, tick, paused);
   const urgent = shown <= 30;
   const warning = !urgent && shown <= 120;
+
+  if (plain) {
+    return (
+      <span className={className} aria-live={shown % 60 === 0 ? "polite" : "off"}>
+        <span className="sr-only">{label} </span>
+        {formatClock(shown)}
+      </span>
+    );
+  }
 
   return (
     <div

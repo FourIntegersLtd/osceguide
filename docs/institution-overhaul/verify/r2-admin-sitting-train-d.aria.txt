@@ -1,0 +1,29 @@
+- main:
+  - link "Sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - paragraph: Training
+  - heading "OV training run" [level=1]
+  - paragraph: 6 Nov 2026, 15:13
+  - text: Completed
+  - button "Edit"
+  - link "Results":
+    - /url: /app/e2e-mw3om0c6/sittings/0469e190-b9e0-4614-99e9-e645bb457f33/results
+  - status:
+    - paragraph: Every station has been marked.
+  - list "Steps":
+    - listitem: Schedule Date set
+    - listitem: Circuits 1 circuit
+    - listitem: Run All finished
+    - listitem: Mark 1 of 1 marked
+  - tablist "Sitting sections":
+    - tab "Circuits 1" [selected]
+    - tab "Candidates"
+    - tab "Results so far"
+  - heading "Circuits" [level=2]
+  - link "OV training run circuit Finished · 1 station · 1 trainee · No supervisor assigned":
+    - /url: /app/e2e-mw3om0c6/circuits/9336ba20-e397-4745-b08e-a3e5a4c1a07b
+    - img
+    - text: OV training run circuit Finished · 1 station · 1 trainee · No supervisor assigned
+  - link "Add a circuit":
+    - /url: /app/e2e-mw3om0c6/sittings/0469e190-b9e0-4614-99e9-e645bb457f33/circuits/new
+  - paragraph: Cancel sitting is only before any circuit starts. A circuit can be deleted only if it never started.

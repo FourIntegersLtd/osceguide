@@ -34,6 +34,7 @@ export function RichBlockEditor({
   required,
   readOnly,
   media,
+  board,
   onChange,
 }: {
   block: RichBlock;
@@ -41,6 +42,7 @@ export function RichBlockEditor({
   required: boolean;
   readOnly: boolean;
   media?: MediaUploads;
+  board?: boolean;
   onChange: (next: unknown) => void;
 }) {
   if (block.type === "media") {
@@ -52,6 +54,7 @@ export function RichBlockEditor({
         value={value}
         readOnly={readOnly}
         media={media}
+        board={board}
         onChange={onChange}
       />
     );

@@ -1,0 +1,10 @@
+- main:
+  - heading "Reporting" [level=1]
+  - paragraph: Each exam across all of its sittings. The pass rate counts decisions released to candidates.
+  - heading "Exams" [level=2]
+  - link "Simulated Consultation Assessment 1 sittings · 1 candidates · Nothing released yet":
+    - /url: /app/e2e-hire-mw3om0c6/authoring/exams/ef163c92-ca87-4591-8510-2c8818c084a5
+  - heading "Per-sitting reports" [level=2]
+  - text: Each sitting's report, CSV and readout live on its Results page.
+  - link "Open results":
+    - /url: /app/e2e-hire-mw3om0c6/results

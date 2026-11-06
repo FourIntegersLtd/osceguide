@@ -32,7 +32,9 @@ class RubricVersionRead(BaseModel):
     rubric_id: uuid.UUID
     version: int
     status: str
-    structure: dict[str, Any]
+    structure: dict[str, Any] = Field(
+        description="The author's marking scheme (schemaVersion 3). Writes also accept version 2."
+    )
     system_prompt: str
     pacing: dict[str, Any]
     marking_layout: dict[str, Any] | None = None
@@ -62,7 +64,9 @@ class RubricRead(BaseModel):
 
 class CreateRubric(BaseModel):
     title: str = Field(min_length=1, max_length=200)
-    structure: dict[str, Any]
+    structure: dict[str, Any] = Field(
+        description="The author's marking scheme (schemaVersion 3). Writes also accept version 2."
+    )
     system_prompt: str = Field(min_length=1)
     pacing: dict[str, Any]
     marking_layout: dict[str, Any] | None = None
@@ -84,8 +88,15 @@ class RenameRubric(BaseModel):
         return cleaned
 
 
+class NewRubricVersion(BaseModel):
+    # Copy the new draft from this version instead of the latest published one.
+    from_version: int | None = Field(default=None, ge=1)
+
+
 class EditRubricVersion(BaseModel):
-    structure: dict[str, Any]
+    structure: dict[str, Any] = Field(
+        description="The author's marking scheme (schemaVersion 3). Writes also accept version 2."
+    )
     system_prompt: str = Field(min_length=1)
     pacing: dict[str, Any]
     marking_layout: dict[str, Any] | None = None
@@ -96,7 +107,9 @@ class EditRubricVersion(BaseModel):
 class RubricDraft(BaseModel):
     """A structure being written, sent to be checked, previewed or given draft instructions."""
 
-    structure: dict[str, Any]
+    structure: dict[str, Any] = Field(
+        description="The author's marking scheme (schemaVersion 3). Writes also accept version 2."
+    )
 
 
 class RubricPreviewRead(BaseModel):

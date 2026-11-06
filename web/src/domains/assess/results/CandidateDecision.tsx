@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { HiCheckCircle } from "react-icons/hi2";
-import { Alert, Badge, Button, Spinner, StepRail, b2bTokens } from "@/foundation/ui";
+import { Spinner, b2bTokens as t } from "@/foundation/ui";
+
+import { boardChip, boardInput, boardLabel , boardBtn, boardAlert } from "@/foundation/ui/boardKit";
+import { candidateName } from "@/domains/assess/results/support";
+import type { ReactNode } from "react";
 import { useAsync } from "@/foundation/hooks";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { hasCode } from "@/foundation/platform-client";
@@ -20,10 +23,11 @@ import {
   signOffBlockers,
   suggestedOutcome,
   workflowLabel,
-  workflowTone,
 } from "@/domains/assess/results/support";
+import { assessFormStack } from "@/foundation/ui/b2bTokens";
 import { candidateProgress } from "@/domains/assess/results/candidateProgress";
 import { OutcomePicker, RecruitmentField, ReleasedDecision, ReopenButton, ResultPreviewButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
+import { boardRailStep } from "@/domains/assess/chrome";
 
 /**
  * One candidate's outcome: draft, signed off, released.
@@ -37,6 +41,7 @@ export function CandidateDecision({
   sittingId,
   candidate,
   hire,
+  stations,
   onChanged,
 }: {
   orgSlug: string;
@@ -44,6 +49,8 @@ export function CandidateDecision({
   candidate: CandidateReport;
   /** An exam-mode sitting (hire): the decision also records whether the candidate is taken on. */
   hire: boolean;
+  /** The candidate's stations, drawn between the progress rail and the form. */
+  stations: ReactNode;
   onChanged: () => void;
 }) {
   const traineeId = candidate.trainee_id;
@@ -55,18 +62,38 @@ export function CandidateDecision({
 
   if (!traineeId) {
     return (
-      <Alert tone="warning">
+      <div role="alert" className={boardAlert("warn")}>
         This candidate took the exam but is not on your trainee list. Add them to the list, then record the decision.
-      </Alert>
+      </div>
     );
   }
 
   if (stored.loading) return <Spinner />;
-  if (stored.error) return <Alert tone="danger">{assessErrorMessage(stored.error)}</Alert>;
+  if (stored.error) return <div role="alert" className={boardAlert("bad")}>{assessErrorMessage(stored.error)}</div>;
 
+  const steps = candidateProgress(candidate);
+  const nowId = steps.find((step) => step.state !== "done")?.id;
+  const state = stored.data?.workflow_state ?? "draft";
   return (
-    <div className="space-y-4">
-      <StepRail steps={candidateProgress(candidate)} />
+    <>
+      <div className="flex flex-wrap justify-between gap-3">
+        <h2 className="text-base font-semibold leading-normal">{`${candidateName(candidate)} · the decision`}</h2>
+        {state !== "released" ? (
+          <span className={t.assessMeta}>
+            <span className={boardChip(state === "signed_off" ? "ok" : "neutral")}>{workflowLabel(state)}</span>
+            {stored.data ? ` Revision ${stored.data.revision}` : ""}
+          </span>
+        ) : null}
+      </div>
+      <ol aria-label="Steps" className="m-0 flex list-none flex-wrap gap-2 p-0">
+        {steps.map((step) => (
+          <li key={step.id} className={boardRailStep(step.state, step.id === nowId)}>
+            <b className="block text-assess-label font-medium">{step.label}</b>
+            {step.note}
+          </li>
+        ))}
+      </ol>
+      {stations}
       <Form
         key={stored.data?.revision ?? 0}
         orgSlug={orgSlug}
@@ -80,7 +107,7 @@ export function CandidateDecision({
           onChanged();
         }}
       />
-    </div>
+    </>
   );
 }
 
@@ -147,15 +174,11 @@ function Form({
     }
   }, [onChanged]);
 
-  const preview = decision ? (
-    <div>
-      <ResultPreviewButton orgSlug={orgSlug} sittingId={sittingId} traineeId={traineeId} />
-    </div>
-  ) : null;
+  const preview = decision ? <ResultPreviewButton orgSlug={orgSlug} sittingId={sittingId} traineeId={traineeId} /> : null;
 
   if (released) {
     return (
-      <div className="space-y-4">
+      <div className="flex flex-col gap-3.5">
         <ReleasedDecision decision={decision} />
         {preview}
       </div>
@@ -163,16 +186,9 @@ function Form({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={workflowTone(state)} dot>{workflowLabel(state)}</Badge>
-        {decision ? (
-          <span className="text-osce-caption text-b2b-mid">Revision {decision.revision}</span>
-        ) : null}
-      </div>
-
-      {failure ? <Alert tone="danger">{failure}</Alert> : null}
-      {note && !failure ? <Alert tone="success">{note}</Alert> : null}
+    <>
+      {failure ? <div role="alert" className={boardAlert("bad")}>{failure}</div> : null}
+      {note && !failure ? <div role="status" className={boardAlert("ok")}>{note}</div> : null}
       {stale && !failure ? (
         <StaleNotice
           onReload={() => {
@@ -182,57 +198,61 @@ function Form({
         />
       ) : null}
 
-      <OutcomePicker value={outcome} disabled={signedOff} onChange={setOutcome} />
+      <div className={assessFormStack}>
+        <div>
+          <OutcomePicker value={outcome} disabled={signedOff} onChange={setOutcome} />
+          {suggestion && !signedOff ? <div className={`mt-2 ${t.assessMeta}`}>{suggestion}</div> : null}
+        </div>
 
-      {suggestion && !signedOff ? <p className="text-osce-meta text-b2b-mid">{suggestion}</p> : null}
+        {hire ? <RecruitmentField value={recruitment} disabled={signedOff} onChange={setRecruitment} /> : null}
 
-      {hire ? <RecruitmentField value={recruitment} disabled={signedOff} onChange={setRecruitment} /> : null}
-
-      <label className="block">
-        <span className="text-osce-meta font-medium text-b2b-headline">Rationale</span>
-        <textarea
-          rows={4}
-          value={rationale}
-          maxLength={4000}
-          disabled={signedOff}
-          onChange={(event) => setRationale(event.target.value)}
-          placeholder="Why this outcome, in the words you would use to a candidate or an appeal panel."
-          className={`${b2bTokens.b2bInputBase} mt-1 w-full`}
-        />
-      </label>
+        <div>
+          <label htmlFor="decision-rationale" className={`${boardLabel} mb-2`}>
+            Rationale
+          </label>
+          <textarea
+            id="decision-rationale"
+            rows={4}
+            value={rationale}
+            maxLength={4000}
+            disabled={signedOff}
+            onChange={(event) => setRationale(event.target.value)}
+            placeholder="Why this outcome, in the words you would use to a candidate or an appeal panel."
+            className={`${boardInput} min-h-24 py-2.5`}
+          />
+        </div>
+      </div>
 
       {!signedOff && blockers.length === 0 ? (
-        <p className="text-osce-meta text-b2b-mid">Every station marked · a rationale written</p>
+        <div className={t.assessMeta}>Every station marked · a rationale written</div>
       ) : null}
 
       {!signedOff && blockers.length > 0 ? (
-        <Alert tone="warning" title="Before this can be signed off">
-          <ul className="list-inside list-disc space-y-1">
-            {blockers.map((blocker) => (
-              <li key={blocker}>{blocker}</li>
-            ))}
-          </ul>
-        </Alert>
+        <div role="alert" className={boardAlert("warn")}>
+          <b className="block font-semibold">Before this can be signed off</b>
+          {blockers.map((blocker) => (
+            <div key={blocker}>{blocker}</div>
+          ))}
+        </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2.5">
+        {preview}
         {!signedOff ? (
           <>
-            <Button
-              themeType="b2b"
-              variant="secondary"
-              isLoading={busy === "save"}
+            <button
+              type="button"
+              className={boardBtn()}
               disabled={busy !== null}
               onClick={() =>
                 run("save", () => saveDecision(orgSlug, sittingId, traineeId, draft), "Draft saved.")
               }
             >
               Save draft
-            </Button>
-            <Button
-              themeType="b2b"
-              variant="commit"
-              isLoading={busy === "signoff"}
+            </button>
+            <button
+              type="button"
+              className={boardBtn("primary")}
               disabled={busy !== null || blockers.length > 0}
               onClick={() =>
                 run(
@@ -247,43 +267,44 @@ function Form({
                 )
               }
             >
-              <HiCheckCircle className="h-4 w-4 shrink-0" aria-hidden /> Sign off
-            </Button>
+              Sign off
+            </button>
           </>
         ) : (
-          <>
-            <ReopenButton
-              busy={busy === "reopen"}
-              disabled={busy !== null}
-              onConfirm={() =>
-                // Saving a signed-off decision records a new draft revision; the
-                // server refuses it only once the decision is released.
-                void run(
-                  "reopen",
-                  () => saveDecision(orgSlug, sittingId, traineeId, draft),
-                  "Back to draft. Change what you need, then sign off again.",
-                )
-              }
-            />
-          </>
+          <ReopenButton
+            busy={busy === "reopen"}
+            disabled={busy !== null}
+            onConfirm={() =>
+              // Saving a signed-off decision records a new draft revision; the
+              // server refuses it only once the decision is released.
+              void run(
+                "reopen",
+                () => saveDecision(orgSlug, sittingId, traineeId, draft),
+                "Back to draft. Change what you need, then sign off again.",
+              )
+            }
+          />
         )}
       </div>
 
-      {preview}
-
       {signedOff && !canRelease ? (
-        <Alert tone="warning">Cannot be released: {releaseRefusal("outcome_not_releasable")}.</Alert>
+        <div role="alert" className={boardAlert("warn")}>Cannot be released: {releaseRefusal("outcome_not_releasable")}.</div>
       ) : null}
       {signedOff && canRelease ? (
-        <p className="text-osce-meta text-b2b-mid">
+        <div className={t.assessMeta}>
           Signed off. Release it from the button at the top of the results, together with any other signed-off results.
-        </p>
+        </div>
+      ) : null}
+      {!signedOff ? (
+        <div className={t.assessMeta}>
+          Signed off: the form locks, &quot;Back to draft&quot; appears, and &quot;Result PDF&quot; appears once released. Sign-off covers the marks as they were; a re-mark needs a new sign-off. A withheld or inconclusive outcome is never sent.
+        </div>
       ) : null}
       {signedOff ? (
-        <p className="text-osce-caption text-b2b-mid">
+        <div className={t.assessMeta}>
           Sign-off covers the marks as they were at the time. If a station is re-marked afterwards, the result must be reviewed and signed off again before it can be released.
-        </p>
+        </div>
       ) : null}
-    </div>
+    </>
   );
 }

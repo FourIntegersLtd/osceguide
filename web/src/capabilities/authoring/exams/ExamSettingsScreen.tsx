@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, AsyncBoundary, B2CPageHeader, Button, Panel, StepGuide } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CPageHeader, StepRail } from "@/foundation/ui";
+import { boardBtn, boardPad } from "@/foundation/ui/boardKit";
 import { useSurface } from "@/capabilities";
 import type { Exam } from "@/capabilities/authoring/api";
 import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
@@ -62,32 +63,41 @@ function Form({ exam, reload }: { exam: Exam; reload: () => void }) {
     });
   }
 
+  const steps = examSteps(state);
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-[1080px] flex-col gap-6" data-testid="exam-settings-page">
       <B2CPageHeader
+        board
+        action={<span aria-hidden />}
+        className="!mb-0"
+        wideSubtitle
         eyebrow={exam.name}
         title="Exam settings"
         subtitle="Every setting an exam has: its timings, how it is marked, and what trainees get after a station."
         back={{ href: examsListPath(hrefFor), label: "Exams" }}
       />
       {locked ? <Alert tone="info">OSCE Guide exams are edited in the staff catalogue.</Alert> : null}
-      <StepGuide steps={examSteps(state)} line={examNextAction(state).line} />
-      <Panel className="flex flex-col gap-4">
-        <ExamFields value={form} onChange={setForm} codeDisabled />
+      <div className={boardPad}>
+        <StepRail board steps={steps} />
+        <div className="text-assess-desc !leading-[normal] text-ink">{examNextAction(state).line}</div>
+      </div>
+      <div className={boardPad}>
+        <ExamFields board value={form} onChange={setForm} codeDisabled />
         {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
-        <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={() => router.push(examsListPath(hrefFor))} disabled={action.busy !== null}>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button type="button" className={boardBtn()} onClick={() => router.push(examsListPath(hrefFor))} disabled={action.busy !== null}>
             Cancel
-          </Button>
-          <Button
-            variant="primary"
+          </button>
+          <button
+            type="button"
+            className={boardBtn("primary")}
             disabled={locked || action.busy !== null || form.name.trim() === ""}
             onClick={save}
           >
             {action.busy === "save" ? "Saving…" : "Save"}
-          </Button>
+          </button>
         </div>
-      </Panel>
+      </div>
     </div>
   );
 }

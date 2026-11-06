@@ -120,6 +120,7 @@ def event_stream(
     bus: EventBus,
     heartbeat_seconds: float = HEARTBEAT_SECONDS,
     snapshot_on_heartbeat: bool = False,
+    snapshot_on_heartbeat_when: Callable[[], Awaitable[bool]] | None = None,
     owner: uuid.UUID | None = None,
 ) -> AsyncGenerator[str, None]:
     """The stream below, counted against `owner`'s cap when one is named.
@@ -135,6 +136,7 @@ def event_stream(
         bus=bus,
         heartbeat_seconds=heartbeat_seconds,
         snapshot_on_heartbeat=snapshot_on_heartbeat,
+        snapshot_on_heartbeat_when=snapshot_on_heartbeat_when,
     )
     return stream if owner is None else _capped(owner, stream)
 
@@ -146,6 +148,7 @@ async def _event_stream(
     bus: EventBus,
     heartbeat_seconds: float,
     snapshot_on_heartbeat: bool,
+    snapshot_on_heartbeat_when: Callable[[], Awaitable[bool]] | None = None,
 ) -> AsyncGenerator[str, None]:
     """Send the current state, then send it again whenever something happens.
 
@@ -190,7 +193,10 @@ async def _event_stream(
                 except TimeoutError:
                     if pumping.done():
                         return
-                    if not snapshot_on_heartbeat:
+                    resnapshot = snapshot_on_heartbeat
+                    if snapshot_on_heartbeat_when is not None:
+                        resnapshot = await snapshot_on_heartbeat_when()
+                    if not resnapshot:
                         yield frame("ping", "{}")
                         continue
 

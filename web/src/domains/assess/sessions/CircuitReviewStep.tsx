@@ -1,10 +1,14 @@
 "use client";
 
-import { B2CGroupedRowLink, B2CGroupedSection, Badge, StepGuide } from "@/foundation/ui";
+import Link from "next/link";
+import { StepGuide } from "@/foundation/ui";
+import { assessMeta } from "@/foundation/ui/b2bTokens";
+import { boardCard, boardPad, boardRow, boardChip, boardButtonSmall } from "@/foundation/ui/boardKit";
 import { useSurface } from "@/capabilities";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import { markable, orderedSlots, slotReviewPath, stationLabel } from "@/domains/assess/sessions/support";
 import { circuitReviewSteps, stationsToMark, type ReviewStation } from "@/domains/assess/sessions/circuitReviewSteps";
+import { cardTitle } from "@/domains/assess/chrome";
 
 /**
  * What is left for a supervisor once a circuit ends: mark each station, share the circuit's
@@ -29,37 +33,34 @@ export function CircuitReviewStep({ data, published }: { data: CircuitConsole; p
   const hidden = marked.length - Math.min(marked.length, 1);
 
   return (
-    <section id="circuit-review" aria-label="Marking and review" className="flex flex-col gap-4">
+    <section id="circuit-review" aria-label="Marking and review" className="flex flex-col gap-5">
       <StepGuide steps={steps} line={line} />
-      <B2CGroupedSection eyebrow="Stations to mark">
+      <div className={boardCard}>
+        <div className={`${boardRow} border-t-0`}>
+          <h2 className={cardTitle}>Stations to mark</h2>
+        </div>
         {shown.map((station) => (
-          <B2CGroupedRowLink
-            key={station.slotId}
-            href={hrefFor(slotReviewPath(station))}
-            title={`${station.position} · ${station.title}`}
-            trailing={
-              <>
-                <Badge variant={station.state === "unmarked" ? "warning" : "success"} dot>
-                  {station.state === "unmarked" ? "Unmarked" : "Marked"}
-                </Badge>
-                <span className="ml-2 text-osce-meta font-medium text-b2b-headline">
-                  {station.state === "unmarked" ? "Mark" : "Review"}
-                </span>
-              </>
-            }
-          />
+          <Link key={station.slotId} href={hrefFor(slotReviewPath(station))} className={boardRow}>
+            <span className="flex-1">{`${station.position} · ${station.title}`}</span>
+            <span className={boardChip(station.state === "unmarked" ? "warn" : "ok")}>
+              {station.state === "unmarked" ? "Unmarked" : "Marked"}
+            </span>
+            <span className={boardButtonSmall}>{station.state === "unmarked" ? "Mark" : "Review"}</span>
+          </Link>
         ))}
         {hidden > 0 ? (
-          <p className="px-4 py-3 text-osce-meta text-b2b-mid">
+          <div className={`${boardRow} ${assessMeta}`}>
             {hidden} more marked station{hidden === 1 ? "" : "s"}
-          </p>
+          </div>
         ) : null}
-      </B2CGroupedSection>
-      <h3 className="text-osce-body font-semibold text-b2b-headline">The record</h3>
-      <p className="-mt-2 text-osce-meta text-b2b-mid">
-        Transcripts and automatic marking for each station open from its row. Only the supervisor named on this
-        circuit can read what was said.
-      </p>
+      </div>
+      <div className={boardPad}>
+        <h2 className={cardTitle}>The record</h2>
+        <p className={assessMeta}>
+          Transcripts and automatic marking for each station open from its row. Only the supervisor named on this
+          circuit can read what was said.
+        </p>
+      </div>
     </section>
   );
 }

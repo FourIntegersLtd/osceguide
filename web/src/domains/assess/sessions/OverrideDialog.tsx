@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Input } from "@/foundation/ui";
-import { Dialog } from "@/domains/assess/team/chrome";
+import { assessFormHeading, assessFormStack, assessHelper } from "@/foundation/ui/b2bTokens";
+import { PeopleDialog } from "@/domains/assess/ui";
 import {
   MAX_EXTEND_SECONDS,
   validOverrideSeconds,
 } from "@/domains/assess/sessions/support";
+import { boardInput } from "@/foundation/ui/boardKit";
 
 export interface OverrideRequest {
   /** The control being confirmed, used as the busy key. */
@@ -74,53 +75,48 @@ function OverrideForm({
   const [seconds, setSeconds] = useState(request.seconds ?? 60);
 
   return (
-    <Dialog
+    <PeopleDialog
       open
       title={request.title}
       lead={request.lead}
       error={error}
       busy={busy}
-      commitDisabled={
-        request.seconds !== undefined && !validOverrideSeconds(seconds)
-      }
+      commitDisabled={request.seconds !== undefined && !validOverrideSeconds(seconds)}
       tone={request.tone ?? "commit"}
       commitLabel={request.commitLabel}
       busyLabel="Working…"
       onClose={onClose}
       onCommit={() => onCommit({ reason: reason.trim() || null, seconds })}
     >
-      {request.seconds !== undefined ? (
-        <label className="block">
-          <span className="text-osce-caption font-medium text-b2b-headline">
-            Seconds to add
-          </span>
-          <Input
-            type="number"
-            min={1}
-            max={MAX_EXTEND_SECONDS}
-            value={seconds}
-            onChange={(event) => setSeconds(Number(event.target.value))}
-            className="mt-1"
-          />
-        </label>
-      ) : null}
+      <div className={assessFormStack}>
+        {request.seconds !== undefined ? (
+          <label className={assessFormHeading}>
+            <span className="text-assess-label font-medium">Seconds to add</span>
+            <input
+              type="number"
+              min={1}
+              max={MAX_EXTEND_SECONDS}
+              value={seconds}
+              onChange={(event) => setSeconds(Number(event.target.value))}
+              className={boardInput}
+            />
+          </label>
+        ) : null}
 
-      <label className="block">
-        <span className="text-osce-caption font-medium text-b2b-headline">
-          Reason{" "}
-          <span className="font-normal text-b2b-mid">
-            (kept with the record)
+        <label className={assessFormHeading}>
+          <span className="text-assess-label font-medium">
+            Reason <span className="font-normal text-osce-ink-500">(kept with the record)</span>
           </span>
-        </span>
-        <Input
-          value={reason}
-          maxLength={500}
-          placeholder="The fire alarm went off"
-          onChange={(event) => setReason(event.target.value)}
-          className="mt-1"
-        />
-        <span className="mt-1 block text-osce-caption text-b2b-mid">Optional. Your answer is saved with the circuit.</span>
-      </label>
-    </Dialog>
+          <input
+            value={reason}
+            maxLength={500}
+            placeholder="The fire alarm went off"
+            onChange={(event) => setReason(event.target.value)}
+            className={boardInput}
+          />
+          <span className={assessHelper}>Optional. Your answer is saved with the circuit.</span>
+        </label>
+      </div>
+    </PeopleDialog>
   );
 }

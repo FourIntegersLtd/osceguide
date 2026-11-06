@@ -6,7 +6,7 @@ import { useDropzone } from "react-dropzone";
 import { HiOutlineArrowUpTray } from "react-icons/hi2";
 import { Alert, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { Dialog } from "@/domains/assess/team/chrome";
+import { PeopleDialog as Dialog } from "@/domains/assess/ui";
 import {
   bulkInviteTeam,
   type BulkMembershipsResult,

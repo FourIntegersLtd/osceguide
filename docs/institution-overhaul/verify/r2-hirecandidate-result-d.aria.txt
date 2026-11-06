@@ -1,0 +1,6 @@
+- main:
+  - paragraph: Your result
+  - heading "Assessment outcome" [level=1]
+  - status:
+    - paragraph: Not released yet
+    - text: Your organisation has not released this result. When it is, we email you at the address your organisation holds for you.

@@ -1,0 +1,33 @@
+- main:
+  - heading "Candidates" [level=1]
+  - paragraph: Everyone in your organisation. Candidates sit assessments; staff (supervisors and admins) run circuits and mark them.
+  - button "Add candidates"
+  - tablist "People sections":
+    - tab "Candidates 1"
+    - tab "Staff" [selected]
+    - tab "Groups and year groups"
+    - tab "Exam access"
+    - tab "History"
+  - paragraph: 1 staff account
+  - text: Search staff
+  - searchbox "Search staff"
+  - table:
+    - rowgroup:
+      - row "Select Email Role Circuits led Access Actions":
+        - columnheader "Select"
+        - columnheader "Email"
+        - columnheader "Role"
+        - columnheader "Circuits led"
+        - columnheader "Access"
+        - columnheader "Actions"
+    - rowgroup:
+      - row "Select e2e-hire-admin-mw3om0c6@example.com e2e-hire-admin-mw3om0c6@example.com Admin 1 Active Change role Revoke":
+        - cell "Select e2e-hire-admin-mw3om0c6@example.com":
+          - checkbox "Select e2e-hire-admin-mw3om0c6@example.com"
+        - cell "e2e-hire-admin-mw3om0c6@example.com"
+        - cell "Admin"
+        - cell "1"
+        - cell "Active"
+        - cell "Change role Revoke":
+          - button "Change role"
+          - button "Revoke"

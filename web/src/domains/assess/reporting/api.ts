@@ -1,3 +1,4 @@
+import { plural } from "@/foundation/format";
 import { platformRequest, type components } from "@/foundation/platform-client";
 import { orgPath } from "@/domains/assess/api";
 
@@ -13,4 +14,11 @@ export function readOrgReporting(slug: string, signal?: AbortSignal): Promise<Or
 export function passRateLabel(row: Pick<ProgrammeReportRow, "released" | "passed" | "pass_rate">): string {
   if (row.pass_rate === null || row.released === 0) return "Nothing released yet";
   return `${row.pass_rate}% (${row.passed} of ${row.released} released)`;
+}
+
+/** "1 sitting · 1 candidate · Nothing released yet". */
+export function reportingLine(
+  row: Pick<ProgrammeReportRow, "sittings" | "candidates" | "released" | "passed" | "pass_rate">,
+): string {
+  return `${plural(row.sittings, "sitting")} · ${plural(row.candidates, "candidate")} · ${passRateLabel(row)}`;
 }

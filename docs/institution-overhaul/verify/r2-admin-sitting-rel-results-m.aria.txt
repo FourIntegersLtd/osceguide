@@ -1,0 +1,43 @@
+- main:
+  - link "Sitting":
+    - /url: /app/e2e-mw3om0c6/sittings/086c720c-30ff-4a81-9b8c-5613c33a49fa
+  - paragraph: Release run
+  - heading "Results" [level=1]
+  - paragraph: 1 of 1 stations marked · 1 of 1 released
+  - button "Export CSV"
+  - heading "Outcomes" [level=2]
+  - region "Outcomes": Passed 1 Failed 0 Inconclusive 0 Withheld 0 Undecided 0 Awaiting marking 0
+  - status:
+    - paragraph: Every result has been released.
+  - list "Steps":
+    - listitem: Schedule Date set
+    - listitem: Circuits Candidates sat
+    - listitem: Run All finished
+    - listitem: Mark 1 of 1 marked
+    - listitem: Decide 1 of 1 decided
+    - listitem: Release 1 of 1 released
+  - heading "Review order" [level=2]
+  - button "Export readout"
+  - paragraph: Formal exam only.
+  - paragraph: 1 candidate, with unfinished reviews first, then the weakest results.
+  - text: 1. Tess Trainee 1/1 stations · 100/100 · 100% complete Low priority
+  - region "Candidates":
+    - table:
+      - rowgroup:
+        - row "Candidate Score Outcome Status Actions":
+          - columnheader "Candidate"
+          - columnheader "Score"
+          - columnheader "Outcome"
+          - columnheader "Status"
+          - columnheader "Actions"
+      - rowgroup:
+        - row "Tess Trainee 1 of 1 stations marked 100/100 Pass Released Result PDF Open Tess Trainee":
+          - cell "Tess Trainee 1 of 1 stations marked":
+            - paragraph: Tess Trainee
+            - paragraph: 1 of 1 stations marked
+          - cell "100/100"
+          - cell "Pass"
+          - cell "Released"
+          - cell "Result PDF Open Tess Trainee":
+            - button "Result PDF"
+            - button "Open Tess Trainee": Open

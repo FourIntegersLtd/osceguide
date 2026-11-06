@@ -1,25 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
-import {
-  Alert,
-  Modal,
-  ModalCommitButton,
-  ModalContent,
-  ModalDangerButton,
-  ModalFooterActions,
-  ModalSecondaryButton,
-  ModalTitle,
-  b2bTokens,
-} from "@/foundation/ui";
+import { b2bTokens } from "@/foundation/ui";
 
 /**
  * The chrome the team and the roster share.
  *
  * They were one screen in the retiring client — `/team` held a Members tab
  * with both staff and trainees on it — and they are two screens here. What
- * they still have in common is this: the tab strip under the page title, the
- * grouped card, and one dialog shape. It lives with Team because that is where
+ * they still have in common is this: the tab strip under the page title and the
+ * grouped card. It lives with Team because that is where
  * `TeamPageHeaderNav` and `TeamPageCard` came from.
  */
 
@@ -69,61 +58,6 @@ export function TabStrip<T extends string>({
         </button>
       ))}
     </div>
-  );
-}
-
-/** One dialog shape: title, body, inline failure, Cancel and a commit. */
-export function Dialog({
-  open,
-  title,
-  lead,
-  error,
-  busy = false,
-  commitLabel,
-  busyLabel,
-  commitDisabled = false,
-  tone = "commit",
-  onClose,
-  onCommit,
-  children,
-}: {
-  open: boolean;
-  title: string;
-  lead?: ReactNode;
-  error?: string | null;
-  busy?: boolean;
-  commitLabel: string;
-  busyLabel: string;
-  commitDisabled?: boolean;
-  tone?: "commit" | "danger";
-  onClose: () => void;
-  onCommit: () => void;
-  children?: ReactNode;
-}) {
-  if (!open) return null;
-  const Commit = tone === "danger" ? ModalDangerButton : ModalCommitButton;
-
-  return (
-    <Modal onClose={busy ? undefined : onClose} title={title} width="38rem">
-      <ModalContent>
-        <ModalTitle>{title}</ModalTitle>
-        {lead ? <p className="mt-1 text-osce-body text-b2b-mid">{lead}</p> : null}
-        {children ? <div className="mt-4 space-y-4">{children}</div> : null}
-        {error ? (
-          <Alert tone="danger" className="mt-4">
-            {error}
-          </Alert>
-        ) : null}
-        <ModalFooterActions className="mt-6">
-          <ModalSecondaryButton onClick={onClose} disabled={busy}>
-            Cancel
-          </ModalSecondaryButton>
-          <Commit onClick={onCommit} disabled={busy || commitDisabled}>
-            {busy ? busyLabel : commitLabel}
-          </Commit>
-        </ModalFooterActions>
-      </ModalContent>
-    </Modal>
   );
 }
 

@@ -100,7 +100,7 @@ export function TrialPanel({
           <p className="mb-2 text-osce-caption text-ink-subtle">
             Marked by {inputs.result.model_used ?? "the marker"}. Not saved anywhere.
           </p>
-          <RubricFeedback rubric={inputs.rubric} result={inputs.result} narrow showAll />
+          <RubricFeedback rubric={inputs.rubric} result={inputs.result} narrow showAll trainingNote={false} />
         </div>
       ) : null}
     </div>

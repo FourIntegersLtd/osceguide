@@ -1,0 +1,19 @@
+- main:
+  - heading "Create your account" [level=1]
+  - paragraph: Start practising in a few minutes
+  - text: Name
+  - textbox "Name"
+  - text: Email
+  - textbox "Email"
+  - text: Password
+  - textbox "Password"
+  - button "Show password":
+    - img
+  - paragraph: At least 12 characters, mixing letters with numbers, punctuation or capitals.
+  - text: Confirm password
+  - textbox "Confirm password"
+  - button "Create account"
+  - paragraph:
+    - text: Already have an account?
+    - link "Sign in":
+      - /url: /login

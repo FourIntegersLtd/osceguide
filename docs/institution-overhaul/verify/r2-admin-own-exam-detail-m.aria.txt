@@ -1,0 +1,37 @@
+- main:
+  - link "Exams":
+    - /url: /app/e2e-mw3om0c6/authoring/exams
+  - paragraph: r2x Draft
+  - heading "R2 Exam" [level=1]
+  - paragraph: 0 published stations · Marking scheme v1 · 0 sittings
+  - paragraph: Available for scheduling
+  - paragraph: Finish setting the exam up and publish it, then switch this on.
+  - link "Continue setup":
+    - /url: /app/e2e-mw3om0c6/authoring/exams/new?exam=5608fbea-46bb-46b8-b64c-141ebbcdc38c
+  - switch "Available for scheduling" [disabled]
+  - heading "Stations" [level=2]
+  - link "Add station":
+    - /url: /app/e2e-mw3om0c6/authoring/stations/new?exam=r2x
+  - paragraph: No stations yet. Create one with Add station.
+  - link "See all 0 stations":
+    - /url: /app/e2e-mw3om0c6/authoring/stations?exam=r2x
+  - heading "Sittings" [level=2]
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - paragraph: No sittings scheduled for this exam yet.
+  - heading "Marking scheme" [level=2]
+  - paragraph: Orthopaedic interview marking rubric
+  - paragraph: Version 1, published 1 Nov. 4 areas.
+  - link "Open scheme":
+    - /url: /app/e2e-mw3om0c6/authoring/rubrics/10480bab-d10c-4e29-93e8-e77d4965a0fa/versions/1?exam=5608fbea-46bb-46b8-b64c-141ebbcdc38c
+  - link "Change scheme":
+    - /url: /app/e2e-mw3om0c6/authoring/exams/5608fbea-46bb-46b8-b64c-141ebbcdc38c/settings
+  - heading "Station layouts (optional)" [level=2]
+  - link "Manage layouts":
+    - /url: /app/e2e-mw3om0c6/authoring/station-templates
+  - heading "Settings" [level=2]
+  - paragraph: 3 min reading · 10 min consultation · Patient voice and feedback style
+  - link "Edit settings":
+    - /url: /app/e2e-mw3om0c6/authoring/exams/5608fbea-46bb-46b8-b64c-141ebbcdc38c/settings
+  - heading "Retire or delete" [level=2]
+  - button "Delete exam"

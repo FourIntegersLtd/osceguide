@@ -1,0 +1,38 @@
+- main:
+  - heading "E2E PARTNER MW3OM0C6 dashboard" [level=1]
+  - paragraph: See how people from your links are using OSCE Guide. All dates are UK calendar days.
+  - tablist "Partner dashboard sections":
+    - tab "Overview" [selected]
+    - tab "Performance"
+    - tab "Your fee"
+    - tab "How we count"
+  - combobox "Date range":
+    - option "This month" [selected]
+    - option "Last month"
+    - option "Last 30 days"
+    - option "Last 3 months"
+    - option "Last 6 months"
+    - option "Custom"
+  - combobox "Exam":
+    - option "All exams" [selected]
+    - option "SCA"
+    - option "PLAB"
+    - option "ORTHO"
+  - text: All exams · 1 Nov 2026 – 5 Nov 2026 · UK calendar days
+  - paragraph: Updated 16:45
+  - note:
+    - paragraph: Estimated fee (guide only)
+    - paragraph:
+      - text: This is a rough estimate only. We count link visits on OSCE Guide and multiply by our agreed rate per visit. BMJ invoices based on their own click records, so this won't match what they bill you. We're using
+      - strong: £0.40
+      - text: per link visit.
+  - paragraph: Overview
+  - heading "How your links are performing" [level=2]
+  - paragraph: Visits, sign-ups, and your estimated fee for this period.
+  - paragraph: No activity yet
+  - paragraph: When people open your links, the numbers will show up here.
+  - heading "From visit to payment" [level=2]
+  - paragraph: How many people reached each step
+  - status:
+    - paragraph: Nothing to show for these dates
+    - paragraph: Try widening the date range or removing filters.

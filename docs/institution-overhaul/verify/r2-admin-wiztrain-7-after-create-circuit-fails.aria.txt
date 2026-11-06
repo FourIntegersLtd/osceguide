@@ -1,0 +1,31 @@
+- main:
+  - alert:
+    - paragraph: The circuits were not made
+    - paragraph: boom
+    - button "Try again"
+  - link "Sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - paragraph: Training
+  - heading "R2 training fail" [level=1]
+  - paragraph: No date set
+  - text: Scheduled
+  - button "Edit"
+  - button "Cancel sitting"
+  - link "Results":
+    - /url: /app/e2e-mw3om0c6/sittings/cc9bb5c7-4840-4f93-86d2-f95b4c7646ac/results
+  - status:
+    - paragraph: Set a date so candidates know when to come.
+    - button "Set a date"
+  - list "Steps":
+    - listitem: Schedule No date
+    - listitem: Circuits None yet
+    - listitem: Run Not started
+    - listitem: Mark Not started
+  - tablist "Sitting sections":
+    - tab "Circuits 0" [selected]
+    - tab "Candidates"
+    - tab "Results so far"
+  - paragraph: Circuits
+  - heading "No circuits yet" [level=2]
+  - paragraph: Add at least one circuit so candidates can take this sitting.
+  - paragraph: Cancel sitting is only before any circuit starts. A circuit can be deleted only if it never started.

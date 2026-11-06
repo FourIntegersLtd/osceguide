@@ -1,0 +1,43 @@
+- main:
+  - heading "People" [level=1]
+  - paragraph: Everyone in your organisation. Trainees sit sittings; staff (supervisors and admins) run circuits and mark them.
+  - button "Add people"
+  - tablist "People sections":
+    - tab "Trainees 1"
+    - tab "Staff" [selected]
+    - tab "Groups and year groups"
+    - tab "Exam access"
+    - tab "History"
+  - paragraph: 2 staff accounts
+  - text: Search staff
+  - searchbox "Search staff"
+  - table:
+    - rowgroup:
+      - row "Select Email Role Circuits led Access Actions":
+        - columnheader "Select"
+        - columnheader "Email"
+        - columnheader "Role"
+        - columnheader "Circuits led"
+        - columnheader "Access"
+        - columnheader "Actions"
+    - rowgroup:
+      - row "Select e2e-admin-mw3mzpx5@example.com e2e-admin-mw3mzpx5@example.com Admin 0 Active Change role Revoke":
+        - cell "Select e2e-admin-mw3mzpx5@example.com":
+          - checkbox "Select e2e-admin-mw3mzpx5@example.com"
+        - cell "e2e-admin-mw3mzpx5@example.com"
+        - cell "Admin"
+        - cell "0"
+        - cell "Active"
+        - cell "Change role Revoke":
+          - button "Change role"
+          - button "Revoke"
+      - row "Select e2e-sup-mw3mzpx5@example.com e2e-sup-mw3mzpx5@example.com Supervisor 0 Active Change role Revoke":
+        - cell "Select e2e-sup-mw3mzpx5@example.com":
+          - checkbox "Select e2e-sup-mw3mzpx5@example.com"
+        - cell "e2e-sup-mw3mzpx5@example.com"
+        - cell "Supervisor"
+        - cell "0"
+        - cell "Active"
+        - cell "Change role Revoke":
+          - button "Change role"
+          - button "Revoke"

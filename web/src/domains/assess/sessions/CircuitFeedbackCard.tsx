@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { HiCheckCircle } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Button, ButtonLink, b2bTokens, Panel } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button, ButtonLink } from "@/foundation/ui";
+import { assessMeta } from "@/foundation/ui/b2bTokens";
+import { boardPad, boardInput } from "@/foundation/ui/boardKit";
 import type { AsyncState } from "@/foundation/hooks";
 import {
   finalizeCircuitReview,
   type CircuitReviewState,
 } from "@/domains/assess/sessions/api";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
+import { cardTitle } from "@/domains/assess/chrome";
 
 /**
  * Publishing what was marked, once the circuit is done.
@@ -96,61 +98,67 @@ function FeedbackForm({
   const [notes, setNotes] = useState(current.review?.merged_notes ?? "");
   const publishedAt = current.state === "published" ? current.review.finalized_at : null;
 
+  const compact = !ended;
+
   return (
-    <div>
-    <Panel
-      title="Share this circuit's feedback"
-      description="Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one."
-    >
-      <div className="space-y-3">
-      <p className="text-osce-caption font-medium text-b2b-headline">
-        Marked on {marked} of {total} station{total === 1 ? "" : "s"}
+    <div className={boardPad} data-board="feedback">
+      <h2 className={cardTitle}>Share this circuit&apos;s feedback</h2>
+      <p className="m-0 text-assess-label leading-normal text-osce-ink-500">
+        {compact
+          ? `Marked on ${marked} of ${total} station${total === 1 ? "" : "s"}. ${publishedAt ? "Published." : "Not published yet."} You can publish once at least one station is marked; this is the step that finalises the circuit's feedback.`
+          : "Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one."}
       </p>
 
-      <label htmlFor="circuit-feedback-notes" className="sr-only">
-        Notes on the circuit as a whole
-      </label>
-      <textarea
-        id="circuit-feedback-notes"
-        value={notes}
-        onChange={(event) => setNotes(event.target.value)}
-        rows={3}
-        placeholder="Anything to say about the circuit as a whole (optional)"
-        className={`${b2bTokens.b2bInputBase} w-full`}
-      />
-
-      {publishedAt ? (
-        <Alert tone="success">
-          Published {new Date(publishedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.
-          Publishing again replaces it.
-        </Alert>
+      {compact ? (
+        <ButtonLink href="#circuit-review" themeType="b2b" variant="secondary" className="self-start">
+          Go to circuit feedback
+        </ButtonLink>
       ) : (
-        <p className="text-osce-caption text-b2b-mid">Not published yet.</p>
-      )}
+        <>
+          <p className={assessMeta}>
+            Marked on {marked} of {total} station{total === 1 ? "" : "s"}
+          </p>
 
-      {marked === 0 ? (
-        <p className="text-osce-caption text-b2b-mid">
-          You can publish once at least one station is marked; this is the step that finalises the circuit&apos;s feedback.{" "}
-          {ended ? (
-            <ButtonLink href="#circuit-review" themeType="b2b" variant="ghost">
-              Go to circuit feedback
-            </ButtonLink>
+          <label htmlFor="circuit-feedback-notes" className="sr-only">
+            Notes on the circuit as a whole
+          </label>
+          <textarea
+            id="circuit-feedback-notes"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            rows={4}
+            placeholder="Anything to say about the circuit as a whole (optional)"
+            className={`${boardInput} min-h-24 py-2.5`}
+          />
+
+          {publishedAt ? (
+            <Alert tone="success">
+              Published {new Date(publishedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.
+              Publishing again replaces it.
+            </Alert>
+          ) : (
+            <Alert tone="info">Not published yet.</Alert>
+          )}
+
+          {marked === 0 ? (
+            <p className={assessMeta}>
+              You can publish once at least one station is marked; this is the step that finalises the
+              circuit&apos;s feedback.
+            </p>
           ) : null}
-        </p>
-      ) : null}
 
-      <Button
-        themeType="b2b"
-        variant="secondary"
-        isLoading={busy === "publish"}
-        disabled={busy !== null || offline || marked === 0}
-        onClick={() => publish(notes.trim() || null)}
-      >
-        <HiCheckCircle className="h-4 w-4 shrink-0 text-b2b-success-text" aria-hidden />
-        {publishedAt ? "Publish again" : "Publish circuit feedback"}
-      </Button>
-      </div>
-    </Panel>
+          <Button
+            themeType="b2b"
+            variant="primary"
+            className="self-start"
+            isLoading={busy === "publish"}
+            disabled={busy !== null || offline || marked === 0}
+            onClick={() => publish(notes.trim() || null)}
+          >
+            {publishedAt ? "Publish again" : "Publish circuit feedback"}
+          </Button>
+        </>
+      )}
     </div>
   );
 }

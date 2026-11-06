@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from app.core.ports import EmailDeliveryFailed
+from app.core.ports import EmailDeliveryFailed, EmailDeliveryTimedOut
 from app.core.settings import get_settings
 from app.features.notifications import sender as sender_module
 
@@ -47,7 +47,7 @@ async def test_a_stalled_provider_call_becomes_a_delivery_failure(monkeypatch: p
     monkeypatch.setattr(sender_module, "SEND_TIMEOUT_SECONDS", 0.05)
     resend_sender = sender_module.ResendSender()
 
-    with pytest.raises(EmailDeliveryFailed):
+    with pytest.raises(EmailDeliveryTimedOut):
         await asyncio.wait_for(resend_sender.send(to="a@example.com", subject="s", html="x"), 2)
 
 

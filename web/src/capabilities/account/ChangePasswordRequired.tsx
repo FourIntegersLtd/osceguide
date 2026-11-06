@@ -32,7 +32,7 @@ export function ChangePasswordRequired() {
       title="Choose a new password"
       subtitle="You signed in with a temporary password. Choose your own before you carry on."
       variant="card"
-      icon="key"
+      compact
     >
       <ChangePassword
         copy={FORCED_PASSWORD_COPY}

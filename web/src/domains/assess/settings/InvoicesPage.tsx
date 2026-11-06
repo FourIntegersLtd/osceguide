@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LuChevronRight } from "react-icons/lu";
-import { Alert, B2CPageHeader, Badge, LeaveConfirmModal, Panel } from "@/foundation/ui";
+import { b2bTokens as t, cn, LeaveConfirmModal } from "@/foundation/ui";
+import { Chip, Note } from "@/domains/assess/ui";
+import { SettingsCard } from "@/domains/assess/settings/SettingsCard";
 import { useAsync, useLeaveGuard } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { readOrganization } from "@/domains/assess/api";
 import { InvoiceBrowser } from "@/domains/assess/settings/InvoicesPanel";
+import { boardBtn } from "@/foundation/ui/boardKit";
 
 /** The organisation's name for the invoice copy, "your organisation" until it loads. */
 function useOrgName(orgSlug: string): string {
@@ -22,21 +24,17 @@ export function InvoicesTab({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
   const name = useOrgName(orgSlug);
   return (
-    <Panel
+    <SettingsCard
       title="Invoices"
-      description={`Invoices OSCE Guide raises for ${name}, and the purchase order number your finance team needs on them.`}
+      lead={`Invoices OSCE Guide raises for ${name}, and the purchase order number your finance team needs on them.`}
     >
-      <Link
-        href={hrefFor("/settings/invoices")}
-        className="flex items-center justify-between gap-3 rounded-control border border-border bg-surface px-4 py-3 text-osce-body font-medium text-ink hover:bg-canvas"
-      >
-        <span className="flex items-center gap-2">
+      <div className="flex flex-col items-start gap-4">
+        <Link href={hrefFor("/settings/invoices")} className={boardBtn("primary")}>
           Open invoices
-          <Badge variant="info">New</Badge>
-        </span>
-        <LuChevronRight aria-hidden className="h-4 w-4 text-ink-muted" />
-      </Link>
-    </Panel>
+        </Link>
+        <Chip tone="info">New</Chip>
+      </div>
+    </SettingsCard>
   );
 }
 
@@ -53,15 +51,20 @@ export function InvoicesPage() {
   const isAdmin = can(session, "manage_team");
 
   if (!orgSlug || !isAdmin) {
-    return <Alert tone="info">Invoices are for your organisation&apos;s administrators.</Alert>;
+    return <Note tone="info">Invoices are for your organisation&apos;s administrators.</Note>;
   }
   return (
-    <>
-      <B2CPageHeader
-        back={{ href: settings, label: "Settings" }}
-        title="Invoices"
-        subtitle={`Raised by OSCE Guide for ${name}.`}
-      />
+    <div className="flex min-w-0 max-w-assess-page flex-col gap-6">
+      <div>
+        <Link href={settings} className="text-assess-label">
+          ‹ Settings
+        </Link>
+      </div>
+      <div>
+        <div className={t.assessEyebrow}>Settings</div>
+        <h1 className={t.assessTitle}>Invoices</h1>
+        <p className={cn(t.assessDesc, "m-0")}>{`Raised by OSCE Guide for ${name}.`}</p>
+      </div>
       <InvoiceBrowser orgSlug={orgSlug} setDirty={setDirty} />
       <LeaveConfirmModal
         isOpen={guard.asking}
@@ -71,6 +74,6 @@ export function InvoicesPage() {
           if (href) router.push(href);
         }}
       />
-    </>
+    </div>
   );
 }

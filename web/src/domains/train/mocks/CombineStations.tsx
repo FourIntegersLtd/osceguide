@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useDismissOnOutside } from "@/foundation/hooks/useDismissOnOutside";
 import { useRouter } from "next/navigation";
 import {
   HiOutlineXMark,
@@ -68,15 +69,8 @@ function CombineStationsForm({ workspace, examCode }: { workspace: MockWorkspace
 
   // What the server is asked for: the box, once typing pauses.
   const query = useSearchQuery(stationSearch);
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const closeDropdown = useCallback(() => setIsDropdownOpen(false), []);
+  useDismissOnOutside(dropdownRef, isDropdownOpen, closeDropdown);
 
   // Narrowed to the incomplete version ids and searched in SQL. An empty
   // `incompleteIds` is never sent as a filter — `browseLibrary` reads that as

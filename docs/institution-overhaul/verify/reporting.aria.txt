@@ -1,0 +1,9 @@
+- main:
+  - heading "Reporting" [level=1]
+  - paragraph: Each exam across all of its sittings. The pass rate counts decisions released to candidates.
+  - heading "Exams" [level=2]
+  - text: Simulated Consultation Assessment 2 sittings · 1 candidates · Nothing released yet
+  - heading "Per-sitting reports" [level=2]
+  - text: Each sitting's report, CSV and readout live on its Results page.
+  - link "Open results":
+    - /url: /app/e2e-mw3mzpx5/results

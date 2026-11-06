@@ -1,0 +1,212 @@
+[
+ {
+  "n": 1,
+  "name": "The tabs, in order",
+  "seen": "1 Domains 2 Scale 3 Pass rule 4 Feedback 5 Advanced 6 Trial mark 7 Versions || footer: Publish / Back / Next: Scale | Step 1 of 6: DomainsNext"
+ },
+ {
+  "n": 2,
+  "name": "Domains: the outline",
+  "seen": "Domains and competencies Add ⋮⋮ ▾ 4 competencies Details ⋯ ⋮⋮ Details ⋯ ⋮⋮ Details ⋯ ⋮⋮ Details ⋯ ⋮⋮ Details ⋯ Add competency ⋮⋮ ▸ 4 competencies Details ⋯ ⋮⋮ ▸ 4 competencies Details ⋯ Pick a domain, competency or notes block to edit it here. || carets: 3"
+ },
+ {
+  "n": 3,
+  "name": "Details of a domain",
+  "seen": "DOMAIN Done Data gathering Instructions Can be judged while the station is running Optional: the marker may leave this domain empty Feedback the marker writes once for this domain Add feedback Delete domain"
+ },
+ {
+  "n": 4,
+  "name": "Details of a competency",
+  "seen": "COMPETENCY IN DATA GATHERING Done Examination Instructions Delete competency"
+ },
+ {
+  "n": 5,
+  "name": "The Add menu",
+  "seen": "Domain | Competency | Notes | Scale | Pass rule | Feedback"
+ },
+ {
+  "n": 6,
+  "name": "A competency was added",
+  "seen": "competency inputs in Clinical management: History taking, Examination, Investigations, Interpretation, Diagnosis, Management plan, Safety netting, Follow up, , Competency 1, ,"
+ },
+ {
+  "n": 7,
+  "name": "Reorder and the menu",
+  "seen": "Move up | Move down | Duplicate | Delete"
+ },
+ {
+  "n": 8,
+  "name": "Deleting asks first",
+  "seen": "Delete Clinical management? Its 5 competencies and their instructions go too. Close without saving to undo. Cancel Delete"
+ },
+ {
+  "n": 9,
+  "name": "Notes blocks",
+  "seen": "NOTES Done Notes 1 Instructions Feedback Add feedback Delete notes"
+ },
+ {
+  "n": 10,
+  "name": "A Custom row",
+  "seen": "customOk=true outline notes rows: s it is NOTES Done Clinical analysis Instructions Feedback What went well What to improve Next steps Quotes from the transcript Summary Safety concerns Why this rating Note One line A paragraph A list Remove overall_priorities Custom field, edit in Advanced Edit in Advanced Add feedback Delete notes || panel: NOTES Done Clinical analysis Instructions Feedback What went well What to improve Next steps Quotes from the transcript Summary Safety concerns Why this rating Note One line A paragraph A list Remove overall_priorities Custom field, edit in Advanced Edit in Advanced Add feedback Delete notes"
+ },
+ {
+  "n": 11,
+  "name": "Scale: pick a preset",
+  "seen": ""
+ },
+ {
+  "n": 12,
+  "name": "Scale: levels and points",
+  "seen": "Scale How each competency is rated. Best first. One scale for every domain. Start from Red, Amber, Green Pass or fail 0 to 10, whole numbers Clear pass to clear fail Level Points Remove Remove Remove Remove Add level A total adds these points up. The first level is the best."
+ },
+ {
+  "n": 13,
+  "name": "Scale: a number range",
+  "seen": "Scale How each competency is rated. Best first. One scale for every domain. Start from Red, Amber, Green Pass or fail 0 to 10, whole numbers Clear pass to clear fail From To Steps Whole numbers Any number The marker gives each competency a number in this range."
+ },
+ {
+  "n": 14,
+  "name": "A problem blocks publishing",
+  "seen": "Parity walk 1793934161710 || Fix 1 problem to publish. Publish Save draft || Publishing is blocked: 1 problem to fix. See problems || tab: 1 Domains 2 Scale 1 3 Pass rule 4 Feedback 5 Advanced 6 Trial mark 7 Versions || problems:"
+ },
+ {
+  "n": 15,
+  "name": "Pass rule: domains",
+  "seen": "Pass rule Read the sentence: it is exactly what the marker applies. Domains No pass line A score of at least Competencies rated at least at least of the competencies percent of the competencies rated Green Amber Red or better Pass a domain when at least 1 of its competencies are rated Amber or better. Station No pass line A score of at least Competencies rated at least Count by Total of points Average Percentage at least Every domain must pass too Pass the station when its total is at least 7, and every domain passes. Total out of Blank means worked out from the scale. Bands such as Clear pass and Borderline cannot be set with these controls. They can only be set by editing the scheme text o"
+ },
+ {
+  "n": 16,
+  "name": "Pass rule: a score instead",
+  "seen": "Pass rule Read the sentence: it is exactly what the marker applies. Domains No pass line A score of at least Competencies rated at least Count by Total of points Average Percentage at least Pass a domain when its total is at least 1. Station No pass line A score of at least Competencies rated at least Count by Total of points Average Percentage at least Every domain must pass too Pass the station when its total is at least 7, and every domain passes. Total out of Blank means worked out from the scale. Bands such as Clear pass and Borderline cannot be set with these controls. They can only be set by editing the scheme text on the Advanced tab."
+ },
+ {
+  "n": 17,
+  "name": "Pass rule: the station",
+  "seen": "Pass rule Read the sentence: it is exactly what the marker applies. Domains No pass line A score of at least Competencies rated at least Domains have no pass line. Station No pass line A score of at least Competencies rated at least Count by Total of points Average Percentage at least Every domain must pass too Set a domain pass line first. Pass the station when its total is at least 7. Total out of Blank means worked out from the scale. Bands such as Clear pass and Borderline cannot be set with these controls. They can only be set by editing the scheme text on the Advanced tab."
+ },
+ {
+  "n": 18,
+  "name": "Feedback: what the marker writes",
+  "seen": "Feedback What the marker writes, and what the candidate sees. Feedback the marker writes for every competency What went well What to improve Next steps Quotes from the transcript Summary Safety concerns Why this rating Note One line A paragraph A list Remove What went well What to improve Next steps Quotes from the transcript Summary Safety concerns Why this rating Note One line A paragraph A list Remove What went well What to improve Next steps Quotes from the transcript Summary Safety concerns Why this rating Note One line A paragraph A list Remove What went well What to improve Next steps Quotes from the transcript Summary Safety concerns Why this rating Note One line A paragraph A list R"
+ },
+ {
+  "n": 19,
+  "name": "Feedback: what the candidate sees",
+  "seen": "ways asked for; it is not in this list. What the candidate sees Overall result and band The total, outcome and band. Shown Score per domain The figure each domain gets. Shown What went well The What went well feedback. Shown What to work on The What to improve and Next steps feedback. Shown Transcript quotes The Quotes from the transcript feedback. Hidden Watch the preview change as you switch these. Tone As written Supportive and direct Formal examiner Brief The marking instructions decide."
+ },
+ {
+  "n": 20,
+  "name": "Advanced: marking instructions (drafting)",
+  "seen": "Marking instructions Written for the AI marker and for supervisors. Draft them for me from the domains, then edit. Draft them for me Marking instructions What the marking model reads before the transcript. A version cannot be published without it. Pacing, in seconds Examiner layout Scheme as JSON"
+ },
+ {
+  "n": 21,
+  "name": "Advanced: drafted",
+  "seen": "Parity walk 1793934161710 || You have unsaved changes. Save them to publish. Publish Save draft || Drafted instructions for 1 place. Read them before you save. || || Marking instructions Written for the AI marker and for supervisors. Draft them for me from the domains, then edit. Draft them for me Marking instructions What the marking model reads before the transcript. A version cannot be published without it. Pacing, in seconds Examiner layout Scheme as JSON"
+ },
+ {
+  "n": 22,
+  "name": "Advanced: no instructions",
+  "seen": "Parity walk 1793934161710 || Add marking instructions on the Advanced tab to publish. Publish Save draft || Drafted instructions for 1 place. Read them before you save. || || lags Critical flags 1 Critical flags 2 Missed Missed 1 Missed 2 Suggested actions Suggested actions 1 Suggested actions 2 G 2 competencies graded Good A 1 competency graded Fair R 1 competency graded Poor Problems None. Publishing is blocked while any are listed here, and each says what to fix."
+ },
+ {
+  "n": 23,
+  "name": "Advanced: pacing and examiner layout",
+  "seen": "Marking instructions Written for the AI marker and for supervisors. Draft them for me from the domains, then edit. Draft them for me Marking instructions Write the marking instructions, or press Draft them for me. What the marking model reads before the transcript. A version cannot be published without it. Pacing, in seconds Whole station How long the station lasts. Introduction ends Must come before history ends. History ends When the patient moves on from history. Safety-net window The last stretch, counted back from the end. When the live supervisor prompts move on. Leave blank for none. Examiner layout What the supervisor sees when reviewing a station, in order. Template struct"
+ },
+ {
+  "n": 24,
+  "name": "Advanced: scheme as JSON, broken edit",
+  "seen": "at the supervisor sees when reviewing a station, in order. Template structure SECTIONS 1 Marking 0 fields Add section SECTION 1·1 OF 1·0 FIELDS No fields yet. Add the first one below. Add field Scheme as JSON Custom rows and anything the blocks cannot show are edited here. This is not valid JSON: Expected property name or '}' in JSON at position 2 (line 1 column 3) Apply JSON Discard edits"
+ },
+ {
+  "n": 25,
+  "name": "Preview: dashboard",
+  "seen": "SECTIONS 1 Marking 0 fields Add section"
+ },
+ {
+  "n": 26,
+  "name": "Trial mark: choose",
+  "seen": "Trial mark Mark a real attempt or a pasted transcript with this draft, before anyone else does. Trial source An attempt Paste a transcript Search attempts to trial-mark Run trial mark"
+ },
+ {
+  "n": 27,
+  "name": "Trial mark: running",
+  "seen": "Trial mark Mark a real attempt or a pasted transcript with this draft, before anyone else does. Trial source An attempt Paste a transcript Transcript Marking… Stop Marking · 0 s · 1 turn"
+ },
+ {
+  "n": 28,
+  "name": "Trial mark: result",
+  "seen": "Trial mark Mark a real attempt or a pasted transcript with this draft, before anyone else does. Trial source An attempt Paste a transcript Transcript Run trial mark Marked · 16 s · 1 turn Marked by gpt-6-luna. Not saved anywhere. Your mark 23/39 total score Pass at 7/39 Passed By domain Data gathering Met the pass line R History taking · Poor Completed Opened with an open question and invited the patient to elaborate. Critical flags The history is too limited to assess acute chest pain safely. Missed Did not establish pain onset details, duration, severity, associated symptoms, relevant cardiac risk factors, past medical history, medications, allergies, or smoking history. Sug"
+ },
+ {
+  "n": 29,
+  "name": "Trial mark: failed",
+  "seen": "Parity walk 1793934161710 || Looks right in the preview. Publish this version. Publish Save draft || Drafted instructions for 1 place. Read them before you save. || Request failed (502). The API was not reached. Use http://localhost:3100 (not :3000). Start the API: cd api && make start. In web/.env.local set PLATFORM_API_URL=http://127.0.0.1:8002 and restart npm run dev:webpack. || Trial mark Mark a real attempt or a pasted transcript with this draft, before anyone else does. Trial source An attempt Paste a transcript Transcript Run trial mark Request failed (502). The API was not reached. Use http://localhost:3100 (not :3000). Start the API: cd api && make start. In web/.env.local set PLATF"
+ },
+ {
+  "n": 32,
+  "name": "Save refused (stale revision)",
+  "seen": "Edit marking scheme | OSCE Guide || You have unsaved changes. Save them to publish. Publish Save draft || This draft was saved somewhere else while you were editing, so your save was refused. Reload the latest draft, then make your change again. Reload latest || Drafted instructions for 1 place. Read them before you save. || || Marking schemes Parity walk 1793934161710 Exams › Marking schemes · version 1. How a station is marked, and what the candidate's feedback looks like. Publishing makes a new version; sittings already marked keep the version they used. ● Draft You have unsaved changes. Save them to publish. Publish Save draft 1 Draft Unsaved changes Preview No problems 3 Publish Not pub"
+ },
+ {
+  "n": 35,
+  "name": "Leaving with unsaved changes",
+  "seen": "Leave without saving? Your changes to this draft since the last save will be lost. Stay Leave"
+ },
+ {
+  "n": 30,
+  "name": "Versions (draft only)",
+  "seen": "v1 Draft, edited today Draft || footer: Publish / Back to the steps: Domains | Versions is outside the steps"
+ },
+ {
+  "n": 33,
+  "name": "Publish",
+  "seen": "Publish version 1? Once published it cannot be changed. Sittings already marked keep the version they used. Cancel Publish version 1"
+ },
+ {
+  "n": 34,
+  "name": "Published",
+  "seen": "Parity walk 1793934161710 || This version is read-only. Start a new draft to change it. || Version 1 is published. Point an exam at it to mark with it. Open the exam || Marking schemes Parity walk 1793934161710 Exams › Marking schemes · version 1. How a station is marked, and what the candidate's feedback looks like. Publishing makes a new version; sittings already marked keep the version they used. ● Published New draft version This version is read-only. Start a new draft to change it. Draft Saved Preview Checked Publish Live Version 1 is published. Point an exam at it to mark with it. Open the exam 1 Domains 2 Scale 3 Pass rule 4 Feedback 5 Advanced 6 Trial mark 7 Versions Trial mark Mark "
+ },
+ {
+  "n": 36,
+  "name": "A published version, read only",
+  "seen": "Marking schemes Parity walk 1793934161710 Exams › Marking schemes · version 1. How a station is marked, and what the candidate's feedback looks like. Publishing makes a new version; sittings already marked keep the version they used. ● Published New draft version This version is read-only. Start a new draft to change it. Draft Saved Preview Checked Publish Live Version 1 is published. Point an exam at it to mark with it. Open the exam 1 Domains 2 Scale 3 Pass rule 4 Feedback 5 Advanced 6 Trial mark 7 Versions Trial mark Mark a real attempt or a pasted transcript with this draft, before anyone else does. Trial source An attempt Paste a transcript Search attempts to trial-mark Run trial"
+ },
+ {
+  "n": 31,
+  "name": "Archiving a version (needs another published/current)",
+  "seen": "v1 Published 6 Nov 2026 Live Archive New draft version"
+ },
+ {
+  "n": 37,
+  "name": "A draft already exists",
+  "seen": "A draft already exists Version 2 is the draft in progress. Publish or discard it before starting another draft from an older version. OK"
+ },
+ {
+  "n": 38,
+  "name": "Archive modal",
+  "seen": "Archive version 1? No exam uses it. Archived versions stay readable and keep every result marked with them, but cannot be picked for an exam. Cancel Archive version 1"
+ },
+ {
+  "n": 39,
+  "name": "A scheme the builder cannot show (domains)",
+  "seen": "Marking schemes PLAB 2 marking rubric Exams › Marking schemes · version 1 · OSCE Guide catalogue. How a station is marked, and what the candidate's feedback looks like. Publishing makes a new version; sittings already marked keep the version they used. ● Published Copy to my marking schemes This version is read-only. Start a new draft to change it. Draft Saved Preview Checked Publish Live This version is read-only. Start a new draft to change it. 1 Domains 2 Scale 3 Pass rule 4 Feedback 5 Advanced 6 Trial mark 7 Versions Domains and competencies ▾ 4 competencies Details Details Details Det"
+ },
+ {
+  "n": 40,
+  "name": "Raw scheme, Scale tab",
+  "seen": "Scale How each competency is rated. Best first. One scale for every domain. From To Steps Whole numbers Any number The marker gives each competency a number in this range. Marking schemes PLAB 2 marking rubric Exams › Marking schemes · version 1 · OSCE Guide catalogue. How a station is marked, and what the candidate's feedback looks like. Publishing makes a new version; sittings already marked keep the version they used. ● Published Copy to my marking schemes This"
+ },
+ {
+  "n": 41,
+  "name": "On a phone",
+  "seen": "Competency in Data gathering Z History taking Instructions What earns each level Green Amber Red Delete competency"
+ },
+ {
+  "n": 42,
+  "name": "On a phone: footer",
+  "seen": "Publish / Back / Next: Scale | Step 1 of 6: DomainsNext"
+ }
+]

@@ -5,6 +5,7 @@ import { HiOutlinePlus, HiOutlineXMark } from "react-icons/hi2";
 import { mediaItems, type MediaItem } from "@/capabilities/attempt-runner/material/sectionsByAudience";
 import { b2bInputBase } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 import { Alert, PhotoUpload, type PhotoUploadResult } from "@/foundation/ui";
+import { boardInput, boardPad } from "@/foundation/ui/boardKit";
 
 /**
  * Uploading to and removing from a saved station's media blocks. Absent while
@@ -35,6 +36,7 @@ export function MediaBlockEditor({
   value,
   readOnly,
   media,
+  board = false,
   onChange,
 }: {
   blockId: string;
@@ -43,11 +45,14 @@ export function MediaBlockEditor({
   value: unknown;
   readOnly: boolean;
   media?: MediaUploads;
+  /** The institution board's Photos card: eyebrow, drop box, then the add-by-URL row. */
+  board?: boolean;
   onChange: (next: unknown) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [newUrl, setNewUrl] = useState("");
+  const [newCaption, setNewCaption] = useState("");
   const items = mediaItems(value);
   const write = (next: MediaItem[]) => onChange(next.map(stored));
 
@@ -64,9 +69,21 @@ export function MediaBlockEditor({
     }
   };
 
+  const upload = media ? (
+    <PhotoUpload
+      embedded
+      board={board}
+      upload={(files) => {
+        setError(null);
+        return media.upload(blockId, files);
+      }}
+      handleSuccess={() => setError(null)}
+    />
+  ) : null;
+  const fieldClass = board ? `${boardInput} min-w-0 flex-1` : input;
   return (
-    <div className="min-w-0 space-y-3 md:col-span-2">
-      <p className="text-osce-body font-medium text-ink">
+    <div className={board ? `${boardPad} min-w-0 leading-relaxed md:col-span-2` : "min-w-0 space-y-3 md:col-span-2"}>
+      <p className={board ? "text-assess-eyebrow uppercase text-ink-muted" : "text-osce-body font-medium text-ink"}>
         {label}
         {required ? <span className="text-osce-danger-text"> *</span> : null}
       </p>
@@ -109,39 +126,41 @@ export function MediaBlockEditor({
           )}
         </div>
       ))}
+      {board ? upload : null}
       {readOnly ? null : (
-        <div className="flex items-center gap-2">
+        <div className={board ? "flex flex-wrap items-center gap-2" : "flex items-center gap-2"}>
           <input
             aria-label={`Add a URL to ${label}`}
             placeholder="https://… (image, audio, video or PDF)"
             value={newUrl}
             onChange={(event) => setNewUrl(event.target.value)}
-            className={input}
+            className={board ? `${fieldClass} basis-60` : fieldClass}
           />
+          {board ? (
+            <input
+              aria-label={`Caption for the new item in ${label}`}
+              placeholder="Caption (optional)"
+              value={newCaption}
+              onChange={(event) => setNewCaption(event.target.value)}
+              className={`${fieldClass} basis-40`}
+            />
+          ) : null}
           <button
             type="button"
             disabled={!newUrl.trim()}
             onClick={() => {
-              write([...items, ...mediaItems(newUrl)]);
+              write([...items, ...mediaItems(newUrl).map((item) => (newCaption.trim() ? { ...item, caption: newCaption.trim() } : item))]);
               setNewUrl("");
+              setNewCaption("");
             }}
-            className="inline-flex shrink-0 items-center gap-1 text-osce-caption font-semibold text-accent hover:underline disabled:opacity-50"
+            className={board ? "inline-flex shrink-0 items-center gap-1 text-assess-label text-accent hover:underline disabled:opacity-50" : "inline-flex shrink-0 items-center gap-1 text-osce-caption font-semibold text-accent hover:underline disabled:opacity-50"}
           >
-            <HiOutlinePlus className="h-4 w-4" aria-hidden />
+            {board ? null : <HiOutlinePlus className="h-4 w-4" aria-hidden />}
             Add
           </button>
         </div>
       )}
-      {media ? (
-        <PhotoUpload
-          embedded
-          upload={(files) => {
-            setError(null);
-            return media.upload(blockId, files);
-          }}
-          handleSuccess={() => setError(null)}
-        />
-      ) : null}
+      {board ? null : upload}
     </div>
   );
 }

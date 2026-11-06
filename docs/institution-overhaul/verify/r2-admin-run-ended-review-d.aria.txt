@@ -1,0 +1,5 @@
+- main:
+  - heading "Page not found" [level=1]
+  - paragraph: This page does not exist, or it belongs to a workspace you are not in.
+  - link "Go to your workspace":
+    - /url: /app

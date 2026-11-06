@@ -80,6 +80,8 @@ class RatingRead(BaseModel):
     minimum: float | None = None
     maximum: float | None = None
     step: str = "number"
+    # What each scale value earns, best first; null when it is its position (n..1).
+    points: list[float] | None = None
 
 
 class ReviewFieldRead(BaseModel):

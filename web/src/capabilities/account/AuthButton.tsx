@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { SiteButton } from "@/foundation/ui";
+import { boardBtn } from "@/foundation/ui/boardKit";
 import { Spinner } from "@/foundation/ui/Spinner";
 import { useHydrated } from "@/foundation/hooks";
 
@@ -28,17 +28,15 @@ export default function AuthButton({
 }) {
   const hydrated = useHydrated();
   return (
-    <SiteButton
+    <button
       type={type}
-      variant={variant}
-      size="lg"
-      className="w-full"
+      className={`${boardBtn(variant === "brand" ? "primary" : "default")} w-full`}
       aria-busy={isLoading || undefined}
       disabled={(type === "submit" && !hydrated) || disabled || isLoading}
       onClick={onClick}
     >
       {isLoading ? <Spinner size="sm" className="text-current" /> : null}
       {children}
-    </SiteButton>
+    </button>
   );
 }

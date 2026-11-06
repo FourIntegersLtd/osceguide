@@ -1,14 +1,14 @@
 "use client";
 
 import { useParticipants } from "@livekit/components-react";
-import { HiMiniSignal, HiOutlineEye } from "react-icons/hi2";
 import { Alert, Button } from "@/foundation/ui";
 import { VoiceRoom } from "@/foundation/livekit";
-import { ExamClock } from "@/capabilities/attempt-runner";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import type { ObserverRoom } from "@/domains/assess/sessions/useCircuitRun";
-import { phaseLabel } from "@/domains/assess/sessions/support";
+import { assessMeta } from "@/foundation/ui/b2bTokens";
+import { boardPad, boardChip } from "@/foundation/ui/boardKit";
 import { ObserverVideoGrid } from "@/domains/assess/sessions/ObserverVideoGrid";
+import { cardTitle } from "@/domains/assess/chrome";
 
 /**
  * Listening in on a running station — subscribe-only in an **exam**, where the
@@ -34,52 +34,20 @@ export function ObserverPanel({
   const live = circuit.started_at !== null && circuit.ended_at === null;
 
   return (
-    <div className="overflow-hidden rounded-panel border border-b2b-border bg-b2b-surface">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-b2b-border px-4 py-3 sm:px-5">
-        <div className="flex min-w-0 items-center gap-2">
-          <HiMiniSignal
-            className={`h-4 w-4 shrink-0 ${observer.grant ? "text-b2b-success-icon" : "text-b2b-icon"}`}
-            aria-hidden
-          />
-          <span className="text-osce-body font-semibold text-b2b-headline">The room</span>
-          <span className="text-osce-caption text-b2b-icon">
-            {observer.grant ? "Listening" : "Not connected"}
-          </span>
-        </div>
-
-        {observer.grant ? (
-          <Button themeType="b2b" variant="secondary" size="sm" onClick={observer.leave}>
-            Stop listening
-          </Button>
-        ) : (
-          <Button
-            themeType="b2b"
-            variant="commit"
-            size="sm"
-            isLoading={observer.joining}
-            disabled={!live}
-            title={live ? undefined : "The circuit is not running"}
-            onClick={() => observer.join()}
-          >
-            <HiOutlineEye className="h-4 w-4 shrink-0" aria-hidden /> Listen in
-          </Button>
-        )}
+    <div className={boardPad}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className={cardTitle}>The room</h2>
+        <span className={boardChip(observer.grant ? "ok" : "neutral")}>
+          {observer.grant ? "Listening" : "Not connected"}
+        </span>
       </div>
-
-      <div className="space-y-3 p-4 sm:p-5">
-        {observer.failure ? <Alert tone="danger">{observer.failure}</Alert> : null}
-
-        {circuit.remaining_seconds !== null && circuit.remaining_seconds !== undefined ? (
-          <ExamClock
-            secondsLeft={circuit.remaining_seconds}
-            label={phaseLabel(circuit.phase)}
-            tick
-            paused={circuit.paused}
-          />
-        ) : null}
-
-        {observer.grant ? (
-          (() => {
+      {observer.failure ? <Alert tone="danger">{observer.failure}</Alert> : null}
+      <p className={assessMeta}>
+        Listening in is subscribe-only: you can hear the consultation and cannot be heard in it. Nothing you do here
+        reaches the candidate or the patient.
+      </p>
+      {observer.grant
+        ? (() => {
             const canPublish = observer.grant.can_publish === true;
             return (
               <VoiceRoom
@@ -92,13 +60,24 @@ export function ObserverPanel({
               </VoiceRoom>
             );
           })()
-        ) : (
-          <p className="text-osce-caption leading-relaxed text-b2b-mid">
-            You can hear the consultation without being heard in it. Nothing you do here reaches
-            the candidate or the patient.
-          </p>
-        )}
-      </div>
+        : null}
+      {observer.grant ? (
+        <Button themeType="b2b" variant="secondary" className="self-start" onClick={observer.leave}>
+          Stop listening
+        </Button>
+      ) : (
+        <Button
+          themeType="b2b"
+          variant="secondary"
+          className="self-start"
+          isLoading={observer.joining}
+          disabled={!live}
+          title={live ? undefined : "The circuit is not running"}
+          onClick={() => observer.join()}
+        >
+          Listen in
+        </Button>
+      )}
     </div>
   );
 }
@@ -113,15 +92,14 @@ function Occupants() {
   );
 
   return (
-    <ul className="divide-y divide-b2b-border rounded-panel border border-b2b-border">
+    <ul>
       <Occupant
         label="The patient"
         detail={agents.length > 0 ? "In the room" : "Not in the room yet"}
         speaking={agents.some((agent) => agent.isSpeaking)}
-        present={agents.length > 0}
       />
       {people.length === 0 ? (
-        <Occupant label="The candidate" detail="Not in the room yet" speaking={false} present={false} />
+        <Occupant label="The candidate" detail="Not in the room yet" speaking={false} />
       ) : (
         people.map((participant) => (
           <Occupant
@@ -129,7 +107,6 @@ function Occupants() {
             label={participant.name || "The candidate"}
             detail="In the room"
             speaking={participant.isSpeaking}
-            present
           />
         ))
       )}
@@ -141,27 +118,15 @@ function Occupant({
   label,
   detail,
   speaking,
-  present,
 }: {
   label: string;
   detail: string;
   speaking: boolean;
-  present: boolean;
 }) {
   return (
-    <li className="flex items-center justify-between gap-3 px-3 py-2.5">
-      <div className="flex min-w-0 items-center gap-2">
-        <span
-          className={`h-2 w-2 shrink-0 rounded-full ${
-            speaking ? "bg-b2b-success-icon" : present ? "bg-b2b-accent/60" : "bg-b2b-subtle"
-          }`}
-          aria-hidden
-        />
-        <span className="truncate text-osce-caption font-medium text-b2b-headline">{label}</span>
-      </div>
-      <span className="shrink-0 text-osce-caption text-b2b-mid">
-        {speaking ? "Speaking" : detail}
-      </span>
+    <li className="flex flex-wrap items-center gap-4 border-t border-osce-border-light py-2.5 text-assess-label text-osce-ink-900">
+      <span className="flex-1">{label}</span>
+      <span className={assessMeta}>{speaking ? "Speaking" : detail}</span>
     </li>
   );
 }

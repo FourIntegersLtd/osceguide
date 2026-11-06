@@ -1,21 +1,13 @@
 "use client";
 
 import { toggleInSet } from "@/domains/assess/support";
-import { useCallback, useState } from "react";
-import {
-  Alert,
-  AsyncBoundary,
-  Modal,
-  ModalCommitButton,
-  ModalContent,
-  ModalFooterActions,
-  ModalSecondaryButton,
-  ModalTitle,
-} from "@/foundation/ui";
+import { useState } from "react";
+import { AsyncBoundary, b2bTokens as t, cn } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import type { Trainee } from "@/domains/assess/api";
 import { readGroupMembers, setGroupMembers, type TraineeGroup } from "@/domains/assess/roster/api";
 import { displayName, sortTrainees } from "@/domains/assess/roster/support";
+import { Note, PeopleDialog, card, row } from "@/domains/assess/ui";
 
 /**
  * Who is in a group.
@@ -24,6 +16,9 @@ import { displayName, sortTrainees } from "@/domains/assess/roster/support";
  * list. The old client had neither: membership was a label copied onto
  * the trainee, so "add to group" wrote to the person, and two administrators
  * editing at once each kept half of the result.
+ *
+ * One dialog from open to close (the Modal must not remount when the list loads, or its Back marker
+ * and focus trap restart); the body shows the loading state, then the picker.
  */
 export function GroupMembersDialog({
   orgSlug,
@@ -43,114 +38,74 @@ export function GroupMembersDialog({
     async (signal) => (groupId ? readGroupMembers(orgSlug, groupId, signal) : null),
     [orgSlug, groupId],
   );
-
-  if (!group) return null;
-
-  return (
-    <Modal onClose={onClose} title={`People in ${group.label}`} width="38rem">
-      <ModalContent>
-        <ModalTitle>People in {group.label}</ModalTitle>
-        <p className="mt-1 text-osce-body text-b2b-mid">
-          Tick everyone who belongs to this group. Saving replaces the current list.
-        </p>
-        <div className="mt-4">
-          <AsyncBoundary state={members}>
-            {(resolved) =>
-              resolved ? (
-                /* Keyed on the group so opening a different one starts from
-                   its own membership rather than the previous group's. */
-                <Picker
-                  key={group.id}
-                  orgSlug={orgSlug}
-                  groupId={group.id}
-                  trainees={trainees}
-                  initial={resolved}
-                  onClose={onClose}
-                  onSaved={onSaved}
-                />
-              ) : null
-            }
-          </AsyncBoundary>
-        </div>
-      </ModalContent>
-    </Modal>
-  );
-}
-
-function Picker({
-  orgSlug,
-  groupId,
-  trainees,
-  initial,
-  onClose,
-  onSaved,
-}: {
-  orgSlug: string;
-  groupId: string;
-  trainees: Trainee[];
-  initial: string[];
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [picked, setPicked] = useState<Set<string>>(() => new Set(initial));
+  // The ticks the admin has made, tagged with their group so opening another starts from its own membership.
+  const [edited, setEdited] = useState<{ groupId: string; ids: Set<string> } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const toggle = (id: string) => setPicked((current) => toggleInSet(current, id));
+  if (!group) return null;
+  const picked = edited?.groupId === group.id ? edited.ids : new Set(members.data ?? []);
+  const toggle = (id: string) => setEdited({ groupId: group.id, ids: toggleInSet(picked, id) });
 
-  const save = useCallback(async () => {
+  // Closing forgets the ticks and any error, so reopening a group starts from its saved membership.
+  const close = () => {
+    setEdited(null);
+    setError(null);
+    onClose();
+  };
+
+  const save = async () => {
     setBusy(true);
     setError(null);
     try {
       // `trainees.id`: a group is a roster list, not a list of user accounts.
-      await setGroupMembers(orgSlug, groupId, [...picked]);
+      await setGroupMembers(orgSlug, group.id, [...picked]);
       onSaved();
-      onClose();
+      close();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }
-  }, [orgSlug, groupId, picked, onSaved, onClose]);
-
-  if (trainees.length === 0) {
-    return (
-      <Alert tone="info">Nobody is on the roster yet, so there is nobody to put in a group.</Alert>
-    );
-  }
+  };
 
   return (
-    <div className="space-y-3">
-      <p className="text-osce-caption text-b2b-mid">
-        {picked.size} of {trainees.length} selected.
-      </p>
-      <ul className="max-h-64 space-y-1 overflow-y-auto rounded-panel border border-b2b-border p-2">
-        {sortTrainees(trainees).map((trainee) => (
-          <li key={trainee.id}>
-            <label className="flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-osce-body hover:bg-b2b-cream">
-              <input
-                type="checkbox"
-                checked={picked.has(trainee.id)}
-                onChange={() => toggle(trainee.id)}
-                className="h-4 w-4 shrink-0"
-              />
-              <span className="min-w-0 truncate text-b2b-headline">{displayName(trainee)}</span>
-              <span className="ml-auto shrink-0 text-osce-caption text-b2b-mid">
-                {trainee.email}
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
-      {error ? <Alert tone="danger">{error}</Alert> : null}
-      <ModalFooterActions className="mt-2">
-        <ModalSecondaryButton onClick={onClose} disabled={busy}>
-          Cancel
-        </ModalSecondaryButton>
-        <ModalCommitButton onClick={() => void save()} disabled={busy}>
-          {busy ? "Saving…" : "Save group"}
-        </ModalCommitButton>
-      </ModalFooterActions>
-    </div>
+    <PeopleDialog
+      open
+      title={`People in ${group.label}`}
+      lead="Tick everyone who belongs to this group. Saving replaces the current list."
+      error={error}
+      busy={busy}
+      commitLabel="Save group"
+      busyLabel="Saving…"
+      commitDisabled={!members.data || trainees.length === 0}
+      onClose={close}
+      onCommit={() => void save()}
+    >
+      <AsyncBoundary state={members}>
+        {() =>
+          trainees.length === 0 ? (
+            <Note tone="info">Nobody is on the roster yet, so there is nobody to put in a group.</Note>
+          ) : (
+            <>
+              <p className={cn(t.assessMeta, "m-0")}>
+                {picked.size} of {trainees.length} selected.
+              </p>
+              <ul className={cn(card, "m-0 max-h-[220px] list-none overflow-auto p-0")}>
+                {sortTrainees(trainees).map((trainee) => (
+                  <li key={trainee.id}>
+                    <label className={cn(row, "cursor-pointer")}>
+                      <input type="checkbox" checked={picked.has(trainee.id)} onChange={() => toggle(trainee.id)} className="h-4 w-4 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate text-osce-ink-900">{displayName(trainee)}</span>
+                      <span className={cn(t.assessMeta, "shrink-0")}>{trainee.email}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )
+        }
+      </AsyncBoundary>
+    </PeopleDialog>
   );
 }

@@ -211,7 +211,9 @@ export function sittingsEmptyDescription(canSchedule: boolean, words: AssessWord
     : `An administrator schedules ${words.sittings}; they will appear here.`;
 }
 
-export function sittingStatusLabel(status: string): string {
+/** A "scheduled" sitting with no date is not scheduled for anything yet. */
+export function sittingStatusLabel(status: string, scheduledFor?: string | null): string {
+  if (status === "scheduled" && scheduledFor === null) return "Not scheduled";
   return humanise(status);
 }
 

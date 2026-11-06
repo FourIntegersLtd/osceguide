@@ -10,6 +10,7 @@ import {
   isBulkExam,
   groupNotice,
   toggleInSet,
+  sittingStatusLabel,
   circuitLeads,
   fieldDateTime,
   hasChanges,
@@ -354,4 +355,9 @@ test("a scheduled sitting needs circuits until the server counts one", () => {
     sittingNeedsCircuits({ status: "in_progress", circuit_count: 0 }),
     false,
   );
+});
+
+test("a scheduled sitting with no date reads Not scheduled", () => {
+  assert.equal(sittingStatusLabel("scheduled", null), "Not scheduled");
+  assert.equal(sittingStatusLabel("scheduled", "2026-11-12T09:00:00Z"), "Scheduled");
 });

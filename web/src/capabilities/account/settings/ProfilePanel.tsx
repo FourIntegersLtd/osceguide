@@ -9,7 +9,9 @@ import {
   HiOutlineCheck,
   HiOutlineKey,
 } from "react-icons/hi2";
-import { AsyncBoundary, Button, Input, Modal, Panel } from "@/foundation/ui";
+import { AsyncBoundary, Input, Modal, Panel } from "@/foundation/ui";
+import { boardAvatar, boardInput, boardLabel, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { cn } from "@/foundation/ui/cn";
 import { getButtonClassName } from "@/foundation/ui/buttonStyles";
 import Alert from "@/foundation/forms/Alert";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
@@ -30,6 +32,7 @@ import ChangePassword from "@/capabilities/account/settings/ChangePassword";
 import CvPanel from "@/capabilities/account/settings/CvPanel";
 import { CloseAccount } from "@/capabilities/account/settings/CloseAccount";
 import { DownloadMyData } from "@/capabilities/account/settings/DownloadMyData";
+import { AccountButton, AccountCard, useBoardSkin } from "@/capabilities/account/settings/AccountKit";
 import { SettingsRow, SettingsRows, SettingsTile, settingsMeta, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 import { TwoFactorPanel } from "@/capabilities/account/settings/TwoFactorPanel";
@@ -66,9 +69,11 @@ export default function ProfilePanel({
   const { session } = useSession();
   const { code, codes, name: examName } = useCurrentExam();
   const shows = (wanted: ProfilePart) => part === undefined || part === wanted;
+  // An organisation's cards run the width of the page, as the Settings board draws them.
+  const board = useBoardSkin();
 
   return (
-    <SettingsTabShell>
+    <SettingsTabShell fullWidth={board}>
       {shows("account") ? (
         <AsyncBoundary state={me}>
           {(user: Me) => (
@@ -139,6 +144,7 @@ function AccountForm({
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const { refresh } = useSession();
+  const board = useBoardSkin();
   const [name, setName] = useState(user.name);
   const [savedName, setSavedName] = useState(user.name);
   const [saving, setSaving] = useState(false);
@@ -206,19 +212,23 @@ function AccountForm({
 
   return (
     <form onSubmit={(event) => void submit(event)}>
-      <Panel title="Account" description="Your sign-in details and account actions">
-        <div className="space-y-4">
+      <AccountCard title="Account" description="Your sign-in details and account actions">
+        <div className={board ? "flex flex-col gap-3" : "space-y-4"}>
           {error ? <Alert message={error} type="error" /> : null}
           {avatarError ? <Alert message={avatarError} type="error" /> : null}
 
-          <div className="flex items-center gap-4">
+          <div className={board ? "flex items-center gap-3" : "flex items-center gap-4"}>
             {avatarUrl ? (
               // A private, per-account S3 URL, not a build-time asset.
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
+              <img src={avatarUrl} alt="" className={board ? "h-14 w-14 rounded-full object-cover" : "h-16 w-16 rounded-full object-cover"} />
             ) : (
               <div
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-canvas text-[21px] font-semibold text-ink"
+                className={
+                  board
+                    ? `${boardAvatar} !h-14 !w-14`
+                    : "flex h-16 w-16 items-center justify-center rounded-full bg-canvas text-[21px] font-semibold text-ink"
+                }
                 aria-hidden
               >
                 {initials(user.name || user.email)}
@@ -227,9 +237,13 @@ function AccountForm({
             <div className="space-y-1">
               <label
                 htmlFor="avatar-upload"
-                className={getButtonClassName({ variant: "secondary", className: "cursor-pointer gap-2" })}
+                className={
+                  board
+                    ? boardButtonSmall + " cursor-pointer"
+                    : getButtonClassName({ variant: "secondary", className: "cursor-pointer gap-2" })
+                }
               >
-                <HiOutlineCamera className="h-4 w-4" aria-hidden />
+                {board ? null : <HiOutlineCamera className="h-4 w-4" aria-hidden />}
                 {avatarBusy ? "Uploading…" : avatarUrl ? "Change photo" : "Add photo"}
               </label>
               <p className={settingsMeta}>{AVATAR_CAPTION}</p>
@@ -244,18 +258,40 @@ function AccountForm({
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              id="username"
-              label="Username"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              error={fieldError ?? undefined}
-            />
-            <Input id="email" type="email" label="Email" value={user.email} disabled />
-          </div>
+          {board ? (
+            <>
+              <div>
+                <label htmlFor="username" className={`${boardLabel} !mb-2`}>Username</label>
+                <input
+                  id="username"
+                  className={cn(boardInput, fieldError ? "border-osce-danger-text" : undefined)}
+                  value={name}
+                  aria-invalid={fieldError ? true : undefined}
+                  aria-describedby={fieldError ? "username-error" : undefined}
+                  onChange={(event) => setName(event.target.value)}
+                />
+                {fieldError ? <p id="username-error" role="alert" className="mt-1.5 text-assess-meta leading-normal text-osce-danger-text">{fieldError}</p> : null}
+              </div>
+              <div>
+                <label htmlFor="email" className={`${boardLabel} !mb-2`}>Email</label>
+                <input id="email" type="email" className={`${boardInput} disabled:bg-osce-canvas`} value={user.email} disabled />
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                id="username"
+                label="Username"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                error={fieldError ?? undefined}
+              />
+              <Input id="email" type="email" label="Email" value={user.email} disabled />
+            </div>
+          )}
 
-          {exam !== null ? (
+          {/* The board has no exam row: an organisation member holds no practice exam until they choose one. */}
+          {exam !== null && !(board && exam === NO_EXAM_LABEL) ? (
             <SettingsRows>
               <SettingsRow
                 icon={HiOutlineAcademicCap}
@@ -266,25 +302,18 @@ function AccountForm({
             </SettingsRows>
           ) : null}
 
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className={board ? "flex flex-wrap gap-2" : "flex flex-wrap justify-end gap-2"}>
             {passwordHere ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setIsPasswordModalOpen(true)}
-                className="gap-2"
-              >
-                <HiOutlineKey className="h-4 w-4" aria-hidden />
+              <AccountButton variant="secondary" icon={HiOutlineKey} onClick={() => setIsPasswordModalOpen(true)}>
                 Change password
-              </Button>
+              </AccountButton>
             ) : null}
-            <Button type="submit" isLoading={saving} className="gap-2">
-              <HiOutlineCheck className="h-4 w-4" aria-hidden />
+            <AccountButton type="submit" icon={HiOutlineCheck} isLoading={saving}>
               Update profile
-            </Button>
+            </AccountButton>
           </div>
         </div>
-      </Panel>
+      </AccountCard>
 
       {isPasswordModalOpen ? (
         <Modal width="400px" title="Update password" onClose={() => setIsPasswordModalOpen(false)}>
@@ -316,6 +345,27 @@ function Organisations({ user }: { user: Me }) {
   const memberships = user.memberships ?? [];
   if (memberships.length === 0) return null;
 
+  const sees = consumer
+    ? "They see your sittings, marks, released results and practice on their stations. They never see your personal practice, debriefs, plan or Athena\u2019s notes unless you share a station for review."
+    : "They see your sittings, marks, released results and practice on their stations.";
+
+  if (!consumer) {
+    // The Settings board: the sentence under the title, then one row per organisation with the role at the right.
+    return (
+      <AccountCard title="Organisations" description={sees}>
+        <div className="flex flex-col">
+          {memberships.map((membership) => (
+            <div key={membership.org_slug} className="flex items-center gap-2 py-4 text-assess-label text-ink">
+              <HiOutlineBuildingOffice2 className="h-4 w-4 flex-none text-ink-muted" aria-hidden />
+              <span className="min-w-0 flex-1 truncate">{membership.org_name ?? membership.org_slug}</span>
+              <span className="text-assess-meta capitalize text-ink-muted">{membership.role.replace(/_/g, " ")}</span>
+            </div>
+          ))}
+        </div>
+      </AccountCard>
+    );
+  }
+
   return (
     <Panel title="Organisations">
       <div className="space-y-3">
@@ -330,19 +380,13 @@ function Organisations({ user }: { user: Me }) {
             </div>
           </div>
         ))}
-        <p className={settingsSub}>
-          {consumer
-            ? "They see your sittings, marks, released results and practice on their stations. They never see your personal practice, debriefs, plan or Athena\u2019s notes unless you share a station for review."
-            : "They see your sittings, marks, released results and practice on their stations."}
-        </p>
-        {consumer ? (
-          <Link
-            href={`${hrefFor("/settings")}?tab=payments`}
-            className="inline-block text-osce-data font-medium text-accent hover:text-accent-hover"
-          >
-            How this affects your plan
-          </Link>
-        ) : null}
+        <p className={settingsSub}>{sees}</p>
+        <Link
+          href={`${hrefFor("/settings")}?tab=payments`}
+          className="inline-block text-osce-data font-medium text-accent hover:text-accent-hover"
+        >
+          How this affects your plan
+        </Link>
       </div>
     </Panel>
   );

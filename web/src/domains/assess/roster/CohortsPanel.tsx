@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, Button, b2bTokens, Panel, FoldSection } from "@/foundation/ui";
+import { b2bTokens as t, cn } from "@/foundation/ui";
+import { Fold, Note, card, h2, row } from "@/domains/assess/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { addCohort, type Cohort } from "@/domains/assess/roster/api";
 import {
   DeleteCohortDialog,
   RenameCohortDialog,
 } from "@/domains/assess/roster/CohortEditDialogs";
+import { boardBtn, boardPadWide, boardInput, boardButtonSmall } from "@/foundation/ui/boardKit";
 
 type Pending =
   | { kind: "rename"; cohort: Cohort }
@@ -68,91 +70,60 @@ export function CohortsPanel({
   };
 
   return (
-    <Panel
-      title="Year groups (cohorts)"
-      description="An intake, such as a start date. Each trainee can be in one year group, chosen when they are added."
-    >
-      {error ? (
-        <Alert tone="danger" className="mb-3">
-          {error}
-        </Alert>
-      ) : null}
+    <div className={boardPadWide}>
+      <h2 className={h2}>Year groups</h2>
+      <p className={cn(t.assessMeta, "m-0")}>
+        An intake, such as a start date. Each trainee can be in one year group, chosen when they are added.
+      </p>
+      {error ? <Note tone="bad">{error}</Note> : null}
 
       {cohorts.length === 0 ? (
-        <p className="text-osce-body text-b2b-mid">
-          No year groups yet. Create one below, or leave people without.
-        </p>
+        <p className={cn(t.assessMeta, "m-0")}>No year groups yet. Create one below, or leave people without.</p>
       ) : (
-        <ul className="space-y-2" aria-label="Year groups">
-          {cohorts.map((cohort) => (
-            <li
-              key={cohort.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-panel border border-b2b-border px-3 py-2"
-            >
-              <span className="min-w-0 truncate text-osce-body font-medium text-b2b-headline">
+        <ul className={card} aria-label="Year groups">
+          {cohorts.map((cohort, index) => (
+            <li key={cohort.id} className={cn(row, "gap-2", index === 0 && "border-t-0")}>
+              <span className="flex-1">
                 {cohort.name}
+                <div className={t.assessMeta}>{cohort.academic_year ?? cohort.status}</div>
               </span>
-              <span className="flex shrink-0 items-center gap-3">
-                <span className="text-osce-caption text-b2b-mid">
-                  {cohort.academic_year ?? cohort.status}
-                </span>
-                {canManage ? (
-                  <span className="flex items-center gap-2">
-                    <Button
-                      themeType="b2b"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => open({ kind: "rename", cohort })}
-                    >
-                      Rename
-                    </Button>
-                    <Button
-                      themeType="b2b"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => open({ kind: "delete", cohort })}
-                    >
-                      Delete
-                    </Button>
-                  </span>
-                ) : null}
-              </span>
+              {canManage ? (
+                <>
+                  <button type="button" className={boardButtonSmall} onClick={() => open({ kind: "rename", cohort })}>
+                    Rename
+                  </button>
+                  <button type="button" className={boardButtonSmall} onClick={() => open({ kind: "delete", cohort })}>
+                    Delete
+                  </button>
+                </>
+              ) : null}
             </li>
           ))}
         </ul>
       )}
 
       {canManage ? (
-        <div className="mt-5">
-          <FoldSection title="Create a year group">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              aria-label="Year group name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              className={`${b2bTokens.b2bInputBase} min-w-0 flex-1`}
-              placeholder="e.g. June 2026 intake"
-              autoComplete="off"
-            />
-            <input
-              aria-label="Academic year"
-              value={academicYear}
-              onChange={(event) => setAcademicYear(event.target.value)}
-              className={`${b2bTokens.b2bInputBase} sm:w-40`}
-              placeholder="2026/27"
-              autoComplete="off"
-            />
-            <Button
-              themeType="b2b"
-              variant="secondary"
-              disabled={busy || name.trim() === ""}
-              onClick={() => create()}
-            >
-              {busy ? "Working…" : "Create year group"}
-            </Button>
-          </div>
-          </FoldSection>
-        </div>
+        <Fold title="Create a year group">
+          <input
+            aria-label="Year group name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className={boardInput}
+            placeholder="e.g. June 2026 intake"
+            autoComplete="off"
+          />
+          <input
+            aria-label="Academic year"
+            value={academicYear}
+            onChange={(event) => setAcademicYear(event.target.value)}
+            className={boardInput}
+            placeholder="2026/27"
+            autoComplete="off"
+          />
+          <button type="button" className={cn(boardBtn("primary", true), "self-start")} disabled={busy || name.trim() === ""} onClick={() => create()}>
+            {busy ? "Working…" : "Create year group"}
+          </button>
+        </Fold>
       ) : null}
 
       <RenameCohortDialog
@@ -168,6 +139,6 @@ export function CohortsPanel({
         onClose={() => setPending(null)}
         onDeleted={onChanged}
       />
-    </Panel>
+    </div>
   );
 }

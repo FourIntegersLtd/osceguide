@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LuDoorOpen, LuLogOut } from "react-icons/lu";
 import { Alert, Badge, Button, Spinner } from "@/foundation/ui";
-import { AgentTile, VoiceRoom, useMicPreflight, type RoomGrant } from "@/foundation/livekit";
+import {
+  AgentTile,
+  VoiceRoom,
+  useMicPreflight,
+  type RoomGrant,
+} from "@/foundation/livekit";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import { joinCircuit, type MySitting } from "@/domains/assess/trainee/api";
 import { joinFailureCopy, phaseLabel } from "@/domains/assess/trainee/support";
@@ -20,7 +25,13 @@ import { joinFailureCopy, phaseLabel } from "@/domains/assess/trainee/support";
  * There is no supervisor video here: a candidate's room is the patient and
  * the candidate.
  */
-export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () => void }) {
+export function JoinRoom({
+  sitting,
+  onLeft,
+}: {
+  sitting: MySitting;
+  onLeft?: () => void;
+}) {
   const [grant, setGrant] = useState<RoomGrant | null>(null);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +73,8 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
    * joining during reading is both allowed and what a real candidate does.
    */
   useEffect(() => {
-    if (!sitting.can_join || grant || joining || left || attempted.current) return;
+    if (!sitting.can_join || grant || joining || left || attempted.current)
+      return;
     attempted.current = true;
     void join();
   }, [sitting.can_join, grant, joining, left, join]);
@@ -91,7 +103,11 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
         }}
       >
         <div className="flex flex-col items-center gap-4">
-          {mic.message ? <Alert tone="danger">{mic.message} The patient cannot hear you until it works.</Alert> : null}
+          {mic.message ? (
+            <Alert tone="danger">
+              {mic.message} The patient cannot hear you until it works.
+            </Alert>
+          ) : null}
           <Clock sitting={sitting} />
           <AgentTile name="Your patient" className="w-full max-w-sm" />
           <Button
@@ -106,7 +122,9 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
             <LuLogOut className="h-4 w-4" aria-hidden />
             Leave the room
           </Button>
-          <p className="text-osce-meta text-b2b-mid">If you drop out we rejoin you by ourselves.</p>
+          <p className="text-osce-meta text-b2b-mid">
+            If you drop out we rejoin you by ourselves.
+          </p>
         </div>
       </VoiceRoom>
     );
@@ -115,14 +133,25 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
   return (
     <div className="flex flex-col gap-3">
       {error ? <Alert tone="danger">{error}</Alert> : null}
-      {sitting.can_join && mic.message ? <Alert tone="warning">{mic.message}</Alert> : null}
+      {sitting.can_join && mic.message ? (
+        <Alert tone="warning">{mic.message}</Alert>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <Clock sitting={sitting} />
         {sitting.paused ? <Badge tone="warning">Paused</Badge> : null}
         {sitting.can_join ? (
-          <Button themeType="b2b" variant="commit" onClick={() => join()} disabled={joining}>
-            {joining ? <Spinner className="text-current" /> : <LuDoorOpen className="h-4 w-4" aria-hidden />}
+          <Button
+            themeType="b2b"
+            variant="commit"
+            onClick={() => join()}
+            disabled={joining}
+          >
+            {joining ? (
+              <Spinner className="text-current" />
+            ) : (
+              <LuDoorOpen className="h-4 w-4" aria-hidden />
+            )}
             {left ? "Re-join" : "Join"}
           </Button>
         ) : null}
@@ -139,7 +168,11 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
  * exam hall after one sleeping laptop.
  */
 function Clock({ sitting }: { sitting: MySitting }) {
-  if (sitting.remaining_seconds === null || sitting.remaining_seconds === undefined) return null;
+  if (
+    sitting.remaining_seconds === null ||
+    sitting.remaining_seconds === undefined
+  )
+    return null;
   return (
     <ExamClock
       secondsLeft={sitting.remaining_seconds}

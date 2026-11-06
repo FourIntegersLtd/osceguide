@@ -113,3 +113,16 @@ separately; one combined run was killed once.
   `.env`, so the "OpenAI" run is really Claude), run it with `PYTHONPATH=.`, and send output to a file:
   a podcast script takes ~50-70s and JSON station drafts ~60s.
 - Live call for a Claude path: a script in the scratchpad (not `$TMPDIR`, whose stray `http.py` shadows the stdlib), run with `PYTHONPATH=.`; wrap `anthropic.resources.messages.AsyncMessages.create` to print `usage`. Podcast script at `effort=low`: ~25s, 2.8k output tokens; diariser: ~1.5s.
+
+## Marking scheme builder traps (web)
+- `eslint .` hangs on stray gitignored `.next-*` dirs: run `npx eslint src scripts`.
+- `check:polling` flags any `setTimeout(` near an api call; defer with `requestAnimationFrame`.
+- `consoleDesign.test.ts` rejects a raw `<textarea>`: use the foundation `Textarea`.
+- The builder's tablist is "Marking scheme" (Domains, Scale, Pass rule, Feedback, Advanced, Trial mark, Versions); names carry problem counts, so match `/Trial mark$/`.
+- Proof that a published version is untouched: `select md5(string_agg(md5(structure::text), ',' order by id::text)) from rubric_versions where status='published'` before and after.
+- macOS: `sed -i ''`; no `timeout`.
+
+- Scheme builder walk: domains start collapsed except the first, so a script that counts or fills competency inputs must open the caret or read the outline counts; the detail panel is `getByTestId("outline-detail")`, not the "Details" buttons. A preset switch only asks to confirm when level descriptions exist. A station rule "every domain passes" needs a domain pass rule, or the scheme is blocked. A raw scheme (cannot show) is made by putting `advanced.raw` through the JSON editor (`web/.verify/scheme-raw.mjs`).
+
+- Scheme builder fixes probe: `web/.verify/phase-b-fixes.mjs` (local, gitignored) checks the narrow-screen sheet, row-move focus, menu keyboard, tab arrows, pass-rule sentence and unapplied JSON. `rubric-proof.mjs <PLAB|Simulated|CASC|Orthopaedic>` takes the exam as an argument: a loop that runs `rubric-proof PLAB.mjs` fails with MODULE_NOT_FOUND. Its published notice reads "Version N is published."
+- Board-match specs (`e2e/assess/board-*.spec.ts`): run one per call on your own dev port with `E2E_REUSE_SERVER=1 VERIFY_WEB_URL=...`; a run over 120s is backgrounded, so redirect to a file and wait on it. Scores can drift when another change to a shared kit component (FoldSection, StationInstanceContentPanel, B2CPageHeader) lands: re-run before blaming your own screen.

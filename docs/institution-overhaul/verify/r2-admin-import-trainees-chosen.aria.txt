@@ -1,0 +1,19 @@
+- dialog "Import trainees":
+  - heading "Import trainees" [level=2]
+  - button "Close dialog"
+  - heading "Import trainees" [level=3]
+  - paragraph: One spreadsheet of trainees, saved as .csv. The first row must name the columns.
+  - paragraph: Required column
+  - paragraph: email. Their email address
+  - paragraph: Optional columns
+  - list:
+    - listitem: firstName, lastName, or one name column. Their name
+    - listitem: "cohort or group: a year group that already exists here (e.g. \"June 2026\")"
+  - paragraph: Example
+  - text: email,firstName,lastName,cohort amina@hospital.nhs.uk,Amina,Khan,June 2026
+  - button "file upload"
+  - paragraph: trainees.csv
+  - paragraph: 0.1 KB
+  - paragraph: 2 rows ready to import.
+  - button "Cancel"
+  - button "Import 2 trainees"

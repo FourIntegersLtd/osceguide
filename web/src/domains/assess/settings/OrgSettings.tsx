@@ -2,7 +2,9 @@
 
 import { isOrgSurface } from "@/capabilities/surface";
 import { useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, Input, Panel } from "@/foundation/ui";
+import { AsyncBoundary, b2bTokens as t, cn } from "@/foundation/ui";
+import { Chip, Note } from "@/domains/assess/ui";
+import { SettingsCard, StateRow } from "@/domains/assess/settings/SettingsCard";
 import { errorMessage, useAsync, useDirtyGuard } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
@@ -16,6 +18,7 @@ import {
 import { describeSsoStatus } from "@/domains/assess/settings/ssoStatus";
 import { InvoicesTab } from "@/domains/assess/settings/InvoicesPage";
 import { ScimTokens } from "@/domains/assess/settings/ScimTokens";
+import { boardBtn, boardInput, boardLabel as labelClass, type BoardChipTone } from "@/foundation/ui/boardKit";
 
 /**
  * Settings, with the organisation's own tabs for the people who run it.
@@ -78,18 +81,22 @@ function RenameForm({ org, onSaved, setDirty }: { org: Organization; onSaved: ()
   }
 
   return (
-    <Panel title="Organisation" description="The web address is fixed. Contact support to change it.">
-      <div className="flex max-w-xl flex-col gap-4">
-        {failure ? <Alert tone="danger">{failure}</Alert> : null}
-        <Input label="Name" value={name} maxLength={200} onChange={(event) => setName(event.target.value)} />
-        <Input label="Web address" readOnly value={`/${org.slug}`} />
+    <SettingsCard title="Organisation" lead="The web address is fixed. Contact support to change it.">
+      {failure ? <Note tone="bad" role="alert">{failure}</Note> : null}
+      <div className={t.assessFormStack}>
         <div>
-          <Button onClick={save} disabled={!changed || busy}>
-            {busy ? "Saving…" : "Save name"}
-          </Button>
+          <label htmlFor="org-name" className={labelClass}>Name</label>
+          <input id="org-name" className={boardInput} value={name} maxLength={200} onChange={(event) => setName(event.target.value)} />
+        </div>
+        <div>
+          <label htmlFor="org-slug" className={labelClass}>Web address</label>
+          <input id="org-slug" className={boardInput} readOnly value={`/${org.slug}`} />
         </div>
       </div>
-    </Panel>
+      <button type="button" className={cn(boardBtn("primary"), "self-start")} onClick={save} disabled={!changed || busy}>
+        {busy ? "Saving…" : "Save name"}
+      </button>
+    </SettingsCard>
   );
 }
 
@@ -103,38 +110,34 @@ function SignInPanel({ orgSlug }: { orgSlug: string }) {
   const state = useAsync((signal) => readOrganization(orgSlug, signal), [orgSlug]);
   const sso = useAsync((signal) => readSsoStatus(orgSlug, signal), [orgSlug]);
   return (
-    <div className="flex flex-col gap-5">
-      <Panel title="Single sign-on" description="OSCE Guide sets this up with you. Contact support to change it.">
+    <>
+      <SettingsCard title="Single sign-on" lead="OSCE Guide sets this up with you. Contact support to change it.">
         <AsyncBoundary state={sso}>
           {(status) => {
             const view = describeSsoStatus(status);
             return (
-              <div className="flex items-center justify-between gap-3">
-                <p className="max-w-xl text-osce-body text-b2b-mid">{view.detail}</p>
-                <Badge variant={view.tone} dot>
-                  {view.badge}
-                </Badge>
-              </div>
+              <StateRow first>
+                <span className="min-w-0 flex-1">{view.detail}</span>
+                <Chip tone={SSO_TONE[view.tone]}><span aria-hidden>●</span> {view.badge}</Chip>
+              </StateRow>
             );
           }}
         </AsyncBoundary>
-      </Panel>
-      <Panel title="Two-step sign-in for staff">
+      </SettingsCard>
+      <SettingsCard title="Two-step sign-in for staff">
         <AsyncBoundary state={state}>
           {(org) => (
-            <div className="flex items-center justify-between gap-3">
-              <p className="max-w-xl text-osce-body text-b2b-mid">
-                {org.require_staff_mfa
-                  ? "Staff must confirm a code as well as a password."
-                  : "Staff sign in with a password alone."}
-              </p>
-              <Badge variant={org.require_staff_mfa ? "success" : "neutral"} dot>
-                {org.require_staff_mfa ? "Required" : "Not required"}
-              </Badge>
-            </div>
+            <StateRow first>
+              <span className="min-w-0 flex-1">
+                {org.require_staff_mfa ? "Staff must confirm a code as well as a password." : "Staff sign in with a password alone."}
+              </span>
+              <Chip tone={org.require_staff_mfa ? "ok" : "neutral"}>{org.require_staff_mfa ? "Required" : "Not required"}</Chip>
+            </StateRow>
           )}
         </AsyncBoundary>
-      </Panel>
-    </div>
+      </SettingsCard>
+    </>
   );
 }
+
+const SSO_TONE: Record<"success" | "neutral" | "warning", BoardChipTone> = { success: "ok", neutral: "neutral", warning: "warn" };

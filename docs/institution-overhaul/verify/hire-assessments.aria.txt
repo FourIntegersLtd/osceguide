@@ -1,0 +1,11 @@
+- main:
+  - heading "Assessments" [level=1]
+  - link "Schedule an assessment":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/new
+  - button "Filters"
+  - text: Search assessments
+  - searchbox "Search assessments"
+  - paragraph: No assessments yet
+  - paragraph: Schedule your first one.
+  - link "Schedule an assessment":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/new

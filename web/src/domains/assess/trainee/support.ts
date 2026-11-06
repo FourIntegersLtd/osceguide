@@ -183,12 +183,22 @@ export function stationsCompleted(sittings: readonly MySitting[]): number {
 export function summaryLine(sitting: MySitting): string {
   const parts = [modeLabel(sitting)];
   const { completed, total } = progressOf(sitting);
+  // A finished sitting's row says only what to do next (the board), not when it was or how far it got.
+  if (isOver(sitting)) return parts.join(" · ");
   if (isExam(sitting) && total > 0) parts.push(`${completed} of ${total} stations completed`);
   if (sitting.scheduled_for) {
-    const when = new Date(sitting.scheduled_for);
-    if (Number.isFinite(when.getTime())) parts.push(when.toLocaleString());
+    const when = whenWords(sitting.scheduled_for);
+    if (when) parts.push(when);
   }
   return parts.join(" · ");
+}
+
+/** The board's date words: "Today", else "12 Nov". Empty when the date does not parse. */
+export function whenWords(iso: string, now: Date = new Date()): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "";
+  if (d.toDateString() === now.toDateString()) return "Today";
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 /** What the button on the spotlight row should say. */

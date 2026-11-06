@@ -1,0 +1,7 @@
+- main:
+  - button "Back"
+  - paragraph: Your review
+  - heading "Station feedback" [level=1]
+  - paragraph: Overall
+  - heading "Not rated" [level=2]
+  - paragraph: Completed 05/11/2026, 15:10:25

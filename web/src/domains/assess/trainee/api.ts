@@ -24,8 +24,7 @@ import { orgPath, pageQuery } from "@/domains/assess/api";
 export type MySittings = components["schemas"]["MySittings"];
 // `released` (T-5) is declared here until the generated types are regenerated.
 export type MySitting = components["schemas"]["MySitting"] & { released?: boolean };
-// `marking_failed` (T-3) is declared here until the generated types are regenerated.
-export type MySlot = components["schemas"]["MySlot"] & { marking_failed?: boolean };
+export type MySlot = components["schemas"]["MySlot"];
 // `stations` (T-8) is declared here until the generated types are regenerated.
 export type TraineeStationResult = {
   slot_id: string;

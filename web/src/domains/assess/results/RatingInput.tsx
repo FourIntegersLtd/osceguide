@@ -1,8 +1,9 @@
 "use client";
 
 import { cn, b2bTokens } from "@/foundation/ui";
+import { boardSeg, boardSegChoice } from "@/foundation/ui/boardKit";
 import { ratingLabel, type Rating, type RatingValue } from "@/capabilities/feedback/rubric";
-import { ratingChoices } from "@/domains/assess/results/reviewForm";
+import { ratingChoices, ratingVariant } from "@/domains/assess/results/reviewForm";
 
 /**
  * One rating, entered the way the rubric's rating kind asks for it.
@@ -50,7 +51,7 @@ export function RatingInput({
   }
 
   return (
-    <div className={b2bTokens.b2bSegmentedControl} role="group" aria-label={label}>
+    <div className={boardSeg} role="group" aria-label={label}>
       {choices.map((choice) => {
         const selected = value === choice;
         return (
@@ -60,10 +61,7 @@ export function RatingInput({
             disabled={disabled}
             aria-pressed={selected}
             onClick={() => onChange(choice)}
-            className={cn(
-              selected ? b2bTokens.b2bSegmentedTabActive : b2bTokens.b2bSegmentedTabInactive,
-              "disabled:opacity-60",
-            )}
+            className={boardSegChoice(selected, ratingVariant(rating, choice))}
           >
             {/* A range value reads as the bare number on a button; "3/4" is for summaries. */}
             {typeof choice === "number" ? choice : ratingLabel(rating, choice)}

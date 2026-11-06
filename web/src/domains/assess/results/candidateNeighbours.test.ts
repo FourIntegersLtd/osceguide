@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { candidateSteps } from "./candidateNeighbours";
+import { candidateSteps, slotContext } from "./candidateNeighbours";
 
 const chest = { circuit_id: "c1", slot_index: 0 };
 const candidates = [
@@ -28,4 +28,10 @@ test("steps between the candidates who took the same station", () => {
 
 test("offers no steps for a slot the report does not hold", () => {
   assert.equal(candidateSteps(candidates, "zz"), null);
+});
+
+test("names the circuit, candidate, station number and title a review is of", () => {
+  const named = [{ name: "Amara Okoye", stations: [{ slot_id: "s2", attempt_id: null, circuit_id: "c1", slot_index: 1, circuit_name: "Circuit 1", station_title: "Breaking bad news" }] }];
+  assert.deepEqual(slotContext(named, "s2"), { back: "Circuit 1 · Amara Okoye", eyebrow: "Amara Okoye · Station 2 · Breaking bad news" });
+  assert.equal(slotContext(named, "other"), null);
 });

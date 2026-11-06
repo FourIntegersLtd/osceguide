@@ -1,0 +1,42 @@
+- main:
+  - link "Sitting":
+    - /url: /app/e2e-mw3om0c6/sittings/6d3091bf-2a0c-4bfa-b500-47f5f9bd321d
+  - paragraph: R2 wizard fail
+  - heading "Results" [level=1]
+  - paragraph: 0 of 1 stations marked · 0 of 1 released
+  - button "Export CSV"
+  - heading "Outcomes" [level=2]
+  - region "Outcomes": Passed 0 Failed 0 Inconclusive 0 Withheld 0 Undecided 1 Awaiting marking 1
+  - status:
+    - paragraph: Set a date so candidates know when to come.
+  - list "Steps":
+    - listitem: Schedule No date
+    - listitem: Circuits Candidates sat
+    - listitem: Run All finished
+    - listitem: Mark 0 of 1 marked
+    - listitem: Decide 0 of 1 decided
+    - listitem: Release 0 of 1 released
+  - heading "Review order" [level=2]
+  - button "Export readout"
+  - paragraph: Formal exam only.
+  - paragraph: 1 candidate, with unfinished reviews first, then the weakest results.
+  - text: 1. Tess Trainee 1/1 stations · 100% complete Standard
+  - region "Candidates":
+    - table:
+      - rowgroup:
+        - row "Candidate Score Outcome Status Actions":
+          - columnheader "Candidate"
+          - columnheader "Score"
+          - columnheader "Outcome"
+          - columnheader "Status"
+          - columnheader "Actions"
+      - rowgroup:
+        - row "Tess Trainee 0 of 1 stations marked Not assessed Not decided Not marked Open Tess Trainee":
+          - cell "Tess Trainee 0 of 1 stations marked":
+            - paragraph: Tess Trainee
+            - paragraph: 0 of 1 stations marked
+          - cell "Not assessed"
+          - cell "Not decided"
+          - cell "Not marked"
+          - cell "Open Tess Trainee":
+            - button "Open Tess Trainee": Open

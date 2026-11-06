@@ -1,0 +1,46 @@
+- main:
+  - region "Setup":
+    - paragraph: Welcome
+    - heading "Let's get OV Fresh mw3o1ru2 ready for its first sitting" [level=1]
+    - paragraph: Five steps. We show one at a time, and you can come back to any of them.
+    - button "How the pieces fit" [expanded]
+    - paragraph: Step 2 of 5
+    - list:
+      - listitem:
+        - button "Set up an exam"
+      - listitem:
+        - button "Add stations"
+      - listitem:
+        - button "Add trainees"
+      - listitem:
+        - button "Invite a supervisor Optional"
+      - listitem:
+        - button "Schedule your first sitting"
+    - text: Next
+    - heading "Add stations to your exam" [level=2]
+    - paragraph: Write your own, import a PDF or Word file, ask the AI to draft one from a brief, or copy ours. Publish each one when it is ready.
+    - paragraph: What counts
+    - paragraph: Only published stations for this exam can go into a sitting. A formal exam takes up to 12.
+    - link "Add a station":
+      - /url: /app/ov-fresh-mw3o1ru2/authoring/stations
+    - button "Skip for now"
+    - paragraph: How the pieces fit
+    - link "Exam What is examined and how it is marked":
+      - /url: /app/ov-fresh-mw3o1ru2/authoring
+    - link "Stations The cases candidates sit":
+      - /url: /app/ov-fresh-mw3o1ru2/authoring/stations
+    - link "People Trainees and supervisors":
+      - /url: /app/ov-fresh-mw3o1ru2/trainees
+    - link "Sitting One occasion, such as the March mock":
+      - /url: /app/ov-fresh-mw3o1ru2/sittings
+  - region "At a glance":
+    - link "Exams ready to schedule 0":
+      - /url: /app/ov-fresh-mw3o1ru2/authoring/exams
+    - link "Published stations 0":
+      - /url: /app/ov-fresh-mw3o1ru2/authoring/stations
+    - link "Trainees 0":
+      - /url: /app/ov-fresh-mw3o1ru2/trainees
+    - link "Supervisors 1":
+      - /url: /app/ov-fresh-mw3o1ru2/team
+    - link "Sittings 0":
+      - /url: /app/ov-fresh-mw3o1ru2/sittings

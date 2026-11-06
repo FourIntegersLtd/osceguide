@@ -31,11 +31,14 @@ async def seed_org(client: AsyncClient, make_actor, slug: str = "kings") -> uuid
     return uuid.UUID(response.json()["id"])
 
 
-async def member_token(make_actor, org_id: uuid.UUID, slug: str, role: str) -> str:  # type: ignore[no-untyped-def]
+async def member_token(
+    make_actor, org_id: uuid.UUID, slug: str, role: str, *, signed_in: bool = False
+) -> str:  # type: ignore[no-untyped-def]
     return await make_actor(
         f"{role}-{slug}@example.com",
         memberships=(Membership(org_id=org_id, org_slug=slug, role=role),),
         active_org_slug=slug,
+        signed_in=signed_in,
     )
 
 
@@ -631,9 +634,30 @@ async def test_the_last_administrator_cannot_be_revoked_or_demoted(client: Async
     assert (demoted.status_code, demoted.json()["code"]) == (409, "last_admin")
 
 
+async def test_an_administrator_cannot_revoke_themselves_while_the_other_has_not_accepted(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    org_id = await seed_org(client, make_actor)
+    admin = await member_token(make_actor, org_id, "kings", "institution_admin", signed_in=True)
+    invited = await client.post(
+        "/api/v1/orgs/kings/memberships",
+        json={"email": "deputy@kings.example", "role": "institution_admin"},
+        headers=bearer(admin),
+    )
+    assert invited.status_code == 201, invited.text
+    listed = await client.get("/api/v1/orgs/kings/memberships", headers=bearer(admin))
+    mine = next(
+        row["id"] for row in listed.json()["items"] if row["email"] == "institution_admin-kings@example.com"
+    )
+
+    revoked = await client.post(f"/api/v1/orgs/kings/memberships/{mine}/revoke", headers=bearer(admin))
+
+    assert (revoked.status_code, revoked.json()["code"]) == (409, "last_admin")
+
+
 async def test_an_administrator_can_be_revoked_while_another_remains(client: AsyncClient, make_actor) -> None:
     org_id = await seed_org(client, make_actor)
-    admin = await member_token(make_actor, org_id, "kings", "institution_admin")
+    admin = await member_token(make_actor, org_id, "kings", "institution_admin", signed_in=True)
     second = await client.post(
         "/api/v1/orgs/kings/memberships",
         json={"email": "deputy@kings.example", "role": "institution_admin"},

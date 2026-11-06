@@ -7,12 +7,18 @@ org's own, a platform admin for the platform's, and neither for the other's.
 from __future__ import annotations
 
 import copy
+import uuid
 from typing import Any
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.rubrics.authoring import blank_structure
+from app.features.rubrics import domain
+from app.features.rubrics.authoring import blank_scheme, blank_structure
+from app.features.rubrics.models import RubricVersion
+from app.features.rubrics.validation import IDENTIFIER_MESSAGE
 from tests.http.test_rubrics_routes import member, seed_org
 from tests.support.rubrics import FULL_RUBRIC, PACING, SYSTEM_PROMPT, create_rubric
 from tests.support.tokens import bearer
@@ -82,6 +88,7 @@ async def test_a_preview_shows_what_a_valid_draft_comes_to(client: AsyncClient, 
         "minimum": None,
         "maximum": None,
         "step": "number",
+        "points": None,
     }
     assert preview["sample_result"] == {
         "domain_1": {
@@ -137,7 +144,7 @@ async def test_an_org_copies_a_published_platform_rubric_into_its_own_draft(
     )
     draft = copied["versions"][0]
     assert (draft["version"], draft["status"], draft["problems"]) == (1, "draft", [])
-    assert draft["structure"]["schemaVersion"] == 2
+    assert draft["structure"]["schemaVersion"] == 3
     assert draft["structure"]["basedOn"] == {"rubricId": source["id"], "version": 1, "title": "SCA marking"}
     assert (draft["system_prompt"], draft["pacing"]) == (SYSTEM_PROMPT, PACING)
     assert draft["result_schema"]["required"][:2] == ["global_skills", "tasks"]
@@ -155,7 +162,7 @@ async def test_a_blank_start_is_a_publishable_skeleton(client: AsyncClient, make
     assert response.status_code == 201, response.text
     draft = response.json()["versions"][0]
     assert response.json()["title"] == "Untitled rubric"
-    assert draft["structure"] == blank_structure()
+    assert draft["structure"] == blank_scheme()
     assert draft["problems"] == []
     published = await client.post(
         f"{ORG_RUBRICS}/{response.json()['id']}/versions/1/publish", headers=bearer(admin)
@@ -237,7 +244,7 @@ async def test_draft_instructions_come_from_the_copied_rubric_then_the_role(
     )
     structure = copy.deepcopy(copied.json()["versions"][0]["structure"])
     # The author adds a competency of their own: the source has no wording for it.
-    structure["sections"][0]["competencies"].append(
+    structure["outline"][0]["competencies"].append(
         {"id": "competency_2", "label": "Closes", "instructions": ""}
     )
 
@@ -301,3 +308,90 @@ async def test_a_structure_that_is_neither_version_is_refused_draft_instructions
 
     assert response.status_code == 422
     assert response.json()["code"] == "invalid_rubric"
+
+
+# --- The author's scheme (schemaVersion 3) -------------------------------------
+
+
+async def _stored_structure(db_session: AsyncSession, version_id: str) -> dict[str, Any]:
+    row = await db_session.execute(
+        select(RubricVersion.structure).where(RubricVersion.id == uuid.UUID(version_id))
+    )
+    return dict(row.scalar_one())
+
+
+async def test_an_invalid_scheme_draft_saves_but_publish_refuses_at_its_block(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    org_id = await seed_org(client, make_actor)
+    admin = await member(make_actor, org_id, "kings", "admin")
+    created = await client.post(f"{ORG_RUBRICS}/copy", json={}, headers=bearer(admin))
+    rubric_id, version = created.json()["id"], created.json()["versions"][0]
+    structure = copy.deepcopy(version["structure"])
+    structure["outline"][0]["competencies"][0]["id"] = "Bad Id"
+
+    saved = await client.patch(
+        f"{ORG_RUBRICS}/{rubric_id}/versions/1",
+        json={
+            "structure": structure,
+            "system_prompt": version["system_prompt"],
+            "pacing": version["pacing"],
+            "revision": version["revision"],
+        },
+        headers=bearer(admin),
+    )
+
+    assert saved.status_code == 200, saved.text
+    problems = [{"path": "outline[0].competencies[0].id", "message": IDENTIFIER_MESSAGE}]
+    assert saved.json()["problems"] == problems
+    published = await client.post(f"{ORG_RUBRICS}/{rubric_id}/versions/1/publish", headers=bearer(admin))
+    assert published.status_code == 422
+    assert published.json()["code"] == "invalid_rubric"
+    assert published.json()["details"]["errors"] == problems
+
+
+async def test_a_published_v2_version_reads_as_a_scheme_and_the_row_is_unchanged(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    platform_admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    rubric = await create_rubric(client, platform_admin, structure=FULL_RUBRIC)
+
+    read = await client.get(f"/api/v1/platform/rubrics/{rubric['id']}", headers=bearer(platform_admin))
+
+    assert read.status_code == 200, read.text
+    assert read.json()["versions"][0]["structure"]["schemaVersion"] == 3
+    assert await _stored_structure(db_session, rubric["version_id"]) == FULL_RUBRIC
+
+
+async def test_a_new_draft_from_a_v2_version_is_stored_as_a_scheme(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    platform_admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    rubric = await create_rubric(client, platform_admin, structure=FULL_RUBRIC)
+
+    response = await client.post(
+        f"/api/v1/platform/rubrics/{rubric['id']}/versions", headers=bearer(platform_admin)
+    )
+
+    assert response.status_code == 201, response.text
+    stored = await _stored_structure(db_session, response.json()["id"])
+    assert stored["schemaVersion"] == 3
+    assert domain.upgrade_structure(stored) == domain.upgrade_structure(FULL_RUBRIC)
+
+
+async def test_a_copied_platform_rubric_is_stored_as_a_scheme(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    platform_admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    source = await create_rubric(client, platform_admin, structure=FULL_RUBRIC, title="SCA marking")
+    org_id = await seed_org(client, make_actor)
+    admin = await member(make_actor, org_id, "kings", "admin")
+
+    response = await client.post(
+        f"{ORG_RUBRICS}/copy", json={"source_rubric_id": source["id"]}, headers=bearer(admin)
+    )
+
+    assert response.status_code == 201, response.text
+    stored = await _stored_structure(db_session, response.json()["versions"][0]["id"])
+    assert stored["schemaVersion"] == 3
+    assert stored["basedOn"] == {"rubricId": source["id"], "version": 1, "title": "SCA marking"}

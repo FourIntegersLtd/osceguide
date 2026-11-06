@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   useCallback,
   useEffect,
   useId,
@@ -246,8 +247,8 @@ export function AddFieldMenu({
   );
 }
 
-/** Full-width dashed "Add field" button used at the end of a section. */
-export function AddFieldButton({
+/** The board's open "+ Add field" fold: every field type by group, each one a button that adds it at the end of the section. */
+export function AddFieldPanel({
   kind,
   onPick,
   onOpenFieldTypesInfo,
@@ -256,33 +257,46 @@ export function AddFieldButton({
   onPick: (type: StationBlockType) => void;
   onOpenFieldTypesInfo: () => void;
 }) {
+  const groups = STATION_BLOCK_FORMS_GROUPS.map((group) => ({
+    ...group,
+    items: formsOrderForKind(kind).filter((m) => m.group === group.id),
+  })).filter((g) => g.items.length > 0);
   return (
-    <AddFieldMenu
-      kind={kind}
-      onPick={onPick}
-      onOpenFieldTypesInfo={onOpenFieldTypesInfo}
-      trigger={({ toggle, ref, open, ...aria }) => (
+    <details className="border-t border-osce-border-light" open>
+      <summary className="box-content min-h-6 cursor-pointer px-5 py-3.5 text-assess-label font-medium text-ink">
+        <span aria-hidden>+ </span>
+        Add field
+      </summary>
+      <div className="px-5 pb-4 text-assess-label leading-relaxed text-ink-muted">
+        <div className="grid grid-cols-1 gap-4 min-[901px]:grid-cols-2">
+          {groups.map((group) => (
+            <div key={group.id} role="group" aria-label={group.label}>
+              <p className="text-assess-eyebrow uppercase text-ink-subtle">{group.label}</p>
+              {group.items.map((meta, i) => (
+                <Fragment key={meta.type}>
+                  {i > 0 ? <span aria-hidden> · </span> : null}
+                  <button
+                    type="button"
+                    title={meta.description}
+                    onClick={() => onPick(meta.type)}
+                    className={`hover:text-ink hover:underline ${builderUi.focusRing}`}
+                  >
+                    {meta.formsLabel}
+                  </button>
+                </Fragment>
+              ))}
+            </div>
+          ))}
+        </div>
         <button
-          ref={ref}
           type="button"
-          {...aria}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggle();
-          }}
-          className={`flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-3 py-3 text-osce-body font-medium transition-colors ${builderUi.focusRing} ${
-            open
-              ? "border-osce-accent bg-osce-accent-muted text-osce-accent"
-              : "border-osce-border text-ink-muted hover:border-osce-accent-subtle hover:bg-osce-accent-muted/60 hover:text-osce-accent"
-          }`}
+          onClick={onOpenFieldTypesInfo}
+          className={`mt-3 text-assess-meta font-medium text-ink-subtle hover:text-ink ${builderUi.focusRing}`}
         >
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-osce-accent text-white">
-            <HiPlus className="h-3.5 w-3.5" aria-hidden />
-          </span>
-          Add field
+          Field type guide
         </button>
-      )}
-    />
+      </div>
+    </details>
   );
 }
 

@@ -1,0 +1,50 @@
+- main:
+  - heading "Results" [level=1]
+  - paragraph: Each sitting with how far its decisions have got.
+  - heading "Needs your attention" [level=2]
+  - 'link "OV formal finals: 1 candidate needs a decision Decide"':
+    - /url: /app/e2e-mw3mzpx5/sittings/16a0fd6f-f4d9-43cc-8334-f81bafedda27/results
+    - img
+    - text: "OV formal finals: 1 candidate needs a decision Decide"
+  - 'link "Circuit run: 1 candidate needs a decision Decide"':
+    - /url: /app/e2e-mw3mzpx5/sittings/c41520c8-9fb3-4b46-8d8c-8036a220db80/results
+    - img
+    - text: "Circuit run: 1 candidate needs a decision Decide"
+  - tablist "Filter results":
+    - tab "Needs a decision" [selected]
+    - tab "Ready to release"
+    - tab "All"
+  - table:
+    - rowgroup:
+      - row "Sitting Date Kind Candidates Not decided Draft Signed off Released":
+        - columnheader "Sitting"
+        - columnheader "Date"
+        - columnheader "Kind"
+        - columnheader "Candidates"
+        - columnheader "Not decided"
+        - columnheader "Draft"
+        - columnheader "Signed off"
+        - columnheader "Released"
+    - rowgroup:
+      - row "OV formal finals Not scheduled Formal exam 1 1 0 0 0":
+        - cell "OV formal finals":
+          - link "OV formal finals":
+            - /url: /app/e2e-mw3mzpx5/sittings/16a0fd6f-f4d9-43cc-8334-f81bafedda27/results
+        - cell "Not scheduled"
+        - cell "Formal exam"
+        - cell "1"
+        - cell "1"
+        - cell "0"
+        - cell "0"
+        - cell "0"
+      - row "Circuit run 06/11/2026 Formal exam 1 1 0 0 0":
+        - cell "Circuit run":
+          - link "Circuit run":
+            - /url: /app/e2e-mw3mzpx5/sittings/c41520c8-9fb3-4b46-8d8c-8036a220db80/results
+        - cell "06/11/2026"
+        - cell "Formal exam"
+        - cell "1"
+        - cell "1"
+        - cell "0"
+        - cell "0"
+        - cell "0"

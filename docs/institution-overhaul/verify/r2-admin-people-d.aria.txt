@@ -1,0 +1,45 @@
+- main:
+  - heading "People" [level=1]
+  - paragraph: Everyone in your organisation. Trainees sit sittings; staff (supervisors and admins) run circuits and mark them.
+  - button "Add people"
+  - tablist "People sections":
+    - tab "Trainees 1" [selected]
+    - tab "Staff"
+    - tab "Groups and year groups"
+    - tab "Exam access"
+    - tab "History"
+  - heading "1 trainee across 1 programme" [level=2]
+  - paragraph: 4 stations sat so far.
+  - paragraph: 1 trainee
+  - text: Search trainees
+  - searchbox "Search trainees"
+  - checkbox "Select all on this page"
+  - text: Select all on this page
+  - table:
+    - rowgroup:
+      - row "Select Name Year group Programme Sat Status Actions":
+        - columnheader "Select"
+        - columnheader "Name"
+        - columnheader "Year group"
+        - columnheader "Programme"
+        - columnheader "Sat"
+        - columnheader "Status"
+        - columnheader "Actions"
+    - rowgroup:
+      - row "Select Tess Trainee Tess Trainee e2e-trainee-mw3om0c6@example.com No group Simulated Consultation Assessment 4 Booked Edit Revoke Delete Anonymise":
+        - cell "Select Tess Trainee":
+          - checkbox "Select Tess Trainee"
+        - cell "Tess Trainee e2e-trainee-mw3om0c6@example.com"
+        - cell "No group"
+        - cell "Simulated Consultation Assessment"
+        - cell "4"
+        - cell "Booked"
+        - cell "Edit Revoke Delete Anonymise":
+          - button "Edit"
+          - button "Revoke"
+          - button "Delete"
+          - button "Anonymise"
+  - paragraph:
+    - text: Looking for supervisors and admins? They are on the
+    - button "Staff"
+    - text: tab.

@@ -10,6 +10,8 @@
  * tolerates what is already there.
  *
  *   node scripts/seed-demo-org.mjs --email dev@example.com --password ...
+ *   add --empty to stop after the admin membership: the state of docs/institution-overhaul/boards/Main.dc.html
+ *   (0 exams ready, 0 published stations, 0 trainees, 1 staff). Use a database where st-marys has no data yet.
  */
 import { signInWithPassword } from "./admin-totp.mjs";
 
@@ -56,7 +58,7 @@ async function main() {
   if (!org) {
     org = await call("/api/v1/platform/organizations", {
       method: "POST",
-      body: { name: "St Mary's", slug: SLUG, org_type: "institution" },
+      body: { name: "St Mary's Medical School", slug: SLUG, org_type: "institution" },
     });
     say(`created organisation ${org.slug}`);
   } else {
@@ -78,6 +80,10 @@ async function main() {
     body: { org_slug: SLUG },
   });
   token = switched.access_token;
+  if (process.argv.includes("--empty")) {
+    say("--empty: stopping with 1 staff, no programme, no trainees");
+    return;
+  }
 
   // 3. A programme: this institution runs SCA.
   await call(`/api/v1/orgs/${SLUG}/programmes`, {

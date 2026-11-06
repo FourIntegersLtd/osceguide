@@ -1,0 +1,349 @@
+- main:
+  - link "Marking schemes":
+    - /url: /app/demo-walkthrough/authoring/rubrics
+  - heading "Verify PLAB 2 copy" [level=1]:
+    - button "Verify PLAB 2 copy"
+  - paragraph: Exams › Marking schemes · version 1. How a station is marked, and what the candidate's feedback looks like. Publishing makes a new version; sittings already marked keep the version they used.
+  - text: ● Draft
+  - status:
+    - paragraph: Looks right in the preview. Publish this version.
+    - button "Publish"
+    - button "Save draft" [disabled]
+  - list "Steps":
+    - listitem: Draft Saved
+    - listitem: Preview No problems
+    - listitem: Publish Not published
+  - tablist "Marking scheme":
+    - tab "1 Domains" [selected]
+    - tab "2 Scale"
+    - tab "3 Pass rule"
+    - tab "4 Feedback"
+    - tab "5 Advanced"
+    - tab "6 Trial mark"
+    - tab "7 Versions"
+  - tabpanel "1 Domains":
+    - heading "Domains and competencies" [level=2]
+    - button "Add"
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Title": Data gathering
+    - text: 4 comps
+    - button "More for Data gathering": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": History taking
+    - button "More for History taking": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": Examination
+    - button "More for Examination": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": Investigations
+    - button "More for Investigations": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": Interpretation
+    - button "More for Interpretation": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Title": Clinical management
+    - text: 4 comps
+    - button "More for Clinical management": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": Diagnosis
+    - button "More for Diagnosis": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": Management plan
+    - button "More for Management plan": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": Safety netting
+    - button "More for Safety netting": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": Follow up
+    - button "More for Follow up": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Title": Interpersonal skills
+    - text: 4 comps
+    - button "More for Interpersonal skills": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": Language
+    - button "More for Language": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": Listening
+    - button "More for Listening": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": Rapport
+    - button "More for Rapport": ⋯
+    - button "Drag to reorder": ⋮⋮
+    - textbox "Competency": Empathy
+    - button "More for Empathy": ⋯
+    - status
+    - paragraph: Pick a domain, competency or notes block to edit it here.
+  - button "Back" [disabled]
+  - text: "Step 1 of 6: Domains"
+  - button "Next"
+  - complementary:
+    - 'heading "Preview: candidate feedback" [level=2]'
+    - paragraph: What a candidate sees, from a made-up result.
+    - tablist "Preview":
+      - tab "Candidate feedback" [selected]
+      - tab "Dashboard"
+    - paragraph: A made-up result, to show the layout.
+    - paragraph: Your mark
+    - paragraph: 7.2/12 total score
+    - paragraph: Pass at 7/12
+    - text: Passed
+    - heading "By domain" [level=2]
+    - heading "Data gathering" [level=3]
+    - text: 2.4/4 Met the pass line Pass at 2/4 0.9/1 History taking
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - text: 0.7/1 Examination
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - text: 0.5/1 Investigations
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - text: 0.3/1 Interpretation
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - heading "Clinical management" [level=3]
+    - text: 2.4/4 Met the pass line Pass at 2/4 0.9/1 Diagnosis
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - text: 0.7/1 Management plan
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - text: 0.5/1 Safety netting
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - text: 0.3/1 Follow up
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - heading "Interpersonal skills" [level=3]
+    - text: 2.4/4 Met the pass line Pass at 2/4 0.9/1 Language
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - text: 0.7/1 Listening
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - text: 0.5/1 Rapport
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - text: 0.3/1 Empathy
+    - paragraph: Completed
+    - list:
+      - listitem: Completed 1
+      - listitem: Completed 2
+    - paragraph: Critical flags
+    - list:
+      - listitem: Critical flags 1
+      - listitem: Critical flags 2
+    - paragraph: Missed
+    - list:
+      - listitem: Missed 1
+      - listitem: Missed 2
+    - paragraph: Suggested actions
+    - list:
+      - listitem: Suggested actions 1
+      - listitem: Suggested actions 2
+    - paragraph: Supporting phrase
+    - list:
+      - listitem: Supporting phrase 1
+      - listitem: Supporting phrase 2
+    - paragraph: This consultation analysis is for formative training only and cannot be used as an indication of performance in the exam.
+    - heading "Problems" [level=2]
+    - text: None. Publishing is blocked while any are listed here, and each says what to fix.

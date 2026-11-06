@@ -11,6 +11,10 @@ import {
 } from "@/capabilities/authoring/sections/examSteps";
 
 describe("examChip", () => {
+  it("calls a platform exam with no programme of ours not adopted, not unavailable", () => {
+    assert.equal(examChip({ status: "published", owner_kind: "platform" }, null), "Not adopted yet");
+    assert.equal(examChip({ status: "published", owner_kind: "org" }, null), "Not available");
+  });
   it("joins the exam, its scheme and its programme into one status", () => {
     assert.equal(examChip({ status: "draft", rubric_version_id: null }, null), "Needs a marking scheme");
     assert.equal(examChip({ status: "draft", rubric_version_id: "rv1" }, null), "Draft");

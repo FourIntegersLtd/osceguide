@@ -11,7 +11,9 @@ from sqlalchemy import event, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.sittings.models import Circuit
+from app.features.voice.service import get_room_agents
 from tests.http.test_org_read_models import a_circuit, a_user
+from tests.support.fakes import FakeRoomAgents
 from tests.support.sittings import a_sitting, add_programme, org_with_admin, published_station
 from tests.support.tokens import bearer
 
@@ -119,6 +121,8 @@ async def test_the_home_counts_trainees_who_have_not_joined(
 async def test_an_overdue_circuit_says_by_how_many_seconds(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents(fail_dispatch=True)  # type: ignore[attr-defined]
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents(fail_dispatch=True)  # type: ignore[attr-defined]
     _, admin, sitting = await _two_circuits(client, make_actor, db_session)
     detail = await client.get(f"/api/v1/orgs/kings/sittings/{sitting['id']}", headers=bearer(admin))
     circuit_id = detail.json()["circuits"][0]["id"]

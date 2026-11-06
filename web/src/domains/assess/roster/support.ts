@@ -183,3 +183,11 @@ export function addToGroupSummary(requested: string[], after: string[]): string 
     ? base
     : `${base} ${missing} ${missing === 1 ? "is" : "are"} not in it: the group changed while you were adding. Try again.`;
 }
+
+/** "1 Nov": the day and short month the People board writes for a grant's dates. */
+export function shortDay(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}

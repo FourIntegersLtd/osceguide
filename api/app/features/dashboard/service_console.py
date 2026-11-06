@@ -12,6 +12,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ports import RoomAgents
 from app.features.attempts import service_reads as attempts
 from app.features.dashboard.errors import CircuitNotFound
 from app.features.dashboard.schemas_org import (
@@ -35,7 +36,7 @@ from app.features.stations import service_reads as stations
 
 
 async def build_console(
-    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, *, now: datetime
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, *, now: datetime, agents: RoomAgents
 ) -> CircuitConsole:
     """Everything the supervisor's screen shows, in one request.
 
@@ -44,7 +45,7 @@ async def build_console(
     slot for whether it has been marked, and the whole thing again every eight
     seconds.
     """
-    await service_catchup.advance_due(session, org_id=org_id, circuit_id=circuit_id, now=now)
+    await service_catchup.advance_due(session, org_id=org_id, circuit_id=circuit_id, now=now, agents=agents)
     detail = await sittings.circuit_detail(session, org_id, circuit_id)
     if detail is None:
         raise CircuitNotFound()

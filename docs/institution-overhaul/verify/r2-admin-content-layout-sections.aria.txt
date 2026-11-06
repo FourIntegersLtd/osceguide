@@ -1,0 +1,33 @@
+- main:
+  - link "Station templates":
+    - /url: /app/e2e-mw3om0c6/authoring/station-templates
+  - heading "New template" [level=1]
+  - paragraph: Choose the exam, name the template, pick a starting layout, then save a draft. Only saved (and published) templates appear in the catalogue list.
+  - list "Steps":
+    - listitem:
+      - button "Start Choose exam and layout"
+    - listitem:
+      - button "Sections & fields Then save a draft"
+  - text: Exam
+  - combobox "Exam":
+    - option "Select an exam…"
+    - option "CASC (casc)"
+    - option "Orthopaedic interview (ortho)"
+    - option "PLAB 2 (plab)"
+    - option "Simulated Consultation Assessment (sca)" [selected]
+  - text: Template title
+  - textbox "Template title":
+    - /placeholder: Untitled template
+  - paragraph: Starting layouts
+  - radiogroup "Starting layouts":
+    - radio "Blank. Start from scratch. 1 sections.":
+      - text: Blank
+      - paragraph: Start from scratch
+      - paragraph: 1 section
+    - radio "SCA. Patient, record, plan. 4 sections." [checked]:
+      - text: SCA
+      - paragraph: Patient, record, plan
+      - paragraph: 4 sections
+  - text: Please enter a template title.
+  - button "Cancel"
+  - button "Continue"

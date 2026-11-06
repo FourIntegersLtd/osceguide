@@ -20,7 +20,7 @@ import { Team } from "@/domains/assess";
 const partnerOf = ({ workspace }: ScreenProps) => workspace.orgSlug ?? "";
 
 function PartnerOverviewScreen(props: ScreenProps) {
-  return <PartnerDashboard partner={partnerOf(props)} />;
+  return <PartnerDashboard partner={partnerOf(props)} name={props.workspace.name} />;
 }
 
 function PartnerReportingScreen(props: ScreenProps) {

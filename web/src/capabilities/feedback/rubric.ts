@@ -192,9 +192,14 @@ export function ratingTone(rating: Rating, display: Display | null, value: unkno
 }
 
 /** How one rating is written: `G`, `7/10`, `Met`. */
+const RAG_WORDS: Record<string, string> = { G: "Green", A: "Amber", R: "Red" };
+
 export function ratingLabel(rating: Rating | null | undefined, value: unknown): string {
   if (value === null || value === undefined || value === "") return "Not rated";
   if (!rating) return String(value);
+  // The boards write a rag mark as its colour ("Green", "Amber", "Red"); an author's own scale keeps its own words.
+  const word = rating.kind === "rag" && typeof value === "string" ? RAG_WORDS[value] : undefined;
+  if (word) return word;
   if (rating.kind === "boolean") return value === true ? "Met" : value === false ? "Not met" : String(value);
   if (rating.kind === "range" && typeof value === "number") {
     return rating.maximum ? `${formatNumber(value)}/${formatNumber(rating.maximum)}` : formatNumber(value);

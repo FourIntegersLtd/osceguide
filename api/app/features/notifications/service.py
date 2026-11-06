@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import SessionOpener, savepoint
 from app.core.logging import get_logger
-from app.core.ports import EmailSender
+from app.core.ports import EmailDeliveryTimedOut, EmailSender
 from app.core.settings import get_settings
 from app.features.notifications import domain, repository
 from app.features.notifications.models import OutboundMessage
@@ -132,6 +132,9 @@ async def deliver_due(
         async with slots:
             try:
                 await sender.send(to=message.recipient, subject=message.subject, html=html)
+            except EmailDeliveryTimedOut as exc:
+                # Never auto-retry: the provider may have accepted the message after we stopped waiting.
+                return _Outcome(message, error=str(exc) or type(exc).__name__, abandon=True)
             except Exception as exc:  # noqa: BLE001 - whatever one send raises is that message's retry
                 return _Outcome(message, error=str(exc) or type(exc).__name__)
         return _Outcome(message)

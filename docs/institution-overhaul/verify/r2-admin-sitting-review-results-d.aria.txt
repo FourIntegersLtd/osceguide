@@ -1,0 +1,42 @@
+- main:
+  - link "Sitting":
+    - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3
+  - paragraph: OV exam to review
+  - heading "Results" [level=1]
+  - paragraph: 1 of 1 stations marked · 0 of 1 released
+  - button "Export CSV"
+  - heading "Outcomes" [level=2]
+  - region "Outcomes": Passed 0 Failed 0 Inconclusive 0 Withheld 0 Undecided 1 Awaiting marking 0
+  - status:
+    - paragraph: Record and sign off each candidate's outcome.
+  - list "Steps":
+    - listitem: Schedule Date set
+    - listitem: Circuits Candidates sat
+    - listitem: Run All finished
+    - listitem: Mark 1 of 1 marked
+    - listitem: Decide 0 of 1 decided
+    - listitem: Release 0 of 1 released
+  - heading "Review order" [level=2]
+  - button "Export readout"
+  - paragraph: Formal exam only.
+  - paragraph: 1 candidate, with unfinished reviews first, then the weakest results.
+  - text: 1. Tess Trainee 1/1 stations · 100% complete Standard
+  - region "Candidates":
+    - table:
+      - rowgroup:
+        - row "Candidate Score Outcome Status Actions":
+          - columnheader "Candidate"
+          - columnheader "Score"
+          - columnheader "Outcome"
+          - columnheader "Status"
+          - columnheader "Actions"
+      - rowgroup:
+        - row "Tess Trainee 1 of 1 stations marked No automatic score Not decided Marked Open Tess Trainee":
+          - cell "Tess Trainee 1 of 1 stations marked":
+            - paragraph: Tess Trainee
+            - paragraph: 1 of 1 stations marked
+          - cell "No automatic score"
+          - cell "Not decided"
+          - cell "Marked"
+          - cell "Open Tess Trainee":
+            - button "Open Tess Trainee": Open

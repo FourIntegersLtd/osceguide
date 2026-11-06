@@ -1,0 +1,52 @@
+- main:
+  - heading "Results" [level=1]
+  - paragraph: Each sitting with how far its decisions have got.
+  - tablist "Filter results":
+    - tab "Needs a decision" [selected]
+    - tab "Ready to release"
+    - tab "All"
+  - table:
+    - rowgroup:
+      - row "Sitting Date Kind Candidates Not decided Draft Signed off Released":
+        - columnheader "Sitting"
+        - columnheader "Date"
+        - columnheader "Kind"
+        - columnheader "Candidates"
+        - columnheader "Not decided"
+        - columnheader "Draft"
+        - columnheader "Signed off"
+        - columnheader "Released"
+    - rowgroup:
+      - row "OV training run 06/11/2026 Training 1 1 0 0 0":
+        - cell "OV training run":
+          - link "OV training run":
+            - /url: /app/e2e-mw3om0c6/sittings/0469e190-b9e0-4614-99e9-e645bb457f33/results
+        - cell "06/11/2026"
+        - cell "Training"
+        - cell "1"
+        - cell "1"
+        - cell "0"
+        - cell "0"
+        - cell "0"
+      - row "OV exam to review 06/11/2026 Formal exam 1 1 0 0 0":
+        - cell "OV exam to review":
+          - link "OV exam to review":
+            - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3/results
+        - cell "06/11/2026"
+        - cell "Formal exam"
+        - cell "1"
+        - cell "1"
+        - cell "0"
+        - cell "0"
+        - cell "0"
+      - row "Circuit run 06/11/2026 Formal exam 1 1 0 0 0":
+        - cell "Circuit run":
+          - link "Circuit run":
+            - /url: /app/e2e-mw3om0c6/sittings/115d9697-b969-4381-9a8c-d711b339a4cc/results
+        - cell "06/11/2026"
+        - cell "Formal exam"
+        - cell "1"
+        - cell "1"
+        - cell "0"
+        - cell "0"
+        - cell "0"

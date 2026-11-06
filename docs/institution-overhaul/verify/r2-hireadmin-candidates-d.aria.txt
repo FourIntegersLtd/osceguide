@@ -1,0 +1,45 @@
+- main:
+  - heading "Candidates" [level=1]
+  - paragraph: Everyone in your organisation. Candidates sit assessments; staff (supervisors and admins) run circuits and mark them.
+  - button "Add candidates"
+  - tablist "People sections":
+    - tab "Candidates 1" [selected]
+    - tab "Staff"
+    - tab "Groups and year groups"
+    - tab "Exam access"
+    - tab "History"
+  - heading "1 candidate across 1 programme" [level=2]
+  - paragraph: 0 stations sat so far.
+  - paragraph: 1 candidate
+  - text: Search candidates
+  - searchbox "Search candidates"
+  - checkbox "Select all on this page"
+  - text: Select all on this page
+  - table:
+    - rowgroup:
+      - row "Select Name Year group Programme Sat Status Actions":
+        - columnheader "Select"
+        - columnheader "Name"
+        - columnheader "Year group"
+        - columnheader "Programme"
+        - columnheader "Sat"
+        - columnheader "Status"
+        - columnheader "Actions"
+    - rowgroup:
+      - row "Select Cass Candidate Cass Candidate e2e-hire-candidate-mw3om0c6@example.com No group Simulated Consultation Assessment 0 Booked Edit Revoke Delete Anonymise":
+        - cell "Select Cass Candidate":
+          - checkbox "Select Cass Candidate"
+        - cell "Cass Candidate e2e-hire-candidate-mw3om0c6@example.com"
+        - cell "No group"
+        - cell "Simulated Consultation Assessment"
+        - cell "0"
+        - cell "Booked"
+        - cell "Edit Revoke Delete Anonymise":
+          - button "Edit"
+          - button "Revoke"
+          - button "Delete"
+          - button "Anonymise"
+  - paragraph:
+    - text: Looking for supervisors and admins? They are on the
+    - button "Staff"
+    - text: tab.

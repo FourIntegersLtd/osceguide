@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   EMPTY_DRAFT,
+  candidateStanding,
   circuitPlan,
   circuitTiming,
   eachCircuitJobs,
@@ -11,6 +12,9 @@ import {
   furthestStep,
   nextBreakPosition,
   peopleFormula,
+  reviewFormula,
+  stationNote,
+  sittingLine,
   scheduledInstant,
   stepBlock,
   stepUnlocked,
@@ -144,4 +148,44 @@ test("a sitting starts from its exam's timings", () => {
     { readingMinutes: 3, consultationMinutes: 10 },
   );
   assert.deepEqual(examTimings({ default_reading_seconds: 0, default_simulation_seconds: 0 }), {});
+});
+
+test("the station step says how many are picked and, in training, what that needs", () => {
+  assert.equal(stationNote(draft({ mode: "exam", stations: stations(6) })), "6 of up to 12 stations picked.");
+  assert.equal(
+    stationNote(draft({ mode: "training", stations: stations(6) })),
+    "6 stations picked. Training needs one trainee per station.",
+  );
+  assert.equal(stationNote(draft({ mode: "training", stations: stations(1) })), "1 station picked. Training needs one trainee per station.");
+});
+
+test("the review says what gets made: a circuit each for a formal exam, one shared for training", () => {
+  const exam = draft({ mode: "exam", stations: stations(6), candidateIds: ["a", "b", "c", "d", "e", "f", "g"] });
+  assert.deepEqual(reviewFormula(exam, "Dr Patel", words), {
+    formula: "7 candidates × 6 stations → 7 circuits",
+    help: "Each candidate gets their own circuit, supervised by Dr Patel.",
+  });
+  const training = draft({ mode: "training", stations: stations(6), candidateIds: ["a", "b", "c", "d", "e", "f"] });
+  assert.deepEqual(reviewFormula(training, "Dr Patel", words), {
+    formula: "6 trainees × 6 stations → 1 circuit",
+    help: "Trainees rotate together round one circuit.",
+  });
+  assert.equal(
+    reviewFormula({ ...exam, perCandidate: true }, "", words).help,
+    "Each candidate gets their own circuit, with a supervisor each.",
+  );
+  assert.equal(reviewFormula(exam, "", words).help, "Each candidate gets their own circuit.");
+});
+
+test("sittingLine joins the name and an en-GB date, and drops a missing date", () => {
+  assert.equal(sittingLine({ name: " Summer finals ", date: "2026-11-26" }), "Summer finals · 26 Nov 2026");
+  assert.equal(sittingLine({ name: "Summer finals", date: "" }), "Summer finals");
+});
+
+test("candidateStanding: an invited account nobody has used is not 'signed in'", () => {
+  const row = { id: "t1", email: "a@example.com", first_name: null, last_name: null };
+  assert.equal(candidateStanding({ ...row, user_id: null }), "not_joined");
+  assert.equal(candidateStanding({ ...row, user_id: "u1", invitation_pending: true }), "invited");
+  assert.equal(candidateStanding({ ...row, user_id: "u1", invitation_pending: false }), "signed_in");
+  assert.equal(candidateStanding({ ...row, user_id: "u1" }), "signed_in");
 });

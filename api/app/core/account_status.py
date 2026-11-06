@@ -58,13 +58,6 @@ def forget_status(session: AsyncSession, user_id: UUID) -> None:
     cache.forget_after_commit(session, status_key(user_id))
 
 
-class _NotCacheable(Exception):  # noqa: N818 - control flow out of `get_or_load`, never an error
-    """Carries a status that must not be stored (anything but "active", or an unknown account)."""
-
-    def __init__(self, status: str | None) -> None:
-        self.status = status
-
-
 async def refuse_if_deactivated(session: AsyncSession, user_id: UUID, *, fresh: bool = False) -> None:
     """Refuse a token whose account has since been deactivated.
 
@@ -81,21 +74,18 @@ async def refuse_if_deactivated(session: AsyncSession, user_id: UUID, *, fresh: 
         return
     lookup = _lookup[0]
     ttl = get_settings().auth_status_cache_seconds
-    if fresh or ttl <= 0:
-        status = await lookup(session, user_id)
-    else:
 
-        async def load() -> str:
-            """Read the account's status, refusing to hand back anything but "active" for storing."""
-            found = await lookup(session, user_id)
-            if found != "active":
-                raise _NotCacheable(found)  # a raised load is never stored
-            return found
+    async def confirm_active() -> None:
+        """Turns away a request from an account that is no longer active."""
+        found = await lookup(session, user_id)
+        if found != "active":
+            raise cache.ActiveOnlyRefusal(found)
 
-        try:
-            await cache.get_or_load(status_key(user_id), ttl, load, dump=str, parse=str)
-            return  # only "active" is ever stored or loaded without raising
-        except _NotCacheable as not_active:
-            status = not_active.status
+    refusal = await cache.confirm_active_cached(
+        status_key(user_id), ttl, fresh=fresh, confirm_active=confirm_active
+    )
+    if refusal is None:
+        return
+    status = refusal.detail
     if status is not None and status != "active":
         raise AccountDeactivated()

@@ -1,0 +1,16 @@
+- main:
+  - link "All assessments":
+    - /url: /app/e2e-hire-mw3om0c6/trainee
+  - paragraph: Examination
+  - heading "R2 hire assessment" [level=1]
+  - paragraph: Formal exam · 1 station
+  - link "All assessments":
+    - /url: /app/e2e-hire-mw3om0c6/trainee
+  - status:
+    - paragraph: Check your microphone
+    - paragraph: Your microphone is ready.
+  - status:
+    - paragraph: Before you start
+    - text: "Your station opens when your supervisor starts it. Go in straight away: the patient joins when reading time ends, and you need to be in the room by then."
+  - heading "Your stations" [level=2]
+  - text: Station 1 · E2E gender voice test - male patient Not started

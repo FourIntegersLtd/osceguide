@@ -5,7 +5,8 @@ import {
   HiOutlineArrowDownTray,
   HiOutlineChatBubbleLeftRight,
 } from "react-icons/hi2";
-import { Alert, Button, Card, Spinner } from "@/foundation/ui";
+import { Alert, Button, Card, Spinner, b2bTokens } from "@/foundation/ui";
+import { boardPad, boardButtonSmall } from "@/foundation/ui/boardKit";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { downloadTranscript } from "@/capabilities/attempt-runner/transcriptDocument";
@@ -27,7 +28,7 @@ import { TranscriptView } from "@/capabilities/feedback";
  * beside it, so pulling every consultation into every page load would cost the
  * institution for a document only sometimes wanted.
  */
-export function AttemptTranscript({ attemptId }: { attemptId: string | null }) {
+export function AttemptTranscript({ attemptId, cardClassName = boardPad }: { attemptId: string | null; cardClassName?: string }) {
   const [wanted, setWanted] = useState(false);
   const state = useAsync(
     (signal) =>
@@ -41,24 +42,20 @@ export function AttemptTranscript({ attemptId }: { attemptId: string | null }) {
 
   if (!wanted) {
     return (
-      <Card
-        themeType="b2b"
-        title="What was said"
-        description="Everything said in the consultation. The marks are shown separately."
-      >
-        <Button
-          themeType="b2b"
-          variant="secondary"
-          size="sm"
-          onClick={() => setWanted(true)}
-        >
-          <HiOutlineChatBubbleLeftRight
-            className="mr-2 h-4 w-4 shrink-0"
-            aria-hidden
-          />
-          Load the transcript
-        </Button>
-      </Card>
+      <div className={cardClassName}>
+        <h2 className="text-base font-semibold leading-normal">What was said</h2>
+        <div className={b2bTokens.assessMeta}>Everything said in the consultation. The marks are shown separately.</div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            className={boardButtonSmall}
+            onClick={() => setWanted(true)}
+          >
+            <HiOutlineChatBubbleLeftRight className="h-4 w-4 shrink-0" aria-hidden />
+            Load the transcript
+          </button>
+        </div>
+      </div>
     );
   }
 

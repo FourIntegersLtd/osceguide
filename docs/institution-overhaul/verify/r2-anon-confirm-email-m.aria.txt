@@ -1,0 +1,6 @@
+- main:
+  - heading "That link is incomplete" [level=1]
+  - paragraph: Use the link in the email we sent to your new address.
+  - paragraph:
+    - link "Sign in":
+      - /url: /login

@@ -1,0 +1,36 @@
+- main:
+  - heading "Create your account" [level=1]
+  - paragraph: Start practising in a few minutes
+  - text: Name
+  - textbox "Name"
+  - text: Email
+  - textbox "Email"
+  - text: Password
+  - textbox "Password"
+  - button "Show password":
+    - img
+  - paragraph: At least 12 characters, mixing letters with numbers, punctuation or capitals.
+  - text: Confirm password
+  - textbox "Confirm password"
+  - button "Create account"
+  - paragraph:
+    - text: Already have an account?
+    - link "Sign in":
+      - /url: /login
+  - complementary:
+    - text: What our users say
+    - figure "Dr C.O SCA candidate":
+      - blockquote: Colleagues are often busy when I am, but with @OSCEGuide I can role play anytime, even at night. A game changer in my SCA prep.
+      - text: Dr C.O SCA candidate
+    - group "Choose a testimonial":
+      - button "Show testimonial from Dr Elizabeth Okuonghae"
+      - button "Show testimonial from Dr Nazia Qadeer"
+      - button "Show testimonial from Dr I.O"
+      - button "Show testimonial from Dr Marion Ogunmola"
+      - button "Show testimonial from Dr C.O"
+      - button "Show testimonial from Dr Adeleke"
+      - button "Show testimonial from Dr S"
+      - button "Show testimonial from Dr R"
+      - button "Show testimonial from Dr L"
+      - button "Show testimonial from Dr Emmanuel Okojie"
+      - button "Show testimonial from Dr Zahra"

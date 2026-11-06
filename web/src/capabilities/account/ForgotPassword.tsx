@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { requestPasswordReset } from "@/foundation/platform-client";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
+import { boardAlert } from "@/foundation/ui/boardKit";
 import AuthShell from "@/capabilities/account/AuthShell";
 import AuthButton from "@/capabilities/account/AuthButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
@@ -72,7 +73,6 @@ export default function ForgotPassword() {
     return (
       <AuthShell
         variant="card"
-        icon="mail-check"
         title="Check your email"
         subtitle={`If ${email} has a password account, a reset link is on its way.`}
       >
@@ -107,14 +107,14 @@ export default function ForgotPassword() {
   return (
     <AuthShell
       variant="split"
-      icon="key"
       title="Reset your password"
       subtitle="We email you a link if an account uses this address."
       sidePanel={<AuthQuotePanel />}
     >
-      <form className="space-y-5" method="post" onSubmit={handleFormSubmission} noValidate>
+      <form className="flex flex-col gap-3.5" method="post" onSubmit={handleFormSubmission} noValidate>
         <AuthFormField
           label="Email"
+          hideLabel
           name="email"
           type="email"
           autoComplete="email"
@@ -127,16 +127,16 @@ export default function ForgotPassword() {
           error={fieldErrors.email}
         />
         {formError ? (
-          <p role="alert" className="text-center text-osce-meta text-osce-danger">
+          <div role="alert" className={boardAlert("bad")}>
             {formError}
-          </p>
+          </div>
         ) : null}
         <AuthButton isLoading={isSubmitting}>
           {isSubmitting ? "Sending…" : "Send the link"}
         </AuthButton>
       </form>
 
-      <p className={authFooterLink}>
+      <p data-auth-extra className={authFooterLink}>
         Remembered it?{" "}
         <Link href="/login" className={authLink}>
           Sign in

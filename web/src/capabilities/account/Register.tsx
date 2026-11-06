@@ -9,6 +9,7 @@ import { examAuthHref, normalizeExamCode } from "@/foundation/session/examCode";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { useSession } from "@/foundation/session";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
+import { boardAlert } from "@/foundation/ui/boardKit";
 import AuthShell from "@/capabilities/account/AuthShell";
 import AuthButton from "@/capabilities/account/AuthButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
@@ -135,7 +136,6 @@ export default function Register() {
   return (
     <AuthShell
       variant="split"
-      icon="signup"
       title="Create your account"
       subtitle={
         examCode
@@ -144,11 +144,10 @@ export default function Register() {
       }
       sidePanel={<AuthQuotePanel />}
     >
-      <form className="space-y-5" method="post" onSubmit={handleFormSubmission} noValidate>
+      <form className="flex flex-col gap-3.5" method="post" onSubmit={handleFormSubmission} noValidate>
         <AuthFormField
           label="Name"
           name="username"
-          icon="user"
           autoComplete="name"
           value={formData.username}
           onChange={handleChange}
@@ -188,7 +187,7 @@ export default function Register() {
           error={fieldErrors.confirmPassword}
         />
         {formError ? (
-          <p role="alert" className="text-center text-osce-meta text-osce-danger">
+          <div role="alert" className={boardAlert("bad")}>
             {formError}
             {accountCreated ? (
               <>
@@ -198,7 +197,7 @@ export default function Register() {
                 </Link>
               </>
             ) : null}
-          </p>
+          </div>
         ) : null}
         <AuthButton isLoading={isSubmitting} disabled={accountCreated}>
           {isSubmitting ? "Creating your account…" : "Create account"}

@@ -10,15 +10,13 @@ import type {
   StationBlockType,
   StationSection,
 } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
-import { b2bInputBase } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
-import { HiOutlineDocumentDuplicate, HiOutlineTrash } from "react-icons/hi2";
-import { BuilderButton } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/builderChrome";
+import { boardBtn, boardInput, boardButtonSmall } from "@/foundation/ui/boardKit";
 import {
   inspectorHint,
   inspectorLabel,
+  inspectorSelect,
 } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/inspector/MoreOptions";
 
-const inspectorInput = `${b2bInputBase} py-2 text-osce-body min-h-[5rem] resize-y`;
 
 function generationGuideInField(block: StationBlock, catalogHint: string): string {
   if (block.generationHint !== undefined && block.generationHint !== "") {
@@ -74,24 +72,22 @@ export function BlockInspector({
   const catalogHint = blockHints?.[block.id] ?? "";
 
   return (
-    <div className="space-y-4">
+    <>
       <div>
         <label htmlFor="block-inspector-label" className={inspectorLabel}>Label</label>
         <input
           id="block-inspector-label"
           value={block.label}
           onChange={(e) => onPatch({ label: e.target.value })}
-          className={inspectorInput}
+          className={boardInput}
           placeholder="What the author fills in"
-          // Selecting a block opens this panel to name it.
-          // eslint-disable-next-line jsx-a11y/no-autofocus
-          autoFocus
         />
       </div>
       <div>
         <label htmlFor="block-inspector-answer-format" className={inspectorLabel}>Answer format</label>
         <Select
           id="block-inspector-answer-format"
+          className={inspectorSelect}
           value={block.type}
           onChange={(e) => onChangeType(e.target.value as StationBlockType)}
         >
@@ -115,6 +111,7 @@ export function BlockInspector({
           {roleIsChoice ? (
             <Select
               id="block-inspector-role"
+              className={inspectorSelect}
               value={role}
               onChange={(e) => onPatch({ role: e.target.value as StationBlockRole })}
             >
@@ -125,7 +122,7 @@ export function BlockInspector({
               ))}
             </Select>
           ) : (
-            <p className="rounded-osce-lg bg-osce-canvas px-3 py-2 text-osce-body text-ink-muted">
+            <p className="rounded-osce-md bg-osce-canvas px-3 py-2 text-assess-label text-ink-muted">
               {roleMeta(role).label}
             </p>
           )}
@@ -137,7 +134,6 @@ export function BlockInspector({
         description="Authors must fill this in"
         checked={!!block.required}
         onChange={(e) => onPatch({ required: e.target.checked })}
-        className="rounded-osce-lg border border-osce-border bg-osce-surface px-3 py-2.5"
       />
 
       {(block.type === "singleSelect" || block.type === "multiSelect") && (
@@ -205,7 +201,7 @@ export function BlockInspector({
               onChange={(e) =>
                 onPatch({ min: Number(e.target.value) } as Partial<StationBlock>)
               }
-              className={inspectorInput}
+              className={boardInput}
             />
           </div>
           <div>
@@ -217,7 +213,7 @@ export function BlockInspector({
               onChange={(e) =>
                 onPatch({ max: Number(e.target.value) } as Partial<StationBlock>)
               }
-              className={inspectorInput}
+              className={boardInput}
             />
           </div>
         </div>
@@ -229,7 +225,7 @@ export function BlockInspector({
             id="block-inspector-feedback-scoring-path"
             value={block.pathStem}
             onChange={(e) => onPatch({ pathStem: e.target.value })}
-            className={inspectorInput}
+            className={boardInput}
             placeholder="e.g. global_skills.structures_consultation"
           />
           <p className={inspectorHint}>
@@ -251,8 +247,8 @@ export function BlockInspector({
                 onChange={(e) =>
                   patchGenerationGuide(onPatch, catalogHint.trim(), e.target.value)
                 }
-                className="mt-1"
-                rows={6}
+                className="min-h-24"
+                rows={4}
                 placeholder={
                   catalogHint
                     ? undefined
@@ -274,16 +270,14 @@ export function BlockInspector({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2 pt-1">
-        <BuilderButton variant="secondary" size="sm" onClick={onDuplicate}>
-          <HiOutlineDocumentDuplicate className="h-4 w-4" aria-hidden />
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={boardButtonSmall} onClick={onDuplicate}>
           Duplicate
-        </BuilderButton>
-        <BuilderButton variant="danger" size="sm" onClick={onRemove}>
-          <HiOutlineTrash className="h-4 w-4" aria-hidden />
+        </button>
+        <button type="button" className={boardBtn("danger", true)} onClick={onRemove}>
           Delete field
-        </BuilderButton>
+        </button>
       </div>
-    </div>
+    </>
   );
 }

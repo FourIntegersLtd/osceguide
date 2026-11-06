@@ -1,48 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { AsyncBoundary, B2CEmptyState, B2CGroupedRow, B2CGroupedRowLink, B2CGroupedSection, B2CPageHeader, b2bTokens } from "@/foundation/ui";
+import { AsyncBoundary, B2CEmptyState, b2bTokens as t, cn } from "@/foundation/ui";
+import { cardTitle } from "@/domains/assess/settings/SettingsCard";
+import { card, row } from "@/domains/assess/ui";
 import { useSurface } from "@/capabilities";
-import { examDetailPath } from "@/capabilities/authoring/exams/paths";
 import { useAsync } from "@/foundation/hooks";
-import { passRateLabel, readOrgReporting } from "@/domains/assess/reporting/api";
+import { readOrgReporting, reportingLine } from "@/domains/assess/reporting/api";
+import { boardBtn, boardPadWide } from "@/foundation/ui/boardKit";
 
 /** One row per programme, summed over every sitting held against it. */
 export function Reporting({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
   const state = useAsync((signal) => readOrgReporting(orgSlug, signal), [orgSlug]);
   return (
-    <div className="flex w-full min-w-0 flex-col gap-6">
-      <B2CPageHeader
-        title="Reporting"
-        subtitle="Each exam across all of its sittings. The pass rate counts decisions released to candidates."
-      />
+    <div className="flex min-w-0 max-w-assess-page flex-col gap-6">
+      <div>
+        <div className={t.assessEyebrow}>Insight</div>
+        <h1 className={t.assessTitle}>Reporting</h1>
+        <p className={cn(t.assessDesc, "m-0")}>Each exam across all of its sittings. The pass rate counts decisions released to candidates.</p>
+      </div>
       <AsyncBoundary state={state}>
         {(data) =>
           data.programmes.length === 0 ? (
             <B2CEmptyState title="No exams yet" description="Set up an exam and hold a sitting to see figures here." />
           ) : (
             <>
-            <B2CGroupedSection eyebrow="Exams">
-              {data.programmes.map((row) => (
-                <B2CGroupedRowLink
-                  key={row.programme_id}
-                  href={examDetailPath(hrefFor, row.exam_id)}
-                  title={row.exam_name}
-                  meta={`${row.sittings} sittings · ${row.candidates} candidates · ${passRateLabel(row)}`}
-                />
-              ))}
-            </B2CGroupedSection>
-            <B2CGroupedSection eyebrow="Per-sitting reports">
-              <B2CGroupedRow
-                title="Each sitting's report, CSV and readout live on its Results page."
-                meta={
-                  <Link href={hrefFor("/results")} className={b2bTokens.b2bLink}>
-                    Open results
+              <div className={card}>
+                <div className={cn(row, "border-t-0")}>
+                  <div className={t.assessEyebrow}>Exams</div>
+                </div>
+                {data.programmes.map((r) => (
+                  <Link key={r.programme_id} href={hrefFor(`/sittings?exam=${encodeURIComponent(r.programme_id)}`)} className={cn(row, "hover:bg-osce-canvas")}>
+                    <span className="flex-1 font-medium">
+                      {r.exam_name}
+                      <div className={cn(t.assessMeta, "font-normal")}>{reportingLine(r)}</div>
+                    </span>
+                    <span className={t.assessMeta}>›</span>
                   </Link>
-                }
-              />
-            </B2CGroupedSection>
+                ))}
+              </div>
+              <section className={boardPadWide}>
+                <h2 className={cardTitle}>Per-sitting reports</h2>
+                <div className={t.assessMeta}>Each sitting&apos;s report, CSV and readout live on its Results page.</div>
+                <Link href={hrefFor("/results")} className={cn(boardBtn("default"), "self-start")}>
+                  Open results
+                </Link>
+              </section>
             </>
           )
         }

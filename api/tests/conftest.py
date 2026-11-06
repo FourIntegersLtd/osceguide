@@ -253,8 +253,8 @@ def built_app():  # type: ignore[no-untyped-def]
         # Mirrors `core.db.get_session`, including the `persist_effects` rule
         # and the after-commit publish: if this diverged, a test could prove
         # behaviour production does not have.
+        from app.core.db import flush_after_commit
         from app.core.errors import AppError
-        from app.core.events import flush_pending
 
         db_session = _test_session()
         try:
@@ -262,7 +262,7 @@ def built_app():  # type: ignore[no-untyped-def]
         except AppError as exc:
             if exc.persist_effects:
                 await db_session.commit()
-                await flush_pending(db_session)
+                await flush_after_commit(db_session)
             else:
                 await db_session.rollback()
             raise
@@ -271,7 +271,7 @@ def built_app():  # type: ignore[no-untyped-def]
             raise
         else:
             await db_session.commit()  # releases the savepoint; the outer transaction stays open
-            await flush_pending(db_session)
+            await flush_after_commit(db_session)
 
     @asynccontextmanager
     async def override_stream_session() -> AsyncIterator[AsyncSession]:
@@ -353,6 +353,8 @@ async def make_actor(db_session: AsyncSession):  # type: ignore[no-untyped-def]
     and a token for a person who does not exist is not a case production can
     reach. The fixture keeps the two in step.
     """
+    from datetime import UTC, datetime
+
     from app.core.auth import Membership
     from app.features.identity import repository
     from app.features.tenancy import repository as tenancy_repository
@@ -365,6 +367,7 @@ async def make_actor(db_session: AsyncSession):  # type: ignore[no-untyped-def]
         memberships: tuple[Membership, ...] = (),
         active_org_slug: str | None = None,
         exam_code: str | None = None,
+        signed_in: bool = False,
     ) -> str:
         user = await repository.create_user(
             db_session,
@@ -374,6 +377,8 @@ async def make_actor(db_session: AsyncSession):  # type: ignore[no-untyped-def]
             is_platform_admin=platform_admin,
             exam_code=exam_code,
         )
+        if signed_in:  # otherwise the account is invited and has not accepted
+            user.last_login_at = datetime.now(UTC)
         # The membership rows are written, not just claimed. A token asserting
         # a membership no table held was fine while every check read the
         # claims; it stopped being fine when `switch-workspace` started

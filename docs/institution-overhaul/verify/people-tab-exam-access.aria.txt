@@ -1,0 +1,29 @@
+- main:
+  - heading "People" [level=1]
+  - paragraph: Everyone in your organisation. Trainees sit sittings; staff (supervisors and admins) run circuits and mark them.
+  - button "Add people"
+  - tablist "People sections":
+    - tab "Trainees 1"
+    - tab "Staff"
+    - tab "Groups and year groups"
+    - tab "Exam access" [selected]
+    - tab "History"
+  - heading "Grant exam access" [level=2]
+  - paragraph: Lets trainees practise between sittings. They do not need it to take an exam they are booked on.
+  - text: Who
+  - combobox "Who":
+    - option "Choose a trainee…" [selected]
+    - option "Tess Trainee (e2e-trainee-mw3mzpx5@example.com)"
+  - text: Exam
+  - combobox "Exam":
+    - option "Choose…" [selected]
+    - option "CASC"
+    - option "Orthopaedic interview"
+    - option "PLAB 2"
+    - option "Simulated Consultation Assessment"
+  - text: Until (optional)
+  - textbox "Until (optional)"
+  - button "Grant access" [disabled]
+  - text: Search grants
+  - searchbox "Search grants"
+  - paragraph: No practice access given yet. Trainees can still take every exam they are booked on.

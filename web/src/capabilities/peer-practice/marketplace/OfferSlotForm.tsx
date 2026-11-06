@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { HiOutlineClock } from "react-icons/hi2";
 import { addDays, format, isSameDay, startOfDay } from "date-fns";
+import { useDismissOnOutside } from "@/foundation/hooks";
 import { Button, B2CInlineError, productTokens, FoldSection } from "@/foundation/ui";
 import {
   TIME_OPTIONS,
@@ -63,14 +64,8 @@ export function OfferSlotForm({
   const selectedDate = day ? new Date(`${day}T12:00:00`) : null;
   const selectedAnotherDay = selectedDate !== null && !isSameDay(selectedDate, today);
 
-  useEffect(() => {
-    if (!timeOpen) return;
-    const closeOnOutsidePress = (event: MouseEvent) => {
-      if (timeRef.current && !timeRef.current.contains(event.target as Node)) setTimeOpen(false);
-    };
-    document.addEventListener("mousedown", closeOnOutsidePress);
-    return () => document.removeEventListener("mousedown", closeOnOutsidePress);
-  }, [timeOpen]);
+  const closeTime = useCallback(() => setTimeOpen(false), []);
+  useDismissOnOutside(timeRef, timeOpen, closeTime);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Button } from "@/foundation/ui";
+import { Alert } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { hasCode, saveBlob } from "@/foundation/platform-client";
 import { can, useSession } from "@/foundation/session";
 import { readSittingReadout } from "@/domains/assess/results/api";
 import { readoutAsMarkdown, readoutFilename } from "@/domains/assess/results/support";
+import { boardBtn } from "@/foundation/ui/boardKit";
 
 /**
  * The examination's read-out, as a file the reviewer can hand over.
@@ -55,17 +56,9 @@ export function ReadoutExport({ orgSlug, sittingId }: { orgSlug: string; sitting
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <Button
-        themeType="b2b"
-        variant="ghost"
-        size="sm"
-        isLoading={busy}
-        disabled={busy}
-        onClick={() => exportReadout()}
-      >
+      <button type="button" title="Formal exam only." className={boardBtn("ghost", true)} disabled={busy} onClick={() => exportReadout()}>
         {busy ? "Exporting…" : "Export readout"}
-      </Button>
-      <p className="text-osce-meta text-b2b-mid">Formal exam only.</p>
+      </button>
       {note ? (
         <Alert tone="warning" className="max-w-xs">
           {note}

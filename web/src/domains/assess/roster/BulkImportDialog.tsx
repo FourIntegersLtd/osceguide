@@ -5,7 +5,7 @@ import { useDropzone } from "react-dropzone";
 import { HiOutlineArrowUpTray } from "react-icons/hi2";
 import { Alert, Checkbox, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { Dialog } from "@/domains/assess/team/chrome";
+import { PeopleDialog as Dialog } from "@/domains/assess/ui";
 import {
   addCohort,
   bulkAddTrainees,
@@ -240,7 +240,11 @@ export function BulkImportDialog({
         </div>
       ) : null}
 
-      {result ? <ImportOutcome result={result} describe={skipReason} /> : null}
+      {result ? <ImportOutcome
+          result={result}
+          describe={skipReason}
+          leftOut={(parsed?.skippedLines.length ?? 0) + (parsed?.invalidLines.length ?? 0)}
+        /> : null}
     </Dialog>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { AuthoringConfirm } from "@/capabilities/authoring/parts/AuthoringConfirm";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -12,8 +13,11 @@ import {
   HiOutlinePlusCircle,
   HiOutlineTrash,
 } from "react-icons/hi2";
-import { Alert, ConfirmModal } from "@/foundation/ui";
+import { Alert } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
+import { AuthoringLeadButton } from "@/capabilities/authoring/parts/AuthoringLeadButton";
+import { boardStack } from "@/capabilities/authoring/parts/boardUi";
+import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -70,6 +74,7 @@ function confirmActionKey(confirm: TemplateRowConfirm): string {
  */
 export function StationTemplatesSection() {
   const scope = useAuthoringScope();
+  const org = !useAuthoringChrome().b2c;
   const { hrefFor } = useSurface();
   const router = useRouter();
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
@@ -98,29 +103,17 @@ export function StationTemplatesSection() {
   const newHref = stationTemplateNewPath(hrefFor, examFilter !== AUTHORING_ALL_EXAMS ? examFilter : null);
 
   return (
-    <div className="space-y-4">
+    <div className={org ? boardStack : "space-y-4"}>
       <AuthoringSectionLead
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <AuthoringButton
-              variant="secondary"
-              size="sm"
-              className="gap-2"
-              onClick={() => setImporting(true)}
-            >
-              <HiOutlineCloudArrowUp className="h-4 w-4 shrink-0" aria-hidden />
+          <>
+            <AuthoringLeadButton icon={HiOutlineCloudArrowUp} onClick={() => setImporting(true)}>
               Import from PDF or Word
-            </AuthoringButton>
-            <AuthoringButton
-              variant="commit"
-              size="sm"
-              className="gap-2"
-              onClick={() => router.push(newHref)}
-            >
-              <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+            </AuthoringLeadButton>
+            <AuthoringLeadButton primary icon={HiOutlinePlusCircle} onClick={() => router.push(newHref)}>
               Create station template
-            </AuthoringButton>
-          </div>
+            </AuthoringLeadButton>
+          </>
         }
       >
         Define layout and fields for clinical stations. Saved drafts and published
@@ -243,7 +236,7 @@ export function StationTemplatesSection() {
         onChanged={templates.reload}
       />
 
-      <ConfirmModal
+      <AuthoringConfirm
         isOpen={pendingConfirm !== null}
         onCancel={() => {
           if (action.busy) return;
@@ -345,11 +338,13 @@ function TemplateRow({
   const archiveBusy = busy === `archive:${template.id}`;
   const deleteBusy = busy === `delete:${template.id}`;
   const router = useRouter();
+  const org = !useAuthoringChrome().b2c;
 
   return (
     <AuthoringListRow
       title={template.title}
       onOpen={viewHref ? () => router.push(viewHref) : undefined}
+      linkTitle
       detail={
         <PublishStatusLine
           kindLabel={onCopy ? [template.exam_code, "Platform template"].filter(Boolean).join(" · ") : template.exam_code}
@@ -362,6 +357,8 @@ function TemplateRow({
       <AuthoringRowActions write>
         {onCopy ? (
           <AuthoringIconAction
+            text="Copy to my organisation"
+            variant="primary"
             label="Copy to my organisation"
             busy={copyBusy}
             busyLabel="Copying…"
@@ -373,6 +370,7 @@ function TemplateRow({
         ) : null}
         {onAddVersion ? (
           <AuthoringIconAction
+            text="New draft"
             label="New draft"
             busy={addBusy}
             busyLabel="Creating…"
@@ -383,13 +381,14 @@ function TemplateRow({
           </AuthoringIconAction>
         ) : null}
         {editHref ? (
-          <AuthoringIconAction label="Edit draft" href={editHref}>
+          <AuthoringIconAction label="Edit draft" text="Edit draft" href={editHref}>
             <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
           </AuthoringIconAction>
         ) : null}
         {draft && onPublish ? (
           <AuthoringIconAction
             variant="primary"
+            text="Publish draft"
             label="Publish draft"
             busy={publishBusy}
             busyLabel="Publishing…"
@@ -401,7 +400,8 @@ function TemplateRow({
         ) : null}
         {onArchivePublished ? (
           <AuthoringIconAction
-            variant="warning"
+            variant={org ? "default" : "warning"}
+            text="Archive live"
             label="Archive live"
             busy={archiveBusy}
             busyLabel="Archiving…"
@@ -414,6 +414,7 @@ function TemplateRow({
         {onDeleteDraft ? (
           <AuthoringIconAction
             variant="danger"
+            text="Delete draft"
             label="Delete draft"
             busy={deleteBusy}
             busyLabel="Deleting…"

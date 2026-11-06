@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { readAttempt } from "@/capabilities/attempt-runner/api";
 import { readResults } from "@/capabilities/feedback/api";
-import { useMeEvents } from "@/foundation/hooks";
+import { useEventDrivenReconcile } from "@/foundation/hooks";
 import { MAX_WAIT_MS, pendingOutcome } from "./outcome";
 import type { PendingFeedbackJob } from "./PendingFeedbackContext";
 
@@ -47,23 +47,18 @@ export function PendingFeedbackWatcher({
     if (settledRef.current) return;
     let resultCount = 0;
     let attemptStatus: string | null = null;
-    try {
-      resultCount = (await readResults(job.attemptId)).length;
-      if (resultCount === 0) attemptStatus = (await readAttempt(job.attemptId)).status;
-    } catch {
-      // a failed read is not an outcome; the next event asks again
-    }
+    resultCount = (await readResults(job.attemptId)).length;
+    if (resultCount === 0) attemptStatus = (await readAttempt(job.attemptId)).status;
     const outcome = pendingOutcome({ resultCount, attemptStatus, elapsedMs: 0 });
     if (outcome === "ready") markReady();
     else if (outcome === "failed") markFailed();
   }, [job.attemptId, markReady, markFailed]);
 
-  useEffect(() => {
-    void reconcile();
-  }, [reconcile]);
-
-  useMeEvents(["attempt"], (event) => {
-    if (event.name === "resync" || event.data.attempt_id === job.attemptId) void reconcile();
+  useEventDrivenReconcile({
+    enabled: true,
+    topics: ["attempt"],
+    matches: (event) => event.data.attempt_id === job.attemptId,
+    reconcile,
   });
 
   // Display only: after MAX_WAIT_MS the banner says it is taking longer. No read happens here.

@@ -58,7 +58,7 @@ export function rubricNextAction(state: RubricState): RubricNextAction {
     return { id: "fix", line: `Fix ${state.problems} ${state.problems === 1 ? "problem" : "problems"} to publish.` };
   }
   if (state.promptMissing) {
-    return { id: "instructions", line: "Add marking instructions on the Marking tab to publish." };
+    return { id: "instructions", line: "Add marking instructions on the Advanced tab to publish." };
   }
   if (state.dirty) return { id: "save", line: "You have unsaved changes. Save them to publish." };
   return { id: "publish", line: "Looks right in the preview. Publish this version." };

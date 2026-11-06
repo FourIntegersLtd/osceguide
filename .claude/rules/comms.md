@@ -18,8 +18,10 @@ Owners: `access-owner` (outbox, notifications), `web-foundation-owner` (inbox we
   session reclaims stale rows and claims a batch (`processing`) and commits, the sends run
   `outbox_send_concurrency` at a time, a second session records sent/retry/failed. A worker that dies
   between the steps leaves `processing` rows that `reclaim_stale` returns, so a send can repeat once.
-  Set `OUTBOX_DELIVERY_BATCH` and `OUTBOX_SEND_CONCURRENCY` to the Resend rate. `ResendSender` sets its
-  key at construction and sends in a thread under a 20 s timeout; a new sender must not block the loop.
+  A **timed-out** Resend call is abandoned (`failed`), not retried: the thread may still complete and
+  auto-retry would risk a duplicate. Set `OUTBOX_DELIVERY_BATCH` and `OUTBOX_SEND_CONCURRENCY` to the
+  Resend rate. `ResendSender` sets its key at construction and sends in a thread under a 20 s timeout;
+  a new sender must not block the loop.
 - `inbox/` is in-app messages (site messages and announcements); staff compose them from
   `domains/platform` (Announcements, MessagesInbox). Learner and org screens read via
   `capabilities/inbox`.

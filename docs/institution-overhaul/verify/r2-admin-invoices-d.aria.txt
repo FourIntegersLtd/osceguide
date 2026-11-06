@@ -1,0 +1,7 @@
+- main:
+  - link "Settings":
+    - /url: /app/e2e-mw3om0c6/settings?tab=invoices
+  - heading "Invoices" [level=1]
+  - paragraph: Raised by OSCE Guide for E2E Institute mw3om0c6.
+  - paragraph: No invoices yet.
+  - paragraph: Invoices OSCE Guide raises for your organisation appear here.

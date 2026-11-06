@@ -1,3 +1,4 @@
+export { useEventDrivenReconcile } from "@/foundation/hooks/useEventDrivenReconcile";
 export { useAsync, errorMessage, type AsyncState } from "@/foundation/hooks/useAsync";
 export { useEventStream, type EventStreamState } from "@/foundation/hooks/useEventStream";
 export { useMeEvents, type MeEvent, type MeEventName, type MeSignal } from "@/foundation/hooks/useMeEvents";
@@ -9,3 +10,5 @@ export { useSearchQuery } from "@/foundation/hooks/useSearchQuery";
 export { useLeaveGuard } from "@/foundation/hooks/useLeaveGuard";
 export { useHydrated } from "@/foundation/hooks/useHydrated";
 export { useDirtyGuard } from "@/foundation/hooks/useDirtyGuard";
+export { useMediaQuery } from "@/foundation/hooks/useMediaQuery";
+export { useDismissOnOutside } from "@/foundation/hooks/useDismissOnOutside";

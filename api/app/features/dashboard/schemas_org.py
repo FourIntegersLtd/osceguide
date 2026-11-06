@@ -239,7 +239,8 @@ class CohortSummary(BaseModel):
 
 
 class ResultsIndexRow(BaseModel):
-    """One sitting's decision progress. `not_decided` is candidates with no decision yet."""
+    """One sitting's decision progress. `not_decided` is candidates with no decision yet;
+    `sat` is those who sat at least one station (an absent candidate needs no decision)."""
 
     sitting_id: uuid.UUID
     name: str
@@ -247,6 +248,7 @@ class ResultsIndexRow(BaseModel):
     status: str
     scheduled_for: datetime | None
     candidates: int
+    sat: int
     not_decided: int
     draft: int
     signed_off: int

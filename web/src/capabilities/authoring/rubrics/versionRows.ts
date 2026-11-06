@@ -33,3 +33,21 @@ export function versionRows(
       : { id: v.id, version: v.version, detail, chip: { label: "Old", tone: "default" } };
   });
 }
+
+export interface OlderPublished {
+  version: number;
+  exams: readonly string[];
+  /** "A, B and C" */
+  names: string;
+  /** Exactly one exam is on it, so the sentence says "it" and "marks". */
+  single: boolean;
+}
+
+/** The newest other published version that exams still mark with: a publish of `current` leaves them there until pointed over. */
+export function olderPublished(versions: readonly RubricVersion[], current: number): OlderPublished | null {
+  const older = versions.filter((v) => v.status === "published" && v.version !== current && v.used_by_exams?.length).sort((a, b) => b.version - a.version)[0];
+  const exams = older?.used_by_exams ?? [];
+  if (!older || exams.length === 0) return null;
+  const names = exams.length > 1 ? `${exams.slice(0, -1).join(", ")} and ${exams[exams.length - 1]}` : (exams[0] ?? "");
+  return { version: older.version, exams, names, single: exams.length === 1 };
+}

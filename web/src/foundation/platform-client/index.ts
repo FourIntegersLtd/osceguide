@@ -34,6 +34,7 @@ export {
   changePassword,
   requestPasswordReset,
   confirmPasswordReset,
+  invitationOrganisation,
   requestEmailChange,
   confirmEmailChange,
   hasStoredSession,

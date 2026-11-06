@@ -33,6 +33,7 @@ describe("one rating", () => {
     const range = { kind: "range", field: "score", minimum: 0, maximum: 10, step: "integer" };
     const boolean = { kind: "boolean", field: "competent", step: "number" };
     assert.equal(ratingLabel(range, 7), "7/10");
+    assert.equal(ratingLabel(SCA_RATING, "A"), "Amber");
     assert.equal(ratingLabel(boolean, true), "Met");
     assert.equal(ratingLabel(boolean, false), "Not met");
     assert.equal(ratingLabel(SCA_RATING, null), "Not rated");

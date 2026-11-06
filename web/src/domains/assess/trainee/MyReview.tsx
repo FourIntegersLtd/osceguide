@@ -1,19 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Alert, AsyncBoundary } from "@/foundation/ui";
+import { boardChip } from "@/foundation/ui/boardKit";
 import {
-  Alert,
-  AsyncBoundary,
-  B2CGroupedRow,
-  B2CGroupedSection,
-  B2CHero,
-  B2CPageHeader,
-  Badge,
-} from "@/foundation/ui";
+  TraineeHead,
+  TraineeHero,
+  TraineeList,
+  TraineePage,
+  TraineeRow,
+} from "@/domains/assess/trainee/traineeBoard";
 import { useAsync } from "@/foundation/hooks";
 import { passWord, ratingLabel } from "@/capabilities/feedback/rubric";
-import { ratingVariant, summaryDomains } from "@/domains/assess/results/reviewForm";
-import { readMyReview, reviewIfReady, reviewWaitingCopy } from "@/domains/assess/trainee/api";
+import {
+  ratingVariant,
+  summaryDomains,
+} from "@/domains/assess/results/reviewForm";
+import {
+  readMyReview,
+  readMySittings,
+  reviewIfReady,
+  reviewWaitingCopy,
+} from "@/domains/assess/trainee/api";
+import { useSurface } from "@/capabilities";
 
 /**
  * A candidate's own review of one station, once the GP lead has completed
@@ -27,21 +37,45 @@ import { readMyReview, reviewIfReady, reviewWaitingCopy } from "@/domains/assess
 export function MyReview({ slotId }: { slotId: string }) {
   const router = useRouter();
   const state = useAsync((signal) => readMyReview(slotId, signal), [slotId]);
+  const { orgSlug } = useSurface();
+  // The station and sitting this feedback is for come from the feed the candidate's other screens already read.
+  const feed = useAsync((signal) => readMySittings(orgSlug, signal), [orgSlug]);
+  const owner = feed.data?.items?.find((sitting) =>
+    sitting.slots?.some((slot) => slot.id === slotId),
+  );
+  const station = owner?.slots?.find(
+    (slot) => slot.id === slotId,
+  )?.station_title;
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-6">
-      <B2CPageHeader
-        className="!mb-0"
-        back={{ label: "Back", onClick: () => router.back() }}
+    <TraineePage label="Station feedback">
+      <div>
+        <Link
+          href="#"
+          onClick={(event) => {
+            event.preventDefault();
+            router.back();
+          }}
+          className="text-assess-label text-osce-accent"
+        >
+          ‹ Back
+        </Link>
+      </div>
+      <TraineeHead
         eyebrow="Your review"
         title="Station feedback"
+        desc={
+          owner ? [station, owner.name].filter(Boolean).join(" · ") : undefined
+        }
       />
 
       <AsyncBoundary state={state}>
         {(answer) => {
           const review = reviewIfReady(answer);
           if (review === null) {
-            const waiting = reviewWaitingCopy((answer as { state: "not_released" | "not_marked" }).state);
+            const waiting = reviewWaitingCopy(
+              (answer as { state: "not_released" | "not_marked" }).state,
+            );
             return (
               <Alert tone="info" title={waiting.title}>
                 {waiting.body}
@@ -54,44 +88,68 @@ export function MyReview({ slotId }: { slotId: string }) {
           const domains = summaryDomains(review.summary);
           return (
             <>
-              <B2CHero
+              <TraineeHero
                 eyebrow="Overall"
-                title={ratingLabel(rating, overall)}
-                aside={
-                  outcome ? (
-                    <Badge tone={review.summary.passed ? "success" : "danger"}>{outcome}</Badge>
-                  ) : undefined
+                size="xl"
+                title={
+                  <>
+                    {ratingLabel(rating, overall)}{" "}
+                    {outcome ? (
+                      <span
+                        className={boardChip(
+                          review.summary.passed ? "ok" : "live",
+                        )}
+                      >
+                        {outcome}
+                      </span>
+                    ) : null}
+                  </>
                 }
               >
-                {review.notes ? <span className="whitespace-pre-wrap">{review.notes}</span> : null}
-              </B2CHero>
+                {review.notes ? (
+                  <span className="whitespace-pre-wrap">{review.notes}</span>
+                ) : null}
+              </TraineeHero>
 
-              {domains.length > 0 ? (
-                <B2CGroupedSection eyebrow="By domain">
+              {domains.length > 0 || review.completed_at ? (
+                <TraineeList title="By domain">
                   {domains.map((domain) => (
-                    <B2CGroupedRow
-                      key={domain.id}
-                      title={domain.label}
-                      trailing={
-                        <Badge tone={ratingVariant(rating, domain.value)}>
-                          {ratingLabel(rating, domain.value)}
-                        </Badge>
+                    <TraineeRow key={domain.id} title={domain.label}>
+                      <span
+                        className={boardChip(
+                          chipTone(ratingVariant(rating, domain.value)),
+                        )}
+                      >
+                        {ratingLabel(rating, domain.value)}
+                      </span>
+                    </TraineeRow>
+                  ))}
+                  {review.completed_at ? (
+                    <TraineeRow
+                      title={
+                        <span className="text-osce-ink-500">
+                          Completed{" "}
+                          {new Date(review.completed_at).toLocaleString()}
+                        </span>
                       }
                     />
-                  ))}
-                </B2CGroupedSection>
-              ) : null}
-
-              {review.completed_at ? (
-                <p className="text-osce-caption text-b2b-mid">
-                  Completed {new Date(review.completed_at).toLocaleString()}
-                </p>
+                  ) : null}
+                </TraineeList>
               ) : null}
             </>
           );
         }}
       </AsyncBoundary>
-    </div>
+    </TraineePage>
   );
 }
 
+function chipTone(variant: string): "ok" | "warn" | "live" | "neutral" {
+  return variant === "success"
+    ? "ok"
+    : variant === "warning"
+      ? "warn"
+      : variant === "danger"
+        ? "live"
+        : "neutral";
+}

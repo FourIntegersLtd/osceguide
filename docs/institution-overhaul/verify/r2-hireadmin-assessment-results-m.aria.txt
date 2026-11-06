@@ -1,0 +1,42 @@
+- main:
+  - link "Sitting":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26
+  - paragraph: R2 hire assessment
+  - heading "Results" [level=1]
+  - paragraph: 0 of 1 stations marked · 0 of 1 released
+  - button "Export CSV"
+  - heading "Outcomes" [level=2]
+  - region "Outcomes": Passed 0 Failed 0 Inconclusive 0 Withheld 0 Undecided 1 Awaiting marking 0
+  - status:
+    - paragraph: Set a date so candidates know when to come.
+  - list "Steps":
+    - listitem: Schedule No date
+    - listitem: Circuits 1 candidate assigned
+    - listitem: Run Nobody has sat yet
+    - listitem: Mark 0 of 1 marked
+    - listitem: Decide 0 of 1 decided
+    - listitem: Release 0 of 1 released
+  - heading "Review order" [level=2]
+  - button "Export readout"
+  - paragraph: Formal exam only.
+  - paragraph: 1 candidate, with unfinished reviews first, then the weakest results.
+  - text: 1. Cass Candidate 0/1 stations · 0% complete Urgent review
+  - region "Candidates":
+    - table:
+      - rowgroup:
+        - row "Candidate Score Outcome Status Actions":
+          - columnheader "Candidate"
+          - columnheader "Score"
+          - columnheader "Outcome"
+          - columnheader "Status"
+          - columnheader "Actions"
+      - rowgroup:
+        - row "Cass Candidate 0 of 1 stations marked Not assessed Not decided Not marked Open Cass Candidate":
+          - cell "Cass Candidate 0 of 1 stations marked":
+            - paragraph: Cass Candidate
+            - paragraph: 0 of 1 stations marked
+          - cell "Not assessed"
+          - cell "Not decided"
+          - cell "Not marked"
+          - cell "Open Cass Candidate":
+            - button "Open Cass Candidate": Open

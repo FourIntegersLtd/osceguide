@@ -1,0 +1,26 @@
+- dialog "Add people":
+  - heading "Add people" [level=2]
+  - button "Close dialog"
+  - heading "Add people" [level=3]
+  - paragraph: Add the trainees who will sit your exams or training sessions, or invite staff to run and mark them.
+  - tablist "Who to add":
+    - tab "Trainees"
+    - tab "Staff" [selected]
+  - heading "Invite someone to the team" [level=2]
+  - paragraph: Supervisors run circuits and mark them. Admins also manage the team and sign off results.
+  - text: Email address
+  - paragraph: If they have no account yet we create one and email them a link to choose a password.
+  - textbox "Email address":
+    - /placeholder: supervisor@hospital.nhs.uk
+  - text: Their role
+  - paragraph: Runs circuits and marks the candidates on them.
+  - combobox "Their role":
+    - option "Supervisor" [selected]
+    - option "Admin"
+  - checkbox "Set a temporary password instead of emailing a link"
+  - text: Set a temporary password instead of emailing a link
+  - button "Add person" [disabled]
+  - heading "Import a spreadsheet" [level=2]
+  - paragraph: Upload a list of staff saved from Excel or Google Sheets as a .csv file. Anyone already on the team is skipped and shown to you.
+  - button "Import from spreadsheet"
+  - button "Done"

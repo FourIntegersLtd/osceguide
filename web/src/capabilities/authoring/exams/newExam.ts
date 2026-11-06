@@ -48,3 +48,10 @@ export const PUBLISH_STEP_WORDS: Record<PublishStep, string> = {
 export function toMinutes(seconds: number | string): number {
   return Math.round(Number(seconds) / 60);
 }
+
+/** The 409 on a taken code, said as which exam holds it and what to do. */
+export function codeTakenMessage(code: string, name: string, status: string): string {
+  return status === "draft"
+    ? `The code "${code}" is already used by the draft "${name}". Open it from Exams and choose Continue setup, or pick another code.`
+    : `The code "${code}" is already used by the exam "${name}". Pick another code.`;
+}

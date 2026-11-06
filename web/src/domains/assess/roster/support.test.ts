@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Trainee } from "@/domains/assess/api";
 import { PlatformError } from "@/foundation/platform-client";
-import { cohortDeleteLead, cohortName, deleteLead, rosterErrorMessage, traineeStatus } from "@/domains/assess/roster/support";
+import { cohortDeleteLead, cohortName, deleteLead, rosterErrorMessage, shortDay, traineeStatus } from "@/domains/assess/roster/support";
 import { loadRoster, type RosterData, type RosterPart } from "@/domains/assess/roster/useRosterData";
 
 function trainee(over: Partial<Trainee> = {}): Trainee {
@@ -112,4 +112,10 @@ test("a duplicate add and a rate-limited resend are said plainly", () => {
 
 test("a trainee with no group reads 'No group', not None", () => {
   assert.equal(cohortName([], null), "No group");
+});
+
+test("shortDay writes day and short month, and nothing for a missing or bad date", () => {
+  assert.equal(shortDay("2026-11-01T09:00:00Z"), "1 Nov");
+  assert.equal(shortDay(null), "");
+  assert.equal(shortDay("not a date"), "");
 });

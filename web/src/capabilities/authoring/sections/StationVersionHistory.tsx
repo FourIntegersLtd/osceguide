@@ -4,6 +4,9 @@ import { useState } from "react";
 import { AsyncBoundary, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { listStationVersions, type StationVersion } from "@/capabilities/stations";
+import { boardCardClipped, boardRow } from "@/foundation/ui/boardKit";
+import { BoardChip, boardMeta } from "@/capabilities/authoring/parts/boardUi";
+import { statusChip } from "@/capabilities/authoring/parts/boardTokens";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { usedByLabel } from "@/capabilities/authoring/sections/StationUsedBy";
 
@@ -23,12 +26,44 @@ import { usedByLabel } from "@/capabilities/authoring/sections/StationUsedBy";
  * history is read the first time it is opened: nobody who is not curious should
  * pay a request for it.
  */
-export function StationVersionHistory({ stationId }: { stationId: string }) {
-  const [asked, setAsked] = useState(false);
+export function StationVersionHistory({ stationId, board = false }: { stationId: string; board?: boolean }) {
+  // The boards draw the history open, so it is read at once; the console reads it when first opened.
+  const [asked, setAsked] = useState(board);
   const versions = useAsync(
     (signal) => (asked ? listStationVersions(stationId, signal) : Promise.resolve<StationVersion[]>([])),
     [stationId, asked],
   );
+
+  if (board) {
+    return (
+      <details className={boardCardClipped} open>
+        <summary className="min-h-6 cursor-pointer px-5 py-3.5 text-assess-label font-medium text-ink">Revision history</summary>
+        <div className="px-5 pb-4">
+          <AsyncBoundary
+            state={versions}
+            isEmpty={(rows) => rows.length === 0}
+            empty={{ title: "No revisions listed", description: "This station has one version, and it is the one above." }}
+          >
+            {(rows) => (
+              <div className={boardCardClipped}>
+                {rows.map((item) => (
+                  <div key={item.id} className={boardRow}>
+                    <span className="min-w-[260px] flex-1">
+                      <b className="font-medium">v{item.version}</b>
+                      <div className={boardMeta}>
+                        <BoardChip tone={statusChip(item.status).tone}>{statusChip(item.status).label}</BoardChip> {stamp(item, true)}
+                        {typeof item.used_by_count === "number" && item.published_at ? ` · ${usedByLabel(item.used_by_count)}` : ""}
+                      </div>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </AsyncBoundary>
+        </div>
+      </details>
+    );
+  }
 
   return (
     <Panel padding="md">
@@ -78,8 +113,10 @@ export function StationVersionHistory({ stationId }: { stationId: string }) {
 }
 
 /** What a revision was last doing: published, then archived, or still a draft. */
-function stamp(version: StationVersion): string {
-  if (version.archived_at) return `Archived ${new Date(version.archived_at).toLocaleDateString()}`;
-  if (version.published_at) return `Published ${new Date(version.published_at).toLocaleDateString()}`;
+function stamp(version: StationVersion, board = false): string {
+  // The boards write a day and month ("12 Oct"); the console keeps the reader's full date.
+  const day = (iso: string) => (board ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : new Date(iso).toLocaleDateString());
+  if (version.archived_at) return `Archived ${day(version.archived_at)}`;
+  if (version.published_at) return `Published ${day(version.published_at)}`;
   return "Never published";
 }

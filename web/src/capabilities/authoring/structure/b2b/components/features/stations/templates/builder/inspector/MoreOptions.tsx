@@ -1,6 +1,6 @@
-"use client";
+import { boardLabel } from "@/foundation/ui/boardKit";
 
-import { builderUi } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/builderChrome";
-
-export const inspectorLabel = `mb-1.5 block ${builderUi.eyebrow}`;
-export const inspectorHint = "mt-1.5 text-osce-caption leading-snug text-ink-subtle";
+export const inspectorLabel = boardLabel;
+export const inspectorHint = "mt-1.5 text-assess-meta text-ink-subtle";
+/** A select inside the inspector or the AI fold: the board's 44px field. */
+export const inspectorSelect = "[&_select]:min-h-11";

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, EmptyState, Spinner, b2bTokens } from "@/foundation/ui";
+import { Alert, EmptyState, Spinner } from "@/foundation/ui";
+import { assessMeta } from "@/foundation/ui/b2bTokens";
+import { boardCard, boardRow } from "@/foundation/ui/boardKit";
 import { useAsync } from "@/foundation/hooks";
-import { formatWhen } from "@/domains/assess/team/chrome";
 import { listInterventions } from "@/domains/assess/sessions/api";
 
 /** The override actions, as an examiner would write them in a report. */
@@ -34,18 +35,18 @@ export function InterventionsLog({ orgSlug, circuitId }: { orgSlug: string; circ
   const [open, setOpen] = useState(false);
 
   return (
-    <section className="overflow-hidden rounded-panel border border-b2b-border bg-b2b-surface">
+    <section className={boardCard}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-canvas/60 sm:px-5"
+        className="flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left text-assess-label font-medium text-osce-ink-900 hover:bg-osce-canvas"
       >
-        <span className={b2bTokens.b2bSectionTitle}>What was changed by hand</span>
-        <span className="text-osce-caption text-b2b-mid">{open ? "Hide" : "Show"}</span>
+        <span>What was changed by hand</span>
+        <span className={assessMeta}>{open ? "Hide" : "Show"}</span>
       </button>
       {open ? (
-        <div className="border-t border-b2b-border p-4 sm:p-5">
+        <div className="border-t border-osce-border-light px-5 pb-1">
           <Entries orgSlug={orgSlug} circuitId={circuitId} />
         </div>
       ) : null}
@@ -70,18 +71,15 @@ function Entries({ orgSlug, circuitId }: { orgSlug: string; circuitId: string })
   }
 
   return (
-    <ol className="divide-y divide-b2b-border">
+    <ol className="m-0 list-none p-0">
       {items.map((entry) => (
-        <li key={entry.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2.5">
-          <div className="min-w-0">
-            <p className="text-osce-caption font-semibold text-b2b-headline">
-              {ACTION_LABEL[entry.action] ?? entry.action.replace(/_/g, " ")}
-            </p>
-            <p className="text-osce-caption text-b2b-mid">
-              {entry.reason ?? "No reason was given."}
-            </p>
-          </div>
-          <span className="shrink-0 text-osce-caption text-b2b-icon">{formatWhen(entry.at)}</span>
+        <li key={entry.id} className={`${boardRow} px-0`}>
+          <span className="min-w-0 flex-[1_1_240px]">
+            {ACTION_LABEL[entry.action] ?? entry.action.replace(/_/g, " ")}
+            <span className={`block ${assessMeta}`}>
+              {`${new Date(entry.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · ${entry.reason ?? "No reason was given."}`}
+            </span>
+          </span>
         </li>
       ))}
     </ol>

@@ -1,0 +1,34 @@
+- main:
+  - heading "Register your organisation" [level=1]
+  - paragraph: Tell us who you are. We set your organisation up and email you a link to sign in, usually within a working day.
+  - text: Organisation name
+  - textbox "Organisation name"
+  - text: Type
+  - combobox "Type":
+    - option "Medical school" [selected]
+    - option "Training programme"
+    - option "Deanery"
+    - option "Employer"
+  - paragraph: "Employer sets you up for hiring: candidates and assessments instead of trainees and sittings."
+  - group "What you will use it for":
+    - text: What you will use it for
+    - checkbox "Mock OSCEs"
+    - text: Mock OSCEs
+    - checkbox "Formal exams"
+    - text: Formal exams
+    - checkbox "Self practice"
+    - text: Self practice
+    - checkbox "Recruitment"
+    - text: Recruitment
+    - paragraph: You can tell us more when we contact you.
+  - text: Your name
+  - textbox "Your name"
+  - text: Work email
+  - textbox "Work email"
+  - text: Anything else (optional)
+  - textbox "Anything else (optional)"
+  - button "Request set-up"
+  - paragraph:
+    - text: Already set up?
+    - link "Sign in":
+      - /url: /login

@@ -201,8 +201,8 @@ body:has([data-b2c-shell]) {
 
 /*
  * The workspace arms, in the canvas's quiet skin (tokens are in tokens.css). Open Sauce
- * Sans at 14/21 with a hair of negative tracking; Fraunces for the page
- * title (h1) and nothing else. Phones keep form fields at 16px, because iOS
+ * Sans at 14/21 with a hair of negative tracking; Fraunces for the train arm's page
+ * title (h1) and nothing else; assess, hire and partner draw it in the sans face. Phones keep form fields at 16px, because iOS
  * Safari zooms into any focused field under that.
  */
 :is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"])[data-b2c-shell],
@@ -223,11 +223,18 @@ body:has([data-b2c-shell]) {
   font-family: var(--font-open-sauce), ui-sans-serif, system-ui, sans-serif;
 }
 
-:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) h1,
-:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) .font-title {
+:is([data-surface="train"]) h1,
+:is([data-surface="train"]) .font-title {
   font-family: var(--font-fraunces), Georgia, serif;
   font-weight: 600;
   letter-spacing: -0.015em;
+}
+
+/* The institution boards draw the page title in the sans face (board wins over the old Fraunces rule). */
+:is([data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) h1,
+:is([data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) .font-title {
+  font-family: var(--font-open-sauce), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
 }
 
 @media (max-width: 639px) {
@@ -739,4 +746,37 @@ dialog.b2b-modal::backdrop {
   dialog.b2b-modal::backdrop {
     background-color: rgba(16, 24, 40, 0.65);
   }
+}
+
+/* Institution boards are drawn with the browser's default text smoothing (docs/institution-overhaul/boards),
+   so the assess skin does not force grayscale antialiasing the way the learner shell does. */
+:is([data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * Assess skin: quiet selection and focus (user feedback 2026-11-05).
+ * A selected card, highlighted row or focused field draws a 1px light-blue border, never the
+ * saturated accent; focus adds a soft low-alpha ring, so it stays visible. Filled controls
+ * (`.bg-osce-accent` buttons, round step dots) keep their solid colour. Train and the staff
+ * console are outside these scopes and unchanged.
+ * ════════════════════════════════════════════════════════════════════════ */
+:is([data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) :is(
+    .border-osce-accent,
+    .border-accent,
+    .border-b2b-accent,
+    .hover\:border-osce-accent:hover,
+    .focus\:border-osce-accent:focus,
+    .focus-visible\:border-osce-accent:focus-visible
+  ):not(.bg-osce-accent, .bg-b2b-accent, .bg-accent, .rounded-full) {
+  border-color: var(--assess-select-border);
+}
+:is([data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) :focus-visible {
+  --tw-ring-color: var(--assess-focus-ring);
+}
+:is([data-surface="assess"], [data-surface="hire"], [data-surface="partner"])
+  :is(input, textarea, select):not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"], [type="submit"], [type="reset"]):not([aria-invalid="true"], [class*="border-osce-danger"]):focus {
+  border-color: var(--assess-select-border);
+  box-shadow: 0 0 0 3px var(--assess-focus-ring);
 }

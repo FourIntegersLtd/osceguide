@@ -31,7 +31,7 @@ const ALLOW = allowList(
     "src/domains/marketing/home/HomeClock.tsx": "public page decorative clock, display only",
     "src/foundation/ui/Timer.tsx": "display tick against the server deadline",
     // false positives: a timer within 400 characters of an api call that it does not make
-    "src/capabilities/authoring/rubrics/useRubricDraft.ts": "typing debounce: one preview after a pause, not a loop",
+    "src/capabilities/authoring/rubrics/useSchemeDraft.ts": "typing debounce: one preview after a pause, not a loop",
     "src/capabilities/media/useJumpIndex.ts": "scroll lock release, no api",
     "src/capabilities/onboarding/useOnboardingVoice.ts": "one-off wait for the mic prompt before starting the session",
     "src/domains/platform/ReferralPayouts.tsx": "clears the 'copied' label after 2 s",

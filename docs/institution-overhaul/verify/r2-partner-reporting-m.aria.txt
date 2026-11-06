@@ -1,0 +1,8 @@
+- main:
+  - heading "Reporting" [level=1]
+  - paragraph: Your tracking references, and who can see the numbers.
+  - heading "Tracking references" [level=2]
+  - paragraph: No references yet
+  - paragraph: A reference appears here the first time somebody arrives through one of your links.
+  - heading "Who can read this" [level=2]
+  - paragraph: A reporter sees these numbers and nothing else. Ask OSCE Guide staff to add someone. Reporters are added by us, not by your team.

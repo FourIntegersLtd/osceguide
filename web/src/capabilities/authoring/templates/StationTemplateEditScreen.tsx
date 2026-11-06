@@ -4,8 +4,6 @@ import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
-import { Alert } from "@/foundation/ui";
-import { Button } from "@/foundation/ui";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { useSurface } from "@/capabilities";
 import {
@@ -15,9 +13,8 @@ import {
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
-import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
-import { platformTemplateWizardFooterEndClass } from "@/capabilities/authoring/templates/wizardFooter";
-import { b2bInputBase } from "@/foundation/ui/b2bTokens";
+import { LayoutBuilderPage } from "@/capabilities/authoring/templates/LayoutBuilderPage";
+import { boardAlert, boardBtn, boardInput, boardLabel } from "@/foundation/ui/boardKit";
 
 export function StationTemplateEditScreen({
   templateId,
@@ -58,7 +55,7 @@ export function StationTemplateEditScreen({
   const missing = !loading && !failed && !match;
 
   return (
-    <PlatformTemplateWizardPageLayout
+    <LayoutBuilderPage
       title={match?.title || "Edit draft"}
       subtitle={
         match && match.status !== "draft"
@@ -69,51 +66,47 @@ export function StationTemplateEditScreen({
       backLabel="Station templates"
     >
       {loading ? (
-        <p className="px-5 py-8 text-osce-body text-ink-muted">Loading template…</p>
+        <p className="text-assess-desc text-ink-muted">Loading template…</p>
       ) : failed ? (
-        <div className="space-y-3 px-5 py-8">
-          <Alert tone="danger">
+        <div className="flex flex-col items-start gap-3">
+          <p role="alert" className={`${boardAlert("bad")} self-stretch`}>
             {templates.error ? errorMessage(templates.error) : null}
-          </Alert>
-          <Button variant="secondary" onClick={templates.reload}>
+          </p>
+          <button type="button" className={boardBtn()} onClick={templates.reload}>
             Try again
-          </Button>
+          </button>
         </div>
       ) : missing ? (
-        <p className="px-5 py-8 text-osce-body text-ink-muted">
-          Template not found. It may have been removed.
-        </p>
+        <p className="text-assess-desc text-ink-muted">Template not found. It may have been removed.</p>
       ) : structure ? (
         <>
-          <div className="px-5 py-6 sm:px-6">
-            <label className="mb-5 block">
-              <span className="mb-1.5 block text-osce-meta font-medium text-ink-muted">Title</span>
-              <input
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                disabled={!editable}
-                maxLength={200}
-                className={b2bInputBase}
-                aria-label="Template title"
-              />
-            </label>
-            {/* A disabled fieldset makes every control inside read only. */}
-            <fieldset disabled={!editable} className="min-w-0 border-0 p-0">
-              <StructureBuilder value={structure} onChange={setStructure} allowCustomGenerationPrompt />
-            </fieldset>
-            {error ? (
-              <Alert tone="danger" className="mt-4">
-                {error}
-              </Alert>
-            ) : null}
-          </div>
-          <div className={platformTemplateWizardFooterEndClass}>
-            <Button variant="secondary" onClick={() => router.push(listHref)}>
+          <label className="block">
+            <span className={boardLabel}>Title</span>
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              disabled={!editable}
+              maxLength={200}
+              className={boardInput}
+              aria-label="Template title"
+            />
+          </label>
+          {/* A disabled fieldset makes every control inside read only. */}
+          <fieldset disabled={!editable} className={`min-w-0 border-0 p-0${editable ? "" : " opacity-70"}`}>
+            <StructureBuilder value={structure} onChange={setStructure} allowCustomGenerationPrompt />
+          </fieldset>
+          {error ? (
+            <p role="alert" className={boardAlert("bad")}>
+              {error}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button type="button" className={boardBtn()} onClick={() => router.push(listHref)}>
               {editable ? "Cancel" : "Back"}
-            </Button>
-            <Button
-              variant="commit"
-              className={editable ? undefined : "hidden"}
+            </button>
+            <button
+              type="button"
+              className={`${boardBtn("primary")}${editable ? "" : " hidden"}`}
               disabled={saving || !editable}
               onClick={async () => {
                 setError(null);
@@ -138,10 +131,10 @@ export function StationTemplateEditScreen({
               }}
             >
               {saving ? "Saving…" : "Save draft"}
-            </Button>
+            </button>
           </div>
         </>
       ) : null}
-    </PlatformTemplateWizardPageLayout>
+    </LayoutBuilderPage>
   );
 }

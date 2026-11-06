@@ -1,20 +1,19 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Alert,
   AsyncBoundary,
+  b2bTokens as t,
   B2CPageHeader,
-  Button,
-  getInputClassName,
-  Panel,
   Select,
-  SelectableCard,
-  StepRail,
-  type RailStep,
+  cn,
 } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import type { Exam, Programme } from "@/capabilities/authoring/api";
+import { BoardChip } from "@/capabilities/authoring/parts/boardUi";
+import { boardCardClipped, boardBtn, boardInput } from "@/foundation/ui/boardKit";
 import { LoadError } from "@/capabilities/authoring/parts/LoadError";
 import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
 import Link from "next/link";
@@ -30,13 +29,13 @@ import {
 import { useNewExam, type SchemeWay } from "@/capabilities/authoring/exams/useNewExam";
 import { useExam } from "@/capabilities/authoring/exams/useExam";
 import { useSchemeVersions } from "@/capabilities/authoring/sections/ExamFields";
-import { ExamSettingsFields, Field } from "@/capabilities/authoring/sections/ExamSettingsFields";
+import { ExamSettingsFields } from "@/capabilities/authoring/sections/ExamSettingsFields";
 import { examQuery, rubricNewPath } from "@/capabilities/authoring/templates/paths";
 
 const SCHEME_WAYS: { id: SchemeWay; title: string; body?: string }[] = [
   { id: "use", title: "Use one of your marking schemes" },
   { id: "copy", title: "Copy one from OSCE Guide", body: "Start from a tested scheme and change what you need." },
-  { id: "write", title: "Write a new marking scheme", body: "Name the areas, the ratings and what each means." },
+  { id: "write", title: "Write a new marking scheme", body: "Name the domains, the ratings and what each means." },
 ];
 
 /** "New exam": one sheet that makes the exam, picks its marking scheme, sets timings, then publishes and offers it. */
@@ -76,13 +75,6 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
   const { rubrics, versions } = useSchemeVersions(draft.rubricVersionId);
   const schemeLabel = versions.find((v) => v.id === draft.rubricVersionId)?.label ?? "None chosen";
 
-  const steps: RailStep[] = NEW_EXAM_STEPS.map((label, index) => ({
-    id: label,
-    label,
-    state: index < step ? "done" : "todo",
-    note: "",
-  }));
-
   const setBreak = (value: string) =>
     setDraft({
       ...draft,
@@ -92,68 +84,88 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
     setDraft({ ...draft, [field]: String(Math.round(Number(value) * 60)) });
 
   return (
-    <div className="flex flex-col gap-6 pb-8">
+    <div className="flex flex-col gap-8 pb-8">
       <B2CPageHeader
         eyebrow="Your progress is saved after each step"
         title="New exam"
         back={{ href: examsListPath(hrefFor), label: "Close" }}
       />
-      <StepRail steps={steps} current={NEW_EXAM_STEPS[step]} />
-      <Panel className="flex flex-col gap-5">
-        <p className="text-osce-caption font-medium uppercase tracking-wide text-ink-subtle">{`Step ${step + 1} of 4`}</p>
-
+      <div data-testid="new-exam-body" className="flex w-[calc(100%+2rem)] max-w-[792px] flex-col gap-6 self-center bg-osce-canvas px-4 pb-16 pt-8">
+      <Strip step={step} onPick={sheet.setStep} />
+      <div>
+        <div className={t.assessEyebrow}>{`Step ${step + 1} of 4`}</div>
+        <h2 className={t.assessTitle}>{HEADINGS[step]!.title}</h2>
+        <p className={cn(t.assessDesc, "m-0")}>{HEADINGS[step]!.lead}</p>
+      </div>
+      <div className={step === 1 ? "flex flex-col gap-[18px]" : step === 3 ? `${boardCardClipped} p-7` : `${boardCardClipped} flex flex-col gap-[18px] p-7`}>
         {step === 0 ? (
           <>
-            <Heading title="Name your exam" lead="This is what supervisors and trainees will see on every sitting." />
-            <Field label="Exam name">
+            <BoardField label="Exam name">
               <input
                 value={draft.name}
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                className={`mt-1 ${getInputClassName()}`}
+                className={boardInput}
                 placeholder="Paediatrics block"
               />
-            </Field>
-            <Field label="Short code">
+            </BoardField>
+            <BoardField label="Short code">
               <input
                 value={draft.code}
                 disabled={exam !== null}
                 onChange={(e) => setDraft({ ...draft, code: e.target.value })}
-                className={`mt-1 ${getInputClassName()}`}
+                className={boardInput}
                 placeholder="PAED"
               />
-              <span className="mt-1 block text-osce-caption text-ink-muted">
+              <span className="block text-assess-meta text-ink-subtle">
                 Letters, numbers and dashes. It can&apos;t be the same as another of your exams.
               </span>
-            </Field>
+            </BoardField>
           </>
         ) : null}
 
         {step === 1 ? (
           <>
-            <Heading
-              title="How will it be marked?"
-              lead="The marking scheme lists the areas reviewers rate and how. You can change it later as a new version."
-            />
-            <div role="radiogroup" aria-label="Marking scheme" className="grid gap-3">
-              {SCHEME_WAYS.map((option) => (
-                <SelectableCard key={option.id} selected={way === option.id} onSelect={() => sheet.setWay(option.id)}>
-                  <span className="text-osce-body font-semibold text-ink">{option.title}</span>
-                  <span className="text-osce-caption text-ink-muted">
-                    {option.id === "use"
-                      ? versions.length > 0
-                        ? versions.map((v) => v.label).join(", ")
-                        : "You have no published marking scheme yet."
-                      : option.body}
-                  </span>
-                </SelectableCard>
-              ))}
+            <div role="radiogroup" aria-label="Marking scheme" className="flex flex-col gap-2.5">
+              {SCHEME_WAYS.map((option) => {
+                const on = way === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => sheet.setWay(option.id)}
+                    className={cn(
+                      "flex w-full items-start gap-3.5 rounded-board border px-[18px] py-4 text-left text-ink",
+                      on ? "border-osce-accent bg-assess-selected-bg" : "border-osce-border bg-osce-surface",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "mt-0.5 size-[18px] shrink-0 rounded-full border bg-osce-surface",
+                        on ? "border-[5px] border-osce-accent" : "border-osce-border",
+                      )}
+                    />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-assess-desc font-medium !leading-[normal]">{option.title}</span>
+                      <span className="truncate text-assess-meta text-ink-subtle">
+                        {option.id === "use"
+                          ? versions.length > 0
+                            ? versions.map((v) => v.label).join(", ")
+                            : "You have no published marking scheme yet."
+                          : option.body}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             {way === "use" ? (
-              <Field label="Marking scheme version">
+              <BoardField label="Marking scheme version">
                 <Select
                   value={draft.rubricVersionId}
                   onChange={(e) => setDraft({ ...draft, rubricVersionId: e.target.value })}
-                  className="mt-1"
                 >
                   <option value="">{rubrics.error ? "Marking schemes could not be loaded" : "None yet"}</option>
                   {versions.map((v) => (
@@ -163,43 +175,32 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
                   ))}
                 </Select>
                 {rubrics.error ? <LoadError message={rubrics.error.message} onRetry={rubrics.reload} /> : null}
-              </Field>
+              </BoardField>
             ) : (
-              <div className="flex flex-col items-start gap-2">
-                {/* Both go to the builder's start screen, which offers Start from cards (OSCE Guide's schemes) and a blank one. */}
-                <Button variant="secondary" onClick={() => router.push(`${rubricNewPath(hrefFor)}${examQuery(exam?.id)}`)}>
-                  {way === "copy" ? "Choose one to copy" : "Open the scheme builder"}
-                </Button>
-                <p className="text-osce-caption text-ink-muted">
+              way === "write" ? (
+                <p className={cn(t.assessMeta, "m-0")}>
                   Opens the scheme builder. When you publish the scheme, you come straight back here.
                 </p>
-              </div>
+              ) : null
             )}
           </>
         ) : null}
 
         {step === 2 ? (
           <>
-            <Heading
-              title="Timings and settings"
-              lead="These are the defaults for every circuit. You can change them per circuit when you schedule."
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Reading time">
-                <input type="number" min={1} max={MAX_READING_MIN} value={minutes.reading} onChange={(e) => setMinutes("reading", e.target.value)} className={`mt-1 ${getInputClassName()}`} />
-                <span className="mt-1 block text-osce-caption text-ink-muted">{`1 to ${MAX_READING_MIN} min`}</span>
-              </Field>
-              <Field label="Consultation">
-                <input type="number" min={1} max={MAX_CONSULT_MIN} value={minutes.simulation} onChange={(e) => setMinutes("simulation", e.target.value)} className={`mt-1 ${getInputClassName()}`} />
-                <span className="mt-1 block text-osce-caption text-ink-muted">{`1 to ${MAX_CONSULT_MIN} min`}</span>
-              </Field>
-              <Field label="Break">
-                <input type="number" min={1} max={MAX_BREAK_MIN} value={minutes.breakMin} onChange={(e) => setBreak(e.target.value)} className={`mt-1 ${getInputClassName()}`} />
-                <span className="mt-1 block text-osce-caption text-ink-muted">{`1 to ${MAX_BREAK_MIN} min, formal exams`}</span>
-              </Field>
-              <Field label="Attempts per station">
-                <input type="number" min={1} value={draft.attempts} onChange={(e) => setDraft({ ...draft, attempts: e.target.value })} className={`mt-1 ${getInputClassName()}`} />
-              </Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <BoardField label="Reading time">
+                <input type="number" min={1} max={MAX_READING_MIN} value={minutes.reading} onChange={(e) => setMinutes("reading", e.target.value)} className={boardInput} />
+                <span className="block text-assess-meta text-ink-subtle">{`1 to ${MAX_READING_MIN} min`}</span>
+              </BoardField>
+              <BoardField label="Consultation">
+                <input type="number" min={1} max={MAX_CONSULT_MIN} value={minutes.simulation} onChange={(e) => setMinutes("simulation", e.target.value)} className={boardInput} />
+                <span className="block text-assess-meta text-ink-subtle">{`1 to ${MAX_CONSULT_MIN} min`}</span>
+              </BoardField>
+              <BoardField label="Break">
+                <input type="number" min={1} max={MAX_BREAK_MIN} value={minutes.breakMin} onChange={(e) => setBreak(e.target.value)} className={boardInput} />
+                <span className="block text-assess-meta text-ink-subtle">{`1 to ${MAX_BREAK_MIN} min, formal exams`}</span>
+              </BoardField>
             </div>
             {timings ? <Alert tone="danger">{timings}</Alert> : null}
             <ExamSettingsFields
@@ -207,20 +208,34 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
               description="Patient voice, feedback style and the AI writing setup. The same options as today's exam settings."
               value={draft.settings}
               onChange={(patch) => setDraft({ ...draft, settings: { ...draft.settings, ...patch } })}
+              bare
+              lead={
+                <BoardField label="Attempts per station">
+                  <input type="number" min={1} value={draft.attempts} onChange={(e) => setDraft({ ...draft, attempts: e.target.value })} className={boardInput} />
+                </BoardField>
+              }
             />
           </>
         ) : null}
 
         {step === 3 ? (
           <>
-            <Heading title="Ready to publish" lead="Publishing makes the exam available for scheduling. Add stations next." />
-            <dl className="divide-y divide-border text-osce-body">
-              <Row term="Exam" value={`${draft.name.trim()} · ${draft.code.trim()}`} />
+            <dl className="text-assess-label">
+              <Row term="Exam" value={`${draft.name.trim()} · ${draft.code.trim()}`} first />
               <Row term="Marking scheme" value={schemeLabel} />
               <Row term="Timings" value={timingsLine(minutes)} />
-              <Row term="Available for scheduling" value="On after publishing" />
+              <Row term="Available for scheduling" value="On after publishing" chip />
             </dl>
-            <p className="text-osce-caption text-ink-muted">
+          </>
+        ) : null}
+
+        {error && !failedStep ? <Alert tone="danger">{error}</Alert> : null}
+        {step === 0 && nameProblem && draft.name !== "" ? <p className="text-osce-caption text-ink-muted">{nameProblem}</p> : null}
+
+      </div>
+        {step === 3 ? (
+          <>
+            <p className={cn(t.assessMeta, "m-0")}>
               If a step fails, the exam is kept as it is and this screen says which step to retry. Nothing is half made.
             </p>
             {failedStep ? (
@@ -230,43 +245,90 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
             ) : null}
           </>
         ) : null}
-
-        {error && !failedStep ? <Alert tone="danger">{error}</Alert> : null}
-        {step === 0 && nameProblem && draft.name !== "" ? <p className="text-osce-caption text-ink-muted">{nameProblem}</p> : null}
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-          <Button variant="secondary" disabled={step === 0 || busy} onClick={() => sheet.setStep(step - 1)}>
+        <div className="flex justify-between gap-4">
+          <button type="button" className={boardBtn()} disabled={step === 0 || busy} onClick={() => sheet.setStep(step - 1)}>
             Back
-          </Button>
+          </button>
+          {step === 1 && way !== "use" ? (
+            /* Copy and write both go to the builder's start screen (OSCE Guide's schemes, or a blank one); coming back resumes here. */
+            <button type="button" className={boardBtn()} onClick={() => router.push(`${rubricNewPath(hrefFor)}${examQuery(exam?.id)}`)}>
+              {way === "copy" ? "Choose one to copy" : "Open the scheme builder"}
+            </button>
+          ) : null}
           {step < 3 ? (
-            <Button variant="primary" disabled={!sheet.canContinue || busy} onClick={() => void sheet.advance()}>
+            <button type="button" className={boardBtn("primary")} disabled={!sheet.canContinue || busy} onClick={() => void sheet.advance()}>
               {busy ? "Saving…" : "Continue"}
-            </Button>
+            </button>
           ) : (
-            <Button variant="primary" disabled={busy || !exam} onClick={() => void sheet.publish()}>
+            <button type="button" className={boardBtn("primary")} disabled={busy || !exam} onClick={() => void sheet.publish()}>
               {busy ? "Publishing…" : failedStep ? "Retry" : "Publish exam"}
-            </Button>
+            </button>
           )}
         </div>
-      </Panel>
+      </div>
     </div>
   );
 }
 
-function Heading({ title, lead }: { title: string; lead: string }) {
+const HEADINGS = [
+  { title: "Name your exam", lead: "This is what supervisors and trainees will see on every sitting." },
+  { title: "How will it be marked?", lead: "The marking scheme lists the domains reviewers rate and how. You can change it later as a new version." },
+  { title: "Timings and settings", lead: "These are the defaults for every circuit. You can change them per circuit when you schedule." },
+  { title: "Ready to publish", lead: "Publishing makes the exam available for scheduling. Add stations next." },
+] as const;
+
+/** The board's `.strip`: four step buttons, the current one raised, finished ones green. */
+function Strip({ step, onPick }: { step: number; onPick: (index: number) => void }) {
   return (
-    <div>
-      <h2 className="text-osce-title font-semibold text-ink">{title}</h2>
-      <p className="mt-1 text-osce-body text-ink-muted">{lead}</p>
+    <div className="flex flex-wrap gap-2">
+      {NEW_EXAM_STEPS.map((label, index) => {
+        const on = index === step;
+        const done = index < step;
+        return (
+          <button
+            key={label}
+            type="button"
+            aria-current={on ? "step" : undefined}
+            disabled={index > step}
+            onClick={() => onPick(index)}
+            className={cn(
+              "flex min-h-12 flex-[1_1_140px] items-center gap-2.5 rounded-board px-3 py-2.5 disabled:opacity-100 text-left text-assess-meta !leading-[normal]",
+              on ? "border border-osce-border bg-osce-surface font-medium text-ink" : "border-0 text-ink-subtle",
+              done && "text-ink",
+            )}
+          >
+            <span
+              className={cn(
+                "flex size-[26px] shrink-0 items-center justify-center rounded-full border text-assess-chip",
+                on ? "border-osce-accent text-osce-accent bg-osce-surface" : "border-osce-border bg-osce-surface",
+                done && "border-osce-success-text bg-osce-success-text text-white",
+              )}
+            >
+              {done ? "\u2713" : index + 1}
+            </span>
+            {label}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function Row({ term, value }: { term: string; value: string }) {
+/** The board's `label` + control: 14px/500 label, 6px to the control, a 13px hint below. */
+function BoardField({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-wrap justify-between gap-2 py-2">
-      <dt className="text-ink-muted">{term}</dt>
-      <dd className="text-ink">{value}</dd>
+    <label className="flex flex-col gap-1.5">
+      <span className="block text-assess-label font-medium text-ink">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function Row({ term, value, first, chip }: { term: string; value: string; first?: boolean; chip?: boolean }) {
+  return (
+    <div className={cn("flex flex-wrap justify-between gap-4 py-3", !first && "border-t border-osce-border-light")}>
+      <dt className={t.assessMeta}>{term}</dt>
+      <dd className="m-0 text-ink">{chip ? <BoardChip tone="ok">{value}</BoardChip> : value}</dd>
     </div>
   );
 }

@@ -1,0 +1,41 @@
+- main:
+  - link "Sittings":
+    - /url: /app/e2e-mw3mzpx5/sittings
+  - heading "Schedule a sitting" [level=1]
+  - paragraph: Steps unlock in order. Nothing is created until the last step.
+  - list "Steps":
+    - listitem:
+      - button "Basics The basics"
+    - listitem:
+      - button "Stations Pick the stations"
+    - listitem:
+      - button "Candidates Who is sitting it?"
+    - listitem:
+      - button "Timing Timing and breaks"
+    - listitem:
+      - button "Supervisor Who supervises?"
+    - listitem:
+      - button "Review Review and create"
+  - paragraph: Step 3 of 6
+  - heading "Who is sitting it?" [level=2]
+  - paragraph: Pick people one by one, or add a whole group or year group.
+  - tablist "Pick from":
+    - tab "People" [selected]
+    - tab "Groups"
+    - tab "Year groups"
+  - text: Search by name or email
+  - textbox "Search by name or email"
+  - list:
+    - listitem:
+      - paragraph: Tess Trainee
+      - paragraph: e2e-trainee-mw3mzpx5@example.com
+      - text: Signed in
+      - button "Pick"
+  - status: 0 candidates picked. Each gets their own circuit.
+  - complementary "Help":
+    - paragraph: Help
+    - paragraph: Who can be picked
+    - paragraph: "Only people who have signed in. Someone who has not accepted their invitation cannot be scheduled until they do: resend it from here."
+  - paragraph: Pick at least one person.
+  - button "Back"
+  - button "Continue" [disabled]

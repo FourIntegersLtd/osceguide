@@ -1,0 +1,48 @@
+- main:
+  - region "Setup":
+    - paragraph: Welcome
+    - heading "Let's get OV Fresh mw3o1ru2 ready for its first sitting" [level=1]
+    - paragraph: Five steps. We show one at a time, and you can come back to any of them.
+    - button "How the pieces fit" [expanded]
+    - paragraph: Step 5 of 5
+    - list:
+      - listitem:
+        - button "Set up an exam"
+      - listitem:
+        - button "Add stations"
+      - listitem:
+        - button "Add trainees"
+      - listitem:
+        - button "Invite a supervisor Optional"
+      - listitem:
+        - button "Schedule your first sitting"
+    - text: Last step
+    - heading "Schedule your first sitting" [level=2]
+    - paragraph: Pick the exam, its stations and the people sitting it. We build the circuits for you.
+    - paragraph: Formal exam or training
+    - paragraph: A formal exam is marked, signed off and released. Training gives feedback only.
+    - button "Schedule a sitting" [disabled]
+    - paragraph:
+      - text: Nothing can be scheduled until an exam is ready.
+      - link "Set up an exam":
+        - /url: /app/ov-fresh-mw3o1ru2/authoring/exams/new
+    - paragraph: How the pieces fit
+    - link "Exam What is examined and how it is marked":
+      - /url: /app/ov-fresh-mw3o1ru2/authoring
+    - link "Stations The cases candidates sit":
+      - /url: /app/ov-fresh-mw3o1ru2/authoring/stations
+    - link "People Trainees and supervisors":
+      - /url: /app/ov-fresh-mw3o1ru2/trainees
+    - link "Sitting One occasion, such as the March mock":
+      - /url: /app/ov-fresh-mw3o1ru2/sittings
+  - region "At a glance":
+    - link "Exams ready to schedule 0":
+      - /url: /app/ov-fresh-mw3o1ru2/authoring/exams
+    - link "Published stations 0":
+      - /url: /app/ov-fresh-mw3o1ru2/authoring/stations
+    - link "Trainees 0":
+      - /url: /app/ov-fresh-mw3o1ru2/trainees
+    - link "Supervisors 1":
+      - /url: /app/ov-fresh-mw3o1ru2/team
+    - link "Sittings 0":
+      - /url: /app/ov-fresh-mw3o1ru2/sittings

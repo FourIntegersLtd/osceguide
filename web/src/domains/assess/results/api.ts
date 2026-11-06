@@ -5,8 +5,8 @@ import {
   type components,
 } from "@/foundation/platform-client";
 import { orgPath } from "@/domains/assess/api";
-import type { TraineeResult } from "@/domains/assess/trainee/api";
 
+export type TraineeResult = components["schemas"]["TraineeResultRead"];
 export type SittingReport = components["schemas"]["SittingReport"];
 // `absent` (R-42) is declared here until the generated types are regenerated.
 export type StationReport = components["schemas"]["StationReport"] & {

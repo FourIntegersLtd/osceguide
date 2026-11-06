@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, Button, b2bTokens, Panel, FoldSection } from "@/foundation/ui";
+import { b2bTokens as t, cn } from "@/foundation/ui";
+import { Fold, Note, card, h2, row } from "@/domains/assess/ui";
 import { errorMessage } from "@/foundation/hooks";
 import type { Trainee } from "@/domains/assess/api";
 import { addTraineeGroup, type Cohort, type TraineeGroup } from "@/domains/assess/roster/api";
@@ -11,6 +12,7 @@ import {
   DeleteGroupDialog,
   RenameGroupDialog,
 } from "@/domains/assess/roster/GroupEditDialogs";
+import { boardBtn, boardPadWide, boardInput, boardButtonSmall } from "@/foundation/ui/boardKit";
 
 type Pending =
   | { kind: "rename"; group: TraineeGroup }
@@ -73,9 +75,7 @@ export function GroupsPanel({
   };
 
   return (
-    <div className="space-y-6">
-      {error ? <Alert tone="danger">{error}</Alert> : null}
-
+    <div className="grid grid-cols-1 items-stretch gap-4 min-[901px]:grid-cols-2">
       <CohortsPanel
         orgSlug={orgSlug}
         cohorts={cohorts}
@@ -83,90 +83,59 @@ export function GroupsPanel({
         onChanged={onChanged}
       />
 
-      <Panel
-        title="Groups"
-        description="A named list of people you can add to a circuit together, such as a rotation team or a resit group. A person can be in more than one."
-      >
+      <div className={boardPadWide}>
+        <h2 className={h2}>Groups</h2>
+        <p className={cn(t.assessMeta, "m-0")}>
+          A named list of people you can add to a circuit together, such as a rotation team or a resit group. A person can be in more than one.
+        </p>
+        {error ? <Note tone="bad">{error}</Note> : null}
         {groups.length === 0 ? (
-          <p className="text-osce-body text-b2b-mid">
-            No groups yet. Create one below and choose who is in it.
-          </p>
+          <p className={cn(t.assessMeta, "m-0")}>No groups yet. Create one below and choose who is in it.</p>
         ) : (
-          <ul className="space-y-2" aria-label="Trainee groups">
-            {groups.map((group) => (
-              <li
-                key={group.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-panel border border-b2b-border px-3 py-2"
-              >
-                <span className="min-w-0 truncate text-osce-body font-medium text-b2b-headline">
+          <ul className={card} aria-label="Trainee groups">
+            {groups.map((group, index) => (
+              <li key={group.id} className={cn(row, "gap-2", index === 0 && "border-t-0")}>
+                <span className="flex-1">
                   {group.label}
-                </span>
-                <span className="flex shrink-0 items-center gap-3">
-                  <span className="text-osce-caption text-b2b-mid">
+                  <div className={t.assessMeta}>
                     {group.member_count} {group.member_count === 1 ? "person" : "people"}
-                  </span>
-                  {canManage ? (
-                    <span className="flex items-center gap-2">
-                      <Button
-                        themeType="b2b"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setEditing(group)}
-                      >
-                        People
-                      </Button>
-                      <Button
-                        themeType="b2b"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => open({ kind: "rename", group })}
-                      >
-                        Rename
-                      </Button>
-                      <Button
-                        themeType="b2b"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => open({ kind: "delete", group })}
-                      >
-                        Delete
-                      </Button>
-                    </span>
-                  ) : null}
+                  </div>
                 </span>
+                {canManage ? (
+                  <>
+                    <button type="button" className={boardButtonSmall} onClick={() => setEditing(group)}>
+                      People
+                    </button>
+                    <button type="button" className={boardButtonSmall} onClick={() => open({ kind: "rename", group })}>
+                      Rename
+                    </button>
+                    <button type="button" className={boardButtonSmall} onClick={() => open({ kind: "delete", group })}>
+                      Delete
+                    </button>
+                  </>
+                ) : null}
               </li>
             ))}
           </ul>
         )}
 
         {canManage ? (
-          <div className="mt-5">
-            <FoldSection
-              title="Create a group"
-              description="Everyone in your organisation sees the same group names."
-            >
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                aria-label="New group name"
-                value={groupLabel}
-                onChange={(event) => setGroupLabel(event.target.value)}
-                className={`${b2bTokens.b2bInputBase} min-w-0 flex-1`}
-                placeholder="e.g. Tuesday rotation"
-                autoComplete="off"
-              />
-              <Button
-                themeType="b2b"
-                variant="secondary"
-                disabled={busy || groupLabel.trim() === ""}
-                onClick={() => createGroup()}
-              >
-                {busy ? "Working…" : "Create group"}
-              </Button>
-            </div>
-            </FoldSection>
-          </div>
+          <Fold title="Create a group">
+            <div className={t.assessMeta}>Everyone in your organisation sees the same group names.</div>
+            <input
+              aria-label="New group name"
+              value={groupLabel}
+              onChange={(event) => setGroupLabel(event.target.value)}
+              className={boardInput}
+              placeholder="e.g. Tuesday rotation"
+              autoComplete="off"
+            />
+            <button type="button" className={cn(boardBtn("primary", true), "self-start")} disabled={busy || groupLabel.trim() === ""} onClick={() => createGroup()}>
+              {busy ? "Working…" : "Create group"}
+            </button>
+          </Fold>
         ) : null}
-      </Panel>
+      </div>
 
       <GroupMembersDialog
         orgSlug={orgSlug}

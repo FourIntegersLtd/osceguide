@@ -29,7 +29,7 @@ export const STATION_START_WAYS: readonly {
     id: "ai",
     title: "Draft with AI from a brief",
     body: "Pick a layout, then describe the case in a few lines.",
-    next: "Pick a published layout first; the AI needs one to draft against. Then write the brief, check the draft, run a fact check and publish.",
+    next: "Pick a published layout first, then write the brief, check the draft and publish.",
     cta: "Choose a layout",
   },
   {
@@ -43,7 +43,7 @@ export const STATION_START_WAYS: readonly {
     id: "blank",
     title: "Start blank",
     body: "Write every section yourself.",
-    next: "Opens the form with your exam chosen. Add a layout there if you want one, or write the sections yourself.",
+    next: "Opens the form with your exam chosen. Add a layout there or write the sections.",
     cta: "Open the builder",
   },
 ];

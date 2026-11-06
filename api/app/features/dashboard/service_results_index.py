@@ -21,6 +21,7 @@ async def build_results_index(session: AsyncSession, org_id: uuid.UUID, *, limit
     )
     ids = [sitting.id for sitting in recent]
     candidates = await sittings.candidate_counts(session, org_id, ids)
+    sat = await sittings.sat_counts(session, org_id, ids)
     # Decisions are append-only: count only those of people still on a circuit (users -> roster ids).
     on_circuits = await sittings.candidate_user_ids(session, org_id, ids)
     roster_ids = await roster.trainees_by_user_id(
@@ -47,6 +48,7 @@ async def build_results_index(session: AsyncSession, org_id: uuid.UUID, *, limit
                 status=sitting.status,
                 scheduled_for=sitting.scheduled_for,
                 candidates=total,
+                sat=sat.get(sitting.id, 0),
                 not_decided=max(total - (draft + signed_off + released), 0),
                 draft=draft,
                 signed_off=signed_off,

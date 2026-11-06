@@ -1,0 +1,27 @@
+- main:
+  - heading "People" [level=1]
+  - paragraph: Everyone in your organisation. Trainees sit sittings; staff (supervisors and admins) run circuits and mark them.
+  - button "Add people"
+  - tablist "People sections":
+    - tab "Trainees 1"
+    - tab "Staff"
+    - tab "Groups and year groups" [selected]
+    - tab "Exam access"
+    - tab "History"
+  - heading "Year groups (cohorts)" [level=2]
+  - paragraph: An intake, such as a start date. Each trainee can be in one year group, chosen when they are added.
+  - paragraph: No year groups yet. Create one below, or leave people without.
+  - button "Create a year group" [expanded]
+  - textbox "Year group name":
+    - /placeholder: e.g. June 2026 intake
+  - textbox "Academic year":
+    - /placeholder: 2026/27
+  - button "Create year group" [disabled]
+  - heading "Groups" [level=2]
+  - paragraph: A named list of people you can add to a circuit together, such as a rotation team or a resit group. A person can be in more than one.
+  - paragraph: No groups yet. Create one below and choose who is in it.
+  - button "Create a group" [expanded]
+  - paragraph: Everyone in your organisation sees the same group names.
+  - textbox "New group name":
+    - /placeholder: e.g. Tuesday rotation
+  - button "Create group" [disabled]

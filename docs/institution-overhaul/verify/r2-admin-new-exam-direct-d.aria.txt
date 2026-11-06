@@ -1,0 +1,22 @@
+- main:
+  - link "Close":
+    - /url: /app/e2e-mw3om0c6/authoring/exams
+  - paragraph: Your progress is saved after each step
+  - heading "New exam" [level=1]
+  - list "Steps":
+    - listitem: Name
+    - listitem: Marking scheme
+    - listitem: Timings
+    - listitem: Publish
+  - paragraph: Step 1 of 4
+  - heading "Name your exam" [level=2]
+  - paragraph: This is what supervisors and trainees will see on every sitting.
+  - text: Exam name
+  - textbox "Exam name":
+    - /placeholder: Paediatrics block
+  - text: Short code
+  - textbox "Short code Letters, numbers and dashes. It can't be the same as another of your exams.":
+    - /placeholder: PAED
+  - text: Letters, numbers and dashes. It can't be the same as another of your exams.
+  - button "Back" [disabled]
+  - button "Continue" [disabled]

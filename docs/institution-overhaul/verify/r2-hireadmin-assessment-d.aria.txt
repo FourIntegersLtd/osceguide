@@ -1,0 +1,36 @@
+- main:
+  - link "Assessments":
+    - /url: /app/e2e-hire-mw3om0c6/sittings
+  - paragraph: Exam
+  - heading "R2 hire assessment" [level=1]
+  - paragraph: No date set
+  - text: Scheduled
+  - button "Edit"
+  - button "Cancel sitting"
+  - link "Results":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26/results
+  - status:
+    - paragraph: Set a date so candidates know when to come.
+    - button "Set a date"
+  - list "Steps":
+    - listitem: Schedule No date
+    - listitem: Circuits 1 candidate assigned
+    - listitem: Run Not started
+    - listitem: Mark 0 of 1 marked
+    - listitem: Decide 0 of 1 decided
+    - listitem: Release 0 of 1 released
+  - tablist "Sitting sections":
+    - tab "Circuits 1" [selected]
+    - tab "Candidates"
+    - tab "Results so far"
+  - heading "Circuits" [level=2]
+  - link "R2 hire circuit Not started · 1 station · 1 candidate · Supervisor Hugo Hirer Your circuit":
+    - /url: /app/e2e-hire-mw3om0c6/circuits/9a2530b1-34d3-4f56-aaf9-43ed9581a5b6
+    - img
+    - text: R2 hire circuit Not started · 1 station · 1 candidate · Supervisor Hugo Hirer Your circuit
+  - link "Edit":
+    - /url: /app/e2e-hire-mw3om0c6/circuits/9a2530b1-34d3-4f56-aaf9-43ed9581a5b6/edit
+  - button "Delete"
+  - link "Add a circuit":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26/circuits/new
+  - paragraph: Cancel sitting is only before any circuit starts. A circuit can be deleted only if it never started.

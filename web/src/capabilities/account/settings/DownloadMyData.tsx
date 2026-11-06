@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { HiOutlineArrowDownTray } from "react-icons/hi2";
-import { Button, Panel } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { exportMyDataPdf } from "@/capabilities/account/api";
+import { AccountButton, AccountCard, useBoardSkin } from "@/capabilities/account/settings/AccountKit";
 import { settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
 /**
@@ -29,18 +29,22 @@ export function DownloadMyData() {
     }
   };
 
+  const board = useBoardSkin();
+
   return (
-    <Panel title="Your data">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className={settingsSub}>A copy of everything we hold about you.</p>
-          {error ? <p className="mt-1 text-osce-meta text-danger">{error}</p> : null}
-        </div>
-        <Button variant="secondary" onClick={download} disabled={busy} className="shrink-0 gap-2">
-          <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
+    <AccountCard title="Your data" description={board ? "A copy of everything we hold about you." : undefined}>
+      <div className={board ? "flex flex-col items-start gap-4" : "flex flex-wrap items-center justify-between gap-3"}>
+        {board ? null : (
+          <div className="min-w-0 flex-1">
+            <p className={settingsSub}>A copy of everything we hold about you.</p>
+            {error ? <p className="mt-1 text-osce-meta text-danger">{error}</p> : null}
+          </div>
+        )}
+        {board && error ? <p className="m-0 text-assess-meta text-osce-danger-text">{error}</p> : null}
+        <AccountButton variant="secondary" icon={HiOutlineArrowDownTray} onClick={download} disabled={busy} className="shrink-0">
           Download as PDF
-        </Button>
+        </AccountButton>
       </div>
-    </Panel>
+    </AccountCard>
   );
 }

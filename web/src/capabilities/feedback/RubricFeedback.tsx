@@ -48,6 +48,9 @@ const { b2cMonoEyebrow } = productTokens;
  * `narrow` is for a half-width column (an examiner's review page puts it
  * beside the form): domain cards then stack one per row instead of being
  * squeezed into a three-column grid sized for the whole page.
+ *
+ * `trainingNote` is the "formative training only" line; the scheme builder
+ * turns it off because a scheme under construction may be an exam's.
  */
 export function RubricFeedback({
   rubric,
@@ -55,6 +58,7 @@ export function RubricFeedback({
   heading,
   narrow = false,
   showAll = false,
+  trainingNote = true,
 }: {
   rubric: MarkingRubric;
   result: MarkedResult;
@@ -62,6 +66,7 @@ export function RubricFeedback({
   narrow?: boolean;
   /** An examiner's reading: show what the author hid from the candidate too. */
   showAll?: boolean;
+  trainingNote?: boolean;
 }) {
   const model = useMemo(() => feedbackModel(rubric, result, heading, { showAll }), [rubric, result, heading, showAll]);
 
@@ -148,11 +153,13 @@ export function RubricFeedback({
         </Dropdown>
       ))}
 
-      <p className="flex items-start gap-2 text-osce-meta text-b2c-text-muted">
-        <HiOutlineInformationCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-        This consultation analysis is for formative training only and cannot be used as an
-        indication of performance in the exam.
-      </p>
+      {trainingNote ? (
+        <p className="flex items-start gap-2 text-osce-meta text-b2c-text-muted">
+          <HiOutlineInformationCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          This consultation analysis is for formative training only and cannot be used as an
+          indication of performance in the exam.
+        </p>
+      ) : null}
     </section>
   );
 }

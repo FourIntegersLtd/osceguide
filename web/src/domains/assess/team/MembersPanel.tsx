@@ -2,13 +2,10 @@
 
 import { roleLabel } from "@/foundation/session/roles";
 import { useSession } from "@/foundation/session";
-import { useMemo, useState } from "react";
-import { Alert, Badge, Button, EmptyState, PlatformFilterBar, PlatformFilterSearch, b2bTokens } from "@/foundation/ui";
-import Table from "@/foundation/table/Table";
-import { b2cTableCellText } from "@/foundation/ui/productTokens";
-import { cn } from "@/foundation/ui/cn";
+import { useState } from "react";
+import { b2bTokens as t, cn } from "@/foundation/ui";
+import { Chip, Note, card, h2, hint, row, th, PeopleDialog as Dialog } from "@/domains/assess/ui";
 import { errorMessage, useCursorPages, useSearchQuery } from "@/foundation/hooks";
-import { Dialog } from "@/domains/assess/team/chrome";
 import {
   changeMemberRole,
   listMemberships,
@@ -29,8 +26,10 @@ import {
   resendSummary,
   revokableStaff,
   staffCountLabel,
+  revokeLead,
   staffRevokeTitle,
 } from "@/domains/assess/team/support";
+import { boardBtn, boardPadWide, boardInput, boardLabel, boardButtonSmall } from "@/foundation/ui/boardKit";
 
 type Pending =
   | { kind: "role"; member: Membership }
@@ -185,14 +184,104 @@ export function MembersPanel({
     }
   }
 
-  const columns = useMemo(
-    () => [
-      ...(canManage
-        ? [
-            {
-              header: "Select",
-              key: "id" as keyof Membership,
-              render: (member: Membership) => (
+  return (
+    <div className="flex min-w-0 flex-col gap-6">
+      {notice ? <Note tone="ok">{notice}</Note> : null}
+      {/* A dialog shows its own error; a resend has no dialog to show it in. */}
+      {error && !pending ? <Note tone="bad" role="alert">{error}</Note> : null}
+
+      <div className="flex flex-wrap items-center gap-3">
+        {rows.length > 0 || query ? (
+          <span className={t.assessEyebrow}>
+            {staffCountLabel(rows.length)}
+            {pages.hasMore ? "+" : ""}
+          </span>
+        ) : null}
+        <input
+          className={cn(boardInput, "flex-[1_1_260px] !w-auto")}
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search staff…"
+          aria-label="Search staff"
+        />
+        {canManage && awaiting.length > 0 ? (
+          <button type="button" className={boardBtn()} disabled={resendingAll} onClick={() => resendAll()}>
+            {resendingAll ? "Resending…" : `Resend invitations (${awaiting.length})`}
+          </button>
+        ) : null}
+      </div>
+
+      {canManage && selectedRows.length > 0 ? (
+        <div className={cn(card, "border-assess-chip-info-bg")}>
+          <div className={cn(row, "gap-2 border-t-0")}>
+            <b className="font-semibold">{selectedRows.length} selected</b>
+            <button type="button" className={boardButtonSmall} disabled={resendingAll || busy} onClick={() => void resendSelected()}>
+              Resend invitation
+            </button>
+            <button
+              type="button"
+              className={boardBtn("danger", true)}
+              disabled={busy || revokable.length === 0}
+              onClick={() => {
+                setError(null);
+                setConfirmingBulk(true);
+              }}
+            >
+              Revoke access
+            </button>
+            <button type="button" className="text-assess-label text-osce-accent hover:text-osce-accent-hover" onClick={() => setSelected(new Set())}>
+              Clear
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {pages.state.error ? (
+        <div className={boardPadWide}>
+          <Note tone="bad" role="alert">
+            {pages.state.error.message}{" "}
+            <button type="button" className="text-osce-accent hover:text-osce-accent-hover" onClick={() => pages.state.reload()}>
+              Retry
+            </button>
+          </Note>
+        </div>
+      ) : null}
+
+      {pages.state.loading && !pages.state.data ? (
+        <p className="text-osce-body text-osce-ink-500" role="status">
+          Loading staff…
+        </p>
+      ) : rows.length === 0 ? (
+        pages.state.error ? null : query ? (
+          <div className={boardPadWide}>
+            <div className={t.assessMeta}>Search with no match</div>
+            <div>No staff match &ldquo;{query}&rdquo;.</div>
+          </div>
+        ) : (
+          <div className={boardPadWide}>
+            <h2 className={h2}>No staff yet</h2>
+            <p className={cn(t.assessMeta, "m-0")}>Invite a supervisor so somebody can run a circuit.</p>
+            {canManage ? (
+              <button type="button" className={cn(boardBtn("primary"), "self-start")} onClick={onInviteStaff}>
+                Invite staff
+              </button>
+            ) : null}
+          </div>
+        )
+      ) : (
+        <div role="table" className={card}>
+          <div role="row" className={th}>
+            {canManage ? <span className="w-4" /> : null}
+            <span className="flex-[1_1_220px]">Email</span>
+            <span className="w-[100px]">Role</span>
+            <span className="w-[90px]">Circuits led</span>
+            <span className="w-[90px]">Access</span>
+            {canManage ? <span>Actions</span> : null}
+          </div>
+          {rows.map((member) => (
+            <div key={member.id} role="row" data-testid="staff-row" className={row}>
+              {canManage ? (
                 <input
                   type="checkbox"
                   aria-label={`Select ${member.email ?? "this person"}`}
@@ -200,183 +289,38 @@ export function MembersPanel({
                   disabled={isOwner(member) || !isActive(member)}
                   onChange={() => toggle(member.id)}
                 />
-              ),
-            },
-          ]
-        : []),
-      {
-        header: "Email",
-        key: "email" as keyof Membership,
-        priority: "primary" as const,
-        render: (member: Membership) => (
-          <div className={b2cTableCellText}>
-            <span className="font-medium text-osce-ink-900">
-              {member.email ?? "No email address on file"}
-            </span>
-            {member.email ? null : (
-              <span className="ml-2 font-mono text-osce-caption text-b2b-icon">
-                {member.user_id.slice(0, 8)}
+              ) : null}
+              <span className="flex-[1_1_220px]">
+                {member.email ?? "No email address on file"}{" "}
+                {member.email ? null : <span className="font-mono text-assess-chip text-osce-ink-500">{member.user_id.slice(0, 8)}</span>}
+                {member.invited ? <Chip>Invited</Chip> : null}
               </span>
-            )}
-            {member.invited ? (
-              <span className="ml-2 text-osce-caption text-b2b-mid">Invited</span>
-            ) : null}
-          </div>
-        ),
-      },
-      {
-        header: "Role",
-        key: "role" as keyof Membership,
-        render: (member: Membership) => (
-          <span className={cn(b2cTableCellText, "text-b2b-graphite")}>{roleLabel(member.role)}</span>
-        ),
-      },
-      {
-        header: "Circuits led",
-        key: "circuits_led" as keyof Membership,
-        render: (member: Membership) => (
-          <span className={cn(b2cTableCellText, "tabular-nums text-b2b-graphite")}>
-            {member.circuits_led}
-          </span>
-        ),
-      },
-      {
-        header: "Access",
-        key: "id" as keyof Membership,
-        render: (member: Membership) =>
-          isActive(member) ? (
-            <Badge variant="success" dot>Active</Badge>
-          ) : (
-            <Badge variant="warning" dot>Revoked</Badge>
-          ),
-      },
-      {
-        header: "Actions",
-        key: "user_id" as keyof Membership,
-        priority: "detail" as const,
-        render: (member: Membership) =>
-          canManage ? (
-            <RowActions
-              member={member}
-              onAction={open}
-              onResend={resend}
-              resending={resendingId === member.id}
-            />
-          ) : null,
-      },
-    ],
-    [canManage, resendingId, selected],
-  );
-
-  return (
-    <div className="min-w-0 space-y-4">
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
-      {/* A dialog shows its own error; a resend has no dialog to show it in. */}
-      {error && !pending ? <Alert tone="danger">{error}</Alert> : null}
-
-      <PlatformFilterBar
-        leading={
-          rows.length > 0 || query ? (
-            <p className={b2bTokens.b2bEyebrow}>
-              {staffCountLabel(rows.length)}
-              {pages.hasMore ? "+" : ""}
-            </p>
-          ) : null
-        }
-      >
-        <PlatformFilterSearch
-          value={search}
-          onChange={setSearch}
-          placeholder="Search staff…"
-          aria-label="Search staff"
-        />
-        {canManage && awaiting.length > 0 ? (
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            size="sm"
-            disabled={resendingAll}
-            onClick={() => resendAll()}
-          >
-            {resendingAll ? "Resending…" : `Resend invitations (${awaiting.length})`}
-          </Button>
-        ) : null}
-      </PlatformFilterBar>
-
-      {canManage && selectedRows.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-3 text-osce-body text-b2b-headline">
-          <span className="font-medium">{selectedRows.length} selected</span>
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            size="sm"
-            disabled={resendingAll || busy}
-            onClick={() => void resendSelected()}
-          >
-            Resend invitation
-          </Button>
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            size="sm"
-            disabled={busy || revokable.length === 0}
-            onClick={() => {
-              setError(null);
-              setConfirmingBulk(true);
-            }}
-          >
-            Revoke access
-          </Button>
-          <button type="button" className="underline" onClick={() => setSelected(new Set())}>
-            Clear
-          </button>
+              <span className="w-[100px]">{roleLabel(member.role)}</span>
+              <span className="w-[90px] tabular-nums">{member.circuits_led}</span>
+              <span className="w-[90px]">
+                <Chip tone={isActive(member) ? "ok" : "warn"}>{isActive(member) ? "● Active" : "● Revoked"}</Chip>
+              </span>
+              {canManage ? (
+                <RowActions member={member} onAction={open} onResend={resend} resending={resendingId === member.id} />
+              ) : null}
+            </div>
+          ))}
+          {pages.hasMore || pages.moreError ? (
+            <div className={cn(row, "justify-center")}>
+              <button type="button" className={boardButtonSmall} disabled={pages.loadingMore} onClick={pages.loadMore}>
+                {pages.loadingMore ? "Loading…" : "Load more"}
+              </button>
+              {pages.moreError ? <span className="text-osce-danger-text">{pages.moreError.message}</span> : null}
+            </div>
+          ) : null}
         </div>
-      ) : null}
-
-      {pages.state.error ? (
-        <Alert tone="danger">
-          {pages.state.error.message}
-          <button type="button" className="ml-2 underline" onClick={() => pages.state.reload()}>
-            Retry
-          </button>
-        </Alert>
-      ) : null}
-
-      {pages.state.loading && !pages.state.data ? (
-        <p className="text-osce-body text-b2c-text-secondary" role="status">
-          Loading staff…
-        </p>
-      ) : rows.length === 0 ? (
-        pages.state.error ? null : query ? (
-          <p className="text-osce-body text-b2b-mid">No staff match &ldquo;{query}&rdquo;.</p>
-        ) : (
-          <EmptyState
-            title="No staff yet"
-            description="Invite a supervisor so somebody can run a circuit."
-            action={
-              canManage ? (
-                <Button themeType="b2b" variant="commit" onClick={onInviteStaff}>
-                  Invite staff
-                </Button>
-              ) : undefined
-            }
-          />
-        )
-      ) : (
-        <Table<Membership>
-          rows={rows}
-          more={pages}
-          themeType="b2b"
-          columns={columns}
-          idField="id"
-        />
       )}
 
       {!canManage ? (
-        <p className="text-osce-caption text-b2b-icon">
-          <span className="font-medium">Supervisor (read only)</span>. Contact an owner or admin to
-          change who has access.
-        </p>
+        <div className={boardPadWide}>
+          <div className={t.assessMeta}>Supervisor (read only)</div>
+          <div>Contact an owner or admin to change who has access.</div>
+        </div>
       ) : null}
 
       <Dialog
@@ -404,20 +348,14 @@ export function MembersPanel({
         onCommit={() => void commit()}
       >
         <div>
-          <label
-            htmlFor="assess-member-role"
-            className="block text-osce-body font-semibold text-b2b-headline"
-          >
+          <label htmlFor="assess-member-role" className={boardLabel}>
             Their role
           </label>
-          <p className="mt-0.5 text-osce-caption text-b2b-mid">
-            {ROLE_CHOICE_HELP}
-          </p>
           <select
             id="assess-member-role"
             value={role}
             onChange={(event) => setRole(event.target.value)}
-            className={`mt-2 ${b2bTokens.b2bInputBase}`}
+            className={boardInput}
           >
             {ASSIGNABLE_ROLES.map((value) => (
               <option key={value} value={value}>
@@ -425,6 +363,7 @@ export function MembersPanel({
               </option>
             ))}
           </select>
+          <p className={hint}>{ROLE_CHOICE_HELP}</p>
         </div>
       </Dialog>
 
@@ -433,7 +372,7 @@ export function MembersPanel({
         title="Revoke access"
         lead={
           pending
-            ? `${pending.member.email ?? "This person"} will lose access to this organisation. Nothing they have marked is deleted.`
+            ? revokeLead(pending.member.email, pending.member.user_id === selfId)
             : ""
         }
         error={error}
@@ -477,34 +416,27 @@ function RowActions({
 }) {
   const owner = isOwner(member);
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-wrap items-center gap-2.5">
       {!owner && isActive(member) && member.invited ? (
-        <Button
-          themeType="b2b"
-          variant="secondary"
-          size="sm"
+        <button
+          type="button"
+          className={boardButtonSmall}
           disabled={resending}
           title="Only sent if that person has not set up their account yet."
           onClick={() => onResend(member)}
         >
           {resending ? "Resending…" : "Resend invitation"}
-        </Button>
+        </button>
       ) : null}
       {!owner ? (
-        <Button
-          themeType="b2b"
-          variant="secondary"
-          size="sm"
-          onClick={() => onAction({ kind: "role", member })}
-        >
+        <button type="button" className={boardButtonSmall} onClick={() => onAction({ kind: "role", member })}>
           Change role
-        </Button>
+        </button>
       ) : null}
       {isActive(member) ? (
-        <Button
-          themeType="b2b"
-          variant="secondary"
-          size="sm"
+        <button
+          type="button"
+          className={boardButtonSmall}
           disabled={owner}
           // Whether this is the last administrator is the server's call (409
           // `last_admin`), shown in the dialog: a count of the loaded page
@@ -513,16 +445,11 @@ function RowActions({
           onClick={() => onAction({ kind: "revoke", member })}
         >
           Revoke
-        </Button>
+        </button>
       ) : (
-        <Button
-          themeType="b2b"
-          variant="secondary"
-          size="sm"
-          onClick={() => onAction({ kind: "restore", member })}
-        >
+        <button type="button" className={boardButtonSmall} onClick={() => onAction({ kind: "restore", member })}>
           Restore
-        </Button>
+        </button>
       )}
     </div>
   );

@@ -34,9 +34,11 @@ interface PhotoUploadProps {
   handleSuccess: () => void;
   /** When true, omit outer panel card (e.g. when inside another B2CPanelCard). */
   embedded?: boolean;
+  /** The institution boards' drop box: a dashed 14px card with two plain lines. */
+  board?: boolean;
 }
 
-function PhotoUpload({ upload, handleSuccess, embedded = false }: PhotoUploadProps) {
+function PhotoUpload({ upload, handleSuccess, embedded = false, board = false }: PhotoUploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string>("");
@@ -97,7 +99,8 @@ function PhotoUpload({ upload, handleSuccess, embedded = false }: PhotoUploadPro
 
       <div
         {...getRootProps()}
-        className={`cursor-pointer border-2 border-dashed p-6 text-center transition-colors sm:p-8 ${
+        title={board ? "PNG, JPG, JPEG up to 10MB each" : undefined}
+        className={board ? `cursor-pointer rounded-board-lg border-[1.5px] border-dashed p-[18px] text-center ${isDragActive ? "border-osce-accent bg-osce-accent-subtle" : "border-osce-border"}` : `cursor-pointer border-2 border-dashed p-6 text-center transition-colors sm:p-8 ${
           embedded ? "rounded-lg" : "rounded-md"
         } ${
           isDragActive
@@ -106,7 +109,13 @@ function PhotoUpload({ upload, handleSuccess, embedded = false }: PhotoUploadPro
         }`}
       >
         <input {...getInputProps()} />
-        <div className="space-y-4">
+        <div className={board ? "text-assess-label text-ink" : "space-y-4"}>
+          {board && !isDragActive ? (
+            <>
+              Upload photos
+              <div className="text-assess-meta text-ink-muted">Click to upload or drag and drop</div>
+            </>
+          ) : (
           <div className="space-y-2">
             <div className="flex justify-center">
               <HiOutlineCloudArrowUp className="h-12 w-12 text-b2c-text-muted" />
@@ -127,6 +136,7 @@ function PhotoUpload({ upload, handleSuccess, embedded = false }: PhotoUploadPro
               </>
             )}
           </div>
+          )}
 
           {files.length > 0 && (
             <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">

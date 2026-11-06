@@ -5,6 +5,9 @@ import { HiOutlineChevronRight, HiOutlinePlusCircle } from "react-icons/hi2";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Alert } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
+import { AuthoringLeadButton } from "@/capabilities/authoring/parts/AuthoringLeadButton";
+import { boardStack } from "@/capabilities/authoring/parts/boardUi";
+import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -33,6 +36,7 @@ import { rubricNewPath } from "@/capabilities/authoring/templates/paths";
  */
 export function RubricsSection() {
   const scope = useAuthoringScope();
+  const org = !useAuthoringChrome().b2c;
   const { hrefFor } = useSurface();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -72,18 +76,12 @@ export function RubricsSection() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className={org ? boardStack : "space-y-4"}>
       <AuthoringSectionLead
         action={
-          <AuthoringButton
-            variant="commit"
-            size="sm"
-            className="gap-2"
-            onClick={() => router.push(rubricNewPath(hrefFor))}
-          >
-            <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
-            Create marking scheme
-          </AuthoringButton>
+          <AuthoringLeadButton primary icon={HiOutlinePlusCircle} onClick={() => router.push(rubricNewPath(hrefFor))}>
+            {org ? "+ " : ""}Create marking scheme
+          </AuthoringLeadButton>
         }
       >
         The marking structure a station is assessed against.
@@ -130,6 +128,7 @@ export function RubricsSection() {
               <AuthoringRowActions>
                 <AuthoringIconAction
                   variant="ghost"
+                  text="Open versions ›"
                   label="Open versions"
                   onClick={() => setOpen(rubric.id)}
                 >

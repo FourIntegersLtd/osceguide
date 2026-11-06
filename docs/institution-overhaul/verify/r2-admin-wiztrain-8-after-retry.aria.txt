@@ -1,0 +1,34 @@
+- main:
+  - link "Sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - paragraph: Training
+  - heading "R2 training fail" [level=1]
+  - paragraph: No date set
+  - text: Scheduled
+  - button "Edit"
+  - button "Cancel sitting"
+  - link "Results":
+    - /url: /app/e2e-mw3om0c6/sittings/cc9bb5c7-4840-4f93-86d2-f95b4c7646ac/results
+  - status:
+    - paragraph: Set a date so candidates know when to come.
+    - button "Set a date"
+  - list "Steps":
+    - listitem: Schedule No date
+    - listitem: Circuits 1 circuit
+    - listitem: Run Not started
+    - listitem: Mark Not started
+  - tablist "Sitting sections":
+    - tab "Circuits 1" [selected]
+    - tab "Candidates"
+    - tab "Results so far"
+  - heading "Circuits" [level=2]
+  - link "R2 training fail Not started · 1 station · 1 trainee · Supervisor Ada Admin Your circuit":
+    - /url: /app/e2e-mw3om0c6/circuits/366b48cb-703c-416e-8caf-6c36ee4eda42
+    - img
+    - text: R2 training fail Not started · 1 station · 1 trainee · Supervisor Ada Admin Your circuit
+  - link "Edit":
+    - /url: /app/e2e-mw3om0c6/circuits/366b48cb-703c-416e-8caf-6c36ee4eda42/edit
+  - button "Delete"
+  - link "Add a circuit":
+    - /url: /app/e2e-mw3om0c6/sittings/cc9bb5c7-4840-4f93-86d2-f95b4c7646ac/circuits/new
+  - paragraph: Cancel sitting is only before any circuit starts. A circuit can be deleted only if it never started.

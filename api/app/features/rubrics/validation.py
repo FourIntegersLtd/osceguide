@@ -17,8 +17,21 @@ from collections.abc import Mapping
 from typing import Any, TypeGuard
 
 __all__ = [
+    "BLOCK_KINDS",
+    "DOMAIN_SCORE_AGGREGATES",
+    "FEEDBACK_KIND_ROLES",
+    "FEEDBACK_SHAPE_TYPES",
+    "IDENTIFIER_MESSAGE",
+    "IDENTIFIER_PATTERN",
+    "SCALE_STEP_TO_V2",
+    "SHOW_FROM_V2",
+    "SHOW_TO_V2",
+    "TOTAL_SCORE_AGGREGATES",
+    "is_number",
     "DISPLAY_LABELS",
     "DOMAIN_AGGREGATES",
+    "FEEDBACK_KINDS",
+    "FEEDBACK_SHAPES",
     "FEEDBACK_SHOW",
     "FEEDBACK_TONES",
     "FIELD_ROLES",
@@ -31,7 +44,13 @@ __all__ = [
     "MAX_PROPERTIES",
     "RAG_SCALE",
     "RATING_KINDS",
+    "RULE_OF",
+    "RULE_TYPES",
+    "SCALE_STEPS",
     "SCHEMA_VERSION",
+    "SCHEME_SHOW",
+    "SCHEME_VERSION",
+    "SCORE_KINDS",
     "SECTION_KINDS",
     "TONES",
     "TOTAL_AGGREGATES",
@@ -70,6 +89,35 @@ DISPLAY_LABELS = ("title", "domainSubtitle", "domainPassLabel", "totalTitle", "t
 FEEDBACK_SHOW = ("overall", "areaScores", "wentWell", "workOn", "quotes")
 FEEDBACK_TONES = ("supportive", "formal", "brief")
 
+# The author's scheme (schemaVersion 3), which compiles to the version 2 above (`scheme.py`).
+SCHEME_VERSION = 3
+BLOCK_KINDS = ("domain", "notes", "custom")
+# The author's words and the version 2 words they compile to; the tuples below are their keys, so the
+# two vocabularies cannot drift apart.
+FEEDBACK_KIND_ROLES = {
+    "strengths": "strength",
+    "improvements": "improvement",
+    "actions": "action",
+    "quotes": "evidence",
+    "summary": "summary",
+    "flags": "flag",
+    "reason": "explanation",
+    "note": "other",
+}
+FEEDBACK_KINDS = tuple(FEEDBACK_KIND_ROLES)
+FEEDBACK_SHAPE_TYPES = {"line": "shortText", "paragraph": "longText", "list": "list"}
+FEEDBACK_SHAPES = tuple(FEEDBACK_SHAPE_TYPES)
+DOMAIN_SCORE_AGGREGATES = {"labels": "ragCounts", "sum": "sum", "mean": "mean", "percent": "percentAchieved"}
+TOTAL_SCORE_AGGREGATES = {"labels": "ragShare", "sum": "sum", "mean": "mean", "percent": "percentAchieved"}
+SCORE_KINDS = tuple(DOMAIN_SCORE_AGGREGATES)
+RULE_TYPES = ("score", "labels")
+RULE_OF = ("count", "percent")
+SCALE_STEP_TO_V2 = {"whole": "integer", "any": "number"}
+SCALE_STEPS = tuple(SCALE_STEP_TO_V2)
+SHOW_FROM_V2 = {"areaScores": "domainScores"}
+SHOW_TO_V2 = {scheme_key: v2_key for v2_key, scheme_key in SHOW_FROM_V2.items()}
+SCHEME_SHOW = tuple(SHOW_FROM_V2.get(key, key) for key in FEEDBACK_SHOW)
+
 # --- Size limits --------------------------------------------------------------
 # A structure becomes a strict JSON Schema sent to the model provider, whose
 # structured-output mode refuses schemas past these limits (OpenAI's documented
@@ -86,7 +134,7 @@ MAX_MARKED_LEAVES = 400
 
 # An id is used as a JSON property name and read back by code, so it is
 # constrained the way an identifier is rather than left as free text.
-_IDENTIFIER_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+IDENTIFIER_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 
 def validate_structure(raw: Any) -> list[ValidationError]:
@@ -144,8 +192,8 @@ class _Checker:
             return summary
         summary["kind"] = kind
         rating_field = raw.get("field", "score")
-        if not isinstance(rating_field, str) or not _IDENTIFIER_PATTERN.match(rating_field):
-            self.fail("rating.field", _IDENTIFIER_MESSAGE)
+        if not isinstance(rating_field, str) or not IDENTIFIER_PATTERN.match(rating_field):
+            self.fail("rating.field", IDENTIFIER_MESSAGE)
         else:
             summary["field"] = rating_field
         scale = raw.get("scale")
@@ -162,12 +210,24 @@ class _Checker:
             summary["scale"] = tuple(values)
         elif kind == "range":
             minimum, maximum = raw.get("minimum"), raw.get("maximum")
-            if not _is_number(minimum) or not _is_number(maximum) or not minimum < maximum:
+            if not is_number(minimum) or not is_number(maximum) or not minimum < maximum:
                 self.fail("rating", "A range rating needs a minimum below its maximum.")
             else:
                 summary["minimum"], summary["maximum"] = minimum, maximum
             if raw.get("step", "number") not in ("number", "integer"):
                 self.fail("rating.step", "A range's step must be number or integer.")
+        points = raw.get("points")
+        if points is not None and kind in ("rag", "scale"):
+            if (
+                not isinstance(points, list)
+                or len(points) != len(summary["scale"])
+                or not all(is_number(point) and point >= 0 for point in points)
+            ):
+                self.fail("rating.points", "Points must give one number for each scale value.")
+            elif any(later > earlier for earlier, later in zip(points, points[1:], strict=False)):
+                self.fail("rating.points", "Points must not rise down the scale.")
+            elif points[0] <= 0:
+                self.fail("rating.points", "The best level must earn more than zero points.")
         self.enum_values += len(summary["scale"])
         return summary
 
@@ -340,8 +400,8 @@ class _Checker:
 
     def claim_id(self, identifier: Any, path: str, taken: dict[str, str]) -> None:
         """An id valid as an identifier and not already used at this level."""
-        if not isinstance(identifier, str) or not _IDENTIFIER_PATTERN.match(identifier):
-            self.fail(f"{path}.id", _IDENTIFIER_MESSAGE)
+        if not isinstance(identifier, str) or not IDENTIFIER_PATTERN.match(identifier):
+            self.fail(f"{path}.id", IDENTIFIER_MESSAGE)
             return
         if identifier in taken:
             self.fail(
@@ -351,6 +411,30 @@ class _Checker:
         taken[identifier] = path
 
     # --- Display -----------------------------------------------------------------
+
+    def rule_matches_rating(
+        self, part: str, node: Mapping[str, Any], rule: Mapping[str, Any], rating: Mapping[str, Any]
+    ) -> None:
+        """A pass rule that counts ratings names a level this rating has, and counts them the way it says."""
+        path = f"display.{part}.rule"
+        if rule["type"] == "score":
+            if node.get("aggregate") in ("ragCounts", "ragShare"):
+                self.fail(path, "A count of ratings passes on a count rule, not a score to reach.")
+            return
+        if rule.get("of") not in RULE_OF:
+            self.fail(f"{path}.of", "Count competencies, or a percentage of them.")
+        elif rule["of"] == "percent" and rule["atLeast"] > 100:
+            self.fail(f"{path}.atLeast", "A percentage is at most 100.")
+        value, kind = rule.get("value"), rating.get("kind")
+        if kind in ("rag", "scale"):
+            known = isinstance(value, str) and value in rating["scale"]
+        elif kind == "boolean":
+            known = isinstance(value, bool)
+        else:
+            low, high = rating.get("minimum"), rating.get("maximum")
+            known = is_number(value) and is_number(low) and is_number(high) and low <= value <= high
+        if kind is not None and not known:
+            self.fail(f"{path}.value", "The rule names a level the scale does not have.")
 
     def display(self, raw: Any, rating: Mapping[str, Any], sections: list[Any]) -> None:
         """How feedback and the dashboard read the rubric: known words, and lines inside the range."""
@@ -372,21 +456,40 @@ class _Checker:
             self.fail(
                 "display.total.aggregate", f"A total aggregate is one of {', '.join(TOTAL_AGGREGATES)}."
             )
+        for part, node in (("domain", domain), ("total", total)):
+            rule = node.get("rule")
+            if rule is None:
+                continue
+            if (
+                not isinstance(rule, Mapping)
+                or rule.get("type") not in RULE_TYPES
+                or not is_number(rule.get("atLeast"))
+                or rule["atLeast"] < 0
+            ):
+                self.fail(f"display.{part}.rule", "A pass rule needs a type and a number to reach.")
+            elif node.get("passAtLeast") is not None:
+                self.fail(f"display.{part}.rule", "Set a pass line or a pass rule, not both.")
+            else:
+                self.rule_matches_rating(part, node, rule, rating)
         for key in ("passAtLeast",):
-            if domain.get(key) is not None and (not _is_number(domain[key]) or domain[key] < 0):
+            if domain.get(key) is not None and (not is_number(domain[key]) or domain[key] < 0):
                 self.fail(f"display.domain.{key}", "A domain pass line must be a number, zero or more.")
         for key in ("max", "passAtLeast"):
-            if total.get(key) is not None and (not _is_number(total[key]) or total[key] < 0):
+            if total.get(key) is not None and (not is_number(total[key]) or total[key] < 0):
                 self.fail(
                     f"display.total.{key}", "A total's max and pass line must be numbers, zero or more."
                 )
         if (
-            _is_number(total.get("max"))
-            and _is_number(total.get("passAtLeast"))
+            is_number(total.get("max"))
+            and is_number(total.get("passAtLeast"))
             and total["passAtLeast"] > total["max"]
         ):
             self.fail("display.total.passAtLeast", "The pass line sits above the total's maximum.")
-        if total.get("requireEveryDomain") and domain.get("passAtLeast") is None:
+        if (
+            total.get("requireEveryDomain")
+            and domain.get("passAtLeast") is None
+            and domain.get("rule") is None
+        ):
             self.fail(
                 "display.total.requireEveryDomain",
                 "Requiring every domain to pass needs a domain pass line (display.domain.passAtLeast).",
@@ -394,8 +497,8 @@ class _Checker:
         maximum = rating.get("maximum")
         if (
             domain.get("aggregate") == "mean"
-            and _is_number(domain.get("passAtLeast"))
-            and _is_number(maximum)
+            and is_number(domain.get("passAtLeast"))
+            and is_number(maximum)
             and domain["passAtLeast"] > maximum
         ):
             self.fail(
@@ -418,7 +521,7 @@ class _Checker:
                         self.fail(tone_path, "Each tone must be an object.")
                         continue
                     at_least = tone.get("atLeast")
-                    if not _is_number(at_least) or not 0 <= at_least <= 1:
+                    if not is_number(at_least) or not 0 <= at_least <= 1:
                         self.fail(
                             f"{tone_path}.atLeast",
                             "atLeast is a fraction of the rating's maximum, from 0 to 1.",
@@ -435,9 +538,9 @@ class _Checker:
                         self.fail(band_path, "Each band must be an object.")
                         continue
                     start, end = band.get("from"), band.get("to")
-                    if not _is_number(start) or not _is_number(end) or start > end:
+                    if not is_number(start) or not is_number(end) or start > end:
                         self.fail(band_path, "A band needs a from no greater than its to.")
-                    elif _is_number(total.get("max")) and end > total["max"]:
+                    elif is_number(total.get("max")) and end > total["max"]:
                         self.fail(f"{band_path}.to", "A band ends above the total's maximum.")
                     if not isinstance(band.get("label", ""), str):
                         self.fail(f"{band_path}.label", "A band's label must be text.")
@@ -514,11 +617,11 @@ class _Checker:
             )
 
 
-_IDENTIFIER_MESSAGE = (
+IDENTIFIER_MESSAGE = (
     "An id uses lower-case letters, digits and underscores, starts with a letter, and is at most 64 long."
 )
 
 
-def _is_number(value: object) -> TypeGuard[int | float]:
+def is_number(value: object) -> TypeGuard[int | float]:
     """A real number, not text and not a boolean passed off as one."""
     return isinstance(value, int | float) and not isinstance(value, bool)

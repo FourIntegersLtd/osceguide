@@ -3,18 +3,15 @@ import test from "node:test";
 import type { ResultsIndexRow } from "@/domains/assess/results/api";
 import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
 import type { LiveCircuit, OrgSetup } from "@/domains/assess/dashboard/api";
+import { assistantPieces, assistantSteps, firstOpenStep, setupComplete, setupTiles, showsSkip, stepBlock } from "@/domains/assess/dashboard/setupSteps";
 import {
   runsByDay,
   boardOrder,
   candidatesLabel,
   circuitStatus,
-  assistantSteps,
   attentionFromResults,
-  firstOpenStep,
   recordingMissing,
-  setupComplete,
   todaySentence,
-  stepBlock,
   runningLine,
   stillToReviewLine,
   draftsWaitingLine,
@@ -260,6 +257,37 @@ test("trainees who have not joined are one attention row that opens People", () 
     title: "Trainees who have not accepted their invitation",
     body: "They cannot be scheduled until they set a password. Resend in one step.",
     href: "/people",
+    tone: "neutral",
   });
   assert.equal(notJoinedItem(1, INSTITUTION_WORDS)?.title, "A trainee who has not accepted their invitation");
+});
+
+test("setup assistant: Skip for now shows on step 4 only", () => {
+  const steps = assistantSteps(setup(), INSTITUTION_WORDS);
+  assert.deepEqual(
+    steps.map((_, index) => showsSkip(steps, index)),
+    [false, false, false, true, false],
+  );
+});
+
+test("setup assistant: the four stat tiles and four pieces, each a route", () => {
+  const counts = { programmes_with_markable_exam: 0, stations: 0, trainees: 0, staff: 1 };
+  assert.deepEqual(
+    setupTiles(counts, INSTITUTION_WORDS).map((tile) => [tile.label, tile.value, tile.path]),
+    [
+      ["Exams ready", 0, "/authoring/exams"],
+      ["Published stations", 0, "/authoring/stations"],
+      ["Trainees", 0, "/trainees"],
+      ["Staff", 1, "/team"],
+    ],
+  );
+  assert.deepEqual(
+    assistantPieces(INSTITUTION_WORDS).map((piece) => [piece.title, piece.path]),
+    [
+      ["Exam", "/authoring"],
+      ["Stations", "/authoring/stations"],
+      ["People", "/trainees"],
+      ["Sitting", "/sittings"],
+    ],
+  );
 });

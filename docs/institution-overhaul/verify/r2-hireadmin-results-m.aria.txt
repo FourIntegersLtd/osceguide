@@ -1,0 +1,28 @@
+- main:
+  - heading "Results" [level=1]
+  - paragraph: Each assessment with how far its decisions have got.
+  - heading "Needs your attention" [level=2]
+  - 'link "R2 hire assessment: 1 candidate needs a decision Decide"':
+    - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26/results
+    - img
+    - text: "R2 hire assessment: 1 candidate needs a decision Decide"
+  - tablist "Filter results":
+    - tab "Needs a decision" [selected]
+    - tab "Ready to release"
+    - tab "All"
+  - link "R2 hire assessment":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26/results
+  - term: Date
+  - definition: Not scheduled
+  - term: Kind
+  - definition: Formal exam
+  - term: Candidates
+  - definition: "1"
+  - term: Not decided
+  - definition: "1"
+  - term: Draft
+  - definition: "0"
+  - term: Signed off
+  - definition: "0"
+  - term: Released
+  - definition: "0"

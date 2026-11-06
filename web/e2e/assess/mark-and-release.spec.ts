@@ -48,7 +48,7 @@ test.describe.serial("ASSESS-4 review, decide, release", () => {
     await openPage(admin, `/app/${w.slug}/slots/${sitting.slotId}/review?sitting=${sitting.id}`);
     await expect(admin.getByRole("heading", { level: 1, name: "Mark this station" })).toBeVisible();
     // Every rating row offers G / A / R; rate them all Green.
-    const green = admin.getByRole("button", { name: "G", exact: true });
+    const green = admin.getByRole("button", { name: "Green", exact: true });
     for (const button of await green.all()) await button.click();
     await admin.getByRole("button", { name: "Complete review" }).click();
     await expect(admin.getByText(/Review completed/)).toBeVisible();

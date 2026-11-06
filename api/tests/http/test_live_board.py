@@ -153,6 +153,8 @@ async def test_a_voice_fault_on_an_overdue_phase_says_voice_not_worker(
     The board then names the voice service rather than a late clock, which would send
     somebody to look at the worker.
     """
+    app = client._transport.app  # type: ignore[attr-defined]
+    app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents(fail_dispatch=True)
     admin, _, _ = await a_running_morning(client, make_actor, db_session)
 
     clock.set(NOW + timedelta(minutes=10))

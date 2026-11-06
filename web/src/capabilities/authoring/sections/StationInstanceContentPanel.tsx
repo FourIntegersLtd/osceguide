@@ -16,33 +16,51 @@ export function StationInstanceContentPanel({
   onChange,
   readOnly,
   media,
+  board,
+  gap,
 }: {
   structure: StationStructure;
   content: Record<string, unknown>;
   onChange: (next: Record<string, unknown>) => void;
   readOnly?: boolean;
   media?: MediaUploads;
+  /** The institution board's folds (see FoldSection). */
+  board?: boolean;
+  /** Space the board's folds apart (the create screen's cards; the builder stacks them flush). */
+  gap?: boolean;
 }) {
+  // The boards draw photos as one card under the folds, so a media block leaves its section there.
+  const isMedia = (type: string) => board && type === "media";
+  const sections = structure.sections
+    .map((sec) => ({ sec, blocks: sec.blocks.filter((block) => !isMedia(block.type)) }))
+    .filter((entry) => entry.blocks.length > 0 || !board);
+  const photoSections = structure.sections.filter((sec) => sec.blocks.some((block) => isMedia(block.type)));
+  const blocksFor = (sec: StationStructure["sections"][number], blocks: typeof sec.blocks) => (
+    <StationInstanceBlocks
+      blocks={blocks}
+      content={contentSliceForSection(content, sec)}
+      onChange={(slice) => onChange(mergeSectionIntoContent(content, sec, slice))}
+      readOnly={readOnly}
+      listEditor="admin"
+      media={media}
+      board={board}
+    />
+  );
   return (
-    <div className="space-y-3">
-      {structure.sections.map((sec, sectionIndex) => (
+    <div className={board ? `flex flex-col${gap ? " gap-6" : ""}` : "space-y-3"}>
+      {sections.map(({ sec, blocks }, index) => (
         <FoldSection
           key={sec.id}
-          number={sectionIndex + 1}
+          number={index + 1}
           title={sec.title}
           description={sec.description || undefined}
-          defaultOpen={sectionIndex === 0}
+          defaultOpen={index === 0}
+          board={board}
         >
-          <StationInstanceBlocks
-            blocks={sec.blocks}
-            content={contentSliceForSection(content, sec)}
-            onChange={(slice) => onChange(mergeSectionIntoContent(content, sec, slice))}
-            readOnly={readOnly}
-            listEditor="admin"
-            media={media}
-          />
+          {blocksFor(sec, blocks)}
         </FoldSection>
       ))}
+      {photoSections.map((sec) => blocksFor(sec, sec.blocks.filter((block) => isMedia(block.type))))}
     </div>
   );
 }

@@ -101,7 +101,7 @@ async def test_the_console_moves_revokes_and_restores_a_membership_without_becom
 ) -> None:  # type: ignore[no-untyped-def]
     root = await make_actor("root@osceguide.com", platform_admin=True)
     await an_org(client, root, "kings")
-    await make_actor("first@kings.example.com")
+    await make_actor("first@kings.example.com", signed_in=True)
     await make_actor("second@kings.example.com")
     seated = await client.post(
         "/api/v1/platform/organizations/kings/memberships",

@@ -1,0 +1,5 @@
+- main:
+  - heading "Self practice" [level=1]
+  - paragraph: Your organisation's stations. Nothing here is marked for the record.
+  - paragraph: No published stations yet
+  - paragraph: Your organisation has not added any stations yet. Ask your administrator when they will be ready.

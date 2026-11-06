@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { Alert, B2CSkeleton, Button, EmptyState, Panel } from "@/foundation/ui";
 import { cn } from "@/foundation/ui/cn";
 import { READER_EMPTY_TEXT } from "@/capabilities/authoring/parts/CannotAuthor";
+import { boardMeta } from "@/capabilities/authoring/parts/boardUi";
+import { boardCardClipped, boardHeadRowWide, boardPadWide } from "@/foundation/ui/boardKit";
 import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 
@@ -33,6 +35,50 @@ export function ListCard({
 }) {
   const chrome = useAuthoringChrome();
   const canAuthor = useCanAuthor();
+
+  if (!chrome.b2c) {
+    const emptyText = canAuthor || empty.sameForReaders ? empty.description : READER_EMPTY_TEXT;
+    if (count === 0 && !loading && !error) {
+      return (
+        <div className={boardPadWide}>
+          <h2 className="m-0 text-osce-body font-semibold !leading-[normal] text-ink">{empty.title}</h2>
+          <p className={`m-0 ${boardMeta}`}>{emptyText}</p>
+          {empty.action}
+        </div>
+      );
+    }
+    return (
+      <div className={boardCardClipped}>
+        <div className={boardHeadRowWide}>
+          <span>
+            {countLabel} {count}
+          </span>
+          {meta ? <span>{meta}</span> : null}
+        </div>
+        {error ? (
+          <div className="border-t border-osce-border-light p-5">
+            <Alert tone="danger">
+              <div className="flex items-start justify-between gap-3">
+                <p>{error}</p>
+                {onDismissError ? (
+                  <Button variant="ghost" size="xs" onClick={onDismissError}>
+                    Dismiss
+                  </Button>
+                ) : null}
+              </div>
+            </Alert>
+          </div>
+        ) : null}
+        {loading ? (
+          <div className="border-t border-osce-border-light p-5">
+            <B2CSkeleton lines={3} />
+          </div>
+        ) : (
+          children
+        )}
+      </div>
+    );
+  }
 
   return (
     <Panel padding="none" className="overflow-hidden">

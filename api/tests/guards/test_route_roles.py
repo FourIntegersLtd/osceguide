@@ -35,6 +35,7 @@ NO_ROLE = {
     "POST /api/v1/auth/refresh": "carries its own refresh token instead",
     "POST /api/v1/auth/exchange-legacy": "carries the legacy token it exchanges",
     "POST /api/v1/auth/password-reset": "a forgotten password has no session",
+    "GET /api/v1/auth/invitation/{token}": "emailed invitation token; answers only the sender's name",
     "POST /api/v1/auth/password-reset/confirm": "carries the emailed password reset token",
     "POST /api/v1/auth/email-change/confirm": "carries the emailed confirmation token instead",
     "POST /api/v1/auth/mfa/verify": "carries the MFA challenge token",
@@ -67,7 +68,7 @@ NO_ROLE = {
     "GET /api/v1/media/lookup": "published study media is public",
     "GET /api/v1/media/{slug}": "published study media is public",
 }
-NO_ROLE_CEILING = 37  # lower only
+NO_ROLE_CEILING = 38  # lower only (37 + GET /auth/invitation/{token}, a token route)
 
 
 def key(route: APIRoute) -> str:

@@ -1,0 +1,10 @@
+- main:
+  - link "Assessments":
+    - /url: /app/e2e-hire-mw3om0c6/sittings
+  - heading "Schedule an assessment" [level=1]
+  - paragraph: Steps unlock in order. Nothing is created until the last step.
+  - status:
+    - paragraph: No exam is ready to schedule
+    - paragraph: Every assessment belongs to an exam with a published marking scheme. Set one up, then come back here.
+    - link "Set up an exam":
+      - /url: /app/e2e-hire-mw3om0c6/programmes

@@ -1,0 +1,15 @@
+- main:
+  - paragraph: Released 05/11/2026
+  - heading "Assessment outcome" [level=1]
+  - button "Download PDF"
+  - paragraph: Outcome
+  - heading "Pass, 100.0 / 100" [level=2]
+  - paragraph: "Journey: met the standard."
+  - button "I have read this"
+  - heading "By station" [level=2]
+  - text: E2E gender voice test - male patient 100 / 100
+  - paragraph: Keep practising
+  - heading "Practise on your own" [level=2]
+  - paragraph: Nothing you do here is marked for the record.
+  - link "Self practice":
+    - /url: /app/e2e-mw3om0c6/trainee/practice

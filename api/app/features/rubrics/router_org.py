@@ -131,9 +131,14 @@ async def create_org_rubric(
     responses=error_responses(Forbidden, *_NOT_FOUND),
 )
 async def add_org_version(
-    rubric_id: uuid.UUID, workspace: OrgAdmin, session: Session
+    rubric_id: uuid.UUID,
+    workspace: OrgAdmin,
+    session: Session,
+    body: schemas.NewRubricVersion | None = None,
 ) -> schemas.RubricVersionRead:
-    return await service.add_version(session, workspace.org_id, rubric_id)
+    return await service.add_version(
+        session, workspace.org_id, rubric_id, from_version=body.from_version if body else None
+    )
 
 
 # Rewrite this organisation's own draft version. Refused once it is published.

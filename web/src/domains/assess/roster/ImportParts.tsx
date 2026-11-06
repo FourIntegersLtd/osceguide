@@ -2,6 +2,7 @@
 
 import { Alert } from "@/foundation/ui";
 import type { BulkTraineesResult } from "@/domains/assess/roster/api";
+import { importSummary } from "@/domains/assess/roster/csv";
 
 /**
  * What a file should look like, and what happened to it.
@@ -45,9 +46,12 @@ export function ImportInstructions() {
 export function ImportOutcome({
   result,
   describe,
+  leftOut = 0,
 }: {
   result: BulkTraineesResult;
   describe: (code: string) => string;
+  /** Rows the file dropped before sending (no usable email address). */
+  leftOut?: number;
 }) {
   const created = result.created ?? [];
   const skipped = result.skipped ?? [];
@@ -55,8 +59,13 @@ export function ImportOutcome({
   return (
     <div className="space-y-3">
       <Alert tone={created.length > 0 ? "success" : "warning"}>
-        {created.length} added, {skipped.length} skipped.
+        {importSummary(created.length, skipped.length, leftOut)}
       </Alert>
+      {leftOut > 0 ? (
+        <p className="text-osce-caption text-b2b-mid">
+          {leftOut} {leftOut === 1 ? "row" : "rows"} in the file had no usable email address and {leftOut === 1 ? "was" : "were"} left out.
+        </p>
+      ) : null}
       {skipped.length > 0 ? (
         <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4">
           <p className="text-osce-body font-semibold text-b2b-headline">Not imported</p>

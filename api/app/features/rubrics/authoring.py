@@ -44,7 +44,9 @@ _SAMPLE_ITEMS = 2
 
 
 def blank_structure() -> dict[str, Any]:
-    """The smallest rubric that can be published: R/A/G, one domain, one competency.
+    """The smallest publishable rubric in the v2 shape (the fixture; `blank_scheme` is the v3 draft).
+
+    R/A/G, one domain, one competency.
 
     Every competency answers a rating, the evidence for it and why, which is
     what every platform exam asks too.
@@ -65,6 +67,39 @@ def blank_structure() -> dict[str, Any]:
                     {"id": "explanation", "type": "longText", "role": "explanation", "label": "Explanation"},
                 ],
             }
+        ],
+    }
+
+
+def blank_scheme() -> dict[str, Any]:
+    """The smallest publishable scheme, as an author starts it: R/A/G, one domain, one competency."""
+    return {
+        "schemaVersion": 3,
+        "mark": {"field": "score", "role": "rating", "label": "Rating"},
+        "scales": [
+            {
+                "id": "rag",
+                "name": "RAG",
+                "levels": [
+                    {"value": "G", "label": "Green", "points": 3},
+                    {"value": "A", "label": "Amber", "points": 2},
+                    {"value": "R", "label": "Red", "points": 1},
+                ],
+            }
+        ],
+        "outline": [
+            {
+                "block": "domain",
+                "id": "domain_1",
+                "title": "Domain 1",
+                "instructions": "",
+                "scale": "rag",
+                "competencies": [{"id": "competency_1", "label": "Competency 1", "instructions": ""}],
+            }
+        ],
+        "competencyFeedback": [
+            {"id": "evidence", "kind": "quotes", "shape": "paragraph", "label": "Evidence"},
+            {"id": "explanation", "kind": "reason", "shape": "paragraph", "label": "Explanation"},
         ],
     }
 

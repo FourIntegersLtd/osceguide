@@ -1,0 +1,38 @@
+- main:
+  - link "Exams":
+    - /url: /app/e2e-mw3om0c6/authoring/exams
+  - paragraph: R2 Exam
+  - heading "Exam settings" [level=1]
+  - paragraph: "Every setting an exam has: its timings, how it is marked, and what trainees get after a station."
+  - status:
+    - paragraph: Publish this exam to run sittings against it.
+  - list "Steps":
+    - listitem: Pick marking scheme Chosen
+    - listitem: Publish Draft
+  - text: Code
+  - textbox "Code" [disabled]:
+    - /placeholder: e.g. finals
+    - text: r2x
+  - text: Name
+  - textbox "Name":
+    - /placeholder: e.g. Final MB OSCE
+    - text: R2 Exam
+  - text: Reading time (seconds)
+  - spinbutton "Reading time (seconds)": "180"
+  - text: Station time (seconds)
+  - spinbutton "Station time (seconds)": "600"
+  - text: Break between stations (minutes, formal exams)
+  - spinbutton "Break between stations (minutes, formal exams)"
+  - text: Attempts per station
+  - spinbutton "Attempts per station": "3"
+  - text: Marking scheme version
+  - combobox "Marking scheme version":
+    - option "None yet"
+    - option "Orthopaedic interview marking rubric · v1" [selected]
+    - option "CASC marking rubric · v1"
+    - option "PLAB 2 marking rubric · v1"
+    - option "Simulated Consultation Assessment marking rubric · v1"
+  - button "Exam settings"
+  - paragraph: Partner-pilot status is set by OSCE Guide staff, not from here.
+  - button "Cancel"
+  - button "Save"

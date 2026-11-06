@@ -27,8 +27,12 @@ async def create_trainee(
     first_name: str | None,
     last_name: str | None,
     cohort_id: uuid.UUID | None,
+    created_at: datetime | None = None,
 ) -> Trainee | None:
     """Add a trainee to an organisation's roster, or None when that address is already on it.
+
+    `created_at` lets a bulk import stamp its rows in file order: one transaction gives every
+    row the same default, and the list (oldest first) would break that tie at random.
 
     One statement decides: a duplicate leaves no failed flush behind, so a bulk import
     can carry on to its next row.
@@ -41,6 +45,7 @@ async def create_trainee(
             first_name=first_name,
             last_name=last_name,
             cohort_id=cohort_id,
+            **({} if created_at is None else {"created_at": created_at}),
         )
         .on_conflict_do_nothing(constraint="uq_trainees_org_email")
         .returning(Trainee)

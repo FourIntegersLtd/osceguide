@@ -14,14 +14,14 @@ import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import type { RubricDashboardPreview } from "@/capabilities/authoring/rubrics/dashboardSlot";
-import { RubricBuilder } from "@/capabilities/authoring/rubrics/RubricBuilder";
+import { SchemeBuilder } from "@/capabilities/authoring/rubrics/SchemeBuilder";
 import { copyAndOpen } from "@/capabilities/authoring/rubrics/copyAndOpen";
 import { useExamReturn } from "@/capabilities/authoring/rubrics/useExamReturn";
 import { rubricEditPath, rubricsListPath } from "@/capabilities/authoring/templates/paths";
 
 /**
  * The rubric builder's page: loads the rubric, finds the version in the URL
- * and hands it to `RubricBuilder`.
+ * and hands it to `SchemeBuilder`.
  *
  * Only a draft of a rubric this scope owns is editable. Anything else is
  * shown read-only with the one way forward: a new draft version of your own
@@ -67,7 +67,7 @@ export function RubricBuilderScreen({
                 className="mb-0"
               />
               {found ? (
-                <RubricBuilder
+                <SchemeBuilder
                   // A publish changes what may be edited, and a save by someone else changes what is
                   // there: either way the builder starts over on the reloaded version.
                   key={`${found.id}:${found.status}:${found.revision}`}
@@ -75,6 +75,7 @@ export function RubricBuilderScreen({
                   rubric={data}
                   version={found}
                   readOnly={!editable || found.status !== "draft"}
+                  owned={owned}
                   dashboardPreview={dashboardPreview}
                   examHref={examHref}
                   onPublished={rubric.reload}

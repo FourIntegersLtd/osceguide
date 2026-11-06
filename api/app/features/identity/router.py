@@ -11,6 +11,7 @@ from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.memberships import MembershipsFor
 from app.core.ports import ClockDep
 from app.core.rate_limit import (
+    INVITATION_LOOKUP,
     LEGACY_EXCHANGE,
     PASSWORD_RESET,
     REGISTER,
@@ -208,6 +209,22 @@ async def begin_password_reset(
     await check(PASSWORD_RESET, caller_key(request))
     await service_passwords.begin_password_reset(session, email=body.email, now=clock.now())
     return schemas.Accepted()
+
+
+# Who sent an invitation, for the accept page to greet the person with. The token is the only
+# credential and only the organisation's name comes back; every other token gets the same refusal
+# `password-reset/confirm` gives, so this cannot tell a tester which guesses were real.
+@router.get(
+    "/auth/invitation/{token}",
+    response_model=schemas.InvitationLookup,
+    responses=error_responses(errors.InvalidResetToken, TooManyRequests),
+)
+async def look_up_invitation(
+    request: Request, token: str, session: SessionDep, clock: ClockDep
+) -> schemas.InvitationLookup:
+    await check(INVITATION_LOOKUP, caller_key(request))
+    name = await service_passwords.invitation_organisation_name(session, token=token, now=clock.now())
+    return schemas.InvitationLookup(organisation_name=name)
 
 
 # Redeem a reset token for a new password. Ends every existing session, the

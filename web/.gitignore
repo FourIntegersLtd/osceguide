@@ -13,7 +13,7 @@ AGENTS.md.bak
 .vercel
 
 # Playwright end-to-end run (e2e/)
-/.next-e2e/
-/test-results/
+/.next-*/
+/test-results*/
 /playwright-report/
 /e2e/.auth/

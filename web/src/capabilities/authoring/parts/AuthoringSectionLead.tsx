@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { boardActs, boardMeta } from "@/capabilities/authoring/parts/boardUi";
 import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 
@@ -20,9 +21,9 @@ export function AuthoringSectionLead({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      {children ? <p className={`text-osce-body ${chrome.bodyMuted}`}>{children}</p> : null}
-      {shown}
+    <div className="flex flex-wrap justify-between gap-3">
+      {children ? <div className={`${boardMeta} min-w-0 flex-1 basis-[240px]`}>{children}</div> : null}
+      {shown ? <div className={`${boardActs} shrink-0`}>{shown}</div> : null}
     </div>
   );
 }

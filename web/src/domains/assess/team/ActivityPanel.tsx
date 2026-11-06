@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { AsyncBoundary, Button, Input, b2bTokens } from "@/foundation/ui";
+import { AsyncBoundary, b2bTokens as t, cn } from "@/foundation/ui";
+import { acts, card, fields } from "@/domains/assess/ui";
 import { useAsync } from "@/foundation/hooks";
 import { formatWhen } from "@/domains/assess/team/chrome";
 import { listAudit, type AuditFilters } from "@/domains/assess/team/api";
+import { boardBtn, boardPadWide, boardInput, boardLabel } from "@/foundation/ui/boardKit";
 
 /**
  * The history tab: who added, changed or removed people and groups.
@@ -17,7 +19,10 @@ import { listAudit, type AuditFilters } from "@/domains/assess/team/api";
  * prefix, such as `membership.`) is the server's, as on the platform audit.
  */
 export function ActivityPanel({ orgSlug }: { orgSlug: string }) {
-  const [draft, setDraft] = useState<AuditFilters>({ actorEmail: "", action: "" });
+  const [draft, setDraft] = useState<AuditFilters>({
+    actorEmail: "",
+    action: "",
+  });
   const [filters, setFilters] = useState<AuditFilters>({});
   const filtering = Boolean(filters.actorEmail || filters.action);
 
@@ -27,9 +32,9 @@ export function ActivityPanel({ orgSlug }: { orgSlug: string }) {
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       <form
-        className="flex flex-wrap items-end gap-3"
+        className={boardPadWide}
         onSubmit={(event) => {
           event.preventDefault();
           setFilters({
@@ -38,35 +43,55 @@ export function ActivityPanel({ orgSlug }: { orgSlug: string }) {
           });
         }}
       >
-        <Input
-          label="Done by"
-          type="email"
-          placeholder="name@hospital.nhs.uk"
-          value={draft.actorEmail ?? ""}
-          onChange={(event) => setDraft((prev) => ({ ...prev, actorEmail: event.target.value }))}
-        />
-        <Input
-          label="Action"
-          placeholder="e.g. membership."
-          value={draft.action ?? ""}
-          onChange={(event) => setDraft((prev) => ({ ...prev, action: event.target.value }))}
-        />
-        <Button themeType="b2b" variant="secondary" type="submit">
-          Filter
-        </Button>
-        {filtering ? (
-          <Button
-            themeType="b2b"
-            variant="ghost"
+        <div className={fields}>
+          <div>
+            <label htmlFor="audit-actor" className={boardLabel}>
+              Done by
+            </label>
+            <input
+              id="audit-actor"
+              className={boardInput}
+              type="email"
+              placeholder="name@hospital.nhs.uk"
+              value={draft.actorEmail ?? ""}
+              onChange={(event) =>
+                setDraft((prev) => ({
+                  ...prev,
+                  actorEmail: event.target.value,
+                }))
+              }
+            />
+          </div>
+          <div>
+            <label htmlFor="audit-action" className={boardLabel}>
+              Action
+            </label>
+            <input
+              id="audit-action"
+              className={boardInput}
+              placeholder="e.g. membership."
+              value={draft.action ?? ""}
+              onChange={(event) =>
+                setDraft((prev) => ({ ...prev, action: event.target.value }))
+              }
+            />
+          </div>
+        </div>
+        <div className={acts}>
+          <button type="submit" className={boardBtn()}>
+            Filter
+          </button>
+          <button
             type="button"
+            className={boardBtn("ghost")}
             onClick={() => {
               setDraft({ actorEmail: "", action: "" });
               setFilters({});
             }}
           >
             Clear
-          </Button>
-        ) : null}
+          </button>
+        </div>
       </form>
 
       <AsyncBoundary
@@ -86,27 +111,32 @@ export function ActivityPanel({ orgSlug }: { orgSlug: string }) {
         }
       >
         {(page) => (
-          <>
-            <div className={b2bTokens.b2bGroupedShell}>
-              <ul className="divide-y divide-b2b-border">
-                {page.items.map((event) => (
-                  <li key={event.id} className="px-4 py-3">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="text-osce-body font-medium text-b2b-headline">
-                        {event.summary ?? event.action}
-                      </p>
-                      <time className="shrink-0 text-osce-caption text-b2b-mid" dateTime={event.at}>
-                        {formatWhen(event.at)}
-                      </time>
-                    </div>
-                    {event.actor_email ? (
-                      <p className="mt-0.5 text-osce-caption text-b2b-icon">By {event.actor_email}</p>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </>
+          <div className={card}>
+            {page.items.map((event, index) => (
+              <div
+                key={event.id}
+                className={cn(
+                  "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-4",
+                  index > 0 && "border-t border-osce-border-light",
+                )}
+              >
+                <div className="min-w-0 flex-[1_1_260px]">
+                  <div className="text-assess-label font-semibold text-osce-ink-900">
+                    {event.summary ?? event.action}
+                  </div>
+                  {event.actor_email ? (
+                    <div className={t.assessMeta}>By {event.actor_email}</div>
+                  ) : null}
+                </div>
+                <time
+                  className={cn(t.assessMeta, "shrink-0")}
+                  dateTime={event.at}
+                >
+                  {formatWhen(event.at)}
+                </time>
+              </div>
+            ))}
+          </div>
         )}
       </AsyncBoundary>
     </div>

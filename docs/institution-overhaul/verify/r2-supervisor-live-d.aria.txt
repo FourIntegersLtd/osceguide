@@ -1,0 +1,24 @@
+- main:
+  - heading "Now running" [level=1]
+  - paragraph: Every circuit that is live in your organisation, updated as it happens.
+  - text: Live
+  - paragraph: Nothing is running.
+  - paragraph: Circuits appear here the moment a supervisor starts one.
+  - region "Earlier":
+    - heading "Earlier · Today" [level=2]
+    - link "Circuit run circuit Circuit run · exam · 1 candidate · 1 of 1 stations 15:11–16:36":
+      - /url: /app/e2e-mw3om0c6/circuits/84619a49-730a-4a19-9600-6f555d8d3e00
+      - img
+      - text: Circuit run circuit Circuit run · exam · 1 candidate · 1 of 1 stations 15:11–16:36
+    - link "OV training run circuit OV training run · training · 1 candidate · 0 of 1 stations · ended early 15:13–15:13":
+      - /url: /app/e2e-mw3om0c6/circuits/9336ba20-e397-4745-b08e-a3e5a4c1a07b
+      - img
+      - text: OV training run circuit OV training run · training · 1 candidate · 0 of 1 stations · ended early 15:13–15:13
+    - link "OV exam to review circuit OV exam to review · exam · 1 candidate · 0 of 1 stations · ended early 15:13–15:13":
+      - /url: /app/e2e-mw3om0c6/circuits/e611deb4-b426-46a2-b90a-152f129ad14b
+      - img
+      - text: OV exam to review circuit OV exam to review · exam · 1 candidate · 0 of 1 stations · ended early 15:13–15:13
+    - link "Release run circuit Release run · exam · 1 candidate · 0 of 1 stations · ended early 15:10–15:10":
+      - /url: /app/e2e-mw3om0c6/circuits/1377ea4f-2d31-4d09-9e89-0feb513e7666
+      - img
+      - text: Release run circuit Release run · exam · 1 candidate · 0 of 1 stations · ended early 15:10–15:10

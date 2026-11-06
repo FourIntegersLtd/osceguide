@@ -117,6 +117,40 @@ def forget_after_commit(session: AsyncSession, key: str) -> None:
     session.info.setdefault(PENDING_KEY, []).append(("forget", key))
 
 
+class ActiveOnlyRefusal(Exception):  # noqa: N818 - control flow out of `get_or_load`, never an error
+    """A loader refused to store its answer in an active-only cache slot."""
+
+    def __init__(self, detail: object) -> None:
+        self.detail = detail
+
+
+async def confirm_active_cached(
+    key: str,
+    ttl: int,
+    *,
+    fresh: bool,
+    confirm_active: Callable[[], Awaitable[None]],
+) -> ActiveOnlyRefusal | None:
+    """Cache only when `confirm_active` completes. Returns a refusal to map to an error, else None."""
+    if fresh or ttl <= 0:
+        try:
+            await confirm_active()
+            return None
+        except ActiveOnlyRefusal as refusal:
+            return refusal
+
+    async def load() -> str:
+        """Looks the account up afresh once the remembered answer has expired."""
+        await confirm_active()
+        return "active"
+
+    try:
+        await get_or_load(key, ttl, load, dump=str, parse=str)
+        return None
+    except ActiveOnlyRefusal as refusal:
+        return refusal
+
+
 async def flush_cache_ops(session: AsyncSession) -> None:
     """Run what the committed transaction queued. Called by `core.db` only; a rollback never calls it."""
     ops: list[CacheOp] = session.info.pop(PENDING_KEY, [])

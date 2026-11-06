@@ -1,0 +1,58 @@
+- main:
+  - link "R2 wizard fail":
+    - /url: /app/e2e-mw3om0c6/sittings/6d3091bf-2a0c-4bfa-b500-47f5f9bd321d
+  - heading "Exam – Tess Trainee" [level=1]
+  - paragraph: "Tess Trainee · Not started · Supervisor: Ada Admin"
+  - button "Observing an examination"
+  - link "Edit":
+    - /url: /app/e2e-mw3om0c6/circuits/aa4453bf-f63f-4031-a965-5768a7a54d98/edit
+  - text: Live
+  - list:
+    - listitem:
+      - text: "1"
+      - paragraph: Start the circuit
+      - paragraph: Opens the room for everybody
+    - listitem:
+      - text: "2"
+      - paragraph: On station
+      - paragraph: After the circuit starts
+    - listitem:
+      - text: "3"
+      - paragraph: Reading time
+      - paragraph: Once somebody is on station
+    - listitem:
+      - text: "4"
+      - paragraph: Consultation
+      - paragraph: After reading time
+  - button "Start circuit"
+  - paragraph: "Not started yet? One button: Start circuit. Every override asks for a reason, kept with the record. Starting begins reading time for station 1."
+  - heading "Station progress" [level=2]
+  - table:
+    - rowgroup:
+      - row "Candidate Station Phase Left Marking":
+        - columnheader "Candidate"
+        - columnheader "Station"
+        - columnheader "Phase"
+        - columnheader "Left"
+        - columnheader "Marking"
+    - rowgroup:
+      - row "Tess Trainee 1 · E2E gender voice test - male patient Not started":
+        - cell "Tess Trainee":
+          - paragraph: Tess Trainee
+        - cell "1 · E2E gender voice test - male patient"
+        - cell "Not started"
+        - cell
+        - cell
+  - text: The room Not connected
+  - button "Listen in" [disabled]
+  - paragraph: You can hear the consultation without being heard in it. Nothing you do here reaches the candidate or the patient.
+  - heading "Share this circuit's feedback" [level=2]
+  - paragraph: Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one.
+  - paragraph: Marked on 0 of 1 station
+  - text: Notes on the circuit as a whole
+  - textbox "Notes on the circuit as a whole":
+    - /placeholder: Anything to say about the circuit as a whole (optional)
+  - paragraph: Not published yet.
+  - paragraph: You can publish once at least one station is marked; this is the step that finalises the circuit's feedback.
+  - button "Publish circuit feedback" [disabled]
+  - button "What was changed by hand Show"

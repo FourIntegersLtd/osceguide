@@ -1,0 +1,38 @@
+- main:
+  - heading "Exams" [level=1]
+  - paragraph: "Everything you examine with: the exams themselves, their stations, how they are marked, the layout a station follows, and which exams are offered for scheduling."
+  - tablist "Authoring section":
+    - tab "Exams"
+    - tab "Stations"
+    - tab "Marking schemes"
+    - tab "Station layouts" [selected]
+    - tab "Programmes"
+  - tabpanel:
+    - paragraph: Define layout and fields for clinical stations. Saved drafts and published versions appear below, but not the starting layouts on the new-template wizard.
+    - button "Import from PDF or Word"
+    - button "Create station template"
+    - combobox "Filter by exam":
+      - option "All exams" [selected]
+      - option "CASC (casc)"
+      - option "Orthopaedic interview (ortho)"
+      - option "PLAB 2 (plab)"
+      - option "Simulated Consultation Assessment (sca)"
+    - text: Search station templates
+    - searchbox "Search station templates"
+    - text: Station templates 8
+    - paragraph: PLAB 2 station
+    - text: plab Not live
+    - paragraph: Simulation scenario (ASPiH)
+    - text: Not live
+    - paragraph: SCA consultation station
+    - text: sca Not live
+    - paragraph: Ortho ST3 communication
+    - text: ortho Not live
+    - paragraph: CASC station
+    - text: casc Not live
+    - paragraph: Ortho ST3 prioritisation
+    - text: ortho Not live
+    - paragraph: Ortho ST3 portfolio
+    - text: ortho Not live
+    - paragraph: Ortho ST3 clinical
+    - text: ortho Not live

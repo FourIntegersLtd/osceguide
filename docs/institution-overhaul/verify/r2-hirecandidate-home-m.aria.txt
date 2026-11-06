@@ -1,0 +1,11 @@
+- main:
+  - paragraph: E2E Employer mw3om0c6
+  - heading "Hello, Cass." [level=1]
+  - text: Live
+  - region "Your assessments":
+    - heading "Your assessments" [level=2]
+    - link "R2 hire assessment Examination · 0 of 1 stations completed · Not started · 0/1":
+      - /url: /app/e2e-hire-mw3om0c6/trainee/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26
+  - heading "Practise" [level=2]
+  - link "Self practice From your organisation":
+    - /url: /app/e2e-hire-mw3om0c6/trainee/practice

@@ -152,11 +152,14 @@ async def resend_invitation(
                 name=_display_name(trainee.first_name, trainee.last_name, trainee.email),
                 invited_to=invited_to,
                 now=now,
+                organization_id=org_id,
             )
             await repository.link_trainee_to_user(session, org_id, trainee_id, user_id=created.id)
             return InvitationRead(email=created.email, invited_to=invited_to)
         user_id = ref.id
         await repository.link_trainee_to_user(session, org_id, trainee_id, user_id=user_id)
-    if not await invitations.reissue_invitation(session, user_id=user_id, invited_to=invited_to, now=now):
+    if not await invitations.reissue_invitation(
+        session, user_id=user_id, invited_to=invited_to, now=now, organization_id=org_id
+    ):
         raise errors.InvitationNotPending()
     return InvitationRead(email=trainee.email, invited_to=invited_to)

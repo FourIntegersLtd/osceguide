@@ -169,9 +169,12 @@ async def rename_rubric(
 
 
 async def add_version(
-    session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    rubric_id: uuid.UUID,
+    from_version: int | None = None,
 ) -> RubricVersionRead:
-    """A new draft, seeded from the latest published version.
+    """A new draft, seeded from `from_version`, else from the latest published version.
 
     Not the latest version: an abandoned draft must not silently become the
     basis of everything after it.
@@ -182,7 +185,13 @@ async def add_version(
         lifecycle.VersionRef(number=version_row.version, status=lifecycle.Status(version_row.status))
         for version_row in existing
     ]
-    seed = lifecycle.seed_version(refs)
+    seed = (
+        next((ref for ref in refs if ref.number == from_version), None)
+        if from_version is not None
+        else lifecycle.seed_version(refs)
+    )
+    if from_version is not None and seed is None:
+        raise errors.RubricVersionNotFound()
     source = next(
         (version_row for version_row in existing if seed and version_row.version == seed.number), None
     )
@@ -191,7 +200,7 @@ async def add_version(
         org_id,
         rubric_id=rubric.id,
         version=lifecycle.next_version_number(refs),
-        structure=dict(source.structure) if source else {},
+        structure=domain.authoring_form(source.structure) if source else {},
         system_prompt=source.system_prompt if source else "",
         pacing=dict(source.pacing) if source else {},
         marking_layout=dict(source.marking_layout) if source and source.marking_layout else None,
@@ -450,7 +459,7 @@ def version_read(version: RubricVersion) -> RubricVersionRead:
         rubric_id=version.rubric_id,
         version=version.version,
         status=version.status,
-        structure=dict(version.structure or {}),
+        structure=domain.authoring_form(version.structure or {}),
         system_prompt=version.system_prompt,
         pacing=dict(version.pacing or {}),
         result_schema=schema,

@@ -1,6 +1,6 @@
 "use client";
 
-import { ConfirmModal } from "@/foundation/ui";
+import { AuthoringConfirm } from "@/capabilities/authoring/parts/AuthoringConfirm";
 import { deleteExam, retireExam, type Exam } from "@/capabilities/authoring/api";
 import type { AuthoringScope } from "@/capabilities/authoring/api/scope";
 import type { ActionState } from "@/capabilities/authoring/parts/useAction";
@@ -39,22 +39,24 @@ export function ExamConfirm({
 }) {
   const { confirmText, message, write } = KINDS[kind];
   const key = exam ? `${kind}:${exam.id}` : null;
+  const confirm = () => {
+    if (!exam || !key) return;
+    void action.run(key, () => write(scope, exam.id)).then((ok) => {
+      if (ok) {
+        onCancel();
+        onDone?.();
+      }
+    });
+  };
+  const heading = exam ? `${kind === "retire" ? "Retire" : "Delete"} "${exam.name}"?` : "Confirm";
   return (
-    <ConfirmModal
+    <AuthoringConfirm
       isOpen={exam !== null}
       onCancel={onCancel}
-      onConfirm={() => {
-        if (!exam || !key) return;
-        void action.run(key, () => write(scope, exam.id)).then((ok) => {
-          if (ok) {
-            onCancel();
-            onDone?.();
-          }
-        });
-      }}
+      onConfirm={confirm}
       isLoading={key !== null && action.busy === key}
       tone="danger"
-      title={exam ? `${kind === "retire" ? "Retire" : "Delete"} "${exam.name}"?` : "Confirm"}
+      title={heading}
       confirmText={confirmText}
       error={action.error}
       message={message}

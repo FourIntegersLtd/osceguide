@@ -299,6 +299,17 @@ const config: Config = {
           amber: "var(--site-amber)",
           "amber-bg": "var(--site-amber-bg)",
         },
+        /* The assess boards' own chip tint (tokens.css). */
+        assess: {
+          "warn-text": "var(--assess-warn-text)",
+          "hero-live-bg": "var(--assess-hero-live-bg)",
+          "selected-bg": "var(--assess-selected-bg)",
+          "chip-info-bg": "var(--assess-chip-info-bg)",
+          "chip-info-text": "var(--assess-chip-info-text)",
+          /* Outside the assess skin the vars are unset: fall back to the accent as before. */
+          "select-border": "var(--assess-select-border, var(--osce-accent))",
+          "focus-ring": "var(--assess-focus-ring, var(--osce-accent-subtle))",
+        },
         b2b: {
           canvas: "var(--b2b-canvas)",
           surface: "var(--b2b-surface)",
@@ -397,6 +408,23 @@ const config: Config = {
          * Small UI text is deliberately NOT fluid: captions and data labels
          * are already at the legibility floor and must not shrink further.
          */
+        /**
+         * The assess skin's board scale (docs/institution-overhaul/boards): fixed px, no
+         * fluid clamp and no tracking, because the boards are the specification and they
+         * draw these literal sizes. Used only through the `assess*` strings in b2bTokens.ts.
+         */
+        "assess-h1": ["28px", { lineHeight: "1.2", letterSpacing: "0" }],
+        "assess-card-title": ["26px", { lineHeight: "1.2", letterSpacing: "0" }],
+        "assess-state-title": ["16px", { lineHeight: "normal", letterSpacing: "0" }],
+        "assess-hero": ["20px", { lineHeight: "normal", letterSpacing: "0" }],
+        "assess-section": ["20px", { lineHeight: "1.3", letterSpacing: "0" }],
+        "assess-h2": ["24px", { lineHeight: "1.3", letterSpacing: "0" }],
+        "assess-desc": ["16px", { lineHeight: "1.5", letterSpacing: "0" }],
+        "assess-meta": ["13px", { lineHeight: "1.5", letterSpacing: "0" }],
+        "assess-label": ["14px", { lineHeight: "normal", letterSpacing: "0" }],
+        "assess-chip": ["12px", { lineHeight: "normal", letterSpacing: "0" }],
+        "assess-eyebrow": ["11px", { lineHeight: "normal", letterSpacing: "0.06em" }],
+        "assess-num": ["28px", { lineHeight: "normal", letterSpacing: "0" }],
         /** Dense overlay chrome only — video tile pills, tight status labels. */
         "osce-micro": ["var(--osce-fs-micro, 10px)", { lineHeight: "var(--osce-lh-micro, 1.3)" }],
         "osce-caption": ["var(--osce-fs-caption, 11px)", { lineHeight: "var(--osce-lh-caption, 1.4)" }],
@@ -435,12 +463,26 @@ const config: Config = {
         ],
       },
       maxWidth: {
+        /** The assess boards' page column. */
+        "assess-page": "1080px",
         /** Page + landing section cap. One width for every surface. */
         "osce-page": "1200px",
         /** Marketing copy and narrow prose columns. */
         "osce-narrow": "820px",
         /** Long-form reading measure. */
         "osce-prose": "68ch",
+      },
+      spacing: {
+        /** Board control metrics: step dot, button side padding, stat tile padding. */
+        "assess-dot": "28px",
+        "assess-btn": "18px",
+        "assess-stat": "18px",
+      },
+      boxShadow: {
+        "board-dialog": "0 20px 60px rgba(0,0,0,0.18)",
+        "board-sheet": "0 24px 48px rgba(16,24,40,0.18)",
+        "osce-modal": "0 24px 64px rgba(16,24,40,0.18)",
+        "osce-segmented": "0 1px 2px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.04)",
       },
       borderRadius: {
         /* The semantic pair the new primitives use. */
@@ -451,6 +493,12 @@ const config: Config = {
         "osce-lg": "var(--osce-radius-lg)",
         "osce-xl": "var(--osce-radius-xl)",
         "osce-2xl": "var(--osce-radius-2xl)",
+        /* The boards' own radii: tabs, cards and fields, dialogs, sheets. */
+        "board-xs": "5px",
+        "board-sm": "7px",
+        board: "9px",
+        "board-lg": "14px",
+        "board-xl": "16px",
         b2b: "8px",
         "b2b-sm": "6px",
       },

@@ -1,0 +1,22 @@
+- main:
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/trainee
+  - paragraph: Examination
+  - heading "R2 wizard fail" [level=1]
+  - paragraph: Formal exam · 1 station
+  - text: Live
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/trainee
+  - paragraph: Station 1 of 1
+  - heading "Your station is open" [level=2]
+  - paragraph: E2E gender voice test - male patient
+  - text: Reading 0:18 YP
+  - paragraph: Your patient
+  - paragraph: Connecting to the patient…
+  - button "Leave the room"
+  - paragraph: If you drop out we rejoin you by ourselves.
+  - status:
+    - paragraph: Joining during reading
+    - text: You join automatically while you read, so the patient is ready when it starts.
+  - heading "Your stations" [level=2]
+  - text: Station 1 · E2E gender voice test - male patient Now

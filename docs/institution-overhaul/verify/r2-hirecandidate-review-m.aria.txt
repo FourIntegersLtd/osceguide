@@ -1,0 +1,7 @@
+- main:
+  - button "Back"
+  - paragraph: Your review
+  - heading "Station feedback" [level=1]
+  - status:
+    - paragraph: Not released yet
+    - text: Your result for this sitting has not been released, so the feedback on this station is not shared yet.

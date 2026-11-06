@@ -49,6 +49,8 @@ export function WorkspaceShell({
   const isTrain = manifest.id === "train";
   const athena = athenaOffered(manifest.id);
   const staff = manifest.id === "platform";
+  // The institution boards pad the main panel 16px on a phone and 40px from 761px up (Main.dc.html).
+  const institution = manifest.id === "assess" || manifest.id === "hire" || manifest.id === "partner";
   // The marketplace is SCA-only in navigation, like the retiring `scaOnly`.
   const { code: currentCode, loading: examLoading } = useCurrentExam();
   const examCode = examForFilter({ code: currentCode, loading: examLoading });
@@ -162,7 +164,7 @@ export function WorkspaceShell({
           <main
             id="main"
             data-b2c-scroll=""
-            className={cn(b2cShellMain, "flex min-h-0 flex-1 flex-col")}
+            className={cn(b2cShellMain, "flex min-h-0 flex-1 flex-col", institution && "sm:px-4 min-[761px]:px-10")}
           >
             <div className={b2cPageColumn}>
               <div className="space-y-6 md:pt-7 lg:pt-9">

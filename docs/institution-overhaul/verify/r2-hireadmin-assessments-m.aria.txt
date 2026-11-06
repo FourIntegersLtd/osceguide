@@ -1,0 +1,18 @@
+- main:
+  - heading "Assessments" [level=1]
+  - paragraph: An assessment is one occasion, such as the March mock. Its circuits are built for you when you schedule it.
+  - link "Schedule an assessment":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/new
+  - button "Filters"
+  - text: Search assessments
+  - searchbox "Search assessments"
+  - link "R2 hire assessment Simulated Consultation Assessment · 1 circuit · 1 candidate":
+    - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26
+  - term: Kind
+  - definition: Formal exam
+  - term: Exam
+  - definition: Simulated Consultation Assessment
+  - term: Scheduled for
+  - definition: Not scheduled
+  - term: Status
+  - definition: Scheduled

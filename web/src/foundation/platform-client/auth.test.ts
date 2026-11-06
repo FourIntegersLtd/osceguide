@@ -3,6 +3,7 @@ import { afterEach, beforeEach, test } from "node:test";
 
 import {
   changePassword,
+  invitationOrganisation,
   logout,
   PasswordChangedNotStored,
   clearPlatformSession,
@@ -367,4 +368,19 @@ test("a password changed but not stored says the change happened and to sign in 
     );
     return true;
   });
+});
+
+test("an invitation lookup returns the organisation's name", async () => {
+  const calls = respond(() => json({ organisation_name: "Ashford Medical School" }));
+  assert.equal(await invitationOrganisation("tok/en"), "Ashford Medical School");
+  assert.ok(calls()[0]?.url.endsWith("/api/v1/auth/invitation/tok%2Fen"));
+});
+
+test("a refused or failed invitation lookup is null, so the page keeps its plain wording", async () => {
+  respond(() => json({ code: "invalid_reset_token", message: "x" }, 422));
+  assert.equal(await invitationOrganisation("spent"), null);
+  globalThis.fetch = (async () => {
+    throw new TypeError("offline");
+  }) as typeof fetch;
+  assert.equal(await invitationOrganisation("any"), null);
 });

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { can, useSession } from "@/foundation/session";
 import { useState } from "react";
 import { useAsync } from "@/foundation/hooks";
-import { HiOutlineUserPlus } from "react-icons/hi2";
-import { Alert, AsyncBoundary, B2CPageHeader, Badge, Button, b2bTokens } from "@/foundation/ui";
+import { Alert, AsyncBoundary, ButtonLink } from "@/foundation/ui";
+import { assessDesc, assessEyebrow, assessMeta, assessTitle } from "@/foundation/ui/b2bTokens";
+import { boardCard, boardPad, boardRow, boardChip } from "@/foundation/ui/boardKit";
 import { useSurface } from "@/capabilities";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import { readCircuitReview, type CircuitConsole } from "@/domains/assess/sessions/api";
@@ -23,6 +24,7 @@ import { SupervisorReadingBrief } from "@/domains/assess/sessions/SupervisorRead
 import { TurnStrip } from "@/domains/assess/sessions/TurnStrip";
 import { alertCopy, examStationNumber, observerSubtitle, orderedSlots, slotProgress, phaseLabel, runnerSteps } from "@/domains/assess/sessions/support";
 import { useCircuitRun, useObserverRoom } from "@/domains/assess/sessions/useCircuitRun";
+import { cardTitle } from "@/domains/assess/chrome";
 
 /**
  * The screen an examination is run from.
@@ -50,7 +52,7 @@ export function CircuitRunner({
   const run = useCircuitRun(orgSlug, circuitId);
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5">
+    <section aria-label="Circuit console" className="flex w-full min-w-0 max-w-[1080px] flex-col gap-6">
       <AsyncBoundary state={run.initial}>
         {() =>
           run.data ? (
@@ -58,7 +60,7 @@ export function CircuitRunner({
           ) : null
         }
       </AsyncBoundary>
-    </div>
+    </section>
   );
 }
 
@@ -91,115 +93,140 @@ function Runner({
 
   return (
     <>
-      <B2CPageHeader
-        back={{ href: hrefFor(`/sittings/${sittingId ?? data.sitting.id}`), label: data.sitting.name }}
-        title={circuit.name}
-        subtitle={`${observerSubtitle(data)}${
-          supervisorName ? ` · Supervisor: ${supervisorName}` : " · No supervisor assigned"
-        }`}
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <RunnerHelpPanel kind={isExam ? "exam" : "training"} />
-            {/* Offered only while the circuit's slots can still be rebuilt, which
-                is the backend's rule: it sends `editable` with the frame so a
-                supervisor is not invited to delete a consultation in progress. */}
-            {circuit.editable && can(session, "schedule_sittings") ? (
-              <Link href={hrefFor(`/circuits/${circuitId}/edit`)} className={b2bTokens.b2bLink}>
-                Edit
-              </Link>
-            ) : null}
-            {/* The stream being up is the difference between a stale screen and
-                a live one, so it is said rather than assumed, until the circuit
-                ends and the stream closing is expected. */}
-            {circuit.ended_at === null ? (
-              <Badge variant={run.connected ? "success" : "warning"} dot>
-                {run.connected ? "Live" : "Reconnecting"}
-              </Badge>
-            ) : (
-              <Badge variant="neutral">Ended</Badge>
-            )}
-            {circuit.paused ? <Badge variant="warning">Paused</Badge> : null}
-            {!isExam && live ? (
-              <Button themeType="b2b" variant="secondary" size="sm" onClick={() => setAdding(true)}>
-                <HiOutlineUserPlus className="h-4 w-4 shrink-0" aria-hidden /> Add trainee
-              </Button>
-            ) : null}
-          </div>
-        }
-      />
+      <div>
+        <Link href={hrefFor(`/sittings/${sittingId ?? data.sitting.id}`)} className="text-assess-label text-osce-accent">
+          {`‹ ${data.sitting.name}`}
+        </Link>
+      </div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className={assessEyebrow}>Circuit console</div>
+          <h1 className={assessTitle}>{circuit.name}</h1>
+          <p className={assessDesc}>
+            {`${observerSubtitle(data)}${supervisorName ? ` · Supervisor: ${supervisorName}` : " · No supervisor assigned"}`}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <RunnerHelpPanel kind={isExam ? "exam" : "training"} />
+          {/* Offered only while the circuit's slots can still be rebuilt, which
+              is the backend's rule: it sends `editable` with the frame so a
+              supervisor is not invited to delete a consultation in progress. */}
+          {circuit.editable && can(session, "schedule_sittings") ? (
+            <ButtonLink href={hrefFor(`/circuits/${circuitId}/edit`)} themeType="b2b" variant="secondary" size="sm">
+              Edit
+            </ButtonLink>
+          ) : null}
+          {/* The stream being up is the difference between a stale screen and
+              a live one, so it is said rather than assumed, until the circuit
+              ends and the stream closing is expected. */}
+          {circuit.ended_at === null ? (
+            <span className={boardChip(run.connected ? "ok" : "warn")}>{run.connected ? "Live" : "Reconnecting"}</span>
+          ) : (
+            <span className={boardChip("neutral")}>Ended</span>
+          )}
+          {circuit.paused ? <span className={boardChip("warn")}>Paused</span> : null}
+        </div>
+      </div>
 
       {/* Alerts arrive as codes on purpose: the board decides how to say it. */}
-      {(circuit.alerts ?? []).map((code) => (
-        <Alert key={code} tone="warning">
-          {alertCopy(code, "console", station, circuit.overdue_seconds)}
-        </Alert>
-      ))}
+      {(circuit.alerts ?? []).length > 0 ? (
+        <div data-board="alerts" className="flex flex-col gap-3">
+          {(circuit.alerts ?? []).map((code) => (
+            <Alert key={code} tone="warning">
+              {alertCopy(code, "console", station, circuit.overdue_seconds)}
+            </Alert>
+          ))}
+        </div>
+      ) : null}
 
-      <section className="grid grid-cols-1 gap-6 rounded-panel bg-canvas p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-        <div className="min-w-0 space-y-5">
-          <RunnerStepper steps={runnerSteps(data)} />
-          <SupervisorControls
+      <div className="flex flex-wrap items-start gap-5">
+        <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-5">
+          {!isExam ? (
+            <TurnStrip
+              data={data}
+              orgSlug={orgSlug}
+              circuitId={circuitId}
+              busy={run.busy}
+              offline={run.reconnecting}
+              failure={run.failure}
+              run={run.run}
+              onAdd={live ? () => setAdding(true) : undefined}
+            />
+          ) : null}
+
+          <div className={boardPad}>
+            <RunnerStepper steps={runnerSteps(data)} />
+            {/* The clock is the server's: ExamClock only interpolates between pushes. */}
+            {circuit.remaining_seconds !== null && circuit.remaining_seconds !== undefined ? (
+              <div className="flex flex-wrap items-center gap-4">
+                <span data-clock>
+                  <ExamClock
+                    secondsLeft={circuit.remaining_seconds}
+                    label={phaseLabel(circuit.phase)}
+                    tick
+                    paused={circuit.paused}
+                    className="!border-0 !bg-transparent !p-0 [&>span:first-child]:hidden [&>span:last-child]:text-[44px] [&>span:last-child]:font-semibold [&>span:last-child]:leading-tight [&>span:last-child]:tracking-tight"
+                  />
+                </span>
+                <p className={assessMeta}>
+                  {phaseLabel(circuit.phase)}
+                  <br />
+                  Server clock
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          <div className={boardPad} data-board="controls">
+            <h2 className={cardTitle}>
+              {circuit.ended_at !== null
+                ? "This circuit has ended."
+                : circuit.started_at === null
+                  ? `${circuit.name} · Not started`
+                  : "Controls"}
+            </h2>
+            <SupervisorControls
+              data={data}
+              orgSlug={orgSlug}
+              circuitId={circuitId}
+              busy={run.busy}
+              reconnecting={run.reconnecting}
+              failure={run.failure}
+              run={run.run}
+              onDismissFailure={run.dismissFailure}
+            />
+          </div>
+
+          <div className={boardCard}>
+            <div className={`${boardRow} border-t-0`}>
+              <h2 className={cardTitle}>Station progress</h2>
+            </div>
+            <StationProgressList data={data} agentLive={circuit.agent_dispatched} />
+          </div>
+
+          <SupervisorReadingBrief data={data} orgSlug={orgSlug} />
+        </div>
+
+        <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-5">
+          <ObserverPanel data={data} observer={observer} />
+
+          <LiveMarkingSidebar data={data} orgSlug={orgSlug} />
+
+          {circuit.ended_at !== null ? <CircuitReviewStep data={data} published={review.data?.state === "published"} /> : null}
+
+          <CircuitFeedbackCard
             data={data}
             orgSlug={orgSlug}
             circuitId={circuitId}
+            review={review}
             busy={run.busy}
-            reconnecting={run.reconnecting}
-            failure={run.failure}
+            offline={run.reconnecting}
             run={run.run}
-            onDismissFailure={run.dismissFailure}
           />
+
+          <InterventionsLog orgSlug={orgSlug} circuitId={circuitId} />
         </div>
-        {/* The clock is the server's: ExamClock only interpolates between pushes. */}
-        {circuit.remaining_seconds !== null && circuit.remaining_seconds !== undefined ? (
-          <div className="lg:text-right">
-            <ExamClock
-              secondsLeft={circuit.remaining_seconds}
-              label={phaseLabel(circuit.phase)}
-              tick
-              paused={circuit.paused}
-              className="flex-col !items-start gap-1 border-0 bg-transparent px-0 py-0 lg:!items-end [&>span:first-child]:text-osce-body [&>span:first-child]:normal-case [&>span:first-child]:tracking-normal [&>span:last-child]:text-[56px] [&>span:last-child]:leading-none"
-            />
-            <p className="mt-1 text-osce-meta text-b2b-mid">Server clock</p>
-          </div>
-        ) : null}
-      </section>
-
-      {!isExam ? (
-        <TurnStrip
-          data={data}
-          orgSlug={orgSlug}
-          circuitId={circuitId}
-          busy={run.busy}
-          offline={run.reconnecting}
-          failure={run.failure}
-          run={run.run}
-        />
-      ) : null}
-
-      <section className="space-y-2">
-        <h2 className={b2bTokens.b2bSectionTitle}>Station progress</h2>
-        <StationProgressList data={data} agentLive={circuit.agent_dispatched} />
-      </section>
-
-      <SupervisorReadingBrief data={data} orgSlug={orgSlug} />
-
-      <ObserverPanel data={data} observer={observer} />
-
-      <LiveMarkingSidebar data={data} orgSlug={orgSlug} />
-
-      {circuit.ended_at !== null ? <CircuitReviewStep data={data} published={review.data?.state === "published"} /> : null}
-
-      <CircuitFeedbackCard
-        data={data}
-        orgSlug={orgSlug}
-        circuitId={circuitId}
-        review={review}
-        busy={run.busy}
-        offline={run.reconnecting}
-        run={run.run}
-      />
-
-      <InterventionsLog orgSlug={orgSlug} circuitId={circuitId} />
+      </div>
 
       {!isExam && adding ? (
         <AddTraineesDialog

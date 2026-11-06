@@ -34,7 +34,12 @@ export function SelfPracticeStation({
   const practiceHref = hrefFor("/trainee/practice");
   // Leaving a sat attempt lands on its feedback; with no attempt there is nothing to read.
   const completeHref = attemptId
-    ? hrefFor(feedbackPathFor({ kind: "self_practice", orgSlug, stationId }, attemptId))
+    ? hrefFor(
+        feedbackPathFor(
+          { kind: "self_practice", orgSlug, stationId },
+          attemptId,
+        ),
+      )
     : practiceHref;
 
   const context = useAsync(

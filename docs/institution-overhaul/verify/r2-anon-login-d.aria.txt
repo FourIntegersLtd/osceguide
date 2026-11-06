@@ -1,0 +1,38 @@
+- main:
+  - heading "Sign in" [level=1]
+  - text: Email
+  - textbox "Email"
+  - text: Password
+  - textbox "Password"
+  - button "Show password":
+    - img
+  - button "Sign in"
+  - paragraph:
+    - link "Forgot your password?":
+      - /url: /forgot-password
+    - text: · Don't have an account?
+    - link "Create account":
+      - /url: /register
+    - text: · New organisation?
+    - link "Register":
+      - /url: /register/organisation
+    - text: "· Help:"
+    - link "hello@osceguide.com":
+      - /url: mailto:hello@osceguide.com
+  - complementary:
+    - text: What our users say
+    - figure "Dr L Passed SCA":
+      - blockquote: Perfect practice partner, invaluable feedback from @OSCEGuide. AMAZING. I passed my exam!
+      - text: Dr L Passed SCA
+    - group "Choose a testimonial":
+      - button "Show testimonial from Dr Elizabeth Okuonghae"
+      - button "Show testimonial from Dr Nazia Qadeer"
+      - button "Show testimonial from Dr I.O"
+      - button "Show testimonial from Dr Marion Ogunmola"
+      - button "Show testimonial from Dr C.O"
+      - button "Show testimonial from Dr Adeleke"
+      - button "Show testimonial from Dr S"
+      - button "Show testimonial from Dr R"
+      - button "Show testimonial from Dr L"
+      - button "Show testimonial from Dr Emmanuel Okojie"
+      - button "Show testimonial from Dr Zahra"

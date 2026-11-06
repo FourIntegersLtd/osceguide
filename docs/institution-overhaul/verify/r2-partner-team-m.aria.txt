@@ -1,0 +1,26 @@
+- main:
+  - heading "Team" [level=1]
+  - paragraph: Who can run circuits and sign off results in this organisation.
+  - button "Add people"
+  - tablist "Team sections":
+    - tab "Members" [selected]
+    - tab "Add people"
+    - tab "History"
+  - paragraph: 1 staff account
+  - text: Search staff
+  - searchbox "Search staff"
+  - text: e2e-partner-admin-mw3om0c6@example.com
+  - term: Select
+  - definition:
+    - checkbox "Select e2e-partner-admin-mw3om0c6@example.com"
+  - term: Role
+  - definition: Admin
+  - term: Circuits led
+  - definition: "0"
+  - term: Access
+  - definition: Active
+  - paragraph:
+    - text: Looking for the people being examined?
+    - link "Go to the roster":
+      - /url: /app/e2e-partner-mw3om0c6/trainees
+    - text: .

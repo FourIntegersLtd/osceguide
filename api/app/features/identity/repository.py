@@ -364,25 +364,34 @@ async def revoke_all_chains_for_user(
 
 
 async def create_reset_token(
-    session: AsyncSession, *, user_id: uuid.UUID, token_hash: str, expires_at: datetime
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    token_hash: str,
+    expires_at: datetime,
+    organization_id: uuid.UUID | None = None,
 ) -> PasswordResetToken:
     """Mint a fresh reset link for this account. The caller is responsible
-    for spending any earlier unused link first, so only the newest works."""
-    token = PasswordResetToken(user_id=user_id, token_hash=token_hash, expires_at=expires_at)
+    for spending any earlier unused link first, so only the newest works.
+    `organization_id` is set only on an invitation, to say who sent it."""
+    token = PasswordResetToken(
+        user_id=user_id, token_hash=token_hash, expires_at=expires_at, organization_id=organization_id
+    )
     session.add(token)
     return token
 
 
 async def pending_invitations_expiring_between(
     session: AsyncSession, *, window_start: datetime, window_end: datetime
-) -> list[tuple[User, str]]:
-    """Each waiting invitee with the hash of the unused link that ends inside the window.
+) -> list[tuple[User, str, uuid.UUID | None]]:
+    """Each waiting invitee with the hash of the unused link that ends inside the window,
+    and the organisation that link names.
 
     Waiting means no password yet, password sign-in not switched off, and the account not
     closed. The hash is what the outbox remembers the original email under.
     """
     stmt = (
-        select(User, PasswordResetToken.token_hash)
+        select(User, PasswordResetToken.token_hash, PasswordResetToken.organization_id)
         .join(PasswordResetToken, PasswordResetToken.user_id == User.id)
         .where(
             PasswordResetToken.used_at.is_(None),
@@ -393,7 +402,7 @@ async def pending_invitations_expiring_between(
             User.closed_at.is_(None),
         )
     )
-    return [(user, token_hash) for user, token_hash in (await session.execute(stmt)).all()]
+    return [(user, token_hash, org_id) for user, token_hash, org_id in (await session.execute(stmt)).all()]
 
 
 async def reset_token_by_hash(session: AsyncSession, token_hash: str) -> PasswordResetToken | None:

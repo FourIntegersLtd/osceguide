@@ -1,7 +1,8 @@
 "use client";
 
+import { boardHeadRow, boardRow, boardChip, boardAvatar, type BoardChipTone } from "@/foundation/ui/boardKit";
 import { HiMiniSignal } from "react-icons/hi2";
-import { Badge, ButtonLink, EmptyState, b2bTokens } from "@/foundation/ui";
+import { ButtonLink, EmptyState } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
@@ -9,7 +10,6 @@ import {
   PROGRESS_LABEL,
   markable,
   personLabel,
-  progressTone,
   slotProgress,
   stationLabel,
 } from "@/domains/assess/sessions/support";
@@ -22,6 +22,14 @@ import {
  * running, and what has been marked. The retiring client had two of these and
  * they disagreed about when a station counted as finished.
  */
+const PROGRESS_CHIP: Record<ReturnType<typeof slotProgress>, BoardChipTone> = {
+  waiting: "neutral",
+  reading: "warn",
+  in_consultation: "info",
+  completed: "ok",
+  skipped: "neutral",
+};
+
 export function StationProgressList({
   data,
   agentLive,
@@ -36,31 +44,25 @@ export function StationProgressList({
   }
 
   return (
-    <div className="overflow-x-auto rounded-panel border border-b2b-border bg-b2b-surface">
-      <table className="w-full min-w-[640px] border-collapse text-left">
-        <thead>
-          <tr className="border-b border-b2b-border text-osce-meta text-b2b-mid">
-            <th scope="col" className="px-4 py-3 font-medium">Candidate</th>
-            <th scope="col" className="px-4 py-3 font-medium">Station</th>
-            <th scope="col" className="px-4 py-3 font-medium">Phase</th>
-            <th scope="col" className="px-4 py-3 font-medium">Left</th>
-            <th scope="col" className="px-4 py-3"><span className="sr-only">Marking</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {slots.map((slot, index) => (
-            <Row
-              key={slot.id}
-              slot={slot}
-              position={index + 1}
-              isActive={slot.id === data.circuit.active_slot_id}
-              secondsLeft={slot.id === data.circuit.active_slot_id ? data.circuit.remaining_seconds : null}
-              paused={data.circuit.paused}
-              agentLive={agentLive && slot.id === data.circuit.active_slot_id}
-            />
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <div className={boardHeadRow} aria-hidden>
+        <span className="w-8" />
+        <span className="flex-[1_1_140px]">Candidate</span>
+        <span className="flex-[1_1_200px]">Station</span>
+        <span className="w-[130px]">Phase</span>
+        <span className="w-[60px]">Left</span>
+        <span className="w-20" />
+      </div>
+      {slots.map((slot, index) => (
+        <Row
+          key={slot.id}
+          slot={slot}
+          position={index + 1}
+          secondsLeft={slot.id === data.circuit.active_slot_id ? data.circuit.remaining_seconds : null}
+          paused={data.circuit.paused}
+          agentLive={agentLive && slot.id === data.circuit.active_slot_id}
+        />
+      ))}
     </div>
   );
 }
@@ -74,14 +76,12 @@ function initials(name: string): string {
 function Row({
   slot,
   position,
-  isActive,
   secondsLeft,
   paused,
   agentLive,
 }: {
   slot: ConsoleSlot;
   position: number;
-  isActive: boolean;
   secondsLeft: number | null | undefined;
   paused: boolean | undefined;
   agentLive: boolean;
@@ -93,41 +93,37 @@ function Row({
   );
 
   return (
-    <tr className={`border-b border-b2b-border last:border-b-0 ${isActive ? "bg-canvas/60" : ""}`}>
-      <td className="px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            aria-hidden
-            className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-canvas text-[11.5px] text-b2b-mid"
-          >
-            {initials(personLabel(slot))}
+    <div className={boardRow}>
+      <span aria-hidden className={boardAvatar}>
+        {initials(personLabel(slot))}
+      </span>
+      <span className="flex-[1_1_140px]">
+        {personLabel(slot)}
+        {agentLive ? (
+          <span className="mt-0.5 flex items-center gap-1 text-assess-meta text-osce-ink-500">
+            <HiMiniSignal className="h-3 w-3 shrink-0 animate-pulse" aria-hidden />
+            With the patient
           </span>
-          <div className="min-w-0">
-            <p className={b2bTokens.b2bGroupedRowTitle}>{personLabel(slot)}</p>
-            {agentLive ? (
-              <p className="mt-0.5 inline-flex items-center gap-1 text-osce-meta text-b2b-mid">
-                <HiMiniSignal className="h-3 w-3 shrink-0 animate-pulse" aria-hidden />
-                With the patient
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3 text-osce-body text-b2b-headline">
-        {position} · {stationLabel(slot)}
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={progressTone(progress)} dot>{PROGRESS_LABEL[progress]}</Badge>
-          {slot.marked ? <Badge variant="accent">Marked</Badge> : null}
-        </div>
-      </td>
-      <td className="px-4 py-3 font-mono text-osce-body text-b2b-mid">
-        {secondsLeft !== null && secondsLeft !== undefined ? (
-          <ExamClock secondsLeft={secondsLeft} label={PROGRESS_LABEL[progress]} tick paused={paused === true} />
         ) : null}
-      </td>
-      <td className="px-4 py-3 text-right">
+      </span>
+      <span className="flex-[1_1_200px]">
+        {position} · {stationLabel(slot)}
+      </span>
+      <span className="flex w-[130px] flex-wrap gap-1">
+        <span className={boardChip(PROGRESS_CHIP[progress])}>{PROGRESS_LABEL[progress]}</span>
+      </span>
+      <span data-clock className="w-[60px] font-semibold">
+        {secondsLeft !== null && secondsLeft !== undefined ? (
+          <ExamClock
+            secondsLeft={secondsLeft}
+            label={PROGRESS_LABEL[progress]}
+            tick
+            paused={paused === true}
+            className="!border-0 !bg-transparent !p-0 [&>span:first-child]:hidden [&>span:last-child]:text-assess-label"
+          />
+        ) : null}
+      </span>
+      <span className="w-20">
         {/* Marking opens once the station has actually been sat. Offering it
             before is how a reviewer fills in a marking scheme for a consultation
             nobody had. */}
@@ -136,7 +132,7 @@ function Row({
             {slot.marked ? "Review" : "Mark"}
           </ButtonLink>
         ) : null}
-      </td>
-    </tr>
+      </span>
+    </div>
   );
 }

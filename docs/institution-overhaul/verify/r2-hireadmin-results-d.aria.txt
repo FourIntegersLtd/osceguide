@@ -1,0 +1,35 @@
+- main:
+  - heading "Results" [level=1]
+  - paragraph: Each assessment with how far its decisions have got.
+  - heading "Needs your attention" [level=2]
+  - 'link "R2 hire assessment: 1 candidate needs a decision Decide"':
+    - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26/results
+    - img
+    - text: "R2 hire assessment: 1 candidate needs a decision Decide"
+  - tablist "Filter results":
+    - tab "Needs a decision" [selected]
+    - tab "Ready to release"
+    - tab "All"
+  - table:
+    - rowgroup:
+      - row "Assessment Date Kind Candidates Not decided Draft Signed off Released":
+        - columnheader "Assessment"
+        - columnheader "Date"
+        - columnheader "Kind"
+        - columnheader "Candidates"
+        - columnheader "Not decided"
+        - columnheader "Draft"
+        - columnheader "Signed off"
+        - columnheader "Released"
+    - rowgroup:
+      - row "R2 hire assessment Not scheduled Formal exam 1 1 0 0 0":
+        - cell "R2 hire assessment":
+          - link "R2 hire assessment":
+            - /url: /app/e2e-hire-mw3om0c6/sittings/7c107826-eb6c-4e2f-b2ed-96827397ab26/results
+        - cell "Not scheduled"
+        - cell "Formal exam"
+        - cell "1"
+        - cell "1"
+        - cell "0"
+        - cell "0"
+        - cell "0"

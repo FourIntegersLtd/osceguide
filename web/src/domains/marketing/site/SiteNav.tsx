@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FiMenu, FiX } from "react-icons/fi";
 import { LOGIN_PATH, REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
+import { useMediaQuery } from "@/foundation/hooks";
 import { SiteButtonLink, LogoLink } from "@/foundation/ui";
 import { usePartnerContext } from "@/domains/marketing/support/usePartnerContext";
 import { LANDING_NAV_LINKS, SITE_NAV_LINKS, type SiteLink } from "@/domains/marketing/site/siteLinks";
@@ -43,8 +44,11 @@ export function SiteNav({ variant = "site", exam, links: custom }: { variant?: "
     setOpen(false);
     toggle.current?.focus();
   };
+  // Widening past the breakpoint closes the menu.
+  const wideNav = useMediaQuery("(min-width: 960px)");
+  if (wideNav && open) setOpen(false);
 
-  // While the menu is open: the page behind does not scroll, Escape closes, a link click closes, Tab stays inside, and widening past the breakpoint closes it.
+  // While the menu is open: the page behind does not scroll, Escape closes, a link click closes, and Tab stays inside.
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;
@@ -68,20 +72,16 @@ export function SiteNav({ variant = "site", exam, links: custom }: { variant?: "
         first.focus();
       }
     };
-    const wide = window.matchMedia("(min-width: 960px)");
-    const onWide = () => wide.matches && setOpen(false);
     const onClick = (e: MouseEvent) => {
       if (e.target instanceof Element && e.target.closest("a")) setOpen(false);
     };
     const panel = menu.current;
     panel?.addEventListener("click", onClick);
     document.addEventListener("keydown", onKey);
-    wide.addEventListener("change", onWide);
     return () => {
       document.body.style.overflow = previous;
       panel?.removeEventListener("click", onClick);
       document.removeEventListener("keydown", onKey);
-      wide.removeEventListener("change", onWide);
     };
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps -- close only touches refs and a state setter
 

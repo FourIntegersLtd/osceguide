@@ -1,0 +1,9 @@
+- main:
+  - heading "Now running" [level=1]
+  - paragraph: Every circuit that is live in your organisation, updated as it happens.
+  - text: Live
+  - paragraph: Nothing is running.
+  - paragraph: Circuits appear here the moment a supervisor starts one.
+  - region "Earlier":
+    - paragraph: Nothing has finished yet.
+    - paragraph: Circuits appear here when they end.

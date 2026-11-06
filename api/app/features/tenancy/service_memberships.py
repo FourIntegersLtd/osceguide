@@ -131,6 +131,7 @@ async def add_membership(
             invited_to=org.name,
             temporary_password=temporary_password,
             now=now,
+            organization_id=org_id,
         )
     user_id = user.id
     if await repository.membership_for_user_in_org(session, org_id, user_id, role=role) is not None:
@@ -232,7 +233,7 @@ async def resend_invitation(
     if ref is None:
         raise MembershipNotFound()
     if not await invitations.reissue_invitation(
-        session, user_id=membership.user_id, invited_to=invited_to, now=now
+        session, user_id=membership.user_id, invited_to=invited_to, now=now, organization_id=org_id
     ):
         raise InvitationNotPending()
     return InvitationRead(email=ref.email, invited_to=invited_to)
@@ -252,13 +253,21 @@ async def _ensure_an_admin_remains(session: AsyncSession, org_id: uuid.UUID, mem
 
 
 async def active_admins_besides(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID) -> int:
-    """Live administrators other than this person whose account is not deactivated.
+    """Live administrators other than this person who can actually sign in.
 
-    A deactivated administrator cannot sign in, so counting one would leave the organisation with
-    nobody able to seat anyone.
+    A deactivated administrator cannot sign in, and one who has not accepted their invitation has
+    not yet signed in: counting either would leave the organisation with nobody able to seat anyone.
     """
     others = [admin for admin in await repository.admin_user_ids(session, org_id) if admin != user_id]
-    return sum([await identity.account_status(session, admin) == "active" for admin in others])
+    refs = await identity.user_refs_by_ids(session, others)
+    return sum(
+        [
+            await identity.account_status(session, admin) == "active"
+            and admin in refs
+            and not refs[admin].invitation_pending
+            for admin in others
+        ]
+    )
 
 
 async def ensure_not_sole_admin_anywhere(session: AsyncSession, user_id: uuid.UUID) -> None:

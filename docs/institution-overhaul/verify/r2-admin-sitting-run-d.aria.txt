@@ -1,0 +1,33 @@
+- main:
+  - link "Sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - paragraph: Exam
+  - heading "Circuit run" [level=1]
+  - paragraph: 6 Nov 2026, 15:10
+  - text: Completed
+  - button "Edit"
+  - link "Results":
+    - /url: /app/e2e-mw3om0c6/sittings/115d9697-b969-4381-9a8c-d711b339a4cc/results
+  - status:
+    - paragraph: All circuits have ended. Review each station on the results page.
+    - link "Open results":
+      - /url: /app/e2e-mw3om0c6/sittings/115d9697-b969-4381-9a8c-d711b339a4cc/results
+  - list "Steps":
+    - listitem: Schedule Date set
+    - listitem: Circuits 1 circuit
+    - listitem: Run All finished
+    - listitem: Mark 0 of 1 marked
+    - listitem: Decide 0 of 1 decided
+    - listitem: Release 0 of 1 released
+  - tablist "Sitting sections":
+    - tab "Circuits 1" [selected]
+    - tab "Candidates"
+    - tab "Results so far"
+  - heading "Circuits" [level=2]
+  - link "Circuit run circuit Finished · 1 station · 1 trainee · No supervisor assigned":
+    - /url: /app/e2e-mw3om0c6/circuits/84619a49-730a-4a19-9600-6f555d8d3e00
+    - img
+    - text: Circuit run circuit Finished · 1 station · 1 trainee · No supervisor assigned
+  - link "Add a circuit":
+    - /url: /app/e2e-mw3om0c6/sittings/115d9697-b969-4381-9a8c-d711b339a4cc/circuits/new
+  - paragraph: Cancel sitting is only before any circuit starts. A circuit can be deleted only if it never started.

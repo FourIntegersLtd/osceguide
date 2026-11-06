@@ -25,7 +25,7 @@ from app.features.tutor_memory import domain as tutor_domain
 from app.features.tutor_memory.tools_catalog import TOOL_ROLES
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
-WEB_BUILDER_VOCABULARY = REPOSITORY_ROOT / "web/src/capabilities/authoring/rubrics/rubricVocabulary.ts"
+WEB_BUILDER_VOCABULARY = REPOSITORY_ROOT / "web/src/capabilities/authoring/rubrics/schemeModel.ts"
 WEB_FEEDBACK_VIEW = REPOSITORY_ROOT / "web/src/capabilities/feedback/rubricView.ts"
 
 
@@ -47,11 +47,13 @@ def test_the_engine_knows_every_rating_kind_the_api_accepts() -> None:
 @pytest.mark.parametrize(
     ("type_name", "expected"),
     [
-        ("FieldRole", validation.FIELD_ROLES),
-        ("FieldType", validation.FIELD_TYPES),
-        ("RatingKind", validation.RATING_KINDS),
-        ("SectionKind", validation.SECTION_KINDS),
-        ("DomainAggregate", validation.DOMAIN_AGGREGATES),
+        ("BlockKind", validation.BLOCK_KINDS),
+        ("FeedbackKind", validation.FEEDBACK_KINDS),
+        ("FeedbackShape", validation.FEEDBACK_SHAPES),
+        ("ScoreKind", validation.SCORE_KINDS),
+        ("RuleType", validation.RULE_TYPES),
+        ("ScaleStep", validation.SCALE_STEPS),
+        ("ShowKey", validation.SCHEME_SHOW),
     ],
 )
 def test_the_rubric_builder_offers_exactly_what_the_api_accepts(

@@ -121,6 +121,25 @@ async def candidate_user_ids_for_sittings(
     return found
 
 
+async def sat_counts_for_sittings(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: Sequence[uuid.UUID], statuses: Sequence[str]
+) -> dict[uuid.UUID, int]:
+    """Distinct candidates with a slot in one of these statuses, keyed by sitting id."""
+    if not sitting_ids:
+        return {}
+    stmt = (
+        select(Circuit.sitting_id, func.count(func.distinct(Slot.trainee_id)))
+        .join(Circuit, Circuit.id == Slot.circuit_id)
+        .where(
+            Slot.org_id == org_id,
+            Circuit.sitting_id.in_(list(sitting_ids)),
+            Slot.status.in_(list(statuses)),
+        )
+        .group_by(Circuit.sitting_id)
+    )
+    return {sitting_id: int(count) for sitting_id, count in (await session.execute(stmt)).all()}
+
+
 async def circuits_led_counts(
     session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, int]:

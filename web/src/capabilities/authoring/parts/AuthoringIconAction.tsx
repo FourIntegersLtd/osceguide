@@ -11,6 +11,7 @@ import {
 } from "@/foundation/ui/b2bTokens";
 import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
+import { boardBtn } from "@/foundation/ui/boardKit";
 
 const iconFocus =
   "focus:outline-none focus:ring-2 focus:ring-osce-accent/20 focus:ring-offset-1";
@@ -36,6 +37,8 @@ type SharedProps = {
   variant?: AuthoringIconActionVariant;
   /** A write: hidden from anyone who cannot author. */
   write?: boolean;
+  /** Organisation arms draw a text button (the boards') with this word; the staff console keeps the icon. */
+  text?: string;
   children: ReactNode;
 };
 
@@ -92,6 +95,7 @@ export function AuthoringIconAction({
   disabled,
   variant = "default",
   write = false,
+  text,
   children,
   href,
   onClick,
@@ -100,6 +104,27 @@ export function AuthoringIconAction({
   const canAuthor = useCanAuthor();
   if (write && !canAuthor) return null;
   const tooltip = busy ? (busyLabel ?? label) : label;
+  if (!chrome.b2c && text) {
+    const kind = variant === "primary" ? "primary" : variant === "danger" ? "danger" : variant === "warning" ? "warning" : "default";
+    const textClasses = boardBtn(kind, true);
+    const shown = busy ? (busyLabel ?? text) : text;
+    return href ? (
+      <Link href={href} title={label !== text ? label : undefined} className={textClasses}>
+        {shown}
+      </Link>
+    ) : (
+      <button
+        type="button"
+        title={label !== text ? tooltip : undefined}
+        aria-busy={busy || undefined}
+        disabled={disabled || busy}
+        onClick={onClick}
+        className={textClasses}
+      >
+        {shown}
+      </button>
+    );
+  }
   const classes = variantClass(variant, chrome.b2c);
   const icon = busy ? <ActionSpinner /> : children;
 
@@ -134,6 +159,7 @@ export function AuthoringIconAction({
 /** `write` marks a group made only of writes: it is hidden from anyone who cannot author. */
 export function AuthoringRowActions({ children, write = false }: { children: ReactNode; write?: boolean }) {
   const canAuthor = useCanAuthor();
+  const chrome = useAuthoringChrome();
   if (write && !canAuthor) return null;
-  return <div className="flex shrink-0 items-center gap-1">{children}</div>;
+  return <div className={chrome.b2c ? "flex shrink-0 items-center gap-1" : "contents"}>{children}</div>;
 }

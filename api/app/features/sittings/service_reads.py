@@ -177,6 +177,15 @@ async def candidate_counts(
     return await repository_reads.candidate_counts_for_sittings(session, org_id, sitting_ids)
 
 
+async def sat_counts(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Distinct candidates who sat (or are sitting) at least one station, keyed by sitting id."""
+    return await repository_reads.sat_counts_for_sittings(
+        session, org_id, sitting_ids, sorted(SAT_SLOT_STATUSES)
+    )
+
+
 async def sitting_totals(
     session: AsyncSession, org_id: uuid.UUID, sitting_ids: list[uuid.UUID]
 ) -> dict[uuid.UUID, tuple[int, int]]:

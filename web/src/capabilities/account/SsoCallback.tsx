@@ -77,7 +77,7 @@ export function SsoCallback() {
   }, [params, ready, status, refresh, router]);
 
   return (
-    <AuthShell title="Signing you in" subtitle="Finishing with your organisation." variant="card" icon="working">
+    <AuthShell title="Signing you in" subtitle="Finishing with your organisation." variant="card">
       {error ? (
         <div className="space-y-4">
           <Alert tone={ignored ? "info" : "danger"}>{error}</Alert>

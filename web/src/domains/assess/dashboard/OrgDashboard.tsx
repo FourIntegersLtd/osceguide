@@ -1,33 +1,27 @@
 "use client";
 
+import { boardBtn, boardChip } from "@/foundation/ui/boardKit";
 import Link from "next/link";
-import { useState } from "react";
-import { LuCalendarDays, LuChevronRight, LuPlus } from "react-icons/lu";
+import { useState, type ReactNode } from "react";
 import {
   Alert,
   AsyncBoundary,
-  B2CGroupedRow,
-  B2CGroupedRowLink,
-  B2CGroupedSection,
-  B2CPageHeader,
-  Badge,
   Button,
-  ButtonLink,
   Spinner,
-  StatGrid,
-  StatTile,
   b2bTokens,
+  cn,
 } from "@/foundation/ui";
 import { humanise } from "@/foundation/format";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { readOrgDashboard, readSupervisorCircuits, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
+import { BoardRow, BoardSection, RowChevron, RowText } from "@/domains/assess/dashboard/BoardParts";
+import { HireAttention, HireHeader } from "@/domains/assess/dashboard/HireParts";
 import { LiveNow } from "@/domains/assess/dashboard/LiveNow";
 import { SetupAssistant } from "@/domains/assess/dashboard/SetupAssistant";
 import { NextCircuit, SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
 import {
-  assistantSteps,
   attentionFromResults,
   comingUp,
   dateEyebrow,
@@ -35,15 +29,13 @@ import {
   modeLabel,
   notJoinedItem,
   sittingTally,
-  NEW_EXAM_PATH,
-  SCHEDULE_SITTING_PATH,
-  setupComplete,
+  todayGreeting,
   todaySentence,
   type AttentionItem,
 } from "@/domains/assess/dashboard/support";
+import { assistantSteps, NEW_EXAM_PATH, SCHEDULE_SITTING_PATH, setupComplete, setupTiles } from "@/domains/assess/dashboard/setupSteps";
 import { readResultsIndex } from "@/domains/assess/results/api";
 import { StationsToReview, useStationsToReview } from "@/domains/assess/results/StationsToReview";
-import { greetingFor } from "@/domains/assess/trainee/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
@@ -75,10 +67,10 @@ function Body({ data, orgSlug, admin, runs }: { data: Data; orgSlug: string; adm
 
   if (settingUp) {
     return (
-      <>
+      <div className={b2bTokens.assessPage}>
         <SetupAssistant orgName={data.name} setup={data.setup} />
-        <Counts data={data} />
-      </>
+        <Counts data={data} setup />
+      </div>
     );
   }
   return <Today data={data} orgSlug={orgSlug} admin={admin} runs={runs} name={session?.user.name} />;
@@ -89,12 +81,25 @@ function SupervisorHeader({ orgSlug, eyebrow }: { orgSlug: string; eyebrow: stri
   const { stations } = useStationsToReview(orgSlug);
   const count = stations.length;
   return (
-    <B2CPageHeader
-      className="!mb-0"
+    <PageHead
       eyebrow={eyebrow}
       title={`${count === 0 ? "No" : count} ${count === 1 ? "station" : "stations"} to review`}
-      subtitle="You review the circuits you lead. Your ratings are what count; the AI mark is a starting point."
+      description="You review the circuits you lead. Your ratings are what count; the AI mark is a starting point."
     />
+  );
+}
+
+/** The board's page head: eyebrow, h1, one line and, when there is one, the screen's action. */
+function PageHead({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <div className={b2bTokens.assessEyebrow}>{eyebrow}</div>
+        <h1 className={b2bTokens.assessTitle}>{title}</h1>
+        <p className={b2bTokens.assessDesc}>{description}</p>
+      </div>
+      {action}
+    </div>
   );
 }
 
@@ -105,6 +110,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   const schedules = can(session, "schedule_sittings");
   const upcoming = comingUp(data.recent_sittings ?? []);
   const [running, setRunning] = useState(0);
+  const [statusHost, setStatusHost] = useState<HTMLElement | null>(null);
   const mayDecide = can(session, "sign_off_results");
   const results = useAsync((signal) => (mayDecide ? readResultsIndex(orgSlug, signal) : Promise.resolve(null)), [orgSlug, mayDecide]);
   const notJoined = can(session, "manage_team") ? notJoinedItem(data.counts.invited_not_joined, w) : null;
@@ -113,116 +119,168 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   const circuitRows = circuits.data?.items ?? [];
   const earlier = (data.recent_sittings ?? []).filter((sitting) => sitting.status !== "scheduled");
 
+  const scheduleAction = data.setup.ready_to_run ? (
+    w.hiring ? (
+      <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={boardBtn("primary")}>
+        {w.scheduleSitting}
+      </Link>
+    ) : (
+      <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={boardBtn("primary")}>
+        {w.scheduleSitting}
+      </Link>
+    )
+  ) : (
+    <div className="flex flex-col items-end gap-1">
+      <Button themeType="b2b" variant="commit" disabled aria-describedby="schedule-blocked">
+        {w.scheduleSitting}
+      </Button>
+      <p id="schedule-blocked" className="text-osce-meta text-b2b-muted">
+        {`Nothing can be scheduled until an ${w.exam} is ready. `}
+        <Link href={hrefFor(NEW_EXAM_PATH)} className={b2bTokens.b2bLink}>
+          {`Set up an ${w.exam}`}
+        </Link>
+      </p>
+    </div>
+  );
+
+  const header =
+    runs && !mayDecide ? (
+      <SupervisorHeader orgSlug={orgSlug} eyebrow={w.Supervisor} />
+    ) : w.hiring ? (
+      <HireHeader name={data.name} words={w} action={schedules ? scheduleAction : null} />
+    ) : (
+      <PageHead
+        eyebrow={dateEyebrow(new Date())}
+        title={todayGreeting(name, new Date())}
+        description={todaySentence(running, attention.length)}
+        action={schedules ? scheduleAction : null}
+      />
+    );
+  // What is happening now comes before what exists: on an examination morning it is the
+  // only thing anybody wants.
+  const live = runs ? <LiveNow orgSlug={orgSlug} onCount={setRunning} statusHost={statusHost} /> : null;
+  const needs = mayDecide || notJoined ? <NeedsAttention loading={results.loading} error={results.error} items={attention} /> : null;
+
+  const comingUpSection = (
+    <BoardSection
+      title="Coming up"
+      aside={
+        <Link href={hrefFor("/sittings")} className={cn(b2bTokens.b2bLink, "text-assess-label")}>
+          {`All ${w.sittings}`}
+        </Link>
+      }
+    >
+      {upcoming.length === 0 ? (
+        <BoardRow>
+          <RowText
+            title={`No ${w.sittings} are scheduled.`}
+            meta={schedules ? <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={b2bTokens.b2bLink}>{w.scheduleSitting}</Link> : `An administrator can schedule one.`}
+          />
+        </BoardRow>
+      ) : (
+        upcoming.map((sitting, index) => <SittingRow key={sitting.id} sitting={sitting} first={index === 0} />)
+      )}
+    </BoardSection>
+  );
+  const recent =
+    earlier.length > 0 ? (
+      <BoardSection title={`Recent ${w.sittings}`}>
+        {earlier.map((sitting, index) => (
+          <SittingRow key={sitting.id} sitting={sitting} first={index === 0} />
+        ))}
+      </BoardSection>
+    ) : null;
+  // A supervisor's own circuits: the board's Supervisor home. Their lists end where the board ends; the org's
+  // upcoming sittings and recent ones, and what is running, stay under it.
+  const mine = (
+    <>
+      {runs && circuits.error ? <Alert tone="danger">{errorMessage(circuits.error)}</Alert> : null}
+      {runs && circuits.loading ? <Spinner /> : null}
+      {runs && !circuits.loading && !circuits.error ? <NextCircuit rows={circuitRows} /> : null}
+      {runs ? <StationsToReview orgSlug={orgSlug} /> : null}
+      {runs && !circuits.loading && !circuits.error ? <SupervisorCircuits rows={circuitRows} sayWhenEmpty={!admin} /> : null}
+    </>
+  );
+  const lists = (
+    <>
+      {mine}
+      {comingUpSection}
+      {recent}
+    </>
+  );
+
+  if (w.hiring && admin) {
+    // The hire overview board draws the header, the running hero, what needs a decision and three counts.
+    // Today's lists of assessments stay, under them.
+    return (
+      <>
+        <section aria-label="Overview" className={cn(b2bTokens.assessPage, "!w-auto")}>
+          {header}
+          {live}
+          {needs}
+          <Counts data={data} />
+        </section>
+        <div ref={setStatusHost} className="empty:hidden" />
+        <div className={cn(b2bTokens.assessPage, "!w-auto")}>{lists}</div>
+      </>
+    );
+  }
+  if (runs && !mayDecide) {
+    return (
+      <>
+        <section aria-label="Supervisor home" className={b2bTokens.assessPage}>
+          {header}
+          {mine}
+        </section>
+        <div className={b2bTokens.assessPage}>
+          {live}
+          {comingUpSection}
+          {recent}
+        </div>
+      </>
+    );
+  }
   return (
     <>
-      {runs && !mayDecide ? (
-        <SupervisorHeader orgSlug={orgSlug} eyebrow={w.Supervisor} />
-      ) : (
-      <B2CPageHeader
-        className="!mb-0"
-        eyebrow={w.hiring ? data.name : dateEyebrow(new Date())}
-        title={w.hiring ? "Overview" : greetingFor(name, new Date())}
-        subtitle={w.hiring ? `Your ${w.sittings}, ${w.trainees} and results.` : todaySentence(running, attention.length)}
-        action={
-          schedules ? (
-            data.setup.ready_to_run ? (
-              <ButtonLink href={hrefFor(SCHEDULE_SITTING_PATH)} themeType="b2b" variant="commit">
-                <LuPlus className="h-4 w-4" aria-hidden />
-                {w.scheduleSitting}
-              </ButtonLink>
-            ) : (
-              <div className="flex flex-col items-end gap-1">
-                <Button themeType="b2b" variant="commit" disabled aria-describedby="schedule-blocked">
-                  {w.scheduleSitting}
-                </Button>
-                <p id="schedule-blocked" className="text-osce-meta text-b2b-muted">
-                  {`Nothing can be scheduled until an ${w.exam} is ready. `}
-                  <Link href={hrefFor(NEW_EXAM_PATH)} className={b2bTokens.b2bLink}>
-                    {`Set up an ${w.exam}`}
-                  </Link>
-                </p>
-              </div>
-            )
-          ) : null
-        }
-      />
-      )}
-
-      {/* What is happening now comes before what exists: on an examination morning it is the
-          only thing anybody wants. */}
-      {runs ? <LiveNow orgSlug={orgSlug} onCount={setRunning} /> : null}
-
-      {mayDecide || notJoined ? <NeedsAttention loading={results.loading} error={results.error} items={attention} /> : null}
-
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start [&>*]:min-w-0 [&>*]:flex-1">
-        {runs && circuits.error ? <Alert tone="danger">{errorMessage(circuits.error)}</Alert> : null}
-        {runs && circuits.loading ? <Spinner /> : null}
-        {runs && !circuits.loading && !circuits.error ? <NextCircuit rows={circuitRows} /> : null}
-        {runs ? <StationsToReview orgSlug={orgSlug} /> : null}
-        {runs && !circuits.loading && !circuits.error ? <SupervisorCircuits rows={circuitRows} sayWhenEmpty={!admin} /> : null}
-
-        <B2CGroupedSection
-          eyebrow="Coming up"
-          action={
-            <Link href={hrefFor("/sittings")} className={b2bTokens.b2bLink}>
-              {`All ${w.sittings}`}
-            </Link>
-          }
-        >
-          {upcoming.length === 0 ? (
-            <B2CGroupedRow
-              title={`No ${w.sittings} are scheduled.`}
-              meta={schedules ? <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={b2bTokens.b2bLink}>{w.scheduleSitting}</Link> : `An administrator can schedule one.`}
-            />
-          ) : (
-            upcoming.map((sitting) => <SittingRow key={sitting.id} sitting={sitting} />)
-          )}
-        </B2CGroupedSection>
+      <section aria-label="Today" className={b2bTokens.assessPage}>
+        {header}
+        {live}
+        {needs}
+        {comingUpSection}
+        {admin ? <Counts data={data} setup today /> : null}
+      </section>
+      <div className={b2bTokens.assessPage}>
+        {mine}
+        {recent}
       </div>
-
-      {earlier.length > 0 ? (
-        <B2CGroupedSection eyebrow={`Recent ${w.sittings}`}>
-          {earlier.map((sitting) => (
-            <SittingRow key={sitting.id} sitting={sitting} />
-          ))}
-        </B2CGroupedSection>
-      ) : null}
-
-      {admin ? <Counts data={data} /> : null}
     </>
   );
 }
 
-function SittingRow({ sitting }: { sitting: NonNullable<Data["recent_sittings"]>[number] }) {
+function SittingRow({ sitting, first }: { sitting: NonNullable<Data["recent_sittings"]>[number]; first: boolean }) {
   const date = dateTile(sitting.scheduled_for);
   const { hrefFor } = useSurface();
   const w = useAssessWords();
   return (
-    <B2CGroupedRowLink
-      href={hrefFor(`/sittings/${sitting.id}`)}
-      icon={date ? undefined : LuCalendarDays}
-      leading={
-        date ? (
-          <span aria-hidden className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-osce-md bg-b2c-surface-muted text-osce-ink-700">
-            <span className="text-[10px] font-semibold leading-none">{date.month}</span>
-            <span className="text-osce-body font-semibold leading-tight">{date.day}</span>
-          </span>
-        ) : undefined
-      }
-      title={sitting.name}
-      meta={[
-        sitting.scheduled_for && !date ? new Date(sitting.scheduled_for).toLocaleString() : null,
-        modeLabel(sitting.mode, w),
-        sittingTally(sitting, w),
-      ]
-        .filter(Boolean)
-        .join(" · ")}
-      trailing={
-        <Badge variant="neutral" dot>
-          {humanise(sitting.status)}
-        </Badge>
-      }
-    />
+    <BoardRow href={hrefFor(`/sittings/${sitting.id}`)} first={first}>
+      {date ? (
+        <div aria-hidden className="w-14 text-center">
+          <div className={b2bTokens.assessMeta}>{date.month}</div>
+          <div className="text-assess-section font-semibold">{date.day}</div>
+        </div>
+      ) : null}
+      <RowText
+        title={sitting.name}
+        meta={[
+          sitting.scheduled_for && !date ? new Date(sitting.scheduled_for).toLocaleString() : null,
+          modeLabel(sitting.mode, w),
+          sittingTally(sitting, w),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      />
+      <span className={boardChip(sitting.status === "scheduled" ? "info" : "neutral")}>{humanise(sitting.status)}</span>
+    </BoardRow>
   );
 }
 
@@ -232,60 +290,75 @@ function SittingRow({ sitting }: { sitting: NonNullable<Data["recent_sittings"]>
  */
 function NeedsAttention({ loading, error, items }: { loading: boolean; error: unknown; items: AttentionItem[] }) {
   const { hrefFor } = useSurface();
+  const hiring = useAssessWords().hiring;
   if (loading) return <Spinner />;
   if (error) return <Alert tone="danger">{errorMessage(error)}</Alert>;
+  if (hiring) return <HireAttention items={items} />;
 
   return (
-    <B2CGroupedSection eyebrow="Needs your attention" action={<span className="text-osce-meta text-b2b-muted">Oldest first</span>}>
+    <BoardSection title="Needs your attention" aside={<span className={b2bTokens.assessMeta}>Oldest first</span>}>
       {items.length === 0 ? (
-        <B2CGroupedRow
-          title="Nothing needs you right now."
-          meta={
-            <Link href={hrefFor("/results")} className={b2bTokens.b2bLink}>
-              Open Results
-            </Link>
-          }
-        />
-      ) : (
-        items.map((item) => (
-          <B2CGroupedRowLink
-            key={item.key}
-            href={hrefFor(item.href)}
-            icon={LuChevronRight}
-            title={item.title}
-            meta={item.body}
-            trailing={<Badge variant="warning" dot>{item.tag}</Badge>}
+        <BoardRow>
+          <RowText
+            title="Nothing needs you right now."
+            meta={
+              <Link href={hrefFor("/results")} className={b2bTokens.b2bLink}>
+                Open Results
+              </Link>
+            }
           />
+        </BoardRow>
+      ) : (
+        items.map((item, index) => (
+          <BoardRow key={item.key} href={hrefFor(item.href)} first={index === 0}>
+            <span className={boardChip(item.tone === "warn" ? "warn" : item.tone === "ok" ? "ok" : "neutral")}>{item.tag}</span>
+            <RowText title={item.title} meta={item.body} />
+            <RowChevron />
+          </BoardRow>
         ))
       )}
-    </B2CGroupedSection>
+    </BoardSection>
   );
 }
 
-function Counts({ data }: { data: Data }) {
+/**
+ * The count tiles: the Today and setup boards' four white cards with a sans number (`setup`, `assessStat*`);
+ * the hire overview's three.
+ */
+function Counts({ data, setup = false, today = false }: { data: Data; setup?: boolean; today?: boolean }) {
   const w = useAssessWords();
   const { hrefFor } = useSurface();
   const counts = data.counts;
-  const tiles = w.hiring
-    ? [
-        { label: w.Trainees, value: counts.trainees, path: "/trainees" },
-        { label: w.Supervisors, value: counts.staff, path: "/team" },
-        { label: w.Sittings, value: counts.sittings, path: "/sittings" },
-      ]
-    : [
-    { label: `${w.Exams} ready to schedule`, value: counts.programmes_with_markable_exam, path: "/authoring/exams" },
-    // The backend counts this organisation's own stations, not the platform catalogue it may also run.
-    { label: "Published stations", value: counts.stations, path: "/authoring/stations" },
+
+  if (setup) {
+    return (
+      <section aria-label="At a glance" className="flex flex-wrap gap-4">
+        {[
+          ...setupTiles(counts, w).map((tile) => (today && tile.path === "/team" ? { ...tile, label: w.Supervisors } : tile)),
+          ...(today ? [{ label: w.Sittings, value: counts.sittings, path: "/sittings" }] : []),
+        ].map((tile) => (
+          <Link key={tile.label} href={hrefFor(tile.path)} className={cn(b2bTokens.assessCard, b2bTokens.assessStat)}>
+            <span className={b2bTokens.assessMeta}>{tile.label === "Exams ready" ? "Exams ready to schedule" : tile.label}</span>
+            <span className={b2bTokens.assessStatNumber}>{tile.value}</span>
+          </Link>
+        ))}
+      </section>
+    );
+  }
+
+  const tiles = [
     { label: w.Trainees, value: counts.trainees, path: "/trainees" },
     { label: w.Supervisors, value: counts.staff, path: "/team" },
     { label: w.Sittings, value: counts.sittings, path: "/sittings" },
   ];
-
   return (
-    <StatGrid label="At a glance">
+    <section aria-label="At a glance" className="grid grid-cols-1 gap-3 min-[901px]:grid-cols-3">
       {tiles.map((tile) => (
-        <StatTile key={tile.label} label={tile.label} value={tile.value} href={hrefFor(tile.path)} />
+        <Link key={tile.label} href={hrefFor(tile.path)} className={cn(b2bTokens.assessCard, "p-4 text-assess-desc !leading-[normal] text-osce-ink-900 hover:bg-osce-canvas")}>
+          {tile.label}
+          <b className="mt-1 block text-assess-h2 font-semibold !leading-[normal]">{tile.value}</b>
+        </Link>
       ))}
-    </StatGrid>
+    </section>
   );
 }

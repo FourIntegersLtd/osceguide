@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseTraineeCsv, splitCsvLine } from "@/domains/assess/roster/csv";
+import { importSummary, parseTraineeCsv, splitCsvLine } from "@/domains/assess/roster/csv";
 
 test("a quoted field containing a comma stays one field", () => {
   assert.deepEqual(splitCsvLine('"Khan, Amina",amina@nhs.uk'), ["Khan, Amina", "amina@nhs.uk"]);
@@ -72,4 +72,9 @@ test("a repeated address is counted once and its later lines are reported", () =
 test("a missing email column names the columns that were found", () => {
   const parsed = parseTraineeCsv("name;cohort\nAmina;June");
   assert.match(parsed.error ?? "", /found: name, cohort/);
+});
+
+test("rows the file dropped count as skipped", () => {
+  assert.equal(importSummary(3, 0, 1), "3 added, 1 skipped.");
+  assert.equal(importSummary(3, 2, 0), "3 added, 2 skipped.");
 });

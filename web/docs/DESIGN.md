@@ -53,11 +53,26 @@ product preference, not a default.
 | `text-osce-display-*` | fluid | marketing only |
 
 - Never raw `text-sm` / `text-lg` / `text-[Npx]`.
+- **Assess skin (boards win).** The institution boards in `docs/institution-overhaul/boards` are the
+  specification, so their literal values have tokens: `text-assess-h1` 28/1.2, `-h2` 24/1.3, `-desc` 16/1.5,
+  `-meta` 13/1.5, `-card-title` 26/1.2 (the sign-in card title), `-state-title` 16/normal (a short state card's h2), `-label` 14, `-chip` 12, `-eyebrow` 11 caps `.06em`, `-num` 28 (all fixed, no tracking),
+  `max-w-assess-page` 1080, `h-assess-dot` 26, and the class strings `assessPage`, `assessTitle`,
+  `assessEyebrow`, `assessCard`, `assessChip*`, `assessButton*`, `assessStep*`, `assessStat*`,
+  `assessWhyPanel` in `foundation/ui/b2bTokens.ts`. A screen that has a board uses them; it never writes a raw size.
+  `web/e2e/assess/board-*.spec.ts` compares each board with the app and fails past 0.5% pixels.
+- **Board kit** (`foundation/ui/boardKit.ts`, pure strings): the one copy of `boardCard`/`boardCardClipped`/`boardPad`,
+  `boardRow`/`boardRowWide` and `boardHeadRow`/`boardHeadRowWide` (sitting and authoring rhythms), `boardTabs` + `boardTab(on)`
+  (the segmented tab strip: People, Settings, Authoring, Sittings all use it), `boardChip(tone)`, `ALERT_TONES`, `boardSeg*`, and the controls: `boardBtn(kind, small)` (+ `boardButtonSmall`/`boardButtonGhost*`), `boardInput`, `boardLabel`, `boardAvatar`, `boardCardPad`, `boardTile`. Sitting and console chrome that is not shared lives in `domains/assess/chrome.ts`.
+  `domains/assess` and `capabilities/authoring` import it from foundation, never from each other. Radii and shadows are
+  tokens: `rounded-board-sm` 7, `rounded-board` 9, `rounded-board-lg` 14, `rounded-board-xl` 16, `shadow-board-dialog`,
+  `shadow-board-sheet`. The shared `Modal` takes `variant="board"` for the board's `.dlg`; never stack `!` overrides on it.
 - Headings are fluid already, so **never pair a token with a responsive
   step-up** (`text-osce-title sm:text-osce-heading` double-scales).
 - Fonts: the train surface is Open Sauce for everything, numbers, dates and
-  timers included (use `tabular-nums`, never `font-mono`), with Fraunces for page
-  titles only (`font-heading`). Mono is kept for ids, codes and emails in staff
+  timers included (use `tabular-nums`, never `font-mono`), with Fraunces for the
+  train page title only (`font-heading`). **Assess, hire and partner draw the page
+  title (h1) in Open Sauce 28px semibold** (the institution boards win over the old
+  Fraunces rule; `globals.css`). Mono is kept for ids, codes and emails in staff
   and authoring screens; `src/capabilities/noMono.test.ts` guards the rest.
 
 ## Help dock
@@ -127,6 +142,16 @@ Keys are in `b2cReadingTones` (`src/foundation/ui/productTokens.ts`).
 `education`. Write `tone="history"`, never a colour name. Do not add a second,
 arm-local colour map.
 
+## Spacing rhythm and quiet selection (assess, hire, partner)
+Named exceptions where the user's feedback (2026-11-05) overrides the boards; staff console and train are unchanged.
+- Rhythm: 8px label to control, 28px between fields, 16px between option cards, 24px between sections, 32px above a footer divider, 24-32px card padding. The constants are `assessForm*`, `assessOptionStack`, `assessFooter` in `b2bTokens.ts`; `boardCardPad`, `boardRow`, `boardTh` in `boardUi.tsx` carry the same scale. A board diff therefore scores higher than it did where the board is tighter.
+- `Panel`'s `className` lands on the section, not the body: put `flex`/`gap` in `bodyClassName`, or the gap does nothing (this was the zero-gap New exam wizard).
+- Selection and focus: 1px `--assess-select-border` (accent at 28% on white) for a selected card, highlighted row or focused field; focus adds a 3px `--assess-focus-ring` (accent at 16%). Never the saturated accent as a border. `globals.css` ("Assess skin: quiet selection and focus") remaps `.border-osce-accent` and its hover/focus forms inside the assess scopes; filled buttons and round dots are exempt.
+
+
+Institution dialogs (assess, hire, partner) are one shape, `PeopleDialog` in `domains/assess/ui.tsx`, drawn at the boards' `.dlg`: 24px padding, 14px gap, title `text-assess-desc` (16px) semibold, lead `text-assess-label` (14px) at 1.5 leading in ink-500, then Cancel and the commit right-aligned. No second dialog shape; `team/chrome` no longer has one. Field hints sit under their control (board `.hint`), not above.
+Institution home screens (Today, Supervisor home, Now running) use `BoardSection`/`BoardRow` (`domains/assess/dashboard/BoardParts.tsx`); section titles use `text-assess-section` (20px, 1.3 leading). Exceptions are in each board spec header.
+
 ## Layout principles
 
 1. **One focal idea per screen**: one primary CTA; demote the rest.
@@ -169,7 +194,8 @@ under a `PlatformPageHeader` (or via `PlatformTabbedScreen`).
 - **`RowList` / `Row` / `RowLink`**: list rows at `px-5 py-3.5 sm:px-6`.
   `RowLink` adds the hover tint and trailing chevron for a row that navigates.
 - **`StatGrid` / `StatTile`**: a `gap-3 sm:grid-cols-2 lg:grid-cols-4` KPI row —
-  uppercase micro-label, `tabular-nums` value, tinted icon chip.
+  uppercase micro-label, `tabular-nums` value, tinted icon chip. The setup assistant's board tiles
+  (white card, 13px label, 28px semibold sans number) use `assessStat*` instead.
 - **`DetailLayout` / `ActionRail`**: a two-column detail page,
   `lg:grid-cols-[minmax(0,1fr)_20rem]`, with a sticky action rail on the right
   (destructive action last, behind a divider).

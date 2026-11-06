@@ -21,6 +21,7 @@ import {
   spotlight,
   stationsCompleted,
   summaryLine,
+  whenWords,
 } from "@/domains/assess/trainee/support";
 
 function slot(over: Partial<MySlot> & { id: string }): MySlot {
@@ -140,6 +141,13 @@ test("the summary claims a station count only for an examination that has them",
     summaryLine(sitting({ slots: [slot({ id: "a", status: "completed" }), slot({ id: "b" })] })),
     /1 of 2 stations completed/,
   );
+});
+
+test("dates read as the board says them", () => {
+  const now = new Date("2026-11-05T12:00:00");
+  assert.equal(whenWords("2026-11-05T09:00:00", now), "Today");
+  assert.equal(whenWords("2026-11-12T09:00:00", now), "12 Nov");
+  assert.equal(whenWords("nonsense", now), "");
 });
 
 test("the spotlight label leads with the thing that needs doing now", () => {

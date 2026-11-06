@@ -1,14 +1,9 @@
 "use client";
 
-import { HiOutlinePresentationChartLine } from "react-icons/hi2";
+import Link from "next/link";
 import {
   Alert,
   AsyncBoundary,
-  B2CGroupedRow,
-  B2CGroupedSection,
-  B2CHero,
-  B2CPageHeader,
-  Badge,
   Button,
   ButtonLink,
   EmptyState,
@@ -40,6 +35,16 @@ import {
   slotStatus,
 } from "@/domains/assess/trainee/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { b2bTokens as t } from "@/foundation/ui";
+import { boardPad, boardChip } from "@/foundation/ui/boardKit";
+import {
+  TraineeHead,
+  TraineeHero,
+  TraineeList,
+  TraineePage,
+  TraineeRow,
+} from "@/domains/assess/trainee/traineeBoard";
+import { whenWords } from "@/domains/assess/trainee/support";
 
 /**
  * One sitting, as the candidate sitting it sees it.
@@ -57,17 +62,25 @@ import { useAssessWords } from "@/domains/assess/useAssessWords";
 export function MySittingDetail({ sittingId }: { sittingId: string }) {
   const w = useAssessWords();
   const { orgSlug } = useSurface();
-  const initial = useAsync((signal) => readMySittings(orgSlug, signal), [orgSlug]);
+  const initial = useAsync(
+    (signal) => readMySittings(orgSlug, signal),
+    [orgSlug],
+  );
   const stream = useEventStream<MySittings>(mySittingsStreamPath(orgSlug));
   const data = stream.data ?? initial.data;
-  const mine = (data?.items ?? []).filter((sitting) => sitting.id === sittingId);
+  const mine = (data?.items ?? []).filter(
+    (sitting) => sitting.id === sittingId,
+  );
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-6">
-      <AsyncBoundary state={initial} isEmpty={() => mine.length === 0}
+    <TraineePage label="Your sitting">
+      <AsyncBoundary
+        state={initial}
+        isEmpty={() => mine.length === 0}
         empty={{
           title: `We could not find that ${w.sitting}`,
-          description: "You may have been taken off it, or it belongs to another organisation.",
+          description:
+            "You may have been taken off it, or it belongs to another organisation.",
         }}
       >
         {() => (
@@ -78,7 +91,7 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
           </>
         )}
       </AsyncBoundary>
-    </div>
+    </TraineePage>
   );
 }
 
@@ -87,27 +100,29 @@ function MicCheck() {
   const mic = useMicPreflight();
   const ok = mic.status === "ready";
   return (
-    <Alert tone={ok ? "success" : "info"} title="Check your microphone">
-      <p>
+    <div className={boardPad}>
+      <h2 className="text-assess-desc font-semibold">Check your microphone</h2>
+      <div className={t.assessMeta}>
         {ok
           ? "Your microphone is ready."
           : mic.status === "denied"
-            ? "Allow your microphone to join. Your browser blocked it."
+            ? "Your browser blocked the microphone. Allow it in the address bar, then try again."
             : mic.status === "missing"
-              ? "No microphone found."
-              : "Test it now so the room can open straight away."}
-      </p>
+              ? "No microphone was found. Connect one, then try again."
+              : "We check it before you join. Allow it in the address bar, then try again."}
+      </div>
       {ok ? null : (
-        <p className="mt-1 text-osce-meta">
-          {'We check it before you join. If your browser blocks it: "Allow it in the address bar, then try again."'}
-        </p>
-      )}
-      {ok ? null : (
-        <Button themeType="b2b" variant="secondary" size="sm" className="mt-2" onClick={() => void mic.request()}>
+        <Button
+          themeType="b2b"
+          variant="secondary"
+          size="sm"
+          className="self-start"
+          onClick={() => void mic.request()}
+        >
           Test microphone
         </Button>
       )}
-    </Alert>
+    </div>
   );
 }
 
@@ -122,52 +137,52 @@ function Circuit({ sitting }: { sitting: MySitting }) {
   const over = candidateDone(sitting);
 
   return (
-    <section className="space-y-4">
-      <B2CPageHeader
-        className="!mb-0"
+    <>
+      <div>
+        <Link
+          href={hrefFor("/trainee")}
+          className="text-assess-label text-osce-accent"
+        >
+          ‹ All {w.sittings}
+        </Link>
+      </div>
+      <TraineeHead
         eyebrow={
           sitting.scheduled_for
-            ? new Date(sitting.scheduled_for).toLocaleDateString(undefined, {
-                weekday: "long",
-                day: "numeric",
-                month: "short",
-              })
+            ? whenWords(sitting.scheduled_for) || modeLabel(sitting)
             : modeLabel(sitting)
         }
         title={sitting.name}
-        back={{ href: hrefFor("/trainee"), label: `All ${w.sittings}` }}
-        subtitle={`${exam ? "Formal exam" : "Practice circuit"} · ${plural(total, "station")}`}
-        action={
+        desc={`${exam ? "Formal exam" : "Practice circuit"} · ${plural(total, "station")}`}
+        acts={
           <>
             {sitting.live ? (
-              <Badge variant="success" dot>
-                Live
-              </Badge>
+              <span className={boardChip("ok")}>Live</span>
             ) : null}
             {sitting.paused ? (
-              <Badge variant="warning" dot>
-                Paused
-              </Badge>
+              <span className={boardChip("warn")}>Paused</span>
             ) : null}
-            <ButtonLink themeType="b2b" variant="secondary" size="sm" href={hrefFor("/trainee")}>
-              All {w.sittings}
-            </ButtonLink>
           </>
         }
       />
 
-      {sitting.can_join || over ? null : <MicCheck />}
-
       {sitting.can_join || over ? null : (
-      <Alert tone="info" title={exam ? "Before you start" : "How a practice circuit works"}>
-        {exam
-          ? "Your station opens when your supervisor starts it. Go in straight away: the patient joins when reading time ends, and you need to be in the room by then."
-          : "Your supervisor opens the room. Only the person whose turn it is speaks with the patient. Each station's review appears here as soon as your supervisor completes it."}
-      </Alert>
+        <Alert
+          tone="info"
+          title={exam ? "Before you start" : "How a practice circuit works"}
+        >
+          {exam
+            ? "Your station opens when your supervisor starts it. Go in straight away: the patient joins when reading time ends, and you need to be in the room by then."
+            : "Your supervisor opens the room. Only the person whose turn it is speaks with the patient. Each station's review appears here as soon as your supervisor completes it."}
+        </Alert>
       )}
 
+      {sitting.can_join || over ? null : <MicCheck />}
+
       {sitting.can_join ? (
-        <B2CHero
+        <TraineeHero
+          live
+          size="md"
           eyebrow={
             activeSlot(sitting) && total > 0
               ? `${exam ? "Station" : "Turn"} ${activeSlot(sitting)!.slot_index + 1} of ${total}`
@@ -177,12 +192,13 @@ function Circuit({ sitting }: { sitting: MySitting }) {
           action={<JoinRoom sitting={sitting} />}
         >
           {activeSlot(sitting)?.station_title ?? null}
-        </B2CHero>
+        </TraineeHero>
       ) : null}
 
       {briefSlot?.status === "reading" ? (
         <Alert tone="info" title="Joining during reading">
-          You join automatically while you read, so the patient is ready when it starts.
+          You join automatically while you read, so the patient is ready when it
+          starts.
         </Alert>
       ) : null}
 
@@ -194,15 +210,15 @@ function Circuit({ sitting }: { sitting: MySitting }) {
           description="When your organisation adds stations for you on this circuit, they appear here."
         />
       ) : (
-        <B2CGroupedSection eyebrow={exam ? "Your stations" : "Your turns"}>
+        <TraineeList title={exam ? "Your stations" : "Your turns"}>
           {slots.map((slot) => (
             <Slot key={slot.id} slot={slot} exam={exam} />
           ))}
-        </B2CGroupedSection>
+        </TraineeList>
       )}
 
       <MyResultLink sittingId={sitting.id} />
-    </section>
+    </>
   );
 }
 
@@ -219,40 +235,35 @@ function Slot({ slot, exam }: { slot: MySlot; exam: boolean }) {
   const status = slotStatus(slot);
 
   return (
-    <div className="flex flex-col gap-3 border-b border-b2b-border px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
-      <B2CGroupedRow
-        className="min-h-0 flex-1 border-b-0 p-0"
-        icon={HiOutlinePresentationChartLine}
-        title={`${exam ? "Station" : "Turn"} ${slot.slot_index + 1}${
-          slot.station_title ? ` · ${slot.station_title}` : ""
-        }`}
-        meta={
-          slot.marking_failed
-            ? "This station could not be marked; your school has been told."
-            : status.done
-              ? "Read this one back below. A finished station cannot be re-entered."
-              : undefined
-        }
-        trailing={
-          <Badge variant={status.tone} dot>
-            {slot.is_active && !status.done ? "Now" : status.label}
-          </Badge>
-        }
-      />
-      <div className="flex flex-wrap items-center gap-2">
-        {slot.attempt_id ? (
-          <ButtonLink
-            themeType="b2b"
-            variant="secondary"
-            size="sm"
-            href={hrefFor(`/attempts/${slot.attempt_id}`)}
-          >
-            {status.done ? "Review station" : "Station record"}
-          </ButtonLink>
-        ) : null}
-        {status.done ? <MyReviewLink slotId={slot.id} /> : null}
-      </div>
-    </div>
+    <TraineeRow
+      title={`${exam ? "Station" : "Turn"} ${slot.slot_index + 1}${slot.station_title ? ` · ${slot.station_title}` : ""}`}
+      meta={
+        slot.marking_failed
+          ? "This station could not be marked; your school has been told."
+          : status.done
+            ? "Read this one back below. A finished station cannot be re-entered."
+            : undefined
+      }
+    >
+      <span
+        className={boardChip(
+          status.done ? "ok" : slot.is_active ? "info" : "neutral",
+        )}
+      >
+        {slot.is_active && !status.done ? "Now" : status.label}
+      </span>
+      {slot.attempt_id ? (
+        <ButtonLink
+          themeType="b2b"
+          variant="secondary"
+          size="sm"
+          href={hrefFor(`/attempts/${slot.attempt_id}`)}
+        >
+          {status.done ? "Review station" : "Station record"}
+        </ButtonLink>
+      ) : null}
+      {status.done ? <MyReviewLink slotId={slot.id} /> : null}
+    </TraineeRow>
   );
 }
 
@@ -266,7 +277,12 @@ function MyReviewLink({ slotId }: { slotId: string }) {
   const state = useAsync((signal) => readMyReview(slotId, signal), [slotId]);
 
   // A failed check is said, not hidden: no link and no reason reads as "there is no feedback".
-  if (state.error) return <span className="text-osce-meta text-b2b-mid">Could not check for feedback. Reload to try again.</span>;
+  if (state.error)
+    return (
+      <span className="text-osce-meta text-b2b-mid">
+        Could not check for feedback. Reload to try again.
+      </span>
+    );
   if (!state.data || !reviewIfReady(state.data)) return null;
 
   return (
@@ -292,9 +308,17 @@ function MyResultLink({ sittingId }: { sittingId: string }) {
   const { hrefFor } = useSurface();
   // Nothing released yet (or not this person's) answers null — the link
   // simply is not there.
-  const state = useAsync((signal) => readMyResult(sittingId, signal), [sittingId]);
+  const state = useAsync(
+    (signal) => readMyResult(sittingId, signal),
+    [sittingId],
+  );
 
-  if (state.error) return <Alert tone="warning">Could not check whether your result is released. Reload to try again.</Alert>;
+  if (state.error)
+    return (
+      <Alert tone="warning">
+        Could not check whether your result is released. Reload to try again.
+      </Alert>
+    );
   if (!state.data?.released_at) return null;
 
   return (

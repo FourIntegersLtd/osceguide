@@ -126,6 +126,10 @@
   --osce-border: #e3e3e8;
   --osce-border-light: #efeff2;
 
+  /* The boards' "info" chip: a pale blue pill with deep-blue text. */
+  --assess-chip-info-bg: #e8effc;
+  --assess-chip-info-text: #1e40af;
+
   /* One accent. Its soft fills are grey, so a selected thing reads as ink. */
   --osce-accent: var(--brand-hex);
   --osce-accent-hover: var(--brand-hover-hex);
@@ -134,6 +138,14 @@
   --osce-accent-light: var(--brand-light-hex);
   /* A focused field's border: the skin's accent, lightened. */
   --osce-focus-border: color-mix(in srgb, var(--osce-accent) 40%, white);
+  /* Assess skin only (user feedback 2026-11-05): a selected card, highlighted row or focused field
+     is a 1px light-blue border, and focus adds a soft low-alpha ring. Never the saturated accent. */
+  --assess-select-border: color-mix(in srgb, var(--osce-accent) 28%, white);
+  /* Assess boards: warn chip and alert text, and the live "Next up" card (Sittings board). */
+  --assess-warn-text: #92400e;
+  --assess-hero-live-bg: #f7f9fe;
+  --assess-selected-bg: var(--assess-hero-live-bg);
+  --assess-focus-ring: color-mix(in srgb, var(--osce-accent) 16%, transparent);
   --osce-commit: var(--brand-hex);
   --osce-commit-hover: var(--brand-hover-hex);
 

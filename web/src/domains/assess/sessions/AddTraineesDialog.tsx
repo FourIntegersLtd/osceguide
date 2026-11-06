@@ -7,9 +7,11 @@ import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { hasCode } from "@/foundation/platform-client";
 import { listActiveTrainees, type Trainee } from "@/domains/assess/api";
 import { latecomerChoices } from "@/domains/assess/sessions/latecomers";
-import { Dialog } from "@/domains/assess/team/chrome";
+import { PeopleDialog } from "@/domains/assess/ui";
+import { assessHelper } from "@/foundation/ui/b2bTokens";
 import { appendTrainees } from "@/domains/assess/sessions/api";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
+import { boardInput, boardLabel } from "@/foundation/ui/boardKit";
 
 /**
  * Somebody who arrived late.
@@ -92,7 +94,7 @@ export function AddTraineesDialog({
   }
 
   return (
-    <Dialog
+    <PeopleDialog
       open
       title="Add somebody to this circuit"
       lead="They are given a station at the end of the circuit, in the room that is already open."
@@ -107,57 +109,48 @@ export function AddTraineesDialog({
       <AsyncBoundary state={roster}>
         {() =>
           candidates.length === 0 ? (
-            <p className="text-osce-body text-b2b-mid">Everybody on your roster is already on this circuit.</p>
+            <p className={assessHelper}>Everybody on your roster is already on this circuit.</p>
           ) : (
-            <ul className="max-h-64 divide-y divide-b2b-border overflow-y-auto rounded-panel border border-b2b-border">
+            <div className="flex max-h-64 flex-col overflow-y-auto">
               {candidates.map(({ trainee, refusal: notYet }) => (
-                <li key={trainee.id}>
-                  <label
-                    title={notYet ?? undefined}
-                    className={`flex items-center gap-3 px-3 py-2.5 ${notYet ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:bg-canvas/60"}`}
-                  >
-                    <input
-                      type="checkbox"
-                      disabled={notYet !== null}
-                      checked={picked.has(trainee.user_id ?? "")}
-                      onChange={(event) =>
-                        setPicked((current) => {
-                          const next = new Set(current);
-                          const userId = trainee.user_id;
-                          if (userId === null) return next;
-                          if (event.target.checked) next.add(userId);
-                          else next.delete(userId);
-                          return next;
-                        })
-                      }
-                      className="h-4 w-4 rounded border-b2b-border text-b2b-accent"
-                    />
-                    <span className="min-w-0">
-                      <span className="block truncate text-osce-caption font-medium text-b2b-headline">
-                        {traineeName(trainee)}
-                      </span>
-                      <span className="block truncate text-osce-caption text-b2b-mid">
-                        {notYet ? `${trainee.email} · ${notYet}` : trainee.email}
-                      </span>
-                    </span>
-                  </label>
-                </li>
+                <label
+                  key={trainee.id}
+                  className={`flex min-h-8 items-start gap-2.5 text-assess-label font-normal ${notYet ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                >
+                  <input
+                    type="checkbox"
+                    disabled={notYet !== null}
+                    checked={picked.has(trainee.user_id ?? "")}
+                    onChange={(event) =>
+                      setPicked((current) => {
+                        const next = new Set(current);
+                        const userId = trainee.user_id;
+                        if (userId === null) return next;
+                        if (event.target.checked) next.add(userId);
+                        else next.delete(userId);
+                        return next;
+                      })
+                    }
+                    className="mt-0.5 h-4 w-4 rounded border-osce-border text-osce-accent"
+                  />
+                  {`${traineeName(trainee)} · ${notYet ?? trainee.email}`}
+                </label>
               ))}
-            </ul>
+            </div>
           )
         }
       </AsyncBoundary>
 
-      {picked.size > 0 ? (
-        <label className="flex flex-col gap-1.5">
-          <span className="text-osce-caption font-medium text-b2b-headline">Station</span>
+        <div>
+          <label htmlFor="late-station" className={boardLabel}>Station</label>
           <select
+            id="late-station"
             value={station}
             onChange={(event) => {
               setStation(event.target.value);
               setRefusal(null);
             }}
-            className="h-10 w-full rounded-panel border border-b2b-border bg-b2b-surface px-3 text-osce-body text-b2b-headline"
+            className={boardInput}
           >
             <option value="">The station this circuit is running</option>
             {stations.map((choice) => (
@@ -166,14 +159,14 @@ export function AddTraineesDialog({
               </option>
             ))}
           </select>
-          <span className="text-osce-caption text-b2b-mid">
+          <div className={`${assessHelper} mt-1.5`}>
             {picked.size > 1
               ? "Everyone you add takes the station chosen here, after everyone else on the circuit. To spread them across different stations, rebuild the circuit."
               : "They take their turn after everyone already on the circuit."}
-          </span>
-        </label>
-      ) : null}
-    </Dialog>
+          </div>
+        </div>
+
+    </PeopleDialog>
   );
 }
 

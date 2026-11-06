@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { LuClipboardCheck } from "react-icons/lu";
-import { B2CGroupedRow, B2CGroupedRowLink, B2CGroupedSection, Badge, ButtonLink, b2bTokens } from "@/foundation/ui";
+import { b2bTokens, cn } from "@/foundation/ui";
+import { boardBtn, boardCard, boardChip } from "@/foundation/ui/boardKit";
+import { BoardRow, BoardSection, RowText } from "@/domains/assess/dashboard/BoardParts";
 import { useSurface } from "@/capabilities";
 import type { SupervisorCircuitRow } from "@/domains/assess/dashboard/api";
 import { circuitsBySitting, longWhen, modeLabel, shortDate } from "@/domains/assess/dashboard/support";
@@ -35,17 +36,13 @@ export function SupervisorCircuits({
     if (!sayWhenEmpty) return null;
     return (
       <Section>
-        <B2CGroupedRow
-          title="Nothing is assigned to you right now."
-          meta="A circuit appears here when an administrator names you its supervisor."
-        />
+        <BoardRow>
+          <RowText title="Nothing is assigned to you right now." meta="A circuit appears here when an administrator names you its supervisor." />
+        </BoardRow>
         {lastEnded ? (
-          <B2CGroupedRowLink
-            href={hrefFor(`/circuits/${lastEnded.circuit_id}`)}
-            icon={LuClipboardCheck}
-            title="Your last ended circuit"
-            meta={`${lastEnded.sitting_name} · ${lastEnded.circuit_name}`}
-          />
+          <BoardRow href={hrefFor(`/circuits/${lastEnded.circuit_id}`)}>
+            <RowText title="Your last ended circuit" meta={`${lastEnded.sitting_name} · ${lastEnded.circuit_name}`} />
+          </BoardRow>
         ) : null}
       </Section>
     );
@@ -63,18 +60,10 @@ export function SupervisorCircuits({
         const live = group.rows.some((row) => row.in_progress);
         const date = shortDate(first.scheduled_for);
         return (
-          <B2CGroupedRowLink
-            key={group.sittingId}
-            href={hrefFor(group.rows.length === 1 ? `/circuits/${first.circuit_id}` : `/sittings/${group.sittingId}`)}
-            icon={LuClipboardCheck}
-            title={group.title}
-            meta={[date, modeLabel(first.mode, w)].filter(Boolean).join(" · ")}
-            trailing={
-              <Badge variant={live ? "success" : "info"} dot>
-                {live ? "In progress" : "Scheduled"}
-              </Badge>
-            }
-          />
+          <BoardRow key={group.sittingId} href={hrefFor(group.rows.length === 1 ? `/circuits/${first.circuit_id}` : `/sittings/${group.sittingId}`)}>
+            <RowText title={group.title} meta={[date, modeLabel(first.mode, w)].filter(Boolean).join(" · ")} />
+            <span className={boardChip(live ? "ok" : "info")}>{live ? "In progress" : "Scheduled"}</span>
+          </BoardRow>
         );
       })}
     </Section>
@@ -91,16 +80,16 @@ function Section({ children }: { children: ReactNode }) {
   const { hrefFor } = useSurface();
   const w = useAssessWords();
   return (
-    <B2CGroupedSection
-      eyebrow="Circuits you lead"
-      action={
-        <Link href={hrefFor("/sittings")} className={b2bTokens.b2bLink}>
+    <BoardSection
+      title="Circuits you lead"
+      aside={
+        <Link href={hrefFor("/sittings")} className={cn(b2bTokens.b2bLink, "text-assess-label")}>
           {`All ${w.sittings}`}
         </Link>
       }
     >
       {children}
-    </B2CGroupedSection>
+    </BoardSection>
   );
 }
 
@@ -112,21 +101,22 @@ export function NextCircuit({ rows }: { rows: readonly SupervisorCircuitRow[] })
   if (!row) return null;
   const when = longWhen(row.scheduled_for);
   return (
-    <B2CGroupedSection eyebrow="Your next circuit">
-      <div className="flex flex-col gap-2 p-4">
-        <p className="text-osce-body font-semibold text-b2b-headline">{`${row.sitting_name} · ${row.circuit_name}`}</p>
-        <p className="text-osce-meta text-b2b-muted">
-          {[when, modeLabel(row.mode, w), `${row.slot_count} station${row.slot_count === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}
-        </p>
-        <div>
-          <ButtonLink href={hrefFor(`/circuits/${row.circuit_id}`)} themeType="b2b" variant="commit">
-            Open the console
-          </ButtonLink>
+    <>
+      <section aria-label="Your next circuit" className={cn(boardCard, "flex flex-wrap items-center gap-5 p-6")}>
+        <div className="min-w-0 flex-[1_1_320px]">
+          <div className={b2bTokens.assessEyebrow}>Your next circuit</div>
+          <div className="mb-1 mt-1.5 text-assess-section font-semibold">{`${row.sitting_name} · ${row.circuit_name}`}</div>
+          <div className={b2bTokens.assessMeta}>
+            {[when, modeLabel(row.mode, w), `${row.slot_count} station${row.slot_count === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}
+          </div>
         </div>
-        <p className="text-osce-meta text-b2b-muted">
-          The console opens when the {w.sitting} starts. Any staff member can run any circuit on the day; reviewing stays with the circuit&apos;s {w.supervisor}.
-        </p>
-      </div>
-    </B2CGroupedSection>
+        <Link href={hrefFor(`/circuits/${row.circuit_id}`)} className={boardBtn("primary")}>
+          Open the console
+        </Link>
+      </section>
+      <p className={cn(b2bTokens.assessMeta, "-mt-3")}>
+        The console opens when the {w.sitting} starts. Any staff member can run any circuit on the day; reviewing stays with the circuit&apos;s {w.supervisor}.
+      </p>
+    </>
   );
 }

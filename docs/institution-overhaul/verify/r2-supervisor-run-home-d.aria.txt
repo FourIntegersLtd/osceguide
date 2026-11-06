@@ -1,0 +1,40 @@
+- main:
+  - paragraph: Supervisor
+  - heading "No stations to review" [level=1]
+  - paragraph: You review the circuits you lead. Your ratings are what count; the AI mark is a starting point.
+  - paragraph: Running now
+  - heading "R2 wizard fail · Exam – Tess Trainee" [level=2]
+  - paragraph: "Station 1 of 1 · Supervisor: Ada Admin · 1 trainee · Tess Trainee"
+  - link "Open console":
+    - /url: /app/e2e-mw3om0c6/circuits/aa4453bf-f63f-4031-a965-5768a7a54d98
+  - link "Open the live board":
+    - /url: /app/e2e-mw3om0c6/live
+  - text: Live · Reading time Reading time 0:09
+  - heading "Circuits you lead" [level=2]
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - text: Nothing is assigned to you right now. A circuit appears here when an administrator names you its supervisor.
+  - heading "Coming up" [level=2]
+  - link "All sittings":
+    - /url: /app/e2e-mw3om0c6/sittings
+  - link "R2 training fail Training · 1 circuit · 1 trainee Scheduled":
+    - /url: /app/e2e-mw3om0c6/sittings/cc9bb5c7-4840-4f93-86d2-f95b4c7646ac
+    - img
+    - text: R2 training fail Training · 1 circuit · 1 trainee Scheduled
+  - link "R2 wizard sitting Formal exam · 1 circuit · 1 candidate Scheduled":
+    - /url: /app/e2e-mw3om0c6/sittings/2dd80081-81df-4170-bb4e-afd130ced72a
+    - img
+    - text: R2 wizard sitting Formal exam · 1 circuit · 1 candidate Scheduled
+  - heading "Recent sittings" [level=2]
+  - link "R2 wizard fail Formal exam · 1 circuit · 1 candidate In progress":
+    - /url: /app/e2e-mw3om0c6/sittings/6d3091bf-2a0c-4bfa-b500-47f5f9bd321d
+    - img
+    - text: R2 wizard fail Formal exam · 1 circuit · 1 candidate In progress
+  - link "OV training run Training · 1 circuit · 1 trainee Completed":
+    - /url: /app/e2e-mw3om0c6/sittings/0469e190-b9e0-4614-99e9-e645bb457f33
+  - link "OV exam to review Formal exam · 1 circuit · 1 candidate Completed":
+    - /url: /app/e2e-mw3om0c6/sittings/adab7a89-d728-4823-b400-abc4c4ce18c3
+  - link "Circuit run Formal exam · 1 circuit · 1 candidate Completed":
+    - /url: /app/e2e-mw3om0c6/sittings/115d9697-b969-4381-9a8c-d711b339a4cc
+  - link "Release run Formal exam · 1 circuit · 1 candidate Completed":
+    - /url: /app/e2e-mw3om0c6/sittings/086c720c-30ff-4a81-9b8c-5613c33a49fa

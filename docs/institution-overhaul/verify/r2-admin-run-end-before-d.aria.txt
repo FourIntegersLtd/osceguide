@@ -1,0 +1,66 @@
+- main:
+  - link "R2 wizard fail":
+    - /url: /app/e2e-mw3om0c6/sittings/6d3091bf-2a0c-4bfa-b500-47f5f9bd321d
+  - heading "Exam – Tess Trainee" [level=1]
+  - paragraph: "Tess Trainee · Station 1 of 1 · Consultation · Supervisor: Ada Admin"
+  - button "Observing an examination"
+  - text: Live
+  - status: The patient has not joined Station 1. Resend the patient if this does not clear.
+  - list:
+    - listitem:
+      - paragraph: Start the circuit
+      - paragraph: Running
+    - listitem:
+      - text: "2"
+      - paragraph: On station
+      - paragraph: Tess Trainee · station 1 of 1
+    - listitem:
+      - paragraph: Reading time
+      - paragraph: Done for this station
+    - listitem:
+      - text: "4"
+      - paragraph: Consultation
+      - paragraph: Patient is live · E2E gender voice test - male patient
+  - button "Next station"
+  - button "Pause"
+  - button "Extend the clock"
+  - button "Reset the clock"
+  - button "Resend the patient"
+  - button "End circuit"
+  - checkbox "Moves to the next station automatically when time is up. When off, the circuit waits for you before each new station." [checked]
+  - text: Moves to the next station automatically when time is up. When off, the circuit waits for you before each new station. Consultation 11:01
+  - paragraph: Server clock
+  - heading "Station progress" [level=2]
+  - table:
+    - rowgroup:
+      - row "Candidate Station Phase Left Marking":
+        - columnheader "Candidate"
+        - columnheader "Station"
+        - columnheader "Phase"
+        - columnheader "Left"
+        - columnheader "Marking"
+    - rowgroup:
+      - row "Tess Trainee With the patient 1 · E2E gender voice test - male patient In consultation In consultation 11:01 Mark":
+        - cell "Tess Trainee With the patient":
+          - paragraph: Tess Trainee
+          - paragraph: With the patient
+        - cell "1 · E2E gender voice test - male patient"
+        - cell "In consultation"
+        - cell "In consultation 11:01"
+        - cell "Mark":
+          - link "Mark":
+            - /url: /app/e2e-mw3om0c6/slots/57e17257-3bef-4877-9c32-ba00741e9ee5/review?attempt=bdfb5943-2812-490e-9cc4-4e662f1ca123
+  - text: The room Not connected
+  - button "Listen in"
+  - text: Consultation 11:01
+  - paragraph: You can hear the consultation without being heard in it. Nothing you do here reaches the candidate or the patient.
+  - heading "Share this circuit's feedback" [level=2]
+  - paragraph: Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one.
+  - paragraph: Marked on 0 of 1 station
+  - text: Notes on the circuit as a whole
+  - textbox "Notes on the circuit as a whole":
+    - /placeholder: Anything to say about the circuit as a whole (optional)
+  - paragraph: Not published yet.
+  - paragraph: You can publish once at least one station is marked; this is the step that finalises the circuit's feedback.
+  - button "Publish circuit feedback" [disabled]
+  - button "What was changed by hand Show"

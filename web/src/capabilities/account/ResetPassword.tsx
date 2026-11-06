@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { useSession } from "@/foundation/session";
-import { confirmPasswordReset, login } from "@/foundation/platform-client";
+import { confirmPasswordReset, invitationOrganisation, login } from "@/foundation/platform-client";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
+import { boardAlert } from "@/foundation/ui/boardKit";
 import AuthShell from "@/capabilities/account/AuthShell";
 import AuthButton from "@/capabilities/account/AuthButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
 import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
 import { mapResetPasswordError } from "@/capabilities/account/support/mapAuthApiError";
+import { invitationSubtitle } from "@/capabilities/account/support/invitationCopy";
 import { afterPasswordReset } from "@/capabilities/account/support/afterPasswordReset";
 import {
   PASSWORD_HINT,
@@ -50,8 +52,19 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
   const [linkSpent, setLinkSpent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [organisationName, setOrganisationName] = useState<string | null>(null);
   const [after, setAfter] = useState<"sign_in_next" | "second_step" | "sign_in_failed">("sign_in_next");
 
+  useEffect(() => {
+    if (!invitation || !token) return;
+    let current = true;
+    void invitationOrganisation(token).then((name) => {
+      if (current) setOrganisationName(name);
+    });
+    return () => {
+      current = false;
+    };
+  }, [invitation, token]);
 
   const handleFormSubmission = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -107,7 +120,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
     return (
       <AuthShell
         variant="card"
-        icon="warning"
+        compact
         title="This link is incomplete"
         subtitle={
           invitation
@@ -115,7 +128,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
             : "Use the most recent email, or ask for a new link."
         }
       >
-        <p className={authFooterLink}>
+        <p data-auth-extra className={authFooterLink}>
           <Link href={invitation ? "/login" : "/forgot-password"} className={authLink}>
             {invitation ? "Sign in" : "Send a new link"}
           </Link>
@@ -128,7 +141,6 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
     return (
       <AuthShell
         variant="card"
-        icon="done"
         title={
           after === "sign_in_failed" ? "Password saved" : invitation ? "Your account is ready" : "Password changed"
         }
@@ -153,6 +165,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
     <button
       type="button"
       onClick={() => setFormData((prev) => ({ ...prev, showPassword: !prev.showPassword }))}
+      data-auth-extra
       className="absolute inset-y-0 right-0 flex items-center pr-3 text-ink-subtle hover:text-ink-muted"
       aria-label={formData.showPassword ? "Hide password" : "Show password"}
     >
@@ -162,18 +175,19 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
 
   return (
     <AuthShell
-      variant="split"
-      icon={invitation ? "mail" : "key"}
-      sidePanel={<AuthQuotePanel />}
-      eyebrow={invitation ? "Invitation" : undefined}
-      title={invitation ? "Accept your invitation" : "Choose a new password"}
+      variant={invitation ? "card" : "split"}
+      sidePanel={invitation ? undefined : <AuthQuotePanel />}
+      lead={invitation}
+      compact={!invitation}
+      title={invitation ? (organisationName ? `Join ${organisationName}` : "Accept your invitation") : "Choose a new password"}
       subtitle={
-        invitation ? "Choose a password to accept." : "Choose something you'll remember"
+        invitation ? invitationSubtitle(organisationName) : "Choose something you'll remember"
       }
     >
-      <form className="space-y-5" method="post" onSubmit={handleFormSubmission} noValidate>
+      <form className="flex flex-col gap-3.5" method="post" onSubmit={handleFormSubmission} noValidate>
         <AuthFormField
           label={invitation ? "Password" : "New password"}
+          hideLabel={!invitation}
           name="password"
           type={formData.showPassword ? "text" : "password"}
           autoComplete="new-password"
@@ -186,6 +200,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
         />
         <AuthFormField
           label={invitation ? "Confirm password" : "Confirm it"}
+          hideLabel={!invitation}
           name="confirmPassword"
           type={formData.showPassword ? "text" : "password"}
           autoComplete="new-password"
@@ -195,9 +210,9 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
           error={fieldErrors.confirmPassword}
         />
         {formError ? (
-          <p role="alert" className="text-center text-osce-meta text-osce-danger">
+          <div role="alert" className={boardAlert("bad")}>
             {formError}
-          </p>
+          </div>
         ) : null}
         {linkSpent ? (
           <p className={authFooterLink}>

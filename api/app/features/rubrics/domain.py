@@ -16,11 +16,12 @@ Pure: no session, no models, no I/O.
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Mapping
 from dataclasses import replace
 from typing import Any
 
-from app.features.rubrics import validation
+from app.features.rubrics import scheme, validation
 from app.features.rubrics.legacy_model import field_from_schema
 from app.features.rubrics.schema_builder import (
     derive_display_schema,
@@ -50,6 +51,7 @@ __all__ = [
     "RatingSpec",
     "RubricStructure",
     "SectionSpec",
+    "authoring_form",
     "derive_display_schema",
     "derive_result_schema",
     "framework_payload",
@@ -109,10 +111,17 @@ def parse_structure(raw: Mapping[str, Any] | None) -> RubricStructure:
     """
     if raw is not None and not isinstance(raw, Mapping):
         raise InvalidRubric("A rubric structure must be an object.")
-    structure = upgrade_structure(raw or {})
-    errors = validation.validate_structure(structure)
-    if errors:
-        raise _RubricRefused(errors)
+    if (raw or {}).get("schemaVersion") == validation.SCHEME_VERSION:
+        # Compile once; `validate_scheme` also checks the compiled form, so it is not checked again.
+        structure = upgrade_structure(raw or {})
+        scheme_errors = scheme.validate_scheme(raw, structure)
+        if scheme_errors:
+            raise _RubricRefused(scheme_errors)
+    else:
+        structure = upgrade_structure(raw or {})
+        errors = validation.validate_structure(structure)
+        if errors:
+            raise _RubricRefused(errors)
     rating = _rating(structure["rating"])
     parsed = RubricStructure(
         rating=rating,
@@ -148,6 +157,26 @@ def _pass_lines_out_of_reach(display: Mapping[str, Any]) -> list[validation.Vali
     return problems
 
 
+# --- Reading any stored version as the author's scheme ---------------------------------
+
+
+def authoring_form(raw: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Any stored structure as the author's scheme (version 3), for the builder to edit.
+
+    The stored row is never rewritten: a version 3 one is returned as it is, and
+    an older one is upgraded for the read, keeping what the blocks cannot hold raw.
+    A draft may be half-written, so what cannot be upgraded at all comes back as stored.
+    """
+    if raw is None:
+        return {"schemaVersion": validation.SCHEME_VERSION, "outline": []}
+    if raw.get("schemaVersion") == validation.SCHEME_VERSION:
+        return copy.deepcopy(dict(raw))
+    try:
+        return scheme.upgrade_v2_to_v3(upgrade_structure(raw))
+    except InvalidRubric:
+        return copy.deepcopy(dict(raw))
+
+
 # --- Version 1 -> version 2 ------------------------------------------------------
 
 
@@ -163,6 +192,11 @@ def upgrade_structure(raw: Mapping[str, Any]) -> dict[str, Any]:
     field: a list or text becomes that field, and an object becomes a `group`
     read from its schema.
     """
+    if raw.get("schemaVersion") == validation.SCHEME_VERSION:
+        compiled = scheme.compile_v3(raw)
+        if compiled.get("schemaVersion") != validation.SCHEMA_VERSION:
+            raise InvalidRubric("This marking scheme could not be read.")
+        return compiled
     if raw.get("schemaVersion") == validation.SCHEMA_VERSION:
         return dict(raw)
     scale = [str(value) for value in raw.get("scale") or ()]
@@ -252,6 +286,7 @@ def _rating(raw: Mapping[str, Any]) -> RatingSpec:
         minimum=raw.get("minimum") if kind == "range" else None,
         maximum=raw.get("maximum") if kind == "range" else None,
         step=str(raw.get("step", "number")),
+        points=tuple(raw["points"]) if kind in ("rag", "scale") and raw.get("points") is not None else None,
     )
 
 
@@ -312,12 +347,17 @@ def _display(raw: Mapping[str, Any] | None) -> DisplaySpec:
     domain = raw.get("domain") or {}
     total = raw.get("total") or {}
     return DisplaySpec(
-        domain=DisplayDomain(aggregate=domain.get("aggregate"), pass_at_least=domain.get("passAtLeast")),
+        domain=DisplayDomain(
+            aggregate=domain.get("aggregate"),
+            pass_at_least=domain.get("passAtLeast"),
+            rule=domain.get("rule"),
+        ),
         total=DisplayTotal(
             aggregate=total.get("aggregate"),
             maximum=total.get("max"),
             pass_at_least=total.get("passAtLeast"),
             require_every_domain=bool(total.get("requireEveryDomain", False)),
+            rule=total.get("rule"),
         ),
         tones=tuple(
             DisplayTone(at_least=tone["atLeast"], tone=tone["tone"]) for tone in raw.get("tones") or ()
@@ -504,12 +544,14 @@ def resolved_display(structure: RubricStructure) -> dict[str, Any]:
             "aggregate": domain_aggregate,
             "max": _domain_maximum(structure, domain_aggregate),
             "passAtLeast": display.domain.pass_at_least,
+            **({"rule": dict(display.domain.rule)} if display.domain.rule else {}),
         },
         "total": {
             "aggregate": total_aggregate,
             "max": total_maximum,
             "passAtLeast": display.total.pass_at_least,
             "requireEveryDomain": display.total.require_every_domain,
+            **({"rule": dict(display.total.rule)} if display.total.rule else {}),
         },
         "tones": [{"atLeast": tone.at_least, "tone": tone.tone} for tone in display.tones]
         or _default_tones(rating),
@@ -535,6 +577,8 @@ def _default_total_aggregate(rating: RatingSpec) -> str:
 
 def _rating_top(rating: RatingSpec) -> float:
     """The most one competency can earn: a range's maximum, or 1 for a met boolean."""
+    if rating.points:
+        return rating.points[0]
     return rating.maximum if rating.kind == "range" and rating.maximum is not None else 1
 
 

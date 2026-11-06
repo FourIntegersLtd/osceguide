@@ -241,6 +241,12 @@ class PasswordResetRequest(BaseModel):
     email: EmailStr
 
 
+class InvitationLookup(BaseModel):
+    """What an invitation link may say before anyone signs in: who sent it, and nothing else."""
+
+    organisation_name: str
+
+
 class PasswordResetConfirm(BaseModel):
     token: str
     password: str = Field(min_length=1, max_length=512)

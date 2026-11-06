@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   HiOutlineArrowUpTray,
@@ -9,7 +10,8 @@ import {
   HiOutlinePlusCircle,
   HiOutlineTrash,
 } from "react-icons/hi2";
-import { Alert, Badge, ButtonLink, Checkbox, StepGuide, TextLink } from "@/foundation/ui";
+import { Alert, Checkbox, StepGuide, TextLink } from "@/foundation/ui";
+import { BoardChip, boardActs, boardStack } from "@/capabilities/authoring/parts/boardUi";
 import { useSurface } from "@/capabilities";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { ExamConfirm } from "@/capabilities/authoring/exams/ExamConfirms";
@@ -39,6 +41,7 @@ import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog";
 import { examChip, examNextAction, examSteps } from "@/capabilities/authoring/sections/examSteps";
 import { ExamFields, blankExam, examToDraft, type ExamDraft } from "@/capabilities/authoring/sections/ExamFields";
+import { boardBtn } from "@/foundation/ui/boardKit";
 
 /**
  * Exams: what an organisation assesses against.
@@ -79,26 +82,25 @@ export function ExamsSection() {
   const editingExam = editing ? { status: editing.status, rubric_version_id: form.rubricVersionId } : null;
 
   return (
-    <div className="space-y-4">
+    <div className={org ? boardStack : "space-y-4"}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Checkbox
           checked={draftsOnly}
           onChange={(e) => setDraftsOnly(e.target.checked)}
           label="Drafts only"
-          className="items-center"
+          className={org ? undefined : "items-center"}
         />
-        <div className="flex flex-wrap items-center gap-3">
+        <div className={org ? boardActs : "flex flex-wrap items-center gap-3"}>
           {org && canAuthor ? (
-            <TextLink href={hrefFor("/programmes")} variant="muted" className="text-osce-meta">
+            <Link href={hrefFor("/programmes")} className={boardBtn()}>
               Adopt from OSCE Guide
-            </TextLink>
+            </Link>
           ) : null}
           {org ? (
             canAuthor ? (
-              <ButtonLink href={examNewPath(hrefFor)} variant="commit" size="sm" className="gap-2">
-                <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+              <Link href={examNewPath(hrefFor)} className={boardBtn("primary")}>
                 Create exam
-              </ButtonLink>
+              </Link>
             ) : null
           ) : (
             <AuthoringButton
@@ -156,6 +158,7 @@ export function ExamsSection() {
                       ? "OSCE Guide exams are edited in the staff catalogue"
                       : "Edit"
                   }
+                  text="Edit"
                   disabled={locked}
                   onClick={() => {
                     setForm(examToDraft(exam));
@@ -167,7 +170,8 @@ export function ExamsSection() {
                 {/* A retired exam cannot be published again. */}
                 {exam.status === "draft" ? (
                   <AuthoringIconAction
-                    variant="primary"
+                    variant={org ? "default" : "primary"}
+                    text="Publish"
                     // The server refuses to publish an exam that names no rubric.
                     label={exam.rubric_version_id ? "Publish" : "Choose a marking scheme version first"}
                     busy={publishBusy}
@@ -184,6 +188,7 @@ export function ExamsSection() {
                 {exam.status === "published" && !locked ? (
                   <AuthoringIconAction
                     variant="warning"
+                    text="Retire"
                     label="Retire"
                     disabled={action.busy !== null}
                     onClick={() => setRetiring(exam)}
@@ -195,6 +200,7 @@ export function ExamsSection() {
                 {locked || scope.kind === "platform" ? null : (
                   <AuthoringIconAction
                     variant="danger"
+                    text="Delete"
                     label="Delete"
                     disabled={action.busy !== null}
                     onClick={() => setDeleting(exam)}
@@ -293,8 +299,6 @@ export function ExamsSection() {
 function ExamChipBadge({ exam, programmes }: { exam: Exam; programmes: Programme[] }) {
   const chip = examChip(exam, programmeFor(programmes, exam));
   return (
-    <Badge tone={chip === "Ready to schedule" ? "success" : "warning"} size="sm" dot>
-      {chip}
-    </Badge>
+    <BoardChip tone={chip === "Ready to schedule" ? "info" : "warn"}>{chip}</BoardChip>
   );
 }

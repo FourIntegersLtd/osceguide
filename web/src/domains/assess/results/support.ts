@@ -1,3 +1,4 @@
+import { sittingWhen } from "@/domains/assess/sittingWords";
 import { slotReviewPath, type UnmarkedStation } from "@/domains/assess/sessions/support";
 import type {
   CandidateReport,
@@ -40,7 +41,7 @@ export const OUTCOME_HINT: Record<AssessmentOutcome, string> = {
   pass: "Met the standard.",
   fail: "Did not meet the standard.",
   inconclusive: "Not enough was assessed to decide.",
-  withheld: "Decided, but held back, for example during an investigation or an appeal.",
+  withheld: "Decided, but held back, for example during an appeal.",
 };
 
 /** Whether the employer is taking the candidate on. Recorded only on an exam-mode sitting (hire). */
@@ -323,16 +324,37 @@ export function countNote(done: number, total: number, word: string): string {
   return total === 0 ? "Not started" : `${done} of ${total} ${word}`;
 }
 
+type DecisionCounts = { not_decided: number; draft: number; signed_off: number; released?: number; sat?: number };
+
+/**
+ * Candidates who sat and have no decision yet. Someone who never sat needs none (the decision API
+ * refuses `candidate_did_not_sit`), so the server's `sat` caps the undecided count; a row without
+ * `sat` keeps the server's `not_decided`.
+ */
+export function undecided(row: DecisionCounts): number {
+  if (row.sat === undefined) return row.not_decided;
+  const decided = row.draft + row.signed_off + (row.released ?? 0);
+  return Math.min(row.not_decided, Math.max(row.sat - decided, 0));
+}
+
 export type ResultsTab = "needs_decision" | "ready_to_release" | "all";
 
 /** The results-index rows a tab shows: work still to decide, decisions waiting to go out, or everything. */
-export function filterResultsRows<T extends { not_decided: number; draft: number; signed_off: number }>(
+export function filterResultsRows<T extends DecisionCounts & { mode?: string }>(
   rows: T[],
   tab: ResultsTab,
 ): T[] {
-  if (tab === "needs_decision") return rows.filter((row) => row.not_decided > 0 || row.draft > 0);
-  if (tab === "ready_to_release") return rows.filter((row) => row.signed_off > 0);
+  // A training sitting records no decisions, so it never waits on one.
+  const decides = (row: T) => row.mode !== "training";
+  if (tab === "needs_decision") return rows.filter((row) => decides(row) && (undecided(row) > 0 || row.draft > 0));
+  if (tab === "ready_to_release") return rows.filter((row) => decides(row) && row.signed_off > 0);
   return rows;
+}
+
+/** The results index's date column: "Today", "28 Oct", or "Not scheduled". */
+export function resultsDate(iso: string | null | undefined, now: Date = new Date()): string {
+  const words = sittingWhen(iso, now);
+  return words.startsWith("Today") ? "Today" : words;
 }
 
 /** One line under "Needs your attention" on the results index. */
@@ -345,17 +367,19 @@ const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : 
  * supervisor has not marked. Built from the index's own counts, so it needs no read of its own.
  */
 export function attentionItems(
-  rows: { sitting_id: string; name: string; not_decided: number; draft: number; signed_off: number }[],
+  rows: (DecisionCounts & { sitting_id: string; name: string; mode?: string })[],
   unmarked: UnmarkedStation[],
 ): AttentionItem[] {
   const decide: AttentionItem[] = [];
   const release: AttentionItem[] = [];
   for (const row of rows) {
+    if (row.mode === "training") continue;
     const path = `/sittings/${row.sitting_id}/results`;
-    if (row.not_decided > 0) {
+    const waiting = undecided(row);
+    if (waiting > 0) {
       decide.push({
         key: `decide-${row.sitting_id}`,
-        text: `${row.name}: ${count(row.not_decided, "candidate needs", "candidates need")} a decision`,
+        text: `${row.name}: ${count(waiting, "candidate needs", "candidates need")} a decision`,
         action: "Decide",
         path,
       });

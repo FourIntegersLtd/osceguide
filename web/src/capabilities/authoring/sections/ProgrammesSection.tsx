@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useSurface } from "@/capabilities";
 import { HiOutlineAcademicCap, HiOutlineArrowPath, HiOutlineNoSymbol, HiOutlinePlusCircle } from "react-icons/hi2";
 import { Alert, Select, TextLink } from "@/foundation/ui";
-import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
+import { AuthoringLeadButton } from "@/capabilities/authoring/parts/AuthoringLeadButton";
+import { boardStack } from "@/capabilities/authoring/parts/boardUi";
+import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
+import Link from "next/link";
 import {
   AuthoringIconAction,
   AuthoringRowActions,
@@ -25,6 +28,7 @@ import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { ListCard } from "@/capabilities/authoring/parts/ListCard";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog";
+import { boardBtn } from "@/foundation/ui/boardKit";
 
 /**
  * Programmes: an institution's sittings, grouped under one exam.
@@ -36,6 +40,7 @@ import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog"
  */
 export function ProgrammesSection() {
   const scope = useAuthoringScope();
+  const org = !useAuthoringChrome().b2c;
   const programmes = useAsync((signal) => listProgrammes(scope, signal), [scope.base]);
   const exams = useAsync((signal) => listExams(scope, {}, signal), [scope.base]);
   const action = useAction(programmes.reload);
@@ -49,24 +54,24 @@ export function ProgrammesSection() {
   const publishedExams = (exams.data?.items ?? []).filter((exam) => exam.status === "published");
 
   return (
-    <div className="space-y-5">
+    <div className={org ? boardStack : "space-y-5"}>
       <AuthoringSectionLead
         action={
           can(session, "schedule_sittings") ? (
-            <div className="flex flex-wrap items-center gap-3">
-            <TextLink href={hrefFor("/programmes")} variant="muted" className="text-osce-meta">
-              Exams the platform publishes
-            </TextLink>
-            <AuthoringButton
-              variant="commit"
-              size="sm"
-              className="gap-2"
-              onClick={() => setAdding(true)}
-            >
-              <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
-              New programme
-            </AuthoringButton>
-            </div>
+            <>
+              {org ? (
+                <Link href={hrefFor("/programmes")} className={boardBtn()}>
+                  Exams the platform publishes
+                </Link>
+              ) : (
+                <TextLink href={hrefFor("/programmes")} variant="muted" className="text-osce-meta">
+                  Exams the platform publishes
+                </TextLink>
+              )}
+              <AuthoringLeadButton primary small icon={HiOutlinePlusCircle} onClick={() => setAdding(true)}>
+                New programme
+              </AuthoringLeadButton>
+            </>
           ) : null
         }
       >
@@ -95,20 +100,23 @@ export function ProgrammesSection() {
             <AuthoringListRow
               key={programme.id}
               leading={
+                org ? null : (
                 <span
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-osce-md bg-surface-raised text-ink-muted"
                   aria-hidden
                 >
                   <HiOutlineAcademicCap className="h-4 w-4" />
                 </span>
+                )
               }
-              title={programme.exam_name}
+              title={org ? `🎓 ${programme.exam_name}` : programme.exam_name}
               meta={`${programme.exam_code} · ${programme.source}${programme.exam_owner_kind === "platform" ? " · OSCE Guide exam" : ""}`}
             >
               <StatusBadge status={programme.status} />
               <AuthoringRowActions write>
                 <AuthoringIconAction
-                  variant={active ? "warning" : "primary"}
+                  variant={active ? "warning" : org ? "default" : "primary"}
+                  text={switchLabel}
                   label={switchLabel}
                   busy={statusBusy}
                   busyLabel="Saving…"
@@ -150,12 +158,12 @@ export function ProgrammesSection() {
         }
       >
         <div>
-          <label htmlFor="programmes-section-exam" className="block text-osce-body font-semibold text-ink">Exam</label>
+          <label htmlFor="programmes-section-exam" className="block text-assess-label font-medium text-ink">Exam</label>
           <Select
             id="programmes-section-exam"
             value={examCode}
             onChange={(e) => setExamCode(e.target.value)}
-            className="mt-1"
+            className="mt-2 [&>select]:min-h-11 [&>select]:text-assess-desc"
           >
             <option value="">Select an exam…</option>
             {publishedExams.map((exam) => (

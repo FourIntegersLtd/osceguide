@@ -40,6 +40,10 @@ class EmailDeliveryFailed(Exception):
     """The provider refused or could not deliver the message."""
 
 
+class EmailDeliveryTimedOut(EmailDeliveryFailed):
+    """The provider did not answer in time; the send may still complete."""
+
+
 @runtime_checkable
 class CheckoutSessions(Protocol):
     """Starting a payment with the card processor.

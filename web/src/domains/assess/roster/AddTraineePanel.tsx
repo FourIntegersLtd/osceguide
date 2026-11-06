@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineUserPlus } from "react-icons/hi2";
-import { Alert, Button, b2bTokens, Panel } from "@/foundation/ui";
-import { IssuedPassword, TemporaryPasswordField } from "@/foundation/ui/TemporaryPassword";
+import { b2bTokens as t, cn } from "@/foundation/ui";
+import { Note, PasswordFields, h2, hint } from "@/domains/assess/ui";
+import { IssuedPassword } from "@/foundation/ui/TemporaryPassword";
 import { useTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
 import { rosterErrorMessage } from "@/domains/assess/roster/support";
 import { addTrainee, type Cohort } from "@/domains/assess/roster/api";
-import { BulkImportDialog } from "@/domains/assess/roster/BulkImportDialog";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { boardBtn, boardPadWide, boardInput, boardLabel } from "@/foundation/ui/boardKit";
 
 /** "Amina Khan" → first "Amina", last "Khan"; one word is a first name. */
 export function splitName(value: string): { firstName: string | null; lastName: string | null } {
@@ -49,7 +49,6 @@ export function AddTraineePanel({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const password = useTemporaryPassword();
-  const [importOpen, setImportOpen] = useState(false);
 
   const submit = async () => {
     const address = email.trim();
@@ -86,127 +85,61 @@ export function AddTraineePanel({
 
   if (!canManage) {
     return (
-      <Alert tone="info" title={`Only an owner or admin can add ${w.trainees}`}>
+      <Note tone="info">
+        <b className="block">Only an owner or admin can add {w.trainees}</b>
         Ask one of them to add the people you need on the roster.
-      </Alert>
+      </Note>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <Panel
-        title="Add one person"
-        description="They are invited by email. If they have no account yet, we create one and send them a link to choose a password. If that email cannot reach them, set a temporary password to relay by hand."
+    <div className="flex flex-col gap-6">
+      <form
+        className={boardPadWide}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
       >
-        <form
-          className="space-y-5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submit();
-          }}
-        >
-          <div>
-            <label
-              htmlFor="assess-trainee-name"
-              className="block text-osce-body font-semibold text-b2b-headline"
-            >
-              Full name
-            </label>
-            <input
-              id="assess-trainee-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              className={`mt-2 ${b2bTokens.b2bInputBase}`}
-              placeholder="e.g. Amina Khan"
-              autoComplete="off"
-            />
+        <h2 className={h2}>Add one person</h2>
+        <p className={cn(t.assessMeta, "m-0")}>
+          They are invited by email. If they have no account yet, we create one and send them a link to choose a password. If that email cannot reach them, set a temporary password to relay by hand.
+        </p>
+        <div>
+          <label htmlFor="assess-trainee-name" className={boardLabel}>Full name</label>
+          <input id="assess-trainee-name" value={name} onChange={(event) => setName(event.target.value)} className={boardInput} placeholder="e.g. Amina Khan" autoComplete="off" />
+        </div>
+        <div>
+          <label htmlFor="assess-trainee-email" className={boardLabel}>Email address</label>
+          <input id="assess-trainee-email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} className={boardInput} placeholder="amina@hospital.nhs.uk" autoComplete="off" />
+        </div>
+        <div>
+          <label htmlFor="assess-trainee-cohort" className={boardLabel}>Year group (optional)</label>
+          <select id="assess-trainee-cohort" value={cohortId} onChange={(event) => setCohortId(event.target.value)} className={boardInput}>
+            <option value="">No year group</option>
+            {cohorts.map((cohort) => (
+              <option key={cohort.id} value={cohort.id}>
+                {cohort.name}
+              </option>
+            ))}
+          </select>
+          <div className={hint}>
+            An intake, such as &quot;June 2026&quot;. Year groups are created under People › Groups and year groups.
           </div>
+        </div>
 
-          <div>
-            <label
-              htmlFor="assess-trainee-email"
-              className="block text-osce-body font-semibold text-b2b-headline"
-            >
-              Email address
-            </label>
-            <input
-              id="assess-trainee-email"
-              type="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className={`mt-2 ${b2bTokens.b2bInputBase}`}
-              placeholder="amina@hospital.nhs.uk"
-              autoComplete="off"
-            />
-          </div>
+        <PasswordFields {...password.field} id="assess-trainee-password" disabled={busy} />
 
-          <div>
-            <label
-              htmlFor="assess-trainee-cohort"
-              className="block text-osce-body font-semibold text-b2b-headline"
-            >
-              Year group (optional)
-            </label>
-            <p className="mt-0.5 text-osce-caption text-b2b-mid">
-              An intake, such as &quot;June 2026&quot;. Year groups are created under People › Groups and year groups.
-            </p>
-            <select
-              id="assess-trainee-cohort"
-              value={cohortId}
-              onChange={(event) => setCohortId(event.target.value)}
-              className={`mt-2 ${b2bTokens.b2bInputBase}`}
-            >
-              <option value="">No year group</option>
-              {cohorts.map((cohort) => (
-                <option key={cohort.id} value={cohort.id}>
-                  {cohort.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        {error ? <Note tone="bad" role="alert">{error}</Note> : null}
+        <button type="submit" className={cn(boardBtn("primary"), "self-start")} disabled={busy || email.trim().length === 0 || !password.ready}>
+          {busy ? "Saving…" : `+ Add ${w.trainee}`}
+        </button>
+      </form>
 
-          <TemporaryPasswordField {...password.field} disabled={busy} />
-
-          {error ? <Alert tone="danger">{error}</Alert> : null}
-          {notice ? <Alert tone="success">{notice}</Alert> : null}
-          {password.issued ? (
-            <IssuedPassword
-              email={password.issued.email}
-              password={password.issued.password}
-              onDismiss={password.dismiss}
-            />
-          ) : null}
-
-          <Button
-            type="submit"
-            themeType="b2b"
-            variant="commit"
-            disabled={busy || email.trim().length === 0 || !password.ready}
-            className="inline-flex items-center gap-2"
-          >
-            <HiOutlineUserPlus className="h-4 w-4 shrink-0" aria-hidden />
-            {busy ? "Saving…" : `Add ${w.trainee}`}
-          </Button>
-        </form>
-      </Panel>
-
-      <Panel
-        title="Import a spreadsheet"
-        description={`Upload a list of ${w.trainees} saved from Excel or Google Sheets as a .csv file. Anyone already on the list is skipped and shown to you.`}
-      >
-        <Button themeType="b2b" variant="secondary" onClick={() => setImportOpen(true)}>
-          Import from spreadsheet
-        </Button>
-      </Panel>
-
-      <BulkImportDialog
-        orgSlug={orgSlug}
-        open={importOpen}
-        cohorts={cohorts}
-        onClose={() => setImportOpen(false)}
-        onImported={onAdded}
-      />
+      {notice ? <Note tone="ok">{notice}</Note> : null}
+      {password.issued ? (
+        <IssuedPassword email={password.issued.email} password={password.issued.password} onDismiss={password.dismiss} />
+      ) : null}
     </div>
   );
 }

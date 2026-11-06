@@ -1,0 +1,33 @@
+- main:
+  - heading "People" [level=1]
+  - paragraph: Everyone in your organisation. Trainees sit sittings; staff (supervisors and admins) run circuits and mark them.
+  - button "Add people"
+  - tablist "People sections":
+    - tab "Trainees 1"
+    - tab "Staff" [selected]
+    - tab "Groups and year groups"
+    - tab "Exam access"
+    - tab "History"
+  - paragraph: 2 staff accounts
+  - text: Search staff
+  - searchbox "Search staff"
+  - text: e2e-admin-mw3om0c6@example.com
+  - term: Select
+  - definition:
+    - checkbox "Select e2e-admin-mw3om0c6@example.com"
+  - term: Role
+  - definition: Admin
+  - term: Circuits led
+  - definition: "0"
+  - term: Access
+  - definition: Active
+  - text: e2e-sup-mw3om0c6@example.com
+  - term: Select
+  - definition:
+    - checkbox "Select e2e-sup-mw3om0c6@example.com"
+  - term: Role
+  - definition: Supervisor
+  - term: Circuits led
+  - definition: "0"
+  - term: Access
+  - definition: Active

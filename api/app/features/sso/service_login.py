@@ -11,11 +11,14 @@ organisation's name and existence are `tenancy`'s.
 
 from __future__ import annotations
 
+import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import urlencode
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import SessionOpener
 from app.core.memberships import MembershipLookup
 from app.core.ports import SsoBroker, SsoBrokerUnavailable, SsoIdentity
 from app.core.settings import Settings, SettingsDep
@@ -110,6 +113,30 @@ def _requires_state(provider: domain.Provider) -> bool:
     return provider is domain.Provider.ENTRA
 
 
+@dataclass(frozen=True)
+class _CallbackContext:
+    """What the broker step needs, read in one short transaction."""
+
+    provider: domain.Provider
+    issuer: str | None
+    default_exam_code: str | None
+    sso_only: bool
+    config_id: uuid.UUID
+
+
+async def _callback_context(session: AsyncSession, org_slug: str) -> _CallbackContext:
+    """Gathers the organisation's sign-in settings needed to finish a single sign-on."""
+    config = await _enabled_config(session, org_slug)
+    provider = _configured_provider(config)
+    return _CallbackContext(
+        provider=provider,
+        issuer=config.issuer,
+        default_exam_code=config.default_exam_code,
+        sso_only=config.sso_only,
+        config_id=config.id,
+    )
+
+
 async def build_login(
     session: AsyncSession, org_slug: str, *, brokers: SsoBrokers, settings: Settings, now: datetime
 ) -> schemas.SsoLoginResult:
@@ -138,7 +165,7 @@ async def build_login(
 
 
 async def complete_callback(
-    session: AsyncSession,
+    open_session: SessionOpener,
     org_slug: str,
     *,
     token: str,
@@ -149,48 +176,70 @@ async def complete_callback(
     memberships_for: MembershipLookup,
 ) -> schemas.SsoSession:
     """Verify the broker's token, provision the person, answer with a session."""
-    config = await _enabled_config(session, org_slug)
-    provider = _configured_provider(config)
-    if provider is domain.Provider.SAML:
-        # The assertion consumer has already verified the IdP's signed response
-        # and its `InResponseTo`; what arrives here is its signed hand-off.
-        identity = await service_saml.identity_from_handoff(settings, token=token, org_slug=org_slug)
-        # The IdP is the customer's own, so it may assert any address. It is
-        # believed only for an email domain the platform bound to this organisation;
-        # otherwise it could sign someone into another tenant's account.
-        if identity is not None and not await _email_domain_is_bound(session, config, identity.email):
-            identity = None
-    else:
-        identity = await _verified_by_broker(
-            brokers.for_provider(provider),
-            config,
-            provider,
-            token=token,
-            state=state,
-            settings=settings,
-            org_slug=org_slug,
-        )
+    async with open_session() as session:
+        ctx = await _callback_context(session, org_slug)
+
+    identity = await _identity_from_token(
+        open_session,
+        ctx,
+        org_slug=org_slug,
+        token=token,
+        state=state,
+        brokers=brokers,
+        settings=settings,
+    )
     if identity is None:
         raise errors.SsoVerificationFailed()
 
-    auth = await service_sso.sign_in_external(
-        session,
-        provider=provider.value,
-        subject=identity.subject,
-        email=identity.email,
-        name=identity.name,
-        tenant_slug=org_slug,
-        exam_code=config.default_exam_code,
-        settings=settings,
-        now=now,
-        memberships_for=memberships_for,
-        sso_only=config.sso_only,
-    )
+    async with open_session() as session:
+        auth = await service_sso.sign_in_external(
+            session,
+            provider=ctx.provider.value,
+            subject=identity.subject,
+            email=identity.email,
+            name=identity.name,
+            tenant_slug=org_slug,
+            exam_code=ctx.default_exam_code,
+            settings=settings,
+            now=now,
+            memberships_for=memberships_for,
+            sso_only=ctx.sso_only,
+        )
     return schemas.SsoSession(
         access_token=auth.access_token,
         refresh_token=auth.refresh_token,
         token_type=auth.token_type,
         expires_in=auth.expires_in,
+    )
+
+
+async def _identity_from_token(
+    open_session: SessionOpener,
+    ctx: _CallbackContext,
+    *,
+    org_slug: str,
+    token: str,
+    state: str | None,
+    brokers: SsoBrokers,
+    settings: Settings,
+) -> SsoIdentity | None:
+    """Who signed in, verified outside any open database transaction."""
+    if ctx.provider is domain.Provider.SAML:
+        identity = await service_saml.identity_from_handoff(settings, token=token, org_slug=org_slug)
+        if identity is None:
+            return None
+        async with open_session() as session:
+            config = await repository.config_by_id(session, ctx.config_id)
+            if config is None or not await _email_domain_is_bound(session, config, identity.email):
+                return None
+        return identity
+    return await _verified_by_broker(
+        brokers.for_provider(ctx.provider),
+        ctx,
+        token=token,
+        state=state,
+        settings=settings,
+        org_slug=org_slug,
     )
 
 
@@ -208,8 +257,7 @@ async def _email_domain_is_bound(session: AsyncSession, config: OrganizationSso,
 
 async def _verified_by_broker(
     broker: SsoBroker,
-    config: OrganizationSso,
-    provider: domain.Provider,
+    ctx: _CallbackContext,
     *,
     token: str,
     state: str | None,
@@ -217,6 +265,7 @@ async def _verified_by_broker(
     org_slug: str,
 ) -> SsoIdentity | None:
     """Who an OIDC broker (Clerk, Entra) vouches for, with the SEC-015 state checked first."""
+    provider = ctx.provider
     # SEC-015: on the OIDC code flow, the callback must carry the signed state
     # this org's sign-in minted, and the nonce inside it must match the id
     # token. A missing, tampered, expired or cross-org state fails here before
@@ -230,6 +279,6 @@ async def _verified_by_broker(
         if expected_nonce is None:
             raise errors.SsoVerificationFailed()
     try:
-        return await broker.verify(token=token, issuer=config.issuer, expected_nonce=expected_nonce)
+        return await broker.verify(token=token, issuer=ctx.issuer, expected_nonce=expected_nonce)
     except SsoBrokerUnavailable as exc:
         raise errors.SsoLoginUnavailable() from exc

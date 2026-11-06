@@ -38,8 +38,11 @@ export function readRubric(
   return platformRequest(`${scope.base}/rubrics/${pathId(rubric)}`, { signal });
 }
 
-export function addRubricVersion(scope: AuthoringScope, rubric: string): Promise<RubricVersion> {
-  return platformRequest(`${scope.base}/rubrics/${pathId(rubric)}/versions`, { method: "POST" });
+export function addRubricVersion(scope: AuthoringScope, rubric: string, fromVersion?: number): Promise<RubricVersion> {
+  return platformRequest(`${scope.base}/rubrics/${pathId(rubric)}/versions`, {
+    method: "POST",
+    ...(fromVersion === undefined ? {} : { body: { from_version: fromVersion } }),
+  });
 }
 
 export function editRubricVersion(

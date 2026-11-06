@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { versionRows } from "@/capabilities/authoring/rubrics/versionRows";
+import { olderPublished, versionRows } from "@/capabilities/authoring/rubrics/versionRows";
 import type { RubricVersion } from "@/capabilities/authoring/api/scope";
 
 const v = (version: number, status: string, extra: Partial<RubricVersion> = {}) =>
@@ -21,5 +21,14 @@ describe("versionRows", () => {
   it("dates a draft edited on an earlier day", () => {
     const rows = versionRows([v(2, "draft", { updated_at: "2026-10-02T10:00:00Z" })], null, NOW);
     assert.equal(rows[0]?.detail, "Draft, edited 2 Oct 2026");
+  });
+});
+
+describe("olderPublished", () => {
+  it("names the exams still on the newest other published version", () => {
+    const versions = [v(1, "published", { used_by_exams: ["A"] }), v(2, "published", { used_by_exams: ["PLAB 2", "SCA", "CASC"] }), v(3, "draft")];
+    assert.deepEqual(olderPublished(versions, 3), { version: 2, exams: ["PLAB 2", "SCA", "CASC"], names: "PLAB 2, SCA and CASC", single: false });
+    assert.equal(olderPublished(versions, 2)?.version, 1);
+    assert.equal(olderPublished([v(1, "published"), v(2, "draft")], 2), null);
   });
 });

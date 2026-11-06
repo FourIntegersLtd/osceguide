@@ -51,17 +51,46 @@ export async function login(email: string, password: string): Promise<string> {
   return (await loginPatiently(email, password)).access_token;
 }
 
-/** Register, waiting out the api's per-address sign-up limit as `loginPatiently` does for sign-in. */
+/** `/api/v1/orgs/<slug><tail>`; `tail` starts with a slash. */
+export const orgPath = (slug: string, tail = "") => `/api/v1/orgs/${slug}${tail}`;
+
+/**
+ * Register, waiting out the api's per-address sign-up limit (a 429, 8 attempts 30s apart: other specs share it)
+ * and tolerating an address that already exists (409), so a re-seed with a saved account works.
+ */
 export async function register(email: string, name: string): Promise<void> {
   for (let attempt = 0; ; attempt += 1) {
     try {
       await call(null, "/api/v1/auth/register", { method: "POST", body: { email, password: PASSWORD, name } });
       return;
     } catch (error) {
-      if (attempt >= 6 || !(error instanceof ApiError) || error.status !== 429) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 15_000));
+      if (error instanceof ApiError && error.status === 409) return;
+      if (attempt >= 7 || !(error instanceof ApiError) || error.status !== 429) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 30_000));
     }
   }
+}
+
+export interface SeededOrg {
+  slug: string;
+  token: string;
+  account: { email: string; password: string };
+}
+
+/**
+ * A fresh institution "St Mary's Medical School" (slug `<prefix>-<stamp>`) with its signed-in admin as `role`.
+ * The admin's address is unique per run unless `email` is given (a saved account being re-seeded).
+ */
+export async function createOrg(options: { prefix: string; role: "owner" | "institution_admin" | "partner_admin"; adminName: string; email?: string; orgType?: "institution" | "employer" | "partner"; orgName?: string }): Promise<SeededOrg> {
+  const id = stamp();
+  const slug = `${options.prefix}-${id}`;
+  const account = { email: options.email ?? `${options.prefix}-admin-${id}@example.com`, password: PASSWORD };
+  const platform = await login(ADMIN.email, ADMIN.password);
+  await call(platform, "/api/v1/platform/organizations", { method: "POST", body: { name: options.orgName ?? "St Mary's Medical School", slug, org_type: options.orgType ?? "institution" } });
+  await register(account.email, options.adminName);
+  await call(platform, `/api/v1/platform/organizations/${slug}/memberships`, { method: "POST", body: { email: account.email, role: options.role } });
+  const token = await switchWorkspace(await login(account.email, PASSWORD), slug);
+  return { slug, token, account };
 }
 
 export async function switchWorkspace(token: string, orgSlug: string): Promise<string> {

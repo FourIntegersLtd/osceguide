@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import savepoint
 from app.core.errors import AppError
 from app.core.logging import get_logger
+from app.core.ports import RoomAgents
 from app.core.settings import get_settings
 from app.features.sittings import repository_run, service_run
 
@@ -33,6 +34,7 @@ async def advance_due(
     org_id: uuid.UUID,
     circuit_id: uuid.UUID | None = None,
     now: datetime,
+    agents: RoomAgents,
 ) -> int:
     """Advance this organisation's overdue circuits (or one of them); returns how many moved.
 
@@ -45,7 +47,7 @@ async def advance_due(
     due = await repository_run.overdue_circuits(
         session, org_id=org_id, circuit_id=circuit_id, now=now, grace_seconds=OVERDUE_GRACE_SECONDS
     )
-    agents, settings = service_run.get_room_agents(), get_settings()
+    agents, settings = agents, get_settings()
     moved = 0
     for row in due:
         try:

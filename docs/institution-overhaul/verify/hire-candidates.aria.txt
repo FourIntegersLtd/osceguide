@@ -1,0 +1,19 @@
+- main:
+  - heading "Candidates" [level=1]
+  - paragraph: Everyone in your organisation. Candidates sit sittings; staff (supervisors and admins) run circuits and mark them.
+  - button "Add candidates"
+  - tablist "People sections":
+    - tab "Candidates 0" [selected]
+    - tab "Staff"
+    - tab "Groups and year groups"
+    - tab "Exam access"
+    - tab "History"
+  - text: Search candidates
+  - searchbox "Search candidates"
+  - paragraph: No candidates yet
+  - paragraph: Add candidates so you can put them on an exam or training circuit.
+  - button "Add candidates"
+  - paragraph:
+    - text: Looking for supervisors and admins? They are on the
+    - button "Staff"
+    - text: tab.

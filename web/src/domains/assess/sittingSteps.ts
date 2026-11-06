@@ -97,9 +97,9 @@ export function sittingSteps(input: SittingStepsInput): SittingStep[] {
   const decided = counts !== null && counts.candidates > 0 && counts.decided >= counts.candidates;
   const released = counts !== null && counts.candidates > 0 && counts.released >= counts.candidates;
 
-  const markNote = countNote(counts?.stationsMarked ?? 0, counts?.stations ?? 0, "marked");
-  const decideNote = countNote(counts?.decided ?? 0, counts?.candidates ?? 0, "decided");
-  const releaseNote = countNote(counts?.released ?? 0, counts?.candidates ?? 0, "released");
+  const markNote = (counts?.stationsMarked ?? 0) === 0 ? "Not started" : countNote(counts?.stationsMarked ?? 0, counts?.stations ?? 0, "marked");
+  const decideNote = (counts?.decided ?? 0) === 0 ? "Not started" : countNote(counts?.decided ?? 0, counts?.candidates ?? 0, "decided");
+  const releaseNote = (counts?.released ?? 0) === 0 && (counts?.signedOff ?? 0) === 0 ? "Not started" : countNote(counts?.released ?? 0, counts?.candidates ?? 0, "released");
 
   const run: SittingStep = runStep({
     counts,
@@ -176,10 +176,7 @@ export function sittingNext(input: SittingStepsInput): SittingNext {
         return next("run", "The circuit ended and nobody sat. Open it to see what happened, or add another circuit.", openable);
       }
       const running = circuits.some((circuit) => circuit.started_at !== null && circuit.ended_at === null);
-      const staffed = circuits.every((circuit) => circuit.supervisor_user_id && (circuit.trainee_count ?? 0) > 0);
-      const waitingLine = staffed
-        ? "Every circuit has a supervisor and candidates. Start the circuit from its console when everyone is ready."
-        : "Start the circuit from its console when everyone is ready.";
+      const waitingLine = "Start the circuit from its console when everyone is ready.";
       return next("run", running ? "A circuit is running. Follow it from its console." : waitingLine, openable);
     }
     case "mark":
