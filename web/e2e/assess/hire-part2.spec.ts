@@ -72,7 +72,8 @@ for (const viewport of VIEWPORTS) {
     }
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: "Continue" }).click();
-    // The assessor step.
+    // The assessor step: the builder appears once each candidate gets their own assessor.
+    await page.getByRole("radio", { name: /per candidate/i }).click();
     await expect(page.getByText("Build the rotations").first()).toBeVisible();
     const pool = page.getByRole("group", { name: "Build the rotations" });
     await pool.getByRole("checkbox").nth(0).check();

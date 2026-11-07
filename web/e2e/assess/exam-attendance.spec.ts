@@ -1,3 +1,4 @@
+// Named to run after build-sitting: this spec adds a sitting, which moves the dashboard guide ASSESS-1 expects.
 import { expect, test, type Page } from "@playwright/test";
 import { buildSitting, type BuiltSitting } from "../support/sitting";
 import { openPage, signedInAs } from "../support/session";
@@ -50,7 +51,7 @@ test.describe.serial("exam-day attendance", () => {
       await expect(dialog).toBeHidden();
 
       await openPage(trainee, `/app/${w.slug}/trainee/sittings/${sitting.id}`);
-      await expect(trainee.getByText("You were marked absent")).toBeVisible();
+      await expect(trainee.getByText("You were marked absent").first()).toBeVisible();
       await shot(trainee, `trainee-absent-${label}`);
 
       await openPage(admin, `/app/${w.slug}/circuits/${sitting.circuitId}`);
