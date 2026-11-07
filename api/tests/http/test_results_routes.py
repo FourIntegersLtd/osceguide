@@ -900,3 +900,27 @@ async def test_an_institution_may_save_a_draft_with_no_rationale(
         headers=bearer(admin),
     )
     assert response.status_code == 200, response.text
+
+
+async def test_signing_off_a_hire_without_a_reason_is_refused_with_the_hire_code(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import update
+
+    from app.features.tenancy.models import Organization
+
+    # A draft that predates the rule: saved while the workspace was an institution.
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    saved = await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "recruitment_outcome": "hired", "expected_revision": 0},
+        headers=bearer(admin),
+    )
+    assert saved.status_code == 200, saved.text
+    await db_session.execute(
+        update(Organization).where(Organization.id == org_id).values(org_type="employer")
+    )
+    response = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    assert response.status_code == 422, response.text
+    assert response.json()["code"] == "hire_reason_required"

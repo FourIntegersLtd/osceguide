@@ -159,9 +159,8 @@ function Form({
   // A hire is never recorded without its reason, even as a draft.
   const hireBlockers = hire ? decisionBlockers({ recruitment, rationale }) : [];
   // The hire line under the reason box says it already: do not repeat it in the sign-off bar.
-  const blockers = signOffBlockers({ outcome: outcome || null, rationale }).filter(
-    (blocker) => hireBlockers.length === 0 || blocker !== REASON_BLOCKER,
-  );
+  const blockers = signOffBlockers({ outcome: outcome || null, rationale });
+  const shownBlockers = hireBlockers.length === 0 ? blockers : blockers.filter((blocker) => blocker !== REASON_BLOCKER);
 
   const run = useCallback(async (label: string, action: () => Promise<unknown>, said: string) => {
     setBusy(label);
@@ -242,10 +241,10 @@ function Form({
         <div className={t.assessMeta}>Every station marked · a rationale written</div>
       ) : null}
 
-      {!signedOff && blockers.length > 0 ? (
+      {!signedOff && shownBlockers.length > 0 ? (
         <div role="alert" className={boardAlert("warn")}>
           <b className="block font-semibold">Before this can be signed off</b>
-          {blockers.map((blocker) => (
+          {shownBlockers.map((blocker) => (
             <div key={blocker}>{blocker}</div>
           ))}
         </div>

@@ -109,9 +109,7 @@
     ".next-cs1/types/**/*.ts",
     ".next-cs1/dev/types/**/*.ts",
     ".next-io/types/**/*.ts",
-    ".next-io/dev/types/**/*.ts",
-    ".next-1a/types/**/*.ts",
-    ".next-1a/dev/types/**/*.ts"
+    ".next-io/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

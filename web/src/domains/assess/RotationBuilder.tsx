@@ -25,7 +25,9 @@ export function RotationBuilder({
   const w = useAssessWords();
   const [pool, setPool] = useState<string[]>(() => leads.map((l) => l.value).filter((id) => Object.values(draft.supervisorByCandidate).includes(id)));
   // What was last dealt, so a choice the person made by hand in the list below is known and kept.
-  const lastDealt = useRef<Record<string, string>>({});
+  // After a remount the baseline is the even deal of the pool in use, so only real changes count as by hand.
+  const lastDealt = useRef<Record<string, string> | null>(null);
+  lastDealt.current ??= proposeRotations(draft.candidateIds, pool);
   const apply = (next: string[], dealt: Record<string, string>) => {
     setPool(next);
     lastDealt.current = dealt;
@@ -33,7 +35,7 @@ export function RotationBuilder({
   };
   const toggle = (id: string) => {
     const next = leads.map((l) => l.value).filter((value) => (value === id ? !pool.includes(id) : pool.includes(value)));
-    apply(next, reconcileRotations(draft.candidateIds, draft.supervisorByCandidate, lastDealt.current, next));
+    apply(next, reconcileRotations(draft.candidateIds, draft.supervisorByCandidate, lastDealt.current ?? {}, next));
   };
   const tally = assessorTally(
     draft.candidateIds,
