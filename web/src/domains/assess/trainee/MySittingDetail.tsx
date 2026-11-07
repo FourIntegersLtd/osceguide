@@ -99,6 +99,7 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
 /** Ask for the microphone before the room opens, so a blocked browser is found now and not at the door. */
 function MicCheck() {
   const mic = useMicPreflight();
+  const { hrefFor } = useSurface();
   const ok = mic.status === "ready";
   return (
     <div className={boardPad}>
@@ -112,17 +113,20 @@ function MicCheck() {
               ? "No microphone was found. Connect one, then try again."
               : "We check it before you join. Allow it in the address bar, then try again."}
       </div>
-      {ok ? null : (
-        <Button
-          themeType="b2b"
-          variant="secondary"
-          size="sm"
-          className="self-start"
-          onClick={() => void mic.request()}
-        >
-          Test microphone
-        </Button>
-      )}
+      <div className="flex flex-wrap items-center gap-3">
+        {ok ? null : (
+          <Button
+            themeType="b2b"
+            variant="secondary"
+            size="sm"
+            className="self-start"
+            onClick={() => void mic.request()}
+          >
+            Test microphone
+          </Button>
+        )}
+        <TextLink href={hrefFor("/trainee/tech-check")}>Test your setup</TextLink>
+      </div>
     </div>
   );
 }

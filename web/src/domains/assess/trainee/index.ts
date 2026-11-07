@@ -1,5 +1,6 @@
 export { TraineeHome } from "@/domains/assess/trainee/TraineeHome";
 export { MySittingDetail } from "@/domains/assess/trainee/MySittingDetail";
+export { TechCheck } from "@/domains/assess/trainee/TechCheck";
 export { MyResult } from "@/domains/assess/trainee/MyResult";
 export { MyReview } from "@/domains/assess/trainee/MyReview";
 export { StationRecord } from "@/domains/assess/trainee/StationRecord";

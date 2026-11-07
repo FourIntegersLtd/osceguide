@@ -102,7 +102,7 @@ NO_OWN_STATE: dict[str, str] = {
     "reindex_media_item": "a fast path for the nightly reindex, which covers the same item",
     "send_engagement_emails": "periodic; the email is a nudge, not owed",
     "send_exam_day_reminders": (
-        "periodic hourly; each person is reminded once, a missed hour is picked up by the next"
+        "periodic every five minutes; each person is reminded once per kind, the next run catches a miss"
     ),
     "send_invitation_reminders": "periodic; the reminder is a nudge and the invitation itself is unaffected",
     "send_marketplace_session_reminders": (

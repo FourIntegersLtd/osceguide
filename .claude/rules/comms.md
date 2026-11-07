@@ -27,6 +27,17 @@ Owners: `access-owner` (outbox, notifications), `web-foundation-owner` (inbox we
   `capabilities/inbox`.
 - `public_site/` is the marketing site's backend: unauthenticated. The public pages (`app/(public)`) compose `domains/marketing`.
 - Sitting emails (cancel, edit, reminder) are owned by the sitting's owner, `institution-owner`.
+- **Candidate reminders** (`sittings/service_notify.send_candidate_reminders`, run by the `send_exam_day_reminders` job, now every
+  5 min, not a task of its own: a new task raises the `NO_OWN_STATE_CEILING` guard): template `sitting_reminder`, kinds `day_before` (starts in 1-24 h) and `hour_before` (last hour), key
+  `candidate-reminder:{kind}:{sitting}:{user}:{start minute}` so a moved sitting reminds again and nothing else repeats.
+  Skips cancelled/completed sittings, suspended orgs, finished circuits, and roster rows with `access_revoked` (the
+  roster, not `memberships`, is the truth: test helpers roster people without a membership). Supervisors are not
+  candidates. A sitting booked under 24 h out gets its `day_before` on the next run. There are no per-org comms
+  settings, so none are consulted; add one before adding a second reminder kind.
+- Candidate email wording: the payload carries `hire: "1"` for an `employer` org and `_sitting_word` turns "sitting"
+  into "assessment" (visible text only; routes still say `/sittings`). `sitting_scheduled` and `sitting_reminder` end
+  with "Test your setup", `/app/{org}/trainee/tech-check`: the candidate's own signed-in page, so the link carries no
+  token, address or id. Do not put a signed token in it; sign-in is the identity.
 
 ## What a failure looks like here
 - An email is sent outside the outbox, or the outbox row is written outside the event's transaction.

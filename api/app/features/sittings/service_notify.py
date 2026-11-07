@@ -14,12 +14,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity import service as identity
 from app.features.notifications import service as notifications
+from app.features.roster import service as roster
 from app.features.sittings import domain_edit, repository, repository_reads
 from app.features.sittings.models import Circuit, Sitting
 from app.features.tenancy import service as tenancy
 
 # The exam-day reminder goes out from this hour (UTC) on the day, once.
 REMINDER_HOUR_UTC = 7
+EMPLOYER_ORG_TYPE = "employer"
+
+# Candidate reminders: one the day before, one about an hour before. A sitting is in the first
+# window while it starts between an hour and a day away, and in the second inside the last hour.
+DAY_BEFORE_WINDOW = timedelta(hours=24)
+HOUR_BEFORE_WINDOW = timedelta(hours=1)
 
 
 async def _queue(
@@ -32,6 +39,7 @@ async def _queue(
     subject: str,
     key: str,
     circuit: Circuit | None = None,
+    extra: dict[str, str] | None = None,
 ) -> None:
     """Queue one email to one person, unless their account is closed or the key was already used."""
     person = await identity.user_ref_by_id(session, user_id)
@@ -51,6 +59,9 @@ async def _queue(
             "scheduled_at": sitting.scheduled_for.isoformat() if sitting.scheduled_for else "",
             "circuit_id": str(circuit.id) if circuit else "",
             "circuit_name": circuit.name if circuit else "",
+            # An employer's candidate reads "assessment", not "sitting" (the email words follow this).
+            "hire": "1" if org and org.org_type == EMPLOYER_ORG_TYPE else "",
+            **(extra or {}),
         },
         idempotency_key=key,
     )
@@ -125,3 +136,52 @@ async def send_exam_day_reminders(session: AsyncSession, *, now: datetime) -> in
                     key=f"exam-day:{sitting.id}:{user_id}:{start:%Y%m%d}",
                 )
     return len(sittings)
+
+
+def _reminder_kind(starts_at: datetime, now: datetime) -> str | None:
+    """Which reminder a sitting starting at `starts_at` is due at `now`, or None before, or once started."""
+    until = starts_at - now
+    if until <= timedelta(0) or until > DAY_BEFORE_WINDOW:
+        return None
+    return "hour_before" if until <= HOUR_BEFORE_WINDOW else "day_before"
+
+
+async def send_candidate_reminders(session: AsyncSession, *, now: datetime) -> int:
+    """Remind each rostered candidate a day and an hour before their sitting. Returns sittings covered.
+
+    Run every few minutes. The key holds one email per candidate per sitting per kind per start time
+    (a sitting moved to a new time reminds again), so a later run sends nothing. Cancelled and
+    completed sittings, suspended organisations, candidates taken off the roster and circuits that have
+    finished are skipped. Supervisors are not candidates and are left to the morning-of email.
+    """
+    sittings = await repository_reads.sittings_scheduled_between(
+        session, start=now, end=now + DAY_BEFORE_WINDOW, excluding_status=domain_edit.CANCELLED
+    )
+    inactive = await tenancy.inactive_org_ids(session, {sitting.org_id for sitting in sittings}, now=now)
+    covered = 0
+    for sitting in sittings:
+        kind = _reminder_kind(sitting.scheduled_for, now) if sitting.scheduled_for else None
+        if kind is None or sitting.status == "completed" or sitting.org_id in inactive:
+            continue
+        covered += 1
+        for circuit in await repository.circuits_for_sitting(session, sitting.org_id, sitting.id):
+            if circuit.ended_at is not None:
+                continue
+            people = await repository_reads.circuit_trainee_ids(session, sitting.org_id, circuit.id)
+            roster_rows = await roster.trainees_by_user_id(session, sitting.org_id, people)
+            for user_id in people:
+                if user_id not in roster_rows or roster_rows[user_id].access_revoked:
+                    continue
+                await _queue(
+                    session,
+                    user_id=user_id,
+                    org_id=sitting.org_id,
+                    sitting=sitting,
+                    circuit=circuit,
+                    template_key="sitting_reminder",
+                    subject="OSCE Guide - Reminder: your sitting is "
+                    + ("tomorrow" if kind == "day_before" else "starting soon"),
+                    key=f"candidate-reminder:{kind}:{sitting.id}:{user_id}:{sitting.scheduled_for:%Y%m%d%H%M}",
+                    extra={"kind": kind},
+                )
+    return covered
