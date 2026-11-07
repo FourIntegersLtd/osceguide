@@ -5,7 +5,7 @@ import { HiMiniSignal } from "react-icons/hi2";
 import { ButtonLink, EmptyState } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { ExamClock } from "@/capabilities/attempt-runner";
-import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
+import type { CircuitConsole, ConsolePerson, ConsoleSlot } from "@/domains/assess/sessions/api";
 import {
   PROGRESS_LABEL,
   markable,
@@ -58,6 +58,7 @@ export function StationProgressList({
         <Row
           key={slot.id}
           slot={slot}
+          assessor={data.circuit.station_assessors?.[slot.station.version_id] ?? null}
           position={index + 1}
           secondsLeft={slot.id === data.circuit.active_slot_id ? data.circuit.remaining_seconds : null}
           paused={data.circuit.paused}
@@ -77,6 +78,7 @@ function initials(name: string): string {
 
 function Row({
   slot,
+  assessor,
   position,
   secondsLeft,
   paused,
@@ -84,6 +86,8 @@ function Row({
   ended,
 }: {
   slot: ConsoleSlot;
+  /** Who assesses this station when it is not the circuit's own lead. */
+  assessor: ConsolePerson | null;
   position: number;
   secondsLeft: number | null | undefined;
   paused: boolean | undefined;
@@ -112,6 +116,11 @@ function Row({
       </span>
       <span className="sm:flex-[1_1_140px]">
         {position} · {stationLabel(slot)}
+        {assessor ? (
+          <span className="mt-0.5 block text-assess-meta text-osce-ink-500">
+            {assessor.name ?? assessor.email ?? "Assessor"}
+          </span>
+        ) : null}
       </span>
       <span className="flex flex-wrap gap-1 sm:w-[130px]">
         {ended ? (

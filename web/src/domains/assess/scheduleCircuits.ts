@@ -1,5 +1,12 @@
 import { createCircuit, createExamCircuits, timingBody } from "@/domains/assess/api";
-import { circuitPlan, circuitTiming, eachCircuitJobs, type ScheduleDraft } from "@/domains/assess/scheduleSitting";
+import {
+  circuitPlan,
+  circuitTiming,
+  eachCircuitJobs,
+  startOffsetFor,
+  stationAssessorsFor,
+  type ScheduleDraft,
+} from "@/domains/assess/scheduleSitting";
 
 /**
  * Make the circuits of a sitting that already exists.
@@ -17,6 +24,7 @@ export async function createSittingCircuits(
   const plan = circuitPlan(draft);
   const stationVersionIds = draft.stations.map((station) => station.version_id);
   const timing = circuitTiming(draft);
+  const stationAssessors = stationAssessorsFor(draft);
   if (plan.kind === "training") {
     await createCircuit(orgSlug, sittingId, {
       name: draft.name.trim(),
@@ -31,7 +39,9 @@ export async function createSittingCircuits(
       candidate_user_ids: draft.candidateIds,
       station_version_ids: stationVersionIds,
       supervisor_user_id: draft.supervisorId || null,
+      start_offset_minutes: 0,
       timing: timingBody(timing),
+      station_assessors: stationAssessors,
     });
   } else {
     for (const job of eachCircuitJobs(plan.candidateIds, already)) {
@@ -40,8 +50,10 @@ export async function createSittingCircuits(
           name: `Exam ${job.number}`,
           stationVersionIds,
           traineeIds: [job.candidate],
-          supervisorUserId: draft.supervisorByCandidate[job.candidate] || null,
+          supervisorUserId: (draft.perCandidate ? draft.supervisorByCandidate[job.candidate] : draft.supervisorId) || null,
           timing,
+          startOffsetMinutes: startOffsetFor(draft, job.number - 1),
+          stationAssessors,
         });
       } catch (cause) {
         // Circuits before this one exist now: a retry carries on from here.

@@ -58,6 +58,7 @@ import {
   sittingLine,
   stationNote,
   stepBlock,
+  stationAssessorsFor,
   stepUnlocked,
   timingSummary,
   type ScheduleDraft,
@@ -90,6 +91,28 @@ const BOARD_BUTTON = "!h-11 min-h-11 rounded-board px-[18px]";
 /** Who has how many rotations, for the review. */
 function rotationLine(candidateIds: string[], byCandidate: Record<string, string>, leads: { value: string; label: string }[]): string {
   return tallyText(assessorTally(candidateIds, byCandidate, Object.fromEntries(leads.map((l) => [l.value, l.label])))) || "Nobody yet";
+}
+
+/** Hire review rows for what only a hire workspace sets: staggered starts and station assessors. */
+function hireRows(
+  draft: ScheduleDraft,
+  leadLabel: (id: string) => string,
+  w: ReturnType<typeof useAssessWords>,
+): [string, string][] {
+  const rows: [string, string][] = [];
+  if (draft.staggerMinutes > 0 && draft.candidateIds.length > 1) {
+    rows.push([`${w.Circuits} start`, `${draft.staggerMinutes} minutes apart`]);
+  }
+  const picked = stationAssessorsFor(draft);
+  if (Object.keys(picked).length > 0) {
+    rows.push([
+      `${w.Supervisors} by station`,
+      draft.stations
+        .map((station, at) => `${at + 1}: ${leadLabel(picked[station.version_id] ?? "") || "default"}`)
+        .join(" · "),
+    ]);
+  }
+  return rows;
 }
 
 export function NewSitting({ orgSlug }: { orgSlug: string }) {
@@ -503,6 +526,7 @@ function Wizard({
                         ? rotationLine(draft.candidateIds, draft.supervisorByCandidate, leads)
                         : leadLabel(draft.supervisorId),
                     ],
+                    ...(w.hiring && draft.mode === "exam" ? hireRows(draft, leadLabel, w) : []),
                   ]}
                 />
                 <p className={t.assessMeta}>

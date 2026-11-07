@@ -55,6 +55,7 @@ import {
   type PickerSet,
   type ScheduleDraft,
   type TraineeRow,
+  STAGGER_BOUNDS,
 } from "@/domains/assess/scheduleSitting";
 import {
   BREAK_MINUTES_BOUNDS,
@@ -756,6 +757,7 @@ export function TimingStep({
   draft: ScheduleDraft;
   patch: Patch;
 }) {
+  const w = useAssessWords();
   const ends = endsAbout(draft);
   return (
     <div className={cn(t.assessCard, "p-6", t.assessFormStack)}>
@@ -774,6 +776,34 @@ export function TimingStep({
       {draft.mode === "exam" ? (
         <div className="border-t border-osce-border-light pt-7">
           <BreakEditor draft={draft} patch={patch} />
+        </div>
+      ) : null}
+      {w.hiring && draft.mode === "exam" ? (
+        <div className="border-t border-osce-border-light pt-7">
+          <Field label={`Stagger ${w.circuits} (minutes apart)`} htmlFor="sitting-stagger">
+            <input
+              id="sitting-stagger"
+              className={cn(fieldInput, "w-32")}
+              type="number"
+              inputMode="numeric"
+              min={STAGGER_BOUNDS.min}
+              max={STAGGER_BOUNDS.max}
+              value={draft.staggerMinutes}
+              onChange={(event) =>
+                patch({
+                  staggerMinutes: Math.min(
+                    STAGGER_BOUNDS.max,
+                    Math.max(STAGGER_BOUNDS.min, Math.round(Number(event.target.value)) || 0),
+                  ),
+                })
+              }
+            />
+          </Field>
+          <p className={cn(t.assessMeta, "mt-2")}>
+            {draft.staggerMinutes > 0
+              ? `Each ${w.trainee} starts ${draft.staggerMinutes} minutes after the one before. The first starts at the start time.`
+              : `0 starts every ${w.trainee} together at the start time.`}
+          </p>
         </div>
       ) : null}
       {ends ? (
@@ -815,6 +845,51 @@ export function SupervisorSelect({
   );
 }
 
+/** Hire: a different assessor for each station; a station left on the default is the lead's. */
+function StationAssessors({
+  draft,
+  patch,
+  options,
+}: {
+  draft: ScheduleDraft;
+  patch: Patch;
+  options: { value: string; label: string }[];
+}) {
+  const w = useAssessWords();
+  return (
+    <div className={cn(t.assessCard, "p-6", t.assessFormStack)}>
+      <p className="font-medium">{w.Supervisor} for each station</p>
+      <p className={t.assessMeta}>
+        A station left on the default is assessed by the {w.circuit}&apos;s own {w.supervisor}. An assessor
+        sees and marks only their station.
+      </p>
+      <ul className={flushCard}>
+        {draft.stations.map((station, at) => (
+          <li key={station.version_id} className={flushRow}>
+            <span className="min-w-0 flex-[1_1_200px] font-medium">{`Station ${at + 1}: ${station.title}`}</span>
+            <select
+              className={cn(fieldInput, "w-[200px]")}
+              aria-label={`${w.Supervisor} for station ${at + 1}`}
+              value={draft.stationAssessors[station.version_id] ?? ""}
+              onChange={(event) =>
+                patch({
+                  stationAssessors: { ...draft.stationAssessors, [station.version_id]: event.target.value },
+                })
+              }
+            >
+              {options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.value === "" ? "Default" : option.label}
+                </option>
+              ))}
+            </select>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** Who supervises a sitting: one person for all, or one per candidate on a formal exam. */
 export function SupervisorStep({
   draft,
@@ -848,6 +923,9 @@ export function SupervisorStep({
         />
       ) : null}
       {each && w.hiring ? <RotationBuilder draft={draft} patch={patch} leads={leads} /> : null}
+      {w.hiring && draft.mode === "exam" && draft.stations.length > 0 ? (
+        <StationAssessors draft={draft} patch={patch} options={options} />
+      ) : null}
       {each ? (
         <ul className={flushCard}>
           {draft.candidateIds.map((id) => (

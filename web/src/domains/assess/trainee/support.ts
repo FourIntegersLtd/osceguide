@@ -126,7 +126,8 @@ function priority(sitting: MySitting): number {
 }
 
 function scheduledAt(sitting: MySitting): number {
-  const parsed = sitting.scheduled_for ? Date.parse(sitting.scheduled_for) : Number.NaN;
+  const start = sitting.starts_at ?? sitting.scheduled_for;
+  const parsed = start ? Date.parse(start) : Number.NaN;
   return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
 }
 
@@ -208,8 +209,9 @@ export function summaryLine(sitting: MySitting): string {
   // A finished sitting's row says only what to do next (the board), not when it was or how far it got.
   if (isOver(sitting)) return parts.join(" · ");
   if (isExam(sitting) && total > 0) parts.push(`${completed} of ${total} stations completed`);
-  if (sitting.scheduled_for) {
-    const when = whenWords(sitting.scheduled_for);
+  // A staggered rotation reads its own start, not the sitting's.
+  if (sitting.starts_at ?? sitting.scheduled_for) {
+    const when = whenWords((sitting.starts_at ?? sitting.scheduled_for) as string);
     if (when) parts.push(when);
   }
   return parts.join(" · ");

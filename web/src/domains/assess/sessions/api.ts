@@ -4,6 +4,7 @@ import { orgPath } from "@/domains/assess/api";
 
 export type CircuitConsole = components["schemas"]["CircuitConsole"];
 export type ConsoleSlot = components["schemas"]["ConsoleSlot"];
+export type ConsolePerson = components["schemas"]["ConsolePerson"];
 export type ConsoleCircuit = components["schemas"]["ConsoleCircuit"];
 export type Circuit = components["schemas"]["CircuitRead"];
 export type Intervention = components["schemas"]["Intervention"];

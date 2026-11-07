@@ -20,6 +20,8 @@ import {
   stationNote,
   sittingLine,
   scheduledInstant,
+  startOffsetFor,
+  stationAssessorsFor,
   stepBlock,
   stepUnlocked,
   timingSummary,
@@ -216,4 +218,23 @@ test("the hire review step reads rotation and assessor, never circuit or supervi
   for (const line of lines) assert.doesNotMatch(line, /\b(circuits?|supervisors?|sittings?)\b/i, line);
   assert.equal(reviewFormula(exam, "Dr Patel", EMPLOYER_WORDS).help, "Each candidate gets their own rotation, supervised by Dr Patel.");
   assert.equal(reviewFormula({ ...exam, perCandidate: true }, "", EMPLOYER_WORDS).help, "Each candidate gets their own rotation, with an assessor each.");
+});
+
+test("a stagger turns a formal exam into one circuit per candidate, each starting later", () => {
+  const exam = draft({ mode: "exam", candidateIds: ["a", "b", "c"], staggerMinutes: 10, stations: stations(2) });
+  assert.deepEqual(circuitPlan(exam), { kind: "each", candidateIds: ["a", "b", "c"] });
+  assert.deepEqual([0, 1, 2].map((at) => startOffsetFor(exam, at)), [0, 10, 20]);
+  assert.equal(circuitPlan({ ...exam, staggerMinutes: 0 }).kind, "bulk");
+  assert.equal(startOffsetFor({ mode: "training", staggerMinutes: 10 }, 3), 0);
+  assert.equal(startOffsetFor({ mode: "exam", staggerMinutes: 60 }, 20), 480);
+});
+
+test("only picked assessors for stations still on the draft are sent, and only for a formal exam", () => {
+  const exam = draft({
+    mode: "exam",
+    stations: stations(2),
+    stationAssessors: { v0: "", v1: "u1", gone: "u2" },
+  });
+  assert.deepEqual(stationAssessorsFor(exam), { v1: "u1" });
+  assert.deepEqual(stationAssessorsFor({ ...exam, mode: "training" }), {});
 });
