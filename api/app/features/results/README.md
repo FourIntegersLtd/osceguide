@@ -33,7 +33,7 @@ two outcomes, and an outbox rather than an inline email.
   released decision is final. A signed-off decision goes back to draft by saving
   a draft over it (a new revision); there is no separate reopen route.
 - `recruitment_outcome` is recorded only on an **exam-mode** sitting (hire is exam
-  mode). A training sitting refuses one with `recruitment_outside_exam` (422).
+  mode). A training sitting refuses one with `recruitment_outside_exam` (422). An employer org refuses `hired` with an empty rationale (`hire_reason_required`, 422) on save and sign-off.
 - Sign-off requires an assessment outcome **and** a rationale — somebody has to
   be able to say why, later, to a candidate or an appeal. Capped at 4000 characters.
 - The two outcomes are checked against each other, so a failed candidate cannot

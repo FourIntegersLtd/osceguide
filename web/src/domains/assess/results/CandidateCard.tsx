@@ -23,7 +23,7 @@ import {
   workflowTone,
 } from "@/domains/assess/results/support";
 
-const TONE_CHIP: Record<ReturnType<typeof outcomeTone>, BoardChipTone> = {
+export const TONE_CHIP: Record<ReturnType<typeof outcomeTone>, BoardChipTone> = {
   success: "ok",
   danger: "live",
   warning: "warn",

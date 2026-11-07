@@ -131,6 +131,12 @@ async def org_ref_by_id(session: AsyncSession, org_id: uuid.UUID) -> OrgSummary 
     return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name)
 
 
+async def org_type_of(session: AsyncSession, org_id: uuid.UUID) -> str:
+    """ "institution", "employer" or "partner", for a slice that words or gates by kind of workspace."""
+    org = await repository.organization_by_id(session, org_id)
+    return "institution" if org is None else org.org_type
+
+
 async def org_refs_by_ids(session: AsyncSession, org_ids: set[uuid.UUID]) -> dict[uuid.UUID, OrgSummary]:
     """Several organisations' names, in one query."""
     return {

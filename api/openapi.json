@@ -5781,6 +5781,7 @@
               "group_exists",
               "group_not_empty",
               "group_not_found",
+              "hire_reason_required",
               "import_not_ready",
               "inbox_message_not_found",
               "incompatible_outcomes",
@@ -51526,10 +51527,11 @@
                 }
               }
             },
-            "description": "incompatible_outcomes, recruitment_outside_exam",
+            "description": "incompatible_outcomes, recruitment_outside_exam, hire_reason_required",
             "x-codes": [
               "incompatible_outcomes",
-              "recruitment_outside_exam"
+              "recruitment_outside_exam",
+              "hire_reason_required"
             ]
           }
         },
@@ -51771,9 +51773,10 @@
                 }
               }
             },
-            "description": "not_signable",
+            "description": "not_signable, hire_reason_required",
             "x-codes": [
-              "not_signable"
+              "not_signable",
+              "hire_reason_required"
             ]
           }
         },

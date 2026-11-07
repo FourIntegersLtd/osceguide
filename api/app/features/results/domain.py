@@ -78,6 +78,10 @@ class CandidateDidNotSit(NotDecidable):
     """The candidate sat no station on this sitting, so there is no evidence to decide on."""
 
 
+class HireReasonRequired(Exception):
+    """An employer recorded "hired" without saying why."""
+
+
 class RecruitmentOutsideExam(Exception):
     """A recruitment outcome on a training sitting, where nobody is being hired."""
 
@@ -195,3 +199,9 @@ def ensure_decidable(*, sitting_mode: str, sat_a_station: bool) -> None:
         raise DecisionOutsideExam("Decisions are recorded for exam-mode sittings only.")
     if not sat_a_station:
         raise CandidateDidNotSit("This candidate did not sit any station on this sitting.")
+
+
+def ensure_hire_reason(*, org_type: str, recruitment: Recruitment | None, rationale: str | None) -> None:
+    """An employer must give a reason for every hire; an institution has no hiring outcome to explain."""
+    if org_type == "employer" and recruitment == Recruitment.HIRED and not (rationale or "").strip():
+        raise HireReasonRequired("A reason is required to record a hire.")

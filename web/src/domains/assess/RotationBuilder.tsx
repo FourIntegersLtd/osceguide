@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { b2bTokens as t, cn } from "@/foundation/ui";
 import { plural } from "@/foundation/format";
 import { smallButton } from "@/domains/assess/SittingFields";
-import { assessorTally, proposeRotations, tallyText } from "@/domains/assess/rotations";
+import { assessorTally, proposeRotations, reconcileRotations, tallyText } from "@/domains/assess/rotations";
 import type { ScheduleDraft } from "@/domains/assess/scheduleSitting";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 
@@ -24,11 +24,17 @@ export function RotationBuilder({
 }) {
   const w = useAssessWords();
   const [pool, setPool] = useState<string[]>(() => leads.map((l) => l.value).filter((id) => Object.values(draft.supervisorByCandidate).includes(id)));
-  const apply = (next: string[]) => {
+  // What was last dealt, so a choice the person made by hand in the list below is known and kept.
+  const lastDealt = useRef<Record<string, string>>({});
+  const apply = (next: string[], dealt: Record<string, string>) => {
     setPool(next);
-    patch({ perCandidate: next.length > 0 || draft.perCandidate, supervisorByCandidate: proposeRotations(draft.candidateIds, next) });
+    lastDealt.current = dealt;
+    patch({ supervisorByCandidate: dealt });
   };
-  const toggle = (id: string) => apply(leads.map((l) => l.value).filter((value) => (value === id ? !pool.includes(id) : pool.includes(value))));
+  const toggle = (id: string) => {
+    const next = leads.map((l) => l.value).filter((value) => (value === id ? !pool.includes(id) : pool.includes(value)));
+    apply(next, reconcileRotations(draft.candidateIds, draft.supervisorByCandidate, lastDealt.current, next));
+  };
   const tally = assessorTally(
     draft.candidateIds,
     draft.supervisorByCandidate,
@@ -58,7 +64,7 @@ export function RotationBuilder({
           <p className={t.assessMeta} role="status">
             {tallyText(tally)}
           </p>
-          <button type="button" className={smallButton} onClick={() => apply(pool)}>
+          <button type="button" className={smallButton} onClick={() => apply(pool, proposeRotations(draft.candidateIds, pool))}>
             Deal again
           </button>
         </div>

@@ -9,6 +9,35 @@ export function proposeRotations(candidateIds: readonly string[], assessorIds: r
   return Object.fromEntries(candidateIds.map((id, at) => [id, assessorIds[at % assessorIds.length] as string]));
 }
 
+/**
+ * The pool changed: keep every candidate someone set by hand (their choice differs from what was last dealt)
+ * while their assessor is still ticked, and deal the others, each to whoever has the fewest so far.
+ */
+export function reconcileRotations(
+  candidateIds: readonly string[],
+  current: Record<string, string>,
+  lastDealt: Record<string, string>,
+  assessorIds: readonly string[],
+): Record<string, string> {
+  if (assessorIds.length === 0) return {};
+  const next: Record<string, string> = {};
+  const load = new Map(assessorIds.map((id) => [id, 0]));
+  for (const id of candidateIds) {
+    const chosen = current[id];
+    if (chosen && chosen !== lastDealt[id] && load.has(chosen)) {
+      next[id] = chosen;
+      load.set(chosen, (load.get(chosen) as number) + 1);
+    }
+  }
+  for (const id of candidateIds) {
+    if (next[id]) continue;
+    const pick = assessorIds.reduce((best, a) => ((load.get(a) as number) < (load.get(best) as number) ? a : best));
+    next[id] = pick;
+    load.set(pick, (load.get(pick) as number) + 1);
+  }
+  return next;
+}
+
 /** How many candidates each assessor has (in the order `names` lists them), and how many have nobody. */
 export function assessorTally(
   candidateIds: readonly string[],

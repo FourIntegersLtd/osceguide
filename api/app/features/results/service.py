@@ -27,6 +27,7 @@ from app.features.tenancy import service as tenancy
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.IncompatibleOutcomes: errors.IncompatibleOutcomesError,
     domain.NotSignable: errors.NotSignableError,
+    domain.HireReasonRequired: errors.HireReasonRequiredError,
     domain.InvalidWorkflow: errors.InvalidWorkflowError,
     domain.EvidenceChanged: errors.EvidenceChangedError,
     domain.NotReleasable: errors.NotReleasableError,
@@ -46,6 +47,22 @@ async def _ensure_recruitment_allowed(
     try:
         domain.ensure_recruitment_allowed(sitting.mode, recruitment)
     except domain.RecruitmentOutsideExam as exc:
+        raise_mapped(exc, _REFUSALS)
+
+
+async def _ensure_hire_reason(
+    session: AsyncSession, org_id: uuid.UUID, recruitment: str | None, rationale: str | None
+) -> None:
+    """A hire on an employer's workspace needs a reason, on the server as well as in the form."""
+    if recruitment is None:
+        return
+    try:
+        domain.ensure_hire_reason(
+            org_type=await tenancy.org_type_of(session, org_id),
+            recruitment=domain.Recruitment(recruitment),
+            rationale=rationale,
+        )
+    except domain.HireReasonRequired as exc:
         raise_mapped(exc, _REFUSALS)
 
 
@@ -109,6 +126,7 @@ async def save_draft(
     recruitment = domain.Recruitment(recruitment_outcome) if recruitment_outcome else None
     if recruitment is not None:
         await _ensure_recruitment_allowed(session, org_id, sitting_id, recruitment)
+    await _ensure_hire_reason(session, org_id, recruitment_outcome, rationale)
     if assessment and recruitment:
         try:
             domain.ensure_compatible(assessment, recruitment)
@@ -152,6 +170,7 @@ async def sign_off(
         session, org_id, [uuid.UUID(station["slot_id"]) for station in current["stations"]]
     ):
         raise errors.ReviewsPendingError()
+    await _ensure_hire_reason(session, org_id, latest.recruitment_outcome, latest.rationale)
     try:
         domain.transition(domain.Workflow(latest.workflow_state), domain.Workflow.SIGNED_OFF)
         assessment = domain.Assessment(latest.assessment_outcome) if latest.assessment_outcome else None

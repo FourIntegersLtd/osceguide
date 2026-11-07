@@ -161,7 +161,7 @@ function Report({
                 requestAnimationFrame(() => document.getElementById("candidate-detail")?.scrollIntoView({ block: "start" }));
               }} />
           ) : null}
-          {report.sitting.mode === "exam" ? <CohortRanking orgSlug={orgSlug} sittingId={sittingId} /> : null}
+          {report.sitting.mode === "exam" ? <CohortRanking orgSlug={orgSlug} sittingId={sittingId} numbered={!w.hiring} /> : null}
 
           <section aria-label="Candidates" className={`${boardCard} overflow-hidden`}>
             <div className={boardHeadRow}>

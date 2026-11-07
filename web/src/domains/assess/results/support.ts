@@ -56,6 +56,13 @@ export const RECRUITMENT_LABEL: Record<RecruitmentOutcome, string> = {
   withdrawn: "Withdrawn",
 };
 
+/** Hired is good news, reserve is a hold, the rest is neutral: the same tones as an assessment outcome. */
+export function recruitmentTone(value: string): ReturnType<typeof outcomeTone> {
+  if (value === "hired") return "success";
+  if (value === "reserve") return "warning";
+  return "neutral";
+}
+
 /** The words for a stored recruitment outcome; an unknown value is shown as it came. */
 export function recruitmentLabel(value: string): string {
   const known = RECRUITMENT_OUTCOMES.find((outcome) => outcome === value);
@@ -144,6 +151,8 @@ export function cohortSubtitle(candidate: CohortCandidate): string {
  * somebody presses the button, rather than after.
  * --------------------------------------------------------------------- */
 
+export const REASON_BLOCKER = "Write down the reason, so anyone can see why this was decided later.";
+
 export function signOffBlockers(input: {
   outcome: string | null;
   rationale: string | null;
@@ -151,7 +160,7 @@ export function signOffBlockers(input: {
   const blockers: string[] = [];
   if (!input.outcome) blockers.push("An outcome has to be chosen.");
   if (!(input.rationale ?? "").trim()) {
-    blockers.push("Write down the reason, so anyone can see why this was decided later.");
+    blockers.push(REASON_BLOCKER);
   }
   return blockers;
 }

@@ -11,6 +11,12 @@ test("best score first, ties share a rank and the next rank skips", () => {
   assert.deepEqual(ranked.map((r) => [r.candidate.user_id, r.rank]), [["b", 1], ["c", 1], ["a", 3], ["d", 4]]);
 });
 
+test("equal displayed scores share a rank, whatever sits behind the rounding", () => {
+  // 79.6 and 80.4 both read 80/100; 79.4 reads 79/100.
+  const ranked = rankCandidates([c("a", 80.4, 2), c("b", 79.6, 2), c("c", 79.4, 2)]);
+  assert.deepEqual(ranked.map((r) => [r.candidate.user_id, r.rank]), [["a", 1], ["b", 1], ["c", 3]]);
+});
+
 test("more stations passed breaks a tie on score", () => {
   const ranked = rankCandidates([c("a", 70, 3), c("b", 70, 5)]);
   assert.deepEqual(ranked.map((r) => [r.candidate.user_id, r.rank]), [["b", 1], ["a", 2]]);

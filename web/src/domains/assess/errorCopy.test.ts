@@ -74,7 +74,7 @@ describe("assessErrorMessage", () => {
       "too_many_trainees", "trainee_in_use", "cohort_in_use", "trainee_already_on_circuit", "station_not_on_circuit",
       "not_permitted_in_mode", "circuit_review_finalized", "not_slot_reviewer", "review_locked", "decision_outside_exam",
       "candidate_did_not_sit", "outcome_not_releasable", "not_an_exam_sitting", "exam_rubric_not_ready", "programme_not_found",
-      "membership_exists", "last_admin", "invitation_not_pending", "not_a_member",
+      "hire_reason_required", "membership_exists", "last_admin", "invitation_not_pending", "not_a_member",
     ]) {
       const line = assessErrorMessage(refusal(code), EMPLOYER_WORDS);
       assert.notEqual(line, "server wording", code);

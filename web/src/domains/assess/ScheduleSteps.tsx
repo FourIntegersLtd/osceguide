@@ -835,7 +835,6 @@ export function SupervisorStep({
   const each = canSplit && draft.perCandidate;
   return (
     <div className="flex flex-col gap-6">
-      {canSplit ? <RotationBuilder draft={draft} patch={patch} leads={leads} /> : null}
       {canSplit ? (
         <OptionCards
           label="Who supervises"
@@ -848,6 +847,7 @@ export function SupervisorStep({
           }))}
         />
       ) : null}
+      {each && w.hiring ? <RotationBuilder draft={draft} patch={patch} leads={leads} /> : null}
       {each ? (
         <ul className={flushCard}>
           {draft.candidateIds.map((id) => (

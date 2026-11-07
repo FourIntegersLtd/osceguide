@@ -1,13 +1,12 @@
 "use client";
 
-import { boardButtonSmall, boardCard, boardChip, boardRow, type BoardChipTone } from "@/foundation/ui/boardKit";
+import { boardButtonSmall, boardCard, boardChip, boardRow } from "@/foundation/ui/boardKit";
 import { b2bTokens as t } from "@/foundation/ui";
 import type { CandidateReport } from "@/domains/assess/results/api";
 import { rankCandidates } from "@/domains/assess/results/ranking";
-import { candidateName, formatScore, recruitmentLabel } from "@/domains/assess/results/support";
+import { TONE_CHIP } from "@/domains/assess/results/CandidateCard";
+import { candidateName, formatScore, recruitmentLabel, recruitmentTone } from "@/domains/assess/results/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
-
-const HIRING_CHIP: Record<string, BoardChipTone> = { hired: "ok", reserve: "warn", not_hired: "neutral", withdrawn: "neutral" };
 
 /**
  * Candidates side by side, best first, so a hiring decision is made with the others in view.
@@ -44,7 +43,7 @@ export function CandidateRanking({
             <span className={`flex-[1_1_140px] ${t.assessMeta}`}>{`${candidate.stations_passed} of ${candidate.stations_marked} stations passed`}</span>
             <span className="w-[110px]">
               {hiring && hiring !== "pending" ? (
-                <span className={boardChip(HIRING_CHIP[hiring] ?? "neutral")}>{recruitmentLabel(hiring)}</span>
+                <span className={boardChip(TONE_CHIP[recruitmentTone(hiring)])}>{recruitmentLabel(hiring)}</span>
               ) : (
                 <span className={t.assessMeta}>To decide</span>
               )}

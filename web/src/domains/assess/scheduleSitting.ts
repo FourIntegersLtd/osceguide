@@ -7,7 +7,7 @@
  */
 
 import { plural } from "@/foundation/format";
-import type { AssessWords } from "@/domains/assess/vocabulary";
+import { aOrAn, type AssessWords } from "@/domains/assess/vocabulary";
 import type { CircuitTiming, SittingMode } from "@/domains/assess/api";
 import { displayName } from "@/domains/assess/roster/support";
 import {
@@ -230,24 +230,24 @@ export function reviewFormula(
     "mode" | "candidateIds" | "stations" | "perCandidate"
   >,
   supervisor: string,
-  words: { trainee: string; trainees: string },
+  words: AssessWords,
 ): { formula: string; help: string } {
   const people = draft.candidateIds.length;
   const stations = plural(draft.stations.length, "station");
   if (draft.mode === "exam") {
     const by = draft.perCandidate
-      ? ", with a supervisor each"
+      ? `, with ${aOrAn(words.supervisor)} each`
       : supervisor
         ? `, supervised by ${supervisor}`
         : "";
     return {
-      formula: `${plural(people, "candidate")} × ${stations} → ${plural(people, "circuit")}`,
-      help: `Each candidate gets their own circuit${by}.`,
+      formula: scheduleWords(`${plural(people, "candidate")} × ${stations} → ${plural(people, "circuit")}`, words),
+      help: scheduleWords(`Each candidate gets their own circuit${by}.`, words),
     };
   }
   return {
-    formula: `${plural(people, words.trainee, words.trainees)} × ${stations} → 1 circuit`,
-    help: "Trainees rotate together round one circuit.",
+    formula: scheduleWords(`${plural(people, words.trainee, words.trainees)} × ${stations} → 1 circuit`, words),
+    help: scheduleWords("Trainees rotate together round one circuit.", words),
   };
 }
 

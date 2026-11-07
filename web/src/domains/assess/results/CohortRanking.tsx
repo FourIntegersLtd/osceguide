@@ -26,7 +26,16 @@ import {
  * to sit — so the server refuses a training sitting (422) and the results
  * screen mounts this for exam sittings only.
  */
-export function CohortRanking({ orgSlug, sittingId }: { orgSlug: string; sittingId: string }) {
+export function CohortRanking({
+  orgSlug,
+  sittingId,
+  numbered = true,
+}: {
+  orgSlug: string;
+  sittingId: string;
+  /** False beside the hire ranking: that list owns the numbers (best first), this one is only an order to review in. */
+  numbered?: boolean;
+}) {
   const state = useAsync((signal) => readCohort(orgSlug, sittingId, signal), [orgSlug, sittingId]);
 
   if (state.loading) return <Spinner />;
@@ -52,7 +61,7 @@ export function CohortRanking({ orgSlug, sittingId }: { orgSlug: string; sitting
       {candidates.map((candidate) => (
         <div key={candidate.trainee.user_id} className={boardRow}>
           <span className="flex-1">
-            {`${candidate.rank}. ${candidateName(candidate.trainee)}`}
+            {numbered ? `${candidate.rank}. ${candidateName(candidate.trainee)}` : candidateName(candidate.trainee)}
             <div className={t.assessMeta}>
               {`${cohortSubtitle(candidate)} · ${formatCompletion(candidate.completion_rate)} complete`}
             </div>

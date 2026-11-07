@@ -17,11 +17,11 @@ from tests.support.tokens import bearer
 pytestmark = pytest.mark.db
 
 
-async def org_with_admin(client: AsyncClient, make_actor, slug: str = "kings"):  # type: ignore[no-untyped-def]
+async def org_with_admin(client: AsyncClient, make_actor, slug: str = "kings", org_type: str = "institution"):  # type: ignore[no-untyped-def]
     root = await make_actor(f"root-{slug}@osceguide.com", platform_admin=True)
     created = await client.post(
         "/api/v1/platform/organizations",
-        json={"slug": slug, "name": slug.title(), "org_type": "institution"},
+        json={"slug": slug, "name": slug.title(), "org_type": org_type},
         headers=bearer(root),
     )
     org_id = uuid.UUID(created.json()["id"])
@@ -845,3 +845,58 @@ async def test_a_released_result_breaks_down_by_station(
     assert mine.json()["stations"] == [
         {"slot_id": str(slot_id), "station_title": "Sat", "score": 66.0, "passed": None}
     ]
+
+
+@pytest.mark.parametrize("rationale", [None, "   "])
+async def test_an_employer_cannot_record_hired_without_a_reason(
+    client: AsyncClient, make_actor, db_session: AsyncSession, rationale: str | None
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor, org_type="employer")
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    body: dict[str, object] = {
+        "assessment_outcome": "pass",
+        "recruitment_outcome": "hired",
+        "expected_revision": 0,
+    }
+    if rationale is not None:
+        body["rationale"] = rationale
+    response = await client.put(url(sitting, trainee), json=body, headers=bearer(admin))
+    assert response.status_code == 422, response.text
+    assert response.json()["code"] == "hire_reason_required"
+
+
+async def test_an_employer_may_record_hired_with_a_reason_and_other_outcomes_without(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor, org_type="employer")
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    ok = await client.put(
+        url(sitting, trainee),
+        json={
+            "assessment_outcome": "pass",
+            "recruitment_outcome": "hired",
+            "rationale": "Strong.",
+            "expected_revision": 0,
+        },
+        headers=bearer(admin),
+    )
+    assert ok.status_code == 200, ok.text
+    other = await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "recruitment_outcome": "reserve", "expected_revision": 1},
+        headers=bearer(admin),
+    )
+    assert other.status_code == 200, other.text
+
+
+async def test_an_institution_may_save_a_draft_with_no_rationale(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    response = await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "expected_revision": 0},
+        headers=bearer(admin),
+    )
+    assert response.status_code == 200, response.text

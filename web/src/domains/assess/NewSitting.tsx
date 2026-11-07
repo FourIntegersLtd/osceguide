@@ -285,10 +285,7 @@ function Wizard({
     leadLabel(draft.supervisorId) === "Unassigned"
       ? ""
       : leadLabel(draft.supervisorId),
-    {
-      trainee: w.trainee,
-      trainees: w.trainees,
-    },
+    w,
   );
   const current = SCHEDULE_STEPS[index];
   const last = index === SCHEDULE_STEPS.length - 1;

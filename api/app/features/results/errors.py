@@ -46,6 +46,13 @@ class CandidateDidNotSitError(Conflict):
     default_message = "This candidate did not sit any station on this sitting"
 
 
+class HireReasonRequiredError(InvalidInput):
+    """An employer recorded "hired" with no reason."""
+
+    code = "hire_reason_required"
+    default_message = "Give a reason before recording a hire"
+
+
 class NotSignableError(InvalidInput):
     """The decision is missing an outcome or a rationale, so it cannot be signed off."""
 

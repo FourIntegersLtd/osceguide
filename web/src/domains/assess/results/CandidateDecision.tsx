@@ -20,6 +20,7 @@ import {
   outcomeChoice,
   releasable,
   releaseRefusal,
+  REASON_BLOCKER,
   signOffBlockers,
   suggestedOutcome,
   workflowLabel,
@@ -155,9 +156,12 @@ function Form({
   const released = state === "released";
   const signedOff = state === "signed_off";
   const canRelease = releasable({ decision });
-  const blockers = signOffBlockers({ outcome: outcome || null, rationale });
   // A hire is never recorded without its reason, even as a draft.
   const hireBlockers = hire ? decisionBlockers({ recruitment, rationale }) : [];
+  // The hire line under the reason box says it already: do not repeat it in the sign-off bar.
+  const blockers = signOffBlockers({ outcome: outcome || null, rationale }).filter(
+    (blocker) => hireBlockers.length === 0 || blocker !== REASON_BLOCKER,
+  );
 
   const run = useCallback(async (label: string, action: () => Promise<unknown>, said: string) => {
     setBusy(label);

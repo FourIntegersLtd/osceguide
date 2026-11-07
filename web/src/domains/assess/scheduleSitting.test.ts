@@ -29,7 +29,7 @@ import {
 const stations = (n: number) =>
   Array.from({ length: n }, (_, i) => ({ version_id: `v${i}`, title: `Station ${i + 1}` }));
 const draft = (patch: Partial<ScheduleDraft>): ScheduleDraft => ({ ...EMPTY_DRAFT, ...patch });
-const words = { trainee: "trainee", trainees: "trainees" };
+const words = INSTITUTION_WORDS;
 
 test("steps unlock in order, stopping at the first unanswered one", () => {
   assert.equal(furthestStep(EMPTY_DRAFT), "basics");
@@ -202,4 +202,18 @@ test("hire step copy uses hire words and never reads wrong", () => {
     assert.equal(scheduleWords(text, INSTITUTION_WORDS), text);
   }
   assert.equal(scheduleWords("Who is sitting it?", EMPLOYER_WORDS), "Who is being assessed?");
+});
+
+test("the hire review step reads rotation and assessor, never circuit or supervisor", () => {
+  const exam = draft({ mode: "exam", stations: stations(6), candidateIds: ["a", "b", "c"] });
+  const training = draft({ mode: "training", stations: stations(3), candidateIds: ["a", "b", "c"] });
+  const lines = [
+    reviewFormula(exam, "Dr Patel", EMPLOYER_WORDS),
+    reviewFormula(exam, "", EMPLOYER_WORDS),
+    reviewFormula({ ...exam, perCandidate: true }, "", EMPLOYER_WORDS),
+    reviewFormula(training, "", EMPLOYER_WORDS),
+  ].flatMap((r) => [r.formula, r.help]);
+  for (const line of lines) assert.doesNotMatch(line, /\b(circuits?|supervisors?|sittings?)\b/i, line);
+  assert.equal(reviewFormula(exam, "Dr Patel", EMPLOYER_WORDS).help, "Each candidate gets their own rotation, supervised by Dr Patel.");
+  assert.equal(reviewFormula({ ...exam, perCandidate: true }, "", EMPLOYER_WORDS).help, "Each candidate gets their own rotation, with an assessor each.");
 });

@@ -18,6 +18,9 @@ function assessErrorCopy(w: AssessWords): Partial<Record<PlatformErrorCode, stri
     decision_revised: "Somebody else changed this decision. Reload it and check it before saving again.",
     invalid_workflow: "This decision is not in the right stage for that. It must be signed off, and not yet released.",
     not_signable: "This decision cannot be signed off yet. Choose an outcome and write the reason first.",
+    hire_reason_required: w.hiring
+      ? "Say why you are hiring this candidate before saving."
+      : "Give a reason before recording a hire.",
     incompatible_outcomes: "That outcome and the hiring outcome do not go together. Change one of them.",
     recruitment_outside_exam: w.hiring
       ? "A hiring outcome can only be recorded on a formal exam assessment."
