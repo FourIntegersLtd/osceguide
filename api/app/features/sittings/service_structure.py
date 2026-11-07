@@ -222,9 +222,9 @@ async def rebuild_circuit(
         station_assessors
         if station_assessors is not None
         else {
-            uuid.UUID(k): uuid.UUID(v)
-            for k, v in (circuit.station_assessors or {}).items()
-            if uuid.UUID(k) in station_version_ids
+            uuid.UUID(station): uuid.UUID(person)
+            for station, person in (circuit.station_assessors or {}).items()
+            if uuid.UUID(station) in station_version_ids
         }
     )
     values["station_assessors"] = (
