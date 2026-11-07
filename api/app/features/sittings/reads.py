@@ -143,7 +143,9 @@ def slot_read(slot: Slot, circuit: Circuit) -> SlotRead:
 
 def assessor_map(circuit: Circuit) -> dict[uuid.UUID, uuid.UUID]:
     """The circuit's per-station assessors, with ids as UUIDs."""
-    return {uuid.UUID(k): uuid.UUID(v) for k, v in (circuit.station_assessors or {}).items()}
+    return {
+        uuid.UUID(station): uuid.UUID(person) for station, person in (circuit.station_assessors or {}).items()
+    }
 
 
 def circuit_read(circuit: Circuit, slots: list[Slot]) -> CircuitRead:
