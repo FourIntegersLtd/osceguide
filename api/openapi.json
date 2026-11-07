@@ -32510,14 +32510,13 @@
                 }
               }
             },
-            "description": "circuit_not_live, candidate_marked_absent, trainee_revoked, marking_not_ready, trainee_not_on_roster, join_not_open",
+            "description": "circuit_not_live, candidate_marked_absent, trainee_revoked, marking_not_ready, trainee_not_on_roster",
             "x-codes": [
               "circuit_not_live",
               "candidate_marked_absent",
               "trainee_revoked",
               "marking_not_ready",
-              "trainee_not_on_roster",
-              "join_not_open"
+              "trainee_not_on_roster"
             ]
           },
           "422": {
@@ -43681,12 +43680,13 @@
                 }
               }
             },
-            "description": "circuit_already_ended, sitting_locked, lead_cannot_run, programme_not_active",
+            "description": "circuit_already_ended, sitting_locked, lead_cannot_run, programme_not_active, join_not_open",
             "x-codes": [
               "circuit_already_ended",
               "sitting_locked",
               "lead_cannot_run",
-              "programme_not_active"
+              "programme_not_active",
+              "join_not_open"
             ]
           },
           "422": {

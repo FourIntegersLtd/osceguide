@@ -51,6 +51,7 @@ _LIVE = (Forbidden, *errors.LIVE_CIRCUIT_REFUSALS)
         errors.SittingLockedError,
         errors.LeadCannotRun,
         errors.ProgrammeNotActive,
+        errors.JoinNotOpen,
         OrgSuspended,
     ),
 )
@@ -177,7 +178,6 @@ async def observer_token(
         errors.TraineeRevokedError,
         errors.MarkingNotReady,
         errors.TraineeNotOnRosterError,
-        errors.JoinNotOpen,
     ),
 )
 async def join_token(
@@ -186,7 +186,6 @@ async def join_token(
     session: Session,
     settings: SettingsDep,
     tokens: Tokens,
-    clock: ClockDep,
 ) -> schemas.RoomGrant:
     """A candidate's way in, at the start of the circuit rather than per station.
 
@@ -195,7 +194,7 @@ async def join_token(
     to sit its examination.
     """
     return await service_join.join_token_for_trainee(
-        session, circuit_id, user_id=principal.user_id, tokens=tokens, settings=settings, now=clock.now()
+        session, circuit_id, user_id=principal.user_id, tokens=tokens, settings=settings
     )
 
 

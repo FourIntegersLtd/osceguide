@@ -181,9 +181,9 @@ async def test_the_join_token_waits_for_the_rotations_own_start(
         json={"scheduled_for": far_future.isoformat()},
         headers=bearer(s.admin),
     )
-    await client.post(f"/api/v1/orgs/kings/circuits/{s.circuit['id']}/start", headers=bearer(s.admin))
-    candidate = bearer(mint_token(user_id=s.candidate, email="cand@example.com"))
-    refused = await client.post(f"/api/v1/me/circuits/{s.circuit['id']}/join-token", headers=candidate)
+    refused = await client.post(
+        f"/api/v1/orgs/kings/circuits/{s.circuit['id']}/start", headers=bearer(s.admin)
+    )
     assert (refused.status_code, refused.json()["code"]) == (409, "join_not_open")
 
 

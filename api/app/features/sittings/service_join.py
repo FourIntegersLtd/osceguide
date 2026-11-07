@@ -14,7 +14,6 @@ join button to appear per station was the browser's idea, not an examination's.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +22,6 @@ from app.core.role_policy import policy
 from app.core.settings import Settings
 from app.features.roster import service as roster
 from app.features.sittings import (
-    domain,
     errors,
     floor,
     repository,
@@ -61,7 +59,6 @@ async def join_token_for_trainee(
     user_id: uuid.UUID,
     tokens: VoiceTokens,
     settings: Settings,
-    now: datetime,
 ) -> RoomGrant:
     """A candidate's token for the circuit they are rostered onto.
 
@@ -88,7 +85,6 @@ async def join_token_for_trainee(
     service_run.ensure_room_open(circuit, training=training)
     if await _marked_absent(session, circuit.id, user_id):
         raise errors.CandidateMarkedAbsent()
-    await ensure_join_window_open(session, circuit, now=now)
 
     # A training trainee always has a camera; the microphone is the turn's (and the floor's).
     sources = ["microphone"]  # exam: the candidate speaks, nothing else (no screen share)
@@ -168,16 +164,6 @@ async def _ensure_assessor_of_active_station(
     ):
         return
     raise errors.NotYourStation()
-
-
-async def ensure_join_window_open(session: AsyncSession, circuit: Circuit, *, now: datetime) -> None:
-    """A staggered candidate is let in from ten minutes before their own start, not the sitting's."""
-    if circuit.start_offset_minutes <= 0:
-        return
-    sitting = await repository.sitting_by_id(session, circuit.org_id, circuit.sitting_id)
-    opens = domain.join_opens_at(sitting.scheduled_for if sitting else None, circuit.start_offset_minutes)
-    if opens is not None and now < opens:
-        raise errors.JoinNotOpen()
 
 
 def _grant(granted: voice.RoomGrant, *, can_publish: bool = True) -> RoomGrant:

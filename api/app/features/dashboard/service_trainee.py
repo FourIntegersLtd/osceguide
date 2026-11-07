@@ -92,11 +92,7 @@ async def my_sittings(
                 circuit_name=trainee_slot.circuit.name,
                 released=trainee_slot.sitting.mode == "exam" and trainee_slot.sitting.id not in sealed,
                 live=_circuit_live(trainee_slot.circuit),
-                can_join=(
-                    open_to_join
-                    and bool(trainee_slot.circuit.room_name)
-                    and _join_window_open(trainee_slot, now)
-                )
+                can_join=(open_to_join and bool(trainee_slot.circuit.room_name))
                 or _training_room_kept_open(trainee_slot.circuit, trainee_slot.sitting.mode),
                 phase=trainee_slot.circuit.phase,
                 phase_started_at=trainee_slot.circuit.phase_started_at,
@@ -167,14 +163,6 @@ def _training_room_kept_open(circuit: sittings.CircuitRef, mode: str) -> bool:
         and circuit.ended_at is not None
         and circuit.room_closed_at is None
     )
-
-
-def _join_window_open(trainee_slot: sittings.TraineeSlot, now: datetime) -> bool:
-    """A staggered rotation lets its candidate in only from shortly before its own start."""
-    opens = sittings.join_opens_at(
-        trainee_slot.sitting.scheduled_for, trainee_slot.circuit.start_offset_minutes
-    )
-    return opens is None or now >= opens
 
 
 def _circuit_live(circuit: sittings.CircuitRef) -> bool:

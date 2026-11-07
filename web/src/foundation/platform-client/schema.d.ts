@@ -22927,7 +22927,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description circuit_not_live, candidate_marked_absent, trainee_revoked, marking_not_ready, trainee_not_on_roster, join_not_open */
+            /** @description circuit_not_live, candidate_marked_absent, trainee_revoked, marking_not_ready, trainee_not_on_roster */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -29625,7 +29625,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description circuit_already_ended, sitting_locked, lead_cannot_run, programme_not_active */
+            /** @description circuit_already_ended, sitting_locked, lead_cannot_run, programme_not_active, join_not_open */
             409: {
                 headers: {
                     [name: string]: unknown;

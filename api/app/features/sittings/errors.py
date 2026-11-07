@@ -55,10 +55,10 @@ class NotYourStation(Forbidden):
 
 
 class JoinNotOpen(Conflict):
-    """A staggered rotation's join window has not opened for this candidate yet."""
+    """A staggered rotation cannot start before its own start time (less ten minutes)."""
 
     code = "join_not_open"
-    default_message = "Your rotation has not opened yet"
+    default_message = "This circuit's start time has not come yet"
 
 
 class CircuitLockedError(Conflict):
