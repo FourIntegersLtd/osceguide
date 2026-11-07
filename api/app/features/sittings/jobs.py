@@ -243,12 +243,15 @@ def register() -> None:
         from app.features.sittings.service_notify import send_candidate_reminders
         from app.features.sittings.service_notify import send_exam_day_reminders as send
 
-        async with job_session() as session:
-            now = datetime.now(UTC)
-            sittings = await send(session, now=now)
+        now = datetime.now(UTC)
+        sittings = 0
+        if now.minute < 5:  # the morning-of email is once a day: sweep it in the first run of each hour
+            async with job_session() as session:
+                sittings = await send(session, now=now)
+        async with job_session() as session:  # its own transaction: one failing never rolls back the other
             reminded = await send_candidate_reminders(session, now=now)
-            if sittings or reminded:
-                log.info("sitting reminders checked", exam_day=sittings, candidates=reminded)
+        if sittings or reminded:
+            log.info("sitting reminders checked", exam_day=sittings, candidates=reminded)
 
     @app.periodic(cron="* * * * *")
     @app.task(name=SWEEP_TASK, queue=SWEEP_QUEUE)

@@ -58,6 +58,16 @@ async def test_a_candidate_is_reminded_the_day_before_and_an_hour_before_once_ea
     ]
 
 
+async def test_a_sitting_first_seen_under_half_a_day_out_skips_tomorrow_and_gets_the_hour_reminder(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    await placed(client, db_session, make_actor)
+    await send_candidate_reminders(db_session, now=datetime(2026, 11, 3, 8, 30, tzinfo=UTC))  # 90 min out
+    assert await reminders(db_session) == []
+    await send_candidate_reminders(db_session, now=HOUR_BEFORE)
+    assert [row.payload["kind"] for row in await reminders(db_session)] == ["hour_before"]
+
+
 async def test_nothing_is_sent_once_the_sitting_has_started(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
@@ -117,6 +127,7 @@ async def test_an_employer_candidate_is_told_in_hire_words(
     assert "sitting" not in _visible(hour)
     day = _render("sitting_reminder", sent["day_before"].payload)
     assert "Your assessment is tomorrow" in day
+    assert all("sitting" not in row.subject.lower() and "assessment" in row.subject for row in sent.values())
     scheduled = _render("sitting_scheduled", {**sent["day_before"].payload})
     assert "scheduled you for" in scheduled and "sitting" not in _visible(scheduled)
 

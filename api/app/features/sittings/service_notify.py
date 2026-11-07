@@ -24,8 +24,10 @@ REMINDER_HOUR_UTC = 7
 EMPLOYER_ORG_TYPE = "employer"
 
 # Candidate reminders: one the day before, one about an hour before. A sitting is in the first
-# window while it starts between an hour and a day away, and in the second inside the last hour.
+# window while it starts between half a day and a day away, and in the second inside the last hour.
+# A sitting first seen closer than half a day out skips "tomorrow" and waits for the hour reminder.
 DAY_BEFORE_WINDOW = timedelta(hours=24)
+DAY_BEFORE_MIN = timedelta(hours=12)
 HOUR_BEFORE_WINDOW = timedelta(hours=1)
 
 
@@ -41,15 +43,19 @@ async def _queue(
     circuit: Circuit | None = None,
     extra: dict[str, str] | None = None,
 ) -> None:
-    """Queue one email to one person, unless their account is closed or the key was already used."""
+    """Queue one email to one person, unless their account is not active or the key was already used.
+
+    `subject` may hold `{word}`: "assessment" for an employer's candidate, else "sitting".
+    """
     person = await identity.user_ref_by_id(session, user_id)
-    if person is None or await identity.account_status(session, user_id) == "deleted":
+    if person is None or await identity.account_status(session, user_id) != "active":
         return
     org = await tenancy.org_ref_by_id(session, org_id)
+    hire = bool(org and org.org_type == EMPLOYER_ORG_TYPE)
     await notifications.enqueue_email(
         session,
         recipient=person.email,
-        subject=subject,
+        subject=subject.format(word="assessment" if hire else "sitting"),
         template_key=template_key,
         payload={
             "org_slug": org.slug if org else "",
@@ -60,7 +66,7 @@ async def _queue(
             "circuit_id": str(circuit.id) if circuit else "",
             "circuit_name": circuit.name if circuit else "",
             # An employer's candidate reads "assessment", not "sitting" (the email words follow this).
-            "hire": "1" if org and org.org_type == EMPLOYER_ORG_TYPE else "",
+            "hire": "1" if hire else "",
             **(extra or {}),
         },
         idempotency_key=key,
@@ -80,7 +86,7 @@ async def trainees_scheduled(
             org_id=org_id,
             sitting=sitting,
             template_key="sitting_scheduled",
-            subject="OSCE Guide - You are scheduled for a sitting",
+            subject="OSCE Guide - Your {word} has been scheduled",
             key=f"sitting-scheduled:{sitting.id}:{user_id}:{sitting.scheduled_for:%Y%m%d}",
         )
 
@@ -143,7 +149,9 @@ def _reminder_kind(starts_at: datetime, now: datetime) -> str | None:
     until = starts_at - now
     if until <= timedelta(0) or until > DAY_BEFORE_WINDOW:
         return None
-    return "hour_before" if until <= HOUR_BEFORE_WINDOW else "day_before"
+    if until <= HOUR_BEFORE_WINDOW:
+        return "hour_before"
+    return "day_before" if until >= DAY_BEFORE_MIN else None
 
 
 async def send_candidate_reminders(session: AsyncSession, *, now: datetime) -> int:
@@ -179,7 +187,7 @@ async def send_candidate_reminders(session: AsyncSession, *, now: datetime) -> i
                     sitting=sitting,
                     circuit=circuit,
                     template_key="sitting_reminder",
-                    subject="OSCE Guide - Reminder: your sitting is "
+                    subject="OSCE Guide - Reminder: your {word} is "
                     + ("tomorrow" if kind == "day_before" else "starting soon"),
                     key=f"candidate-reminder:{kind}:{sitting.id}:{user_id}:{sitting.scheduled_for:%Y%m%d%H%M}",
                     extra={"kind": kind},

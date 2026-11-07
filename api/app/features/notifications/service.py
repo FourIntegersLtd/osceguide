@@ -358,16 +358,21 @@ def _tech_check_link(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _sitting_links(escaped_fields: dict[str, str], word: str) -> str:
+    """The open-it link and the setup-check link every candidate email carries."""
+    open_it = f'<p><a href="{_trainee_sitting_link(escaped_fields)}">Open the {word}</a></p>'
+    return open_it + _tech_check_link(escaped_fields)
+
+
 def _sitting_scheduled(escaped_fields: dict[str, str]) -> str:
     """The body telling a trainee they have been placed on a dated sitting."""
     when = _in_words(escaped_fields.get("scheduled_at", ""))
     word = _sitting_word(escaped_fields)
     return _page(
-        f"You are scheduled for {'an' if word == 'assessment' else 'a'} {word}",
+        f"Your {word} has been scheduled",
         f"<p>{escaped_fields.get('org_name') or 'Your organisation'} has scheduled you for "
-        f"{escaped_fields.get('sitting_name', 'an ' + word)} on {when}.</p>"
-        f'<p><a href="{_trainee_sitting_link(escaped_fields)}">Open the {word}</a></p>'
-        f"{_tech_check_link(escaped_fields)}",
+        f"{escaped_fields.get('sitting_name') or 'your ' + word} on {when}.</p>"
+        f"{_sitting_links(escaped_fields, word)}",
     )
 
 
@@ -380,8 +385,7 @@ def _sitting_reminder(escaped_fields: dict[str, str]) -> str:
         f"Your {word} {lead}",
         f"<p>{escaped_fields.get('sitting_name', 'Your ' + word)} with "
         f"{escaped_fields.get('org_name') or 'your organisation'} starts {when}.</p>"
-        f'<p><a href="{_trainee_sitting_link(escaped_fields)}">Open the {word}</a></p>'
-        f"{_tech_check_link(escaped_fields)}",
+        f"{_sitting_links(escaped_fields, word)}",
     )
 
 
