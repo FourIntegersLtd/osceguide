@@ -110,6 +110,24 @@ async def set_staff_mfa_policy(
     )
 
 
+# How long this organisation keeps candidates' transcripts. Null keeps them until a staff deletion.
+@router.patch(
+    "/orgs/{org_slug}/retention",
+    response_model=schemas.OrganizationRead,
+    responses=error_responses(Forbidden, errors.OrgNotFound),
+)
+async def set_retention_policy(
+    body: schemas.RetentionPolicy, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.OrganizationRead:
+    return await service.set_recording_retention(
+        session,
+        workspace.org_id,
+        days=body.recording_retention_days,
+        actor=workspace.principal,
+        now=clock.now(),
+    )
+
+
 # A page of an organisation's memberships.
 @router.get(
     "/orgs/{org_slug}/memberships",

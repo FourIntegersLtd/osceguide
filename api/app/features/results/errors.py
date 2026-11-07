@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.errors import Conflict, InvalidInput, NotFound
+from app.core.errors import Conflict, Forbidden, InvalidInput, NotFound
 
 # Raised from here when a decision names something that is not a roster entry.
 # Re-exported rather than restated so there is one `trainee_not_found`, and so
@@ -107,3 +107,73 @@ class ReviewsPendingError(Conflict):
 
     code = "reviews_pending"
     default_message = "A review of this candidate is still in progress; complete it before signing off"
+
+
+class AppealNotFound(NotFound):
+    """No appeal by that id in this organisation."""
+
+    code = "appeal_not_found"
+    default_message = "That appeal was not found"
+
+
+class AppealAlreadyOpen(Conflict):
+    """A review of this result has already been asked for and is not finished."""
+
+    code = "appeal_already_open"
+    default_message = "A review of this result has already been requested"
+
+
+class AppealClosed(Conflict):
+    """The appeal is resolved or declined, so it takes no more steps."""
+
+    code = "appeal_closed"
+    default_message = "This appeal has already been decided"
+
+
+class AppealNotAssigned(Conflict):
+    """The outcome was recorded before a second marker was assigned."""
+
+    code = "appeal_not_assigned"
+    default_message = "Assign a second marker before recording the outcome"
+
+
+class AppealStale(Conflict):
+    """The result moved since the appeal was made, so the outcome would supersede the wrong revision."""
+
+    code = "appeal_stale"
+    default_message = "The result has changed since this appeal was made"
+
+
+class NotAssignedMarker(Forbidden):
+    """Someone other than the assigned second marker tried to record the outcome."""
+
+    code = "not_assigned_marker"
+    default_message = "Only the assigned second marker can record the outcome"
+
+
+class SecondMarkerMustDiffer(InvalidInput):
+    """The person who signed off or released the result cannot be its second marker."""
+
+    code = "second_marker_must_differ"
+    default_message = "A second marker must be someone who did not sign off or release the result"
+
+
+class AssigneeNotAdmin(InvalidInput):
+    """The person named cannot record a result outcome in this organisation."""
+
+    code = "assignee_not_admin"
+    default_message = "A second marker must be an administrator of this organisation"
+
+
+class ConfirmationMismatch(InvalidInput):
+    """The typed confirmation does not match the candidate, so nothing was deleted."""
+
+    code = "confirmation_mismatch"
+    default_message = "The confirmation does not match this candidate's address"
+
+
+class AppealOpenForCandidate(Conflict):
+    """The candidate's data is held while a review of their result is open."""
+
+    code = "appeal_open"
+    default_message = "Decide the open review of this candidate's result before deleting their data"

@@ -105,11 +105,18 @@ It never changes final assessment results. Deploy migration `h9i0j1k2l3m4` and
 run a background worker consuming `coverage`, `scoring` and `summaries` for the
 complete practice flow; a connected LiveKit worker alone cannot mark or summarize.
 
+`compact_transcripts` also runs the **retention sweep** (`service_retention.sweep_retention`): for each
+organisation with `recording_retention_days` set, it deletes the transcript of finished attempts that ended longer
+ago, stamps `attempts.content_erased_at`, and keeps the attempt and its marks. One transaction per organisation;
+failures are collected and raised so the queue row shows the run failed. Reused rather than a new task type
+(`NO_OWN_STATE_CEILING`). The same removal serves a staff deletion for one candidate (`erase_for_user_in_org`).
+
 ## Cross-slice dependencies
 Calls `catalog` to resolve an exam, `stations` to resolve a scenario and to read
 back the document behind one, and `entitlements` to decide whether an attempt
 may start. The platform console's reads ask `health.service_jobs` what the
-queue holds for an attempt and `identity` whether the account exists.
+queue holds for an attempt and `identity` whether the account exists. The retention sweep asks
+`tenancy.service.retention_policies` which organisations keep transcripts for a limited time.
 
 ## What a candidate may read of a station
 `station_versions.content` is one document holding both the brief and the

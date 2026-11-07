@@ -112,3 +112,89 @@ class ResultAcknowledgement(BaseModel):
 
     sitting_id: uuid.UUID
     acknowledged_at: datetime
+
+
+class RequestAppeal(BaseModel):
+    """Why a released result should be looked at again."""
+
+    reason: str = Field(min_length=5, max_length=2000)
+
+
+class CandidateAppealRead(BaseModel):
+    """The candidate's own view of a review they asked for. The assigned marker's name stays internal."""
+
+    id: uuid.UUID
+    sitting_id: uuid.UUID
+    status: str
+    reason: str
+    requested_at: datetime
+    decided_at: datetime | None = None
+    # Why a review was declined; null otherwise (an outcome is the new revision on the result itself).
+    decision_note: str | None = None
+
+
+class AssignAppeal(BaseModel):
+    """The second marker for an appeal: an administrator who did not sign off or release the result."""
+
+    assignee_user_id: uuid.UUID
+
+
+class DeclineAppeal(BaseModel):
+    reason: str = Field(min_length=5, max_length=2000)
+
+
+class ResolveAppeal(BaseModel):
+    """The second marker's outcome, which becomes a new released revision of the result.
+
+    A recruitment outcome left out is carried over from the result being reviewed.
+    """
+
+    assessment_outcome: str = Field(pattern="^(pass|fail)$")
+    recruitment_outcome: str | None = Field(
+        default=None, pattern="^(hired|reserve|not_hired|withdrawn|pending)$"
+    )
+    rationale: str = Field(min_length=1, max_length=4000)
+
+
+class AppealRead(BaseModel):
+    """One appeal as the queue shows it."""
+
+    id: uuid.UUID
+    sitting_id: uuid.UUID
+    sitting_name: str | None
+    trainee_id: uuid.UUID
+    candidate_name: str | None
+    status: str
+    reason: str
+    on_behalf: bool
+    requested_at: datetime
+    # The result under review, and the revision the outcome appended once decided.
+    revision: int
+    original_outcome: str | None
+    outcome_revision: int | None
+    # Who signed off and released the result under review: none of them can be its second marker.
+    original_marker_ids: list[uuid.UUID] = Field(default_factory=list)
+    assigned_to: uuid.UUID | None
+    assigned_to_name: str | None
+    assigned_at: datetime | None
+    decision_note: str | None
+    decided_at: datetime | None
+
+
+class AppealPage(BaseModel):
+    appeals: list[AppealRead]
+
+
+class DeleteCandidateData(BaseModel):
+    """The typed confirmation for an irreversible deletion: the candidate's address, as on the roster."""
+
+    confirmation: str = Field(min_length=1, max_length=320)
+
+
+class CandidateDataDeleted(BaseModel):
+    """What a deletion removed, so the screen can say so."""
+
+    trainee_id: uuid.UUID
+    attempts_cleared: int
+    result_notes_scrubbed: int
+    appeals_scrubbed: int

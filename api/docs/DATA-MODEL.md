@@ -49,7 +49,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-82 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
+83 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -336,6 +336,7 @@ they are regenerated. Only the argon2 hash is stored. No `created_at` or
 | `contract_starts_at` / `contract_ends_at` | `timestamptz null` | |
 | `suspended_at` | `timestamptz null` | |
 | `suspended_by` | `uuid null` → `users.id` SET NULL | |
+| `recording_retention_days` | `int null` | days after an attempt ends that its transcript is kept; null keeps it until a staff deletion. Enforced by the retention sweep that runs on the `compact_transcripts` schedule. Set by the organisation's admin, audited as `org.retention_changed` |
 | `require_staff_mfa` | `bool not null default false` | when set, a membership whose role is outside `END_USER_ROLES` must use a second factor. Same precedent as `organization_sso.sso_only`: the organisation states a sign-in rule. Takes effect at the next password sign-in; existing refresh chains continue |
 
 ### `memberships`
@@ -759,6 +760,7 @@ recording.
 | `status` | `varchar(32) not null default 'created'` | |
 | `started_at` / `completed_at` | `timestamptz null` | |
 | `failed_reason` | `varchar(200) null` | |
+| `content_erased_at` | `timestamptz null` | when retention or a staff deletion removed this attempt's transcript. The attempt and its marks stay; the retention sweep skips attempts where it is set |
 | `legacy_ref` | `varchar(200) null` | where this row came from in Firestore or b2b, e.g. `b2c:transcript:abc123`; dropped with the `migration` package once every tenant is across |
 
 The four references are `RESTRICT`, not `CASCADE` or `SET NULL`: an attempt is a
@@ -856,7 +858,7 @@ What the engine scored, kept immutably.
 UNIQUE `(attempt_id, policy_version)`: re-running the same policy stores nothing new,
 and scoring under a different one sits beside the old result rather than replacing it.
 
-## results — 3 tables
+## results — 4 tables
 
 Ported from b2b's `sql/017`, including the part that matters most: revisions and
 events are append-only, **enforced by a trigger** rather than by convention. A
@@ -920,6 +922,31 @@ is not lost because a mail provider was briefly down.
 | `available_at` | `timestamptz not null default now()` | partial index WHERE `status = 'pending'` |
 | `delivered_at` | `timestamptz null` | |
 | `last_error` | `text null` | |
+
+### `result_appeals`
+
+**Growth:** per-attempt.
+A candidate's request to have a released result looked at again, and how it ended. A decided row is
+kept (the outcome is a new `candidate_result_revisions` row it points at); only the free text is
+scrubbed to `[erased]` when the institution deletes the candidate's data.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` CASCADE | |
+| `sitting_id` | `uuid not null` → `sittings.id` CASCADE | |
+| `trainee_id` | `uuid not null` → `trainees.id` RESTRICT | |
+| `revision` | `int not null` | the released revision under review |
+| `outcome_revision` | `int null` | the revision a resolved appeal appended |
+| `status` | `varchar(16) not null default 'open'` | `open` \| `in_review` \| `resolved` \| `declined`; CHECK. `in_review` requires `assigned_to` |
+| `reason` | `text not null` | the candidate's words, up to 2000 characters |
+| `requested_by` | `uuid not null` → `users.id` | the candidate, or the administrator acting for them |
+| `on_behalf` | `bool not null default false` | |
+| `assigned_to`, `decided_by` | `uuid null` → `users.id` SET NULL | the second marker, who may not be the result's signer or releaser |
+| `assigned_at`, `decided_at` | `timestamptz null` | |
+| `decision_note` | `text null` | why a request was declined |
+
+Partial UNIQUE `uq_result_appeals_active` on `(sitting_id, trainee_id)` where `status IN ('open', 'in_review')`: one
+live appeal per candidate and sitting. Index `ix_result_appeals_org_status` `(org_id, status)` for the queue.
 
 ## reviews — 3 tables
 

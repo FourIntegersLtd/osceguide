@@ -338,6 +338,32 @@ def _result_released(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _result_revised(escaped_fields: dict[str, str]) -> str:
+    """The body telling a candidate their review finished and their result changed or was confirmed."""
+    link = _app_url(
+        f"/app/{escaped_fields.get('org_slug', '')}/trainee/results/{escaped_fields.get('sitting_id', '')}"
+    )
+    institution = escaped_fields.get("org_name") or "Your institution"
+    return _page(
+        "Your result has been reviewed",
+        f"<p>{institution} has finished reviewing your result.</p>"
+        f'<p><a href="{link}">Read your updated result</a></p>',
+    )
+
+
+def _appeal_declined(escaped_fields: dict[str, str]) -> str:
+    """The body telling a candidate their review request was answered without a change."""
+    link = _app_url(
+        f"/app/{escaped_fields.get('org_slug', '')}/trainee/results/{escaped_fields.get('sitting_id', '')}"
+    )
+    institution = escaped_fields.get("org_name") or "Your institution"
+    return _page(
+        "Your review request",
+        f"<p>{institution} has answered your request to review your result. Your result is unchanged.</p>"
+        f'<p><a href="{link}">Read the reply</a></p>',
+    )
+
+
 def _trainee_sitting_link(escaped_fields: dict[str, str]) -> str:
     """Where a trainee opens the sitting an email is about."""
     return _app_url(
@@ -642,6 +668,8 @@ _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "practice_access_invitation": _practice_access_invitation,
     "practice_access_granted": _practice_access_granted,
     "candidate_result_released": _result_released,
+    "candidate_result_revised": _result_revised,
+    "candidate_appeal_declined": _appeal_declined,
     "peer_practice_abuse_report": _abuse_report,
     "peer_practice_no_show_report": _no_show_report,
     "partner_spend_alert": _partner_spend_alert,

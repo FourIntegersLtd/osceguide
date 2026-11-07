@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,6 +39,9 @@ class Organization(Base, UUIDPrimaryKey, Timestamps):
     # with a second factor. Takes effect at the next password sign-in; a
     # refresh chain already issued keeps working.
     require_staff_mfa: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    # How long candidates' transcripts are kept after an attempt, in days; null keeps them. Enforced by the
+    # transcript job (`attempts.service_retention`), so a change applies at its next run.
+    recording_retention_days: Mapped[int | None] = mapped_column(Integer)
 
 
 class Membership(Base, UUIDPrimaryKey, Timestamps):

@@ -13,9 +13,18 @@ from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgInstitutionAdmin
-from app.features.results import errors, schemas, service, service_candidate, service_result_pdf
+from app.features.results import (
+    errors,
+    router_appeals,
+    schemas,
+    service,
+    service_candidate,
+    service_result_pdf,
+)
 
 router = APIRouter(tags=["results"])
+
+router.include_router(router_appeals.router)
 
 
 # Read the result decision for one candidate in a sitting.

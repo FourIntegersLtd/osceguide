@@ -161,6 +161,8 @@ class Attempt(Base, UUIDPrimaryKey, Timestamps):
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'created'"))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When retention or a staff deletion removed the transcript; the attempt and its mark stay.
+    content_erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     failed_reason: Mapped[str | None] = mapped_column(String(200))
     # Where this row came from in Firestore or b2b, e.g.
     # `b2c:transcript:abc123`. Null for everything created since the cutover.
