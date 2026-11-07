@@ -4,6 +4,7 @@ import { capabilitiesFor } from "@/capabilities/registry";
 import type { OrgWorkspace } from "@/foundation/routing";
 import type { Permission } from "@/foundation/session/permissions";
 import { hireSurface } from "@/surfaces/hire/surface";
+import { ownsScreen } from "@/surfaces/registry";
 
 const workspace: OrgWorkspace = { kind: "employer", slug: "acme", name: "Acme", orgSlug: "acme", role: "owner" };
 
@@ -34,5 +35,19 @@ describe("hire navigation", () => {
 
   it("sends a candidate to their own training, not the staff sittings list", () => {
     assert.deepEqual(navFor([]), ["/app/acme/trainee"]);
+  });
+});
+
+describe("hire screens", () => {
+  it("does not answer the consumer practice pages, so they land on 'Not on this account'", () => {
+    for (const name of ["myPractice", "mocks", "mockDetail", "mockStation", "mockComplete", "mockList", "mockUpdate", "practiceStation"]) {
+      assert.equal(ownsScreen(hireSurface, name), false, name);
+    }
+  });
+
+  it("answers the exam-day, roster, result and candidate pages", () => {
+    for (const name of ["dashboard", "sittings", "sittingDetail", "newSitting", "newCircuit", "circuitConsole", "circuitEdit", "live", "sittingResults", "slotReview", "trainees", "team", "programmes", "reporting", "resultsIndex", "myTraining", "mySitting", "myResult", "myReview", "attempt"]) {
+      assert.equal(ownsScreen(hireSurface, name), true, name);
+    }
   });
 });

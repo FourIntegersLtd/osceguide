@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { AssessWords } from "@/domains/assess/vocabulary";
 import { useAsync } from "@/foundation/hooks";
 import { AsyncBoundary } from "@/foundation/ui";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
@@ -12,6 +13,7 @@ import { assessHelper } from "@/foundation/ui/b2bTokens";
 import { appendTrainees } from "@/domains/assess/sessions/api";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
 import { boardInput, boardLabel } from "@/foundation/ui/boardKit";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * Somebody who arrived late.
@@ -50,6 +52,7 @@ export function AddTraineesDialog({
   run: (name: string, action: () => Promise<unknown>) => Promise<void>;
   onClose: () => void;
 }) {
+  const w = useAssessWords();
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [station, setStation] = useState<string>("");
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -84,7 +87,7 @@ export function AddTraineesDialog({
         await appendTrainees(orgSlug, circuitId, arrivals, target);
         added = true;
       } catch (cause) {
-        setRefusal(refusalFor(cause));
+        setRefusal(refusalFor(cause, w));
       }
     });
     if (!added) return;
@@ -195,18 +198,18 @@ function stationChoices(slots: ConsoleSlot[]): { versionId: string; label: strin
  * server's own words underneath, because they name the ids at fault and that is
  * more use to a supervisor than a paraphrase.
  */
-function refusalFor(cause: unknown): string {
+function refusalFor(cause: unknown, w: AssessWords): string {
   const message = cause instanceof Error ? cause.message : String(cause);
   if (hasCode(cause, "trainee_already_on_circuit")) {
-    return `Already on this circuit, so nothing was added. ${message}`;
+    return `Already on this ${w.circuit}, so nothing was added. ${message}`;
   }
   if (hasCode(cause, "station_not_on_circuit")) {
-    return `That station is not on this circuit. Pick one from the list, or leave it to the station being run. ${message}`;
+    return `That station is not on this ${w.circuit}. Pick one from the list, or leave it to the station being run. ${message}`;
   }
   if (hasCode(cause, "not_permitted_in_mode")) {
     return "An examination cannot take a late arrival: it is one candidate through every station.";
   }
-  return assessErrorMessage(cause);
+  return assessErrorMessage(cause, w);
 }
 
 function traineeName(trainee: Trainee): string {

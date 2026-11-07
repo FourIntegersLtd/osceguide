@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
-import { heroSummary } from "@/domains/assess/sessions/consoleHero";
+import { examNowLine, heroSummary } from "@/domains/assess/sessions/consoleHero";
 import { parseRail, toggleRail } from "@/domains/assess/sessions/railState";
 
 const slot = (id: string, index: number, status: string, title = `S${index + 1}`) =>
@@ -78,4 +78,10 @@ test("turns: after the last trainee the primary is End circuit", () => {
     named("b", 1, "in_consultation", "Tom"),
   ]);
   assert.deepEqual(primaryTurnAction(d), { kind: "end", label: "End circuit" });
+});
+
+test("exam: the hero names who is on and which station, and says so before anyone is on", () => {
+  const d = frame({ started_at: "t", phase: "simulation", active_slot_id: "b" }, [slot("a", 0, "completed"), slot("b", 1, "in_consultation", "Chest pain"), slot("c", 2, "scheduled")]);
+  assert.equal(examNowLine(d), "Now: Dr Sam · Station 2 of 3");
+  assert.equal(examNowLine(frame({ started_at: "t", phase: "break" }, [slot("a", 0, "completed")])), "Between stations");
 });

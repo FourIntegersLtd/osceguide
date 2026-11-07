@@ -60,6 +60,7 @@ import {
   BREAK_MINUTES_BOUNDS,
   READING_MINUTES_BOUNDS,
 } from "@/domains/assess/timing";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * The step bodies of "Schedule a sitting" (docs/institution-overhaul/boards/ScheduleSitting.dc.html).
@@ -350,6 +351,7 @@ export function CandidatePicker({
   /** The wizard says the count in a note below instead. */
   showCount?: boolean;
 }) {
+  const w = useAssessWords();
   const [tab, setTab] = useState<PeopleTab>("people");
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -398,7 +400,7 @@ export function CandidatePicker({
   const tabs: { key: PeopleTab; label: string }[] = [
     { key: "people", label: "People" },
     { key: "groups", label: "Groups" },
-    { key: "years", label: "Year groups" },
+    { key: "years", label: w.YearGroups },
   ];
   const sets = tab === "groups" ? groups : yearGroups;
 
@@ -410,7 +412,7 @@ export function CandidatePicker({
           {trainees.filter((trainee) => trainee.user_id !== null).length}{" "}
           selected.
           {single
-            ? " A formal exam circuit is one candidate's sitting: they go through every station."
+            ? ` A formal exam ${w.circuit} is one candidate's ${w.sitting}: they go through every station.`
             : ""}
         </p>
       ) : null}
@@ -425,7 +427,7 @@ export function CandidatePicker({
           <input
             className={fieldInput}
             placeholder="Search by name or email"
-            aria-label="Search trainees"
+            aria-label={`Search ${w.trainees}`}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -517,7 +519,7 @@ export function CandidatePicker({
         </>
       ) : sets.length === 0 ? (
         <p className={t.assessMeta}>
-          {tab === "groups" ? "No groups yet." : "No year groups yet."}
+          {tab === "groups" ? "No groups yet." : `No ${w.yearGroups} yet.`}
         </p>
       ) : (
         <ul className={flushCard}>
@@ -525,7 +527,7 @@ export function CandidatePicker({
             <li key={set.id} className={flushRow}>
               <span className="min-w-0 flex-[1_1_220px]">
                 <span className="font-medium">
-                  {tab === "groups" ? "Group" : "Year group"}: {set.label}
+                  {tab === "groups" ? "Group" : w.YearGroup}: {set.label}
                 </span>
                 {set.count !== undefined ? (
                   <span className={cn(t.assessMeta, "block")}>
@@ -534,7 +536,7 @@ export function CandidatePicker({
                 ) : null}
               </span>
               <Chip tone="info">
-                {tab === "groups" ? "Group" : "Year group"}
+                {tab === "groups" ? "Group" : w.YearGroup}
               </Chip>
               <button
                 type="button"
@@ -636,11 +638,12 @@ export function DefaultBreakInput({
   draft: ScheduleDraft;
   patch: Patch;
 }) {
+  const w = useAssessWords();
   return (
     <Field
       label="Default break length (minutes)"
       htmlFor="sitting-default-break"
-      hint="A break goes between two stations, never after the last one. Everyone on the circuit pauses during it."
+      hint={`A break goes between two stations, never after the last one. Everyone on the ${w.circuit} pauses during it.`}
     >
       <MinutesInput
         id="sitting-default-break"
@@ -791,17 +794,18 @@ export function SupervisorSelect({
   leads: { value: string; label: string }[];
   inviteHref: string;
 }) {
+  const w = useAssessWords();
   return (
     <>
       <FieldSelect
-        label="Supervisor"
+        label={w.Supervisor}
         id="sitting-supervisor"
         value={draft.supervisorId}
         onChange={(value) => patch({ supervisorId: value })}
         options={[{ value: "", label: "Unassigned" }, ...leads]}
       />
       <p className={t.assessMeta}>
-        No supervisors yet?{" "}
+        {`No ${w.supervisors} yet?`}{" "}
         <Link href={inviteHref} className={linkClass}>
           Invite staff
         </Link>
@@ -824,6 +828,7 @@ export function SupervisorStep({
   candidateNames: Record<string, string>;
   inviteHref: string;
 }) {
+  const w = useAssessWords();
   const options = [{ value: "", label: "Unassigned" }, ...leads];
   const canSplit = draft.mode === "exam" && draft.candidateIds.length > 1;
   const each = canSplit && draft.perCandidate;
@@ -850,7 +855,7 @@ export function SupervisorStep({
               </span>
               <select
                 className={cn(fieldInput, "w-[200px]")}
-                aria-label={`Supervisor for ${candidateNames[id] ?? id}`}
+                aria-label={`${w.Supervisor} for ${candidateNames[id] ?? id}`}
                 value={draft.supervisorByCandidate[id] ?? ""}
                 onChange={(event) =>
                   patch({

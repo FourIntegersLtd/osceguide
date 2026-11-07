@@ -1,6 +1,5 @@
 "use client";
 
-import { roleLabel } from "@/foundation/session/roles";
 import { useSession } from "@/foundation/session";
 import { useState } from "react";
 import { b2bTokens as t, cn } from "@/foundation/ui";
@@ -18,7 +17,7 @@ import {
 } from "@/domains/assess/team/api";
 import {
   ASSIGNABLE_ROLES,
-  ROLE_CHOICE_HELP,
+  roleChoiceHelp,
   bulkRevokeFailure,
   isActive,
   isAwaitingInvite,
@@ -28,8 +27,11 @@ import {
   staffCountLabel,
   revokeLead,
   staffRevokeTitle,
+  teamRoleLabel,
 } from "@/domains/assess/team/support";
 import { boardBtn, boardPadWide, boardInput, boardLabel, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { aOrAn } from "@/domains/assess/vocabulary";
 
 type Pending =
   | { kind: "role"; member: Membership }
@@ -59,6 +61,7 @@ export function MembersPanel({
   /** Opens the Add people sheet on Staff, from the empty state. */
   onInviteStaff: () => void;
 }) {
+  const w = useAssessWords();
   const [pending, setPending] = useState<Pending>(null);
   const [role, setRole] = useState<string>("supervisor");
   const [busy, setBusy] = useState(false);
@@ -167,7 +170,7 @@ export function MembersPanel({
     try {
       if (pending.kind === "role") {
         await changeMemberRole(orgSlug, pending.member.id, role);
-        setNotice(`${who} is now ${roleLabel(role)}.`);
+        setNotice(`${who} is now ${teamRoleLabel(role, w)}.`);
       } else if (pending.kind === "revoke") {
         await revokeMembership(orgSlug, pending.member.id);
         setNotice(`Revoked access for ${who}.`);
@@ -261,7 +264,7 @@ export function MembersPanel({
         ) : (
           <div className={boardPadWide}>
             <h2 className={h2}>No staff yet</h2>
-            <p className={cn(t.assessMeta, "m-0")}>Invite a supervisor so somebody can run a circuit.</p>
+            <p className={cn(t.assessMeta, "m-0")}>{`Invite ${aOrAn(w.supervisor)} so somebody can run ${aOrAn(w.circuit)}.`}</p>
             {canManage ? (
               <button type="button" className={cn(boardBtn("primary"), "self-start")} onClick={onInviteStaff}>
                 Invite staff
@@ -275,7 +278,7 @@ export function MembersPanel({
             {canManage ? <span className="w-4" /> : null}
             <span className="flex-[1_1_220px]">Email</span>
             <span className="w-[100px]">Role</span>
-            <span className="w-[90px]">Circuits led</span>
+            <span className="w-[90px]">{`${w.Circuits} led`}</span>
             <span className="w-[90px]">Access</span>
             {canManage ? <span>Actions</span> : null}
           </div>
@@ -295,7 +298,7 @@ export function MembersPanel({
                 {member.email ? null : <span className="font-mono text-assess-chip text-osce-ink-500">{member.user_id.slice(0, 8)}</span>}
                 {member.invited ? <Chip>Invited</Chip> : null}
               </span>
-              <span className="w-[100px]">{roleLabel(member.role)}</span>
+              <span className="w-[100px]">{teamRoleLabel(member.role, w)}</span>
               <span className="w-[90px] tabular-nums">{member.circuits_led}</span>
               <span className="w-[90px]">
                 <Chip tone={isActive(member) ? "ok" : "warn"}>{isActive(member) ? "● Active" : "● Revoked"}</Chip>
@@ -318,7 +321,7 @@ export function MembersPanel({
 
       {!canManage ? (
         <div className={boardPadWide}>
-          <div className={t.assessMeta}>Supervisor (read only)</div>
+          <div className={t.assessMeta}>{`${w.Supervisor} (read only)`}</div>
           <div>Contact an owner or admin to change who has access.</div>
         </div>
       ) : null}
@@ -359,11 +362,11 @@ export function MembersPanel({
           >
             {ASSIGNABLE_ROLES.map((value) => (
               <option key={value} value={value}>
-                {roleLabel(value)}
+                {teamRoleLabel(value, w)}
               </option>
             ))}
           </select>
-          <p className={hint}>{ROLE_CHOICE_HELP}</p>
+          <p className={hint}>{roleChoiceHelp(w)}</p>
         </div>
       </Dialog>
 

@@ -17,6 +17,7 @@ import {
   initialRatings,
   type ReviewForm,
 } from "@/domains/assess/results/reviewForm";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * The lead's overall verdict. Unlike the per-domain ratings, which take
@@ -97,6 +98,7 @@ function Editor({
   /** The review as first read, or null before anyone has saved one. */
   loaded: Review | null;
 }) {
+  const w = useAssessWords();
   // The latest stored review: what was read, then each save's answer. Its
   // revision is what the next save must carry.
   const [review, setReview] = useState<Review | null>(loaded);
@@ -137,7 +139,7 @@ function Editor({
         // A conflict is not a failure to retry: somebody else's words are in
         // there now, and saving over them is exactly what this prevents.
         setStale(hasCode(cause, "review_conflict"));
-        setFailure(assessErrorMessage(cause));
+        setFailure(assessErrorMessage(cause, w));
       } finally {
         setBusy(null);
       }

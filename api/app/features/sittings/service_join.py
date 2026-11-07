@@ -34,6 +34,13 @@ get_voice_tokens = voice.get_voice_tokens
 OBSERVER_PREFIX = floor.OBSERVER_PREFIX
 
 
+def _ttl(settings: Settings, *, training: bool) -> int:
+    """A training token carries the mic right, so it is short; an exam token outlasts one station."""
+    if training:
+        return settings.livekit_training_token_ttl_seconds
+    return settings.livekit_exam_token_ttl_seconds
+
+
 async def join_token_for_trainee(
     session: AsyncSession,
     circuit_id: uuid.UUID,
@@ -80,7 +87,7 @@ async def join_token_for_trainee(
             can_publish=True,
             can_publish_sources=sources,
             display_name=display_name,
-            ttl_seconds=settings.livekit_training_token_ttl_seconds if training else None,
+            ttl_seconds=_ttl(settings, training=training),
             tokens=tokens,
             settings=settings,
         )
@@ -115,7 +122,7 @@ async def observer_token(
             # The supervisor is always heard, so a training grant is both sources.
             can_publish_sources=floor.publish_sources(True) if can_publish else None,
             # A training token carries the mic right: short, so a saved one cannot outlive a mute or close.
-            ttl_seconds=settings.livekit_training_token_ttl_seconds if can_publish else None,
+            ttl_seconds=_ttl(settings, training=can_publish),
             tokens=tokens,
             settings=settings,
         ),

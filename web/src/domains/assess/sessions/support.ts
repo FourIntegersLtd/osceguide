@@ -1,3 +1,5 @@
+import { errorMessage } from "@/foundation/hooks/useAsync";
+import { PlatformError } from "@/foundation/platform-client";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
 
 /**
@@ -260,3 +262,15 @@ export function summariseCircuit(data: CircuitConsole, review: { state: string }
     readyToPublish: unmarked.length === 0 && sat.length > 0 && review !== null && review.state !== "published",
   };
 }
+
+const LISTEN_REFUSALS: Record<string, string> = {
+  circuit_not_live: "There is nothing to listen to: the circuit is not running.",
+  voice_unavailable: "The voice service is not available right now. Try again in a minute.",
+};
+
+/** Why listening in was refused, in words a supervisor can act on. */
+export function listenFailureCopy(cause: unknown): string {
+  return (cause instanceof PlatformError ? LISTEN_REFUSALS[cause.code] : undefined) ?? errorMessage(cause);
+}
+
+export const LISTEN_DROPPED = "Listening stopped. Press Listen in to rejoin.";

@@ -11,6 +11,7 @@ import {
 } from "@/foundation/livekit";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import { joinCircuit, type MySitting } from "@/domains/assess/trainee/api";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 import { isExam, joinFailureCopy, phaseLabel } from "@/domains/assess/trainee/support";
 import { RoomGrid } from "@/domains/assess/room/RoomGrid";
 
@@ -33,6 +34,7 @@ export function JoinRoom({
   sitting: MySitting;
   onLeft?: () => void;
 }) {
+  const w = useAssessWords();
   const [grant, setGrant] = useState<RoomGrant | null>(null);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,11 +56,11 @@ export function JoinRoom({
       if (mic.status !== "ready") await mic.request().catch(() => undefined);
       setGrant(await joinCircuit(sitting.circuit_id));
     } catch (cause) {
-      setError(joinFailureCopy(cause));
+      setError(joinFailureCopy(cause, w));
     } finally {
       setJoining(false);
     }
-  }, [mic, sitting.circuit_id]);
+  }, [mic, sitting.circuit_id, w]);
 
   /**
    * Join as soon as the backend allows it, during reading — do not wait for the
@@ -100,7 +102,7 @@ export function JoinRoom({
         audio={false}
         onError={(cause) => {
           setGrant(null);
-          setError(joinFailureCopy(cause));
+          setError(joinFailureCopy(cause, w));
           attempted.current = false;
         }}
         onDisconnected={(unexpected) => {
@@ -120,7 +122,7 @@ export function JoinRoom({
         onError={(cause) => {
           // A room that will not connect is said, not swallowed: leave it so Join is offered again.
           setGrant(null);
-          setError(joinFailureCopy(cause));
+          setError(joinFailureCopy(cause, w));
           attempted.current = false;
         }}
         onDisconnected={(unexpected) => {

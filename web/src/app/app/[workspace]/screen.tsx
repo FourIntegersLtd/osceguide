@@ -8,6 +8,7 @@ import { loadScreenComponent, ownsScreen, resolveWorkspace, surfaceForWorkspace 
 import type { ScreenName } from "@/surfaces";
 import type { ScreenProps } from "@/surfaces/contract";
 import type { ComponentType } from "react";
+import { NotOnThisAccount } from "@/surfaces/hire/NotOnThisAccount";
 
 /**
  * The one place a page's arm-dependence is resolved.
@@ -35,7 +36,11 @@ export function Screen({
   const manifest = surfaceForWorkspace(workspace);
   // The manifest is the declared list; the screen map is the implementation. A name
   // the manifest does not own is a 404 even if a map happens to have it.
-  if (!ownsScreen(manifest, name)) notFound();
+  if (!ownsScreen(manifest, name)) {
+    // An employer's candidate who follows a learner's link is told why, not shown a bare 404 (HireRefused).
+    if (manifest.id === "hire") return <NotOnThisAccount workspace={workspace} />;
+    notFound();
+  }
   const surfaceKey = manifest.screensFrom ?? manifest.id;
 
   return (

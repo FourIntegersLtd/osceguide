@@ -15,7 +15,6 @@ import { CircuitRecordNote } from "@/domains/assess/sessions/CircuitRecordNote";
 import { Rail } from "@/domains/assess/sessions/RailSection";
 import { CircuitFeedbackCard } from "@/domains/assess/sessions/CircuitFeedbackCard";
 import { InterventionsLog } from "@/domains/assess/sessions/InterventionsLog";
-import { LiveMarkingSidebar } from "@/domains/assess/sessions/LiveMarkingSidebar";
 import { ObserverPanel } from "@/domains/assess/sessions/ObserverPanel";
 import { closeRoom } from "@/domains/assess/room/api";
 import { SupervisorRoom } from "@/domains/assess/room/SupervisorRoom";
@@ -29,6 +28,8 @@ import { TurnStrip } from "@/domains/assess/sessions/TurnStrip";
 import { alertCopy, examStationNumber, observerSubtitle, orderedSlots, slotProgress } from "@/domains/assess/sessions/support";
 import { useCircuitRun, useObserverRoom } from "@/domains/assess/sessions/useCircuitRun";
 import { cardTitle } from "@/domains/assess/chrome";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { aOrAn } from "@/domains/assess/vocabulary";
 
 /**
  * The screen an examination is run from.
@@ -53,10 +54,11 @@ export function CircuitRunner({
   /** Known from the route when there is one; the frame carries it otherwise. */
   sittingId?: string;
 }) {
+  const w = useAssessWords();
   const run = useCircuitRun(orgSlug, circuitId);
 
   return (
-    <section aria-label="Circuit console" className="flex w-full min-w-0 flex-col gap-6">
+    <section aria-label={`${w.Circuit} console`} className="flex w-full min-w-0 flex-col gap-6">
       <AsyncBoundary state={run.initial}>
         {() =>
           run.data ? (
@@ -81,6 +83,7 @@ function Runner({
   circuitId: string;
   sittingId?: string;
 }) {
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const { session } = useSession();
   const observer = useObserverRoom(orgSlug, circuitId);
@@ -93,6 +96,8 @@ function Runner({
   const roomLive = !isExam && circuit.started_at !== null && circuit.ended_at === null && !circuit.room_closed_at;
   /** Ended, and the supervisor has not closed the room yet: the room stands alone in its own card. */
   const roomKept = !isExam && circuit.started_at !== null && circuit.ended_at !== null && !circuit.room_closed_at;
+  /** A live exam: listening in beside the marking, in one card like the practice room. */
+  const examLive = isExam && circuit.started_at !== null && circuit.ended_at === null;
   const room = <SupervisorRoom data={data} orgSlug={orgSlug} circuitId={circuitId} observer={observer} onClose={() => run.run("close-room", () => closeRoom(orgSlug, circuitId))} />;
   const onSlot = orderedSlots(data).find((slot) => ["reading", "in_consultation"].includes(slotProgress(slot)));
   const station = examStationNumber(data.sitting.mode, onSlot?.slot_index);
@@ -109,10 +114,10 @@ function Runner({
       </div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className={assessEyebrow}>Circuit console</div>
+          <div className={assessEyebrow}>{`${w.Circuit} console`}</div>
           <h1 className={assessTitle}>{circuit.name}</h1>
           <p className={assessDesc}>
-            {`${observerSubtitle(data)}${supervisorName ? ` · Supervisor: ${supervisorName}` : " · No supervisor assigned"}`}
+            {`${observerSubtitle(data)}${supervisorName ? ` · ${w.Supervisor}: ${supervisorName}` : ` · No ${w.supervisor} assigned`}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
@@ -161,16 +166,16 @@ function Runner({
         training={!isExam}
       />
 
-      {roomLive ? (
+      {roomLive || examLive ? (
         <SplitCard
           sideTitle="Marking"
-          main={room}
+          main={examLive ? <ObserverPanel data={data} observer={observer} /> : room}
           side={
             circuit.active_slot_id ? (
-              <LiveMarkPanel orgSlug={orgSlug} circuitId={circuitId} slotId={circuit.active_slot_id} tick={data} />
+              <LiveMarkPanel orgSlug={orgSlug} circuitId={circuitId} slotId={circuit.active_slot_id} tick={data} peers={!isExam} />
             ) : (
               <SidePanel title="Marking">
-                <p className={`${assessMeta} p-4`}>Marking opens when a trainee is on.</p>
+                <p className={`${assessMeta} p-4`}>{`Marking opens when ${isExam ? "a candidate" : `${aOrAn(w.trainee)}`} is on.`}</p>
               </SidePanel>
             )
           }
@@ -207,8 +212,6 @@ function Runner({
 
         <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-5">
           <Rail>
-            {isExam && circuit.ended_at === null ? <ObserverPanel data={data} observer={observer} /> : null}
-            {isExam && circuit.ended_at === null ? <LiveMarkingSidebar data={data} orgSlug={orgSlug} /> : null}
             {circuit.ended_at !== null ? <CircuitRecordNote /> : null}
             <CircuitFeedbackCard
               data={data}

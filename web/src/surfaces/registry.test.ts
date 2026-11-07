@@ -77,9 +77,13 @@ describe("surface registry", () => {
     // ADR 0001's central claim, pinned. Forking a screen for employers has to
     // be a deliberate edit to this declaration, not a quiet copy.
     assert.equal(SURFACE_MANIFESTS.hire.screensFrom, "assess");
+    // Its own list (HireRefused): everything Assess answers except the consumer practice pages, which an
+    // employer's candidate is never offered. Nothing is added, so every name is an Assess screen.
+    const assess = new Set<string>(SURFACE_MANIFESTS.assess.screenNames);
+    assert.ok(SURFACE_MANIFESTS.hire.screenNames.every((name) => assess.has(name)));
     assert.deepEqual(
-      [...SURFACE_MANIFESTS.hire.screenNames].sort(),
-      [...SURFACE_MANIFESTS.assess.screenNames].sort(),
+      [...assess].filter((name) => !(SURFACE_MANIFESTS.hire.screenNames as readonly string[]).includes(name)).sort(),
+      ["mockComplete", "mockDetail", "mockList", "mockStation", "mockUpdate", "mocks", "myPractice", "practiceStation"],
     );
   });
 

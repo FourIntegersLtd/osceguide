@@ -27,6 +27,7 @@ import {
 } from "@/domains/assess/dashboard/support";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 import { BoardRow, RowText } from "@/domains/assess/dashboard/BoardParts";
+import { aOrAn } from "@/domains/assess/vocabulary";
 
 /**
  * The exam-day board: everything this organisation has running, at once.
@@ -40,6 +41,7 @@ import { BoardRow, RowText } from "@/domains/assess/dashboard/BoardParts";
  * the top of the board is where somebody should be standing.
  */
 export function LiveBoard({ orgSlug }: { orgSlug: string }) {
+  const w = useAssessWords();
   const initial = useAsync((signal) => readLiveBoard(orgSlug, signal), [orgSlug]);
   const { session } = useSession();
   // Only staff are let into the stream; for anybody else it would read "Reconnecting" for ever.
@@ -54,7 +56,7 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
         <div>
           <div className={b2bTokens.assessEyebrow}>Run</div>
           <h1 className={b2bTokens.assessTitle}>Now running</h1>
-          <p className={b2bTokens.assessDesc}>Every circuit that is live in your organisation, updated as it happens.</p>
+          <p className={b2bTokens.assessDesc}>{`Every ${w.circuit} that is live in your organisation, updated as it happens.`}</p>
         </div>
         {streaming ? <span className={boardChip(stream.connected ? "ok" : "warn")}>{stream.connected ? "Live" : "Reconnecting"}</span> : null}
       </div>
@@ -72,7 +74,7 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
             return (
               <div className={boardPad}>
                 <h2 className="text-assess-desc font-semibold">Nothing is running.</h2>
-                <p className={cn(b2bTokens.assessMeta, "m-0")}>Circuits appear here the moment a supervisor starts one.</p>
+                <p className={cn(b2bTokens.assessMeta, "m-0")}>{`${w.Circuits} appear here the moment ${aOrAn(w.supervisor)} starts one.`}</p>
               </div>
             );
           }
@@ -90,7 +92,7 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
                 <div>
                   <div className={b2bTokens.assessEyebrow}>Live</div>
                   <h2 className="mt-1 text-assess-section font-semibold">
-                    {`${circuits.length} ${circuits.length === 1 ? "circuit" : "circuits"} running`}
+                    {`${circuits.length} ${circuits.length === 1 ? w.circuit : w.circuits} running`}
                   </h2>
                   <div className={b2bTokens.assessMeta}>{circuits[0]!.sitting_name}</div>
                 </div>
@@ -143,7 +145,7 @@ function Earlier({ orgSlug }: { orgSlug: string }) {
     <section className="flex flex-col gap-4" aria-label="Earlier">
       <AsyncBoundary
         state={history.state}
-        empty={{ title: "Nothing has finished yet.", description: "Circuits appear here when they end." }}
+        empty={{ title: "Nothing has finished yet.", description: `${w.Circuits} appear here when they end.` }}
       >
         {(runs: LiveRun[]) => (
           <div className={boardCardClipped}>
@@ -236,8 +238,8 @@ function Row({ circuit }: { circuit: LiveCircuit }) {
         title={circuit.circuit_name}
         meta={`${circuit.sitting_name} · ${modeLabel(circuit.mode, w)} · ${station} · ${candidatesLabel(circuit)}${
           circuit.supervisor
-            ? ` · ${circuit.supervisor.name ?? circuit.supervisor.email ?? "Supervisor"}`
-            : " · no supervisor named"
+            ? ` · ${circuit.supervisor.name ?? circuit.supervisor.email ?? w.Supervisor}`
+            : ` · no ${w.supervisor} named`
         }${circuit.room_name ? " · room open" : ""}`}
       />
       <StageStrip circuit={circuit} />

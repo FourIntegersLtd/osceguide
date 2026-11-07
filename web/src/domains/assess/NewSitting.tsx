@@ -250,7 +250,7 @@ function Wizard({
       });
       sittingId = sitting.id;
     } catch (cause) {
-      setError(assessErrorMessage(cause));
+      setError(assessErrorMessage(cause, w));
       setBusy(false);
       return;
     }
@@ -261,7 +261,7 @@ function Wizard({
       savePending(sittingId, {
         draft,
         created: circuitsMade(cause),
-        message: assessErrorMessage(cause),
+        message: assessErrorMessage(cause, w),
       });
     }
     router.push(hrefFor(`/sittings/${sittingId}`));

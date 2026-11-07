@@ -1,6 +1,5 @@
 "use client";
 
-import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
 import { useState } from "react";
 import { b2bTokens as t, cn } from "@/foundation/ui";
 import { Note, PasswordFields, h2, hint } from "@/domains/assess/ui";
@@ -12,8 +11,11 @@ import { BulkInviteDialog } from "@/domains/assess/team/BulkInviteDialog";
 import {
   ASSIGNABLE_ROLES,
   type AssignableRole,
+  roleDescription,
+  teamRoleLabel,
 } from "@/domains/assess/team/support";
 import { boardBtn, boardPadWide, boardInput, boardLabel } from "@/foundation/ui/boardKit";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * Add a member of staff.
@@ -40,6 +42,7 @@ export function InvitePanel({
   canManage: boolean;
   onInvited: () => void;
 }) {
+  const w = useAssessWords();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AssignableRole>("supervisor");
   const [busy, setBusy] = useState(false);
@@ -91,7 +94,7 @@ export function InvitePanel({
         }}
       >
         <h2 className={h2}>Invite someone to the team</h2>
-        <p className={cn(t.assessMeta, "m-0")}>Supervisors run circuits and mark them. Admins also manage the team and sign off results.</p>
+        <p className={cn(t.assessMeta, "m-0")}>{`${w.Supervisors} run ${w.circuits} and mark them. Admins also manage the team and sign off results.`}</p>
         <div>
           <label htmlFor="assess-invite-email" className={boardLabel}>Email address</label>
           <input id="assess-invite-email" type="email" required autoComplete="off" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="supervisor@hospital.nhs.uk" className={boardInput} />
@@ -102,11 +105,11 @@ export function InvitePanel({
           <select id="assess-invite-role" value={role} onChange={(event) => setRole(event.target.value as AssignableRole)} className={boardInput}>
             {ASSIGNABLE_ROLES.map((value) => (
               <option key={value} value={value}>
-                {roleLabel(value)}
+                {teamRoleLabel(value, w)}
               </option>
             ))}
           </select>
-          <div className={hint}>{ROLE_DESCRIPTIONS[role]}</div>
+          <div className={hint}>{roleDescription(role, w)}</div>
         </div>
 
         <PasswordFields {...password.field} id="assess-invite-password" disabled={busy} />
@@ -123,7 +126,7 @@ export function InvitePanel({
         <Note tone="ok">
           {result.invited
             ? `Invited ${result.email}. They have been emailed a link to choose a password.`
-            : `${result.email} already had an account and is now ${roleLabel(result.role).toLowerCase()} here.`}
+            : `${result.email} already had an account and is now ${teamRoleLabel(result.role, w).toLowerCase()} here.`}
         </Note>
       ) : null}
 

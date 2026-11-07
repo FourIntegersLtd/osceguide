@@ -1,5 +1,6 @@
 import { PlatformError } from "@/foundation/platform-client";
 import { errorMessage } from "@/foundation/hooks/useAsync";
+import { INSTITUTION_WORDS, type AssessWords } from "@/domains/assess/vocabulary";
 import type { MySitting, MySlot, OrgStation } from "@/domains/assess/trainee/api";
 
 /**
@@ -316,15 +317,16 @@ export function splitFinished(sittings: readonly MySitting[]): { current: MySitt
   return { current: sittings.filter((s) => !isOver(s)), past: sittings.filter(isOver) };
 }
 
-const JOIN_REFUSALS: Record<string, string> = {
-  circuit_not_live: "This exam is not open yet. You will be let in when your supervisor starts it.",
-  circuit_not_found: "You are no longer down to sit this. Contact your organiser.",
-  voice_unavailable: "The voice service is not available right now. Try again in a minute.",
-  trainee_revoked: "You no longer have access to this organisation. Contact them if you think this is a mistake.",
-  trainee_not_on_roster: "You are not on the list for this exam.",
+const JOIN_REFUSALS: Record<string, (w: AssessWords) => string> = {
+  circuit_not_live: (w) => `This ${w.hiring ? "assessment" : "exam"} is not open yet. You will be let in when your ${w.supervisor} starts it.`,
+  circuit_not_found: () => "You are no longer down to sit this. Contact your organiser.",
+  voice_unavailable: () => "The voice service is not available right now. Try again in a minute.",
+  trainee_revoked: () => "You no longer have access to this organisation. Contact them if you think this is a mistake.",
+  trainee_not_on_roster: (w) => `You are not on the list for this ${w.hiring ? "assessment" : "exam"}.`,
 };
 
 /** Why a join was refused, in words a candidate can act on (T-7). */
-export function joinFailureCopy(cause: unknown): string {
-  return (cause instanceof PlatformError ? JOIN_REFUSALS[cause.code] : undefined) ?? errorMessage(cause);
+export function joinFailureCopy(cause: unknown, words: AssessWords = INSTITUTION_WORDS): string {
+  const refusal = cause instanceof PlatformError ? JOIN_REFUSALS[cause.code] : undefined;
+  return refusal ? refusal(words) : errorMessage(cause);
 }

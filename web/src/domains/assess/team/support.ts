@@ -1,5 +1,6 @@
 import type { Membership } from "@/domains/assess/team/api";
-import { isAdminRole, ROLE_DESCRIPTIONS } from "@/foundation/session/roles";
+import type { AssessWords } from "@/domains/assess/vocabulary";
+import { isAdminRole, roleLabel, ROLE_DESCRIPTIONS } from "@/foundation/session/roles";
 import { isPlatformError } from "@/foundation/platform-client";
 
 /**
@@ -13,6 +14,15 @@ import { isPlatformError } from "@/foundation/platform-client";
 export const ASSIGNABLE_ROLES = ["supervisor", "admin"] as const;
 
 export type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
+
+/** A role as this workspace says it: an employer's supervisors are assessors and its admins lead assessors. */
+export function teamRoleLabel(role: string | null | undefined, words: AssessWords): string {
+  if (!words.hiring) return roleLabel(role);
+  const key = (role ?? "").toLowerCase();
+  if (key === "supervisor") return words.Supervisor;
+  if (key === "admin" || key === "institution_admin") return `Lead ${words.supervisor}`;
+  return roleLabel(role);
+}
 
 export function isOwner(member: Membership): boolean {
   return (member.role ?? "").toLowerCase() === "owner";
@@ -80,9 +90,18 @@ export function staffRevokeTitle(count: number): string {
   return `Revoke access for ${count} staff ${count === 1 ? "member" : "members"}?`;
 }
 
+/** One role's line of help: an employer's supervisor runs rotations, not circuits. */
+export function roleDescription(role: string, words: AssessWords): string {
+  if (words.hiring && role === "supervisor") return `Runs ${words.circuits} and marks ${words.trainees}.`;
+  return ROLE_DESCRIPTIONS[role] ?? "";
+}
+
 /** The change-role box's one-line explanation of the two roles it offers. */
 const lower = (text: string | undefined) => (text ?? "").replace(/^./, (c) => c.toLowerCase());
-export const ROLE_CHOICE_HELP = `Supervisor: ${lower(ROLE_DESCRIPTIONS.supervisor)} Admin: also ${lower(ROLE_DESCRIPTIONS.admin)}`;
+export function roleChoiceHelp(words: AssessWords): string {
+  const runs = words.hiring ? `runs ${words.circuits} and marks ${words.trainees}.` : lower(ROLE_DESCRIPTIONS.supervisor);
+  return `${teamRoleLabel("supervisor", words)}: ${runs} ${teamRoleLabel("admin", words)}: also ${lower(ROLE_DESCRIPTIONS.admin)}`;
+}
 
 /** "4 staff accounts" — the count the old members card carried. */
 export function staffCountLabel(count: number): string {

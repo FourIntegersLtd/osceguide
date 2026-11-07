@@ -15,6 +15,7 @@ import {
   resultsDate,
   type ResultsTab,
 } from "@/domains/assess/results/support";
+import { resultsWhere } from "@/domains/assess/sittingList";
 import { useStationsToReview } from "@/domains/assess/results/StationsToReview";
 import { boardCard, boardHeadRow, boardPad, boardRow, boardTab, boardTabs, boardButtonSmall } from "@/foundation/ui/boardKit";
 
@@ -106,6 +107,7 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
                     <span className="w-[50px]">Draft</span>
                     <span className="w-20">Signed off</span>
                     <span className="w-[70px]">Released</span>
+                    <span className="w-[170px]">Where it is</span>
                   </div>
                   {rows.map((row) => (
                     <ResultsRow key={row.sitting_id} row={row} href={hrefFor(`/sittings/${row.sitting_id}/results`)} />
@@ -134,6 +136,7 @@ function ResultsRow({ row, href }: { row: ResultsIndexRow; href: string }) {
       <span className="w-[50px]">{num(row.draft)}</span>
       <span className="w-20">{num(row.signed_off)}</span>
       <span className="w-[70px]">{num(row.released)}</span>
+      <span className="w-[170px] font-medium">{resultsWhere(row)}</span>
     </Link>
   );
 }

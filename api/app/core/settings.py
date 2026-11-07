@@ -166,6 +166,9 @@ class Settings(BaseSettings):
     livekit_routing_mode: str = "self-hosted"
     livekit_agent_namespace: str = ""
     livekit_token_ttl_seconds: int = 60 * 60
+    # An exam join token: longer than reading plus one consultation. A connected room is not cut off
+    # when it expires, and a dropped candidate fetches a fresh one (`JoinRoom` rejoins on its own).
+    livekit_exam_token_ttl_seconds: int = 15 * 60
     # A training token carries the mic right, so a saved one must not outlive a mute or a closed room.
     livekit_training_token_ttl_seconds: int = 300
     voice_backend_label: str = "platform"

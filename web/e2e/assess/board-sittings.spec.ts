@@ -24,9 +24,14 @@ import { openPage, signedInAs } from "../support/session";
  *   where the board has a saturated blue, by the style brief ("1px light borders").
  * - Order: the api lists newest first, so the sittings are created in reverse of the board's row order.
  * - "Load more" is not drawn when the server has no further page; the board always draws it. Four sittings fit one page.
+ * - Added after the board was drawn (the board shows neither, so they are hidden on the app side, as named exceptions):
+ *   the "Show" preset strip (Everything / Upcoming / Waiting for decisions / Past), the "Next step" column and the
+ *   exam-sittings footnote. They are covered by sittingList.test.ts. The "Status"
+ *   strip is the board's tab strip.
  * Live clocks and avatars: none on this page, no mask.
  */
 const PAGE = 'section[aria-label="Sittings"]';
+const STATUS_STRIP = `${PAGE} [role="tablist"][aria-label="Status"]`;
 const VIEWPORTS = [
   { name: "desktop", width: 1440, height: 1100 },
   { name: "mobile", width: 760, height: 1100 },
@@ -75,6 +80,7 @@ async function pages(browser: Browser, viewport: { width: number; height: number
   await board.addStyleTag({ content: ".row:has(> button.btn.sm){display:none!important}" });
   await openPage(app, `/app/${org.slug}/sittings`);
   await app.locator(`${PAGE} a[href*="/sittings/"]`).first().waitFor();
+  await app.addStyleTag({ content: `${PAGE} [role="tablist"][aria-label="Show"],${PAGE} [data-column="next-step"],${PAGE} [data-footnote]{display:none!important}` });
   await app.evaluate(() => document.fonts.ready);
   return { board, app };
 }
@@ -84,7 +90,7 @@ for (const viewport of VIEWPORTS) {
     const { board, app } = await pages(browser, viewport);
     for (const [index, label] of TABS.entries()) {
       await board.locator(".tab").nth(index).click();
-      await app.getByRole("tab", { name: label, exact: true }).click();
+      await app.locator(`${STATUS_STRIP}`).getByRole("tab", { name: label, exact: true }).click();
       await board.mouse.move(0, 0);
       await app.mouse.move(0, 0);
       const tab = `tab-${index + 1}-${label.toLowerCase()}-${viewport.name}`;
@@ -94,7 +100,7 @@ for (const viewport of VIEWPORTS) {
         console.log(`Sittings ${tab}: ${score.percent}% largest ${JSON.stringify(score.largest)} | ${score.files.side}`);
         expect.soft(score.pass, `${tab}: ${score.percent}% differs, largest ${JSON.stringify(score.largest)}, see ${score.files.side}`).toBe(true);
       } else {
-        const score = await compareRegion({ browser, boardPage: board, appPage: app, board: "Sittings", tab, viewport: viewport.name, boardRegion: ".tabs", appRegion: `${PAGE} [role="tablist"]` });
+        const score = await compareRegion({ browser, boardPage: board, appPage: app, board: "Sittings", tab, viewport: viewport.name, boardRegion: ".tabs", appRegion: `${STATUS_STRIP}` });
         console.log(`Sittings ${tab} (strip): ${score.percent}% | ${score.files.side}`);
         expect.soft(score.pass, `${tab}: strip ${score.percent}% differs, see ${score.files.side}`).toBe(true);
       }
@@ -112,9 +118,9 @@ const STYLE_CHECKS: StyleCheck[] = [
   { name: "schedule button", board: "a.btn.pri >> nth=0", app: `${PAGE} a[href$="/sittings/new"]` },
   { name: "hero", board: ".hero", app: `xpath=//section[@aria-label="Sittings"]/div[2]`, props: BOX },
   { name: "hero title", board: ".hero h2", app: `xpath=//section[@aria-label="Sittings"]/div[2]//h2` },
-  { name: "tab strip", board: ".tabs", app: `${PAGE} [role="tablist"]`, props: BOX },
-  { name: "tab on", board: ".tab.on", app: `${PAGE} [role="tab"][aria-selected="true"]` },
-  { name: "tab off", board: ".tab:not(.on) >> nth=0", app: `${PAGE} [role="tab"][aria-selected="false"] >> nth=0` },
+  { name: "tab strip", board: ".tabs", app: `${STATUS_STRIP}`, props: BOX },
+  { name: "tab on", board: ".tab.on", app: `${STATUS_STRIP} [role="tab"][aria-selected="true"]` },
+  { name: "tab off", board: ".tab:not(.on) >> nth=0", app: `${STATUS_STRIP} [role="tab"][aria-selected="false"] >> nth=0` },
   { name: "filter card", board: ".card.pad", app: `${PAGE} #sitting-kind >> xpath=ancestor::div[contains(@class,"rounded-panel")]`, props: BOX },
   { name: "filter label", board: "label", app: `${PAGE} label >> nth=0` },
   { name: "filter select", board: "select.input >> nth=0", app: "#sitting-kind" },
@@ -142,7 +148,7 @@ test("Sittings hover states match the board (All, desktop)", async ({ browser })
     { tab: "hover-schedule-button", board: "a.btn.pri >> nth=0", app: `${PAGE} a[href$="/sittings/new"]` },
     { tab: "hover-open-sitting", board: ".hero a.btn", app: `xpath=//section[@aria-label="Sittings"]/div[2]//a` },
     { tab: "hover-row", board: "a.row >> nth=1", app: `${ROW} >> nth=1` },
-    { tab: "hover-tab", board: ".tab:not(.on) >> nth=0", app: `${PAGE} [role="tab"][aria-selected="false"] >> nth=0` },
+    { tab: "hover-tab", board: ".tab:not(.on) >> nth=0", app: `${STATUS_STRIP} [role="tab"][aria-selected="false"] >> nth=0` },
   ];
   for (const h of hovers) {
     await board.locator(h.board).hover();

@@ -1,5 +1,6 @@
 import type { OrgSetup } from "@/domains/assess/dashboard/api";
 import type { AssessWords } from "@/domains/assess/vocabulary";
+import { aOrAn } from "@/domains/assess/vocabulary";
 
 /** The setup assistant on Home: its five steps and the judgements about them, from the flags `/dashboard` returns. */
 
@@ -51,7 +52,7 @@ export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[]
       tag: "Next", title: `Add stations to your ${w.exam}`,
       body: "Write your own, import a PDF or Word file, ask the AI to draft one from a brief, or copy ours. Publish each one when it is ready.",
       whyTitle: "What counts",
-      why: `Only published stations for this ${w.exam} can go into a ${w.sitting}. A formal ${w.exam} takes up to 12.`,
+      why: `Only published stations for this ${w.exam} can go into ${aOrAn(w.sitting)}. A formal ${w.exam} takes up to 12.`,
       cta: "Add a station", href: "/authoring/stations", alt: "Browse the station library", altHref: "/authoring",
     },
     {
@@ -59,7 +60,7 @@ export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[]
       tag: "Next", title: `Add your ${w.trainees}`,
       body: `Add one person, or upload a spreadsheet. Each ${w.trainee} gets an invitation email and joins when they set a password.`,
       whyTitle: "Tip",
-      why: `Put ${w.trainees} in a ${w.yearGroup} as you add them. You can schedule a whole ${w.yearGroup} in one step later.`,
+      why: `Put ${w.trainees} in ${aOrAn(w.yearGroup)} as you add them. You can schedule a whole ${w.yearGroup} in one step later.`,
       cta: `Add ${w.trainees}`, href: "/trainees", alt: "Download the spreadsheet template", altDownload: true,
     },
     {

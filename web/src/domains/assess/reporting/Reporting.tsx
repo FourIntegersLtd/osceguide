@@ -8,9 +8,12 @@ import { useSurface } from "@/capabilities";
 import { useAsync } from "@/foundation/hooks";
 import { readOrgReporting, reportingLine } from "@/domains/assess/reporting/api";
 import { boardBtn, boardPadWide } from "@/foundation/ui/boardKit";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { aOrAn } from "@/domains/assess/vocabulary";
 
 /** One row per programme, summed over every sitting held against it. */
 export function Reporting({ orgSlug }: { orgSlug: string }) {
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const state = useAsync((signal) => readOrgReporting(orgSlug, signal), [orgSlug]);
   return (
@@ -18,12 +21,12 @@ export function Reporting({ orgSlug }: { orgSlug: string }) {
       <div>
         <div className={t.assessEyebrow}>Insight</div>
         <h1 className={t.assessTitle}>Reporting</h1>
-        <p className={cn(t.assessDesc, "m-0")}>Each exam across all of its sittings. The pass rate counts decisions released to candidates.</p>
+        <p className={cn(t.assessDesc, "m-0")}>{`Each exam across all of its ${w.sittings}. The pass rate counts decisions released to candidates.`}</p>
       </div>
       <AsyncBoundary state={state}>
         {(data) =>
           data.programmes.length === 0 ? (
-            <B2CEmptyState title="No exams yet" description="Set up an exam and hold a sitting to see figures here." />
+            <B2CEmptyState title="No exams yet" description={`Set up an exam and hold ${aOrAn(w.sitting)} to see figures here.`} />
           ) : (
             <>
               <div className={card}>
@@ -41,8 +44,8 @@ export function Reporting({ orgSlug }: { orgSlug: string }) {
                 ))}
               </div>
               <section className={boardPadWide}>
-                <h2 className={cardTitle}>Per-sitting reports</h2>
-                <div className={t.assessMeta}>Each sitting&apos;s report, CSV and readout live on its Results page.</div>
+                <h2 className={cardTitle}>{`Per-${w.sitting} reports`}</h2>
+                <div className={t.assessMeta}>{`Each ${w.sitting}'s report, CSV and readout live on its Results page.`}</div>
                 <Link href={hrefFor("/results")} className={cn(boardBtn("default"), "self-start")}>
                   Open results
                 </Link>

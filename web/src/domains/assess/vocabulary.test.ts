@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assessWordsFor } from "@/domains/assess/vocabulary";
+import { aOrAn, assessWordsFor } from "@/domains/assess/vocabulary";
 
 test("a hire workspace reads employer words", () => {
   const w = assessWordsFor("hire");
@@ -28,4 +28,19 @@ test("both arms call the two modes of sitting Formal exam and Training", () => {
     const w = assessWordsFor(surface);
     assert.deepEqual([w.formalExam, w.training], ["Formal exam", "Training"]);
   }
+});
+
+test("hire says rotation and intake where an institution says circuit and cohort", () => {
+  const pick = (surface: "hire" | "assess") => {
+    const w = assessWordsFor(surface);
+    return [w.circuit, w.Circuits, w.cohort, w.Cohorts];
+  };
+  assert.deepEqual(pick("hire"), ["rotation", "Rotations", "intake", "Intakes"]);
+  assert.deepEqual(pick("assess"), ["circuit", "Circuits", "cohort", "Cohorts"]);
+});
+
+test("aOrAn picks the article by the next sound", () => {
+  assert.equal(aOrAn("rotation"), "a rotation");
+  assert.equal(aOrAn("assessment"), "an assessment");
+  assert.equal(aOrAn("intake"), "an intake");
 });

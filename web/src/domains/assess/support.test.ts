@@ -361,3 +361,18 @@ test("a scheduled sitting with no date reads Not scheduled", () => {
   assert.equal(sittingStatusLabel("scheduled", null), "Not scheduled");
   assert.equal(sittingStatusLabel("scheduled", "2026-11-12T09:00:00Z"), "Scheduled");
 });
+
+test("signOffLeft counts only candidates who sat and have no outcome", async () => {
+  const { signOffLeft } = await import("./results/support");
+  const sat = { attempt_id: "a", slot_status: "completed" };
+  const absent = { attempt_id: null, slot_status: "scheduled" };
+  assert.deepEqual(
+    signOffLeft([
+      { decision: { assessment_outcome: "pass" }, stations: [sat] },
+      { decision: null, stations: [sat] },
+      { decision: { assessment_outcome: null }, stations: [sat] },
+      { decision: null, stations: [absent] },
+    ]),
+    { total: 3, left: 2 },
+  );
+});

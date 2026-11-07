@@ -74,7 +74,7 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
   );
 
   return (
-    <TraineePage label="Your sitting">
+    <TraineePage label={`Your ${w.sitting}`}>
       <AsyncBoundary
         state={initial}
         isEmpty={() => mine.length === 0}
@@ -154,7 +154,7 @@ function Circuit({ sitting }: { sitting: MySitting }) {
             : modeLabel(sitting)
         }
         title={sitting.name}
-        desc={`${exam ? "Formal exam" : "Practice circuit"} · ${plural(total, "station")}`}
+        desc={`${exam ? "Formal exam" : `Practice ${w.circuit}`} · ${plural(total, "station")}`}
         acts={
           <>
             {sitting.live ? (
@@ -170,7 +170,7 @@ function Circuit({ sitting }: { sitting: MySitting }) {
       {sitting.can_join || over ? null : (
         <Alert
           tone="info"
-          title={exam ? "Before you start" : "How a practice circuit works"}
+          title={exam ? "Before you start" : `How a practice ${w.circuit} works`}
         >
           {exam
             ? "Your station opens when your supervisor starts it. Go in straight away: the patient joins when reading time ends, and you need to be in the room by then."

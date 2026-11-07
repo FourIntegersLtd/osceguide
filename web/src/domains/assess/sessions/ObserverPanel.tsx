@@ -6,13 +6,12 @@ import { VoiceRoom } from "@/foundation/livekit";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import type { ObserverRoom } from "@/domains/assess/sessions/useCircuitRun";
 import { assessMeta } from "@/foundation/ui/b2bTokens";
-import { RailSection } from "@/domains/assess/sessions/RailSection";
 
 /**
  * Listening in on a running **exam** station: subscribe-only, because the backend token carries no
  * publish permission at all. A candidate cannot be prompted mid-consultation and the transcript stays
  * a record of what they said to the patient alone. A training circuit has a room instead
- * (`room/SupervisorRoom`).
+ * (`room/SupervisorRoom`). Drawn as the main side of the console's `SplitCard`.
  */
 export function ObserverPanel({
   data,
@@ -25,13 +24,17 @@ export function ObserverPanel({
   const live = circuit.started_at !== null && circuit.ended_at === null;
 
   return (
-    <RailSection id="room" title="Listen in" hint={observer.grant ? "Listening" : undefined}>
+    <section aria-label="Listen in" className="flex flex-col gap-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="m-0 text-assess-label font-medium text-osce-ink-900">Listen in</h2>
+        {observer.grant ? <span className={assessMeta}>Listening</span> : null}
+      </div>
       {observer.failure ? <Alert tone="danger">{observer.failure}</Alert> : null}
       <p className={assessMeta}>
         Hear the consultation live. The candidate and patient cannot hear you.
       </p>
       {observer.grant ? (
-        <VoiceRoom grant={observer.grant} audio={false} video={false} onDisconnected={() => observer.leave()}>
+        <VoiceRoom grant={observer.grant} audio={false} video={false} onDisconnected={(unexpected) => (unexpected ? observer.dropped() : observer.leave())}>
           <Occupants />
         </VoiceRoom>
       ) : null}
@@ -52,7 +55,7 @@ export function ObserverPanel({
           Listen in
         </Button>
       )}
-    </RailSection>
+    </section>
   );
 }
 

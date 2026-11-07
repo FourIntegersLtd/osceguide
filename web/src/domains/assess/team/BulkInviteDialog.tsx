@@ -1,6 +1,7 @@
 "use client";
 
-import { roleLabel } from "@/foundation/session/roles";
+import { teamRoleLabel } from "@/domains/assess/team/support";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { HiOutlineArrowUpTray } from "react-icons/hi2";
@@ -35,6 +36,7 @@ export function BulkInviteDialog({
   onClose: () => void;
   onImported: () => void;
 }) {
+  const w = useAssessWords();
   const [file, setFile] = useState<File | null>(null);
   const [parsed, setParsed] = useState<StaffCsvParse | null>(null);
   const [busy, setBusy] = useState(false);
@@ -148,8 +150,8 @@ export function BulkInviteDialog({
             <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
               Line{parsed.badRoles.length === 1 ? "" : "s"}{" "}
               {parsed.badRoles.map((row) => row.line).join(", ")} named a role this organisation
-              cannot give. Only {roleLabel("supervisor").toLowerCase()} or{" "}
-              {roleLabel("admin").toLowerCase()} can be invited, so those rows are left out.
+              cannot give. Only {teamRoleLabel("supervisor", w).toLowerCase()} or{" "}
+              {teamRoleLabel("admin", w).toLowerCase()} can be invited, so those rows are left out.
             </p>
           ) : null}
         </div>

@@ -411,3 +411,19 @@ export function attentionItems(
   }
   return items;
 }
+
+/**
+ * Candidates who sat and still need an outcome before the sitting can be signed off.
+ * Someone who never sat needs none (`candidate_did_not_sit`).
+ */
+export function signOffLeft(
+  candidates: {
+    decision: { assessment_outcome: string | null } | null;
+    stations?: { attempt_id: string | null; slot_status: string }[];
+  }[],
+): { total: number; left: number } {
+  const sat = candidates.filter((candidate) =>
+    (candidate.stations ?? []).some((station) => station.attempt_id !== null || station.slot_status === "completed"),
+  );
+  return { total: sat.length, left: sat.filter((candidate) => !candidate.decision?.assessment_outcome).length };
+}

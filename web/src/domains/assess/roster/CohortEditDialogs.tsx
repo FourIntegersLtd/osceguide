@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 import { hasCode } from "@/foundation/platform-client";
 import { errorMessage } from "@/foundation/hooks";
 import { PeopleDialog as Dialog, hint } from "@/domains/assess/ui";
@@ -52,6 +53,7 @@ function RenameForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const w = useAssessWords();
   const [name, setName] = useState(cohort.name);
   const [academicYear, setAcademicYear] = useState(cohort.academic_year ?? "");
   const [busy, setBusy] = useState(false);
@@ -81,8 +83,8 @@ function RenameForm({
   return (
     <Dialog
       open
-      title="Rename year group"
-      lead="Everyone in this intake stays in it. Only the name changes."
+      title={`Rename ${w.yearGroup}`}
+      lead={`Everyone in this ${w.yearGroup} stays in it. Only the name changes.`}
       error={error}
       busy={busy}
       commitLabel="Save"
@@ -163,6 +165,7 @@ function DeleteForm({
   onClose: () => void;
   onDeleted: () => void;
 }) {
+  const w = useAssessWords();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -179,7 +182,7 @@ function DeleteForm({
          an administrator learns which intake is still holding people. */
       setError(
         hasCode(cause, "cohort_in_use")
-          ? `${errorMessage(cause)} Move them onto another intake from their row on the Trainees tab first.`
+          ? `${errorMessage(cause)} Move them onto another ${w.yearGroup} from their row on the ${w.Trainees} tab first.`
           : errorMessage(cause),
       );
     } finally {
@@ -187,17 +190,17 @@ function DeleteForm({
     }
   };
 
-  const lead = cohortDeleteLead(cohort.name, cohort.sitting_count ?? 0);
+  const lead = cohortDeleteLead(cohort.name, cohort.sitting_count ?? 0, w);
 
   return (
     <Dialog
       open
       tone="danger"
-      title="Delete year group"
+      title={`Delete ${w.yearGroup}`}
       lead={lead}
       error={error}
       busy={busy}
-      commitLabel="Delete year group"
+      commitLabel={`Delete ${w.yearGroup}`}
       busyLabel="Deleting…"
       onClose={onClose}
       onCommit={() => void commit()}

@@ -10,6 +10,8 @@ import {
   RenameCohortDialog,
 } from "@/domains/assess/roster/CohortEditDialogs";
 import { boardBtn, boardPadWide, boardInput, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { aOrAn } from "@/domains/assess/vocabulary";
 
 type Pending =
   | { kind: "rename"; cohort: Cohort }
@@ -41,6 +43,7 @@ export function CohortsPanel({
   canManage: boolean;
   onChanged: () => void;
 }) {
+  const w = useAssessWords();
   const [name, setName] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [busy, setBusy] = useState(false);
@@ -71,16 +74,16 @@ export function CohortsPanel({
 
   return (
     <div className={boardPadWide}>
-      <h2 className={h2}>Year groups</h2>
+      <h2 className={h2}>{w.YearGroups}</h2>
       <p className={cn(t.assessMeta, "m-0")}>
-        An intake, such as a start date. Each trainee can be in one year group, chosen when they are added.
+        {`An intake, such as a start date. Each ${w.trainee} can be in one ${w.yearGroup}, chosen when they are added.`}
       </p>
       {error ? <Note tone="bad">{error}</Note> : null}
 
       {cohorts.length === 0 ? (
-        <p className={cn(t.assessMeta, "m-0")}>No year groups yet. Create one below, or leave people without.</p>
+        <p className={cn(t.assessMeta, "m-0")}>{`No ${w.yearGroups} yet. Create one below, or leave people without.`}</p>
       ) : (
-        <ul className={card} aria-label="Year groups">
+        <ul className={card} aria-label={w.YearGroups}>
           {cohorts.map((cohort, index) => (
             <li key={cohort.id} className={cn(row, "gap-2", index === 0 && "border-t-0")}>
               <span className="flex-1">
@@ -103,9 +106,9 @@ export function CohortsPanel({
       )}
 
       {canManage ? (
-        <Fold title="Create a year group">
+        <Fold title={`Create ${aOrAn(w.yearGroup)}`}>
           <input
-            aria-label="Year group name"
+            aria-label={`${w.YearGroup} name`}
             value={name}
             onChange={(event) => setName(event.target.value)}
             className={boardInput}
@@ -121,7 +124,7 @@ export function CohortsPanel({
             autoComplete="off"
           />
           <button type="button" className={cn(boardBtn("primary", true), "self-start")} disabled={busy || name.trim() === ""} onClick={() => create()}>
-            {busy ? "Working…" : "Create year group"}
+            {busy ? "Working…" : `Create ${w.yearGroup}`}
           </button>
         </Fold>
       ) : null}

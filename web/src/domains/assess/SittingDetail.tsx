@@ -38,6 +38,7 @@ import { sittingStatusLabel } from "@/domains/assess/support";
 import { plural } from "@/foundation/format";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 import { boardRailStep } from "@/domains/assess/chrome";
+import { aOrAn } from "@/domains/assess/vocabulary";
 
 /** One sitting and its circuits, with the way into each console. */
 export function SittingDetail({
@@ -104,7 +105,7 @@ export function SittingDetail({
                 className={PRIMARY}
                 href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}
               >
-                Add a circuit
+                {`Add ${aOrAn(w.circuit)}`}
               </Link>
             ),
             run: runCircuit ? (
@@ -157,7 +158,7 @@ export function SittingDetail({
                         : "No date set",
                       sitting.programme_name,
                       sitting.cohort_id
-                        ? `Year group: ${cohorts.data?.find((cohort) => cohort.id === sitting.cohort_id)?.name ?? "…"}`
+                        ? `${w.YearGroup}: ${cohorts.data?.find((cohort) => cohort.id === sitting.cohort_id)?.name ?? "…"}`
                         : null,
                     ]
                       .filter(Boolean)
@@ -187,7 +188,7 @@ export function SittingDetail({
                       className={boardBtn("danger")}
                       onClick={() => setPending({ kind: "cancel" })}
                     >
-                      Cancel sitting
+                      {`Cancel ${w.sitting}`}
                     </button>
                   ) : null}
                   <Link
@@ -217,7 +218,7 @@ export function SittingDetail({
 
               <div
                 role="tablist"
-                aria-label="Sitting sections"
+                aria-label={`${w.Sitting} sections`}
                 className={boardTabs}
               >
                 {(
@@ -257,25 +258,24 @@ export function SittingDetail({
                 0 ? (
                 <div className={boardPad}>
                   <h2 className="text-base font-semibold leading-normal">
-                    No circuits yet
+                    {`No ${w.circuits} yet`}
                   </h2>
                   <p className={`m-0 ${t.assessMeta}`}>
-                    Add at least one circuit so candidates can take this
-                    sitting.
+                    {`Add at least one ${w.circuit} so candidates can take this ${w.sitting}.`}
                   </p>
                 </div>
               ) : (
                 <div className={`${boardCard} overflow-hidden`}>
                   <div className={`${boardRow} justify-between border-t-0`}>
                     <h2 className="text-base font-semibold leading-normal">
-                      Circuits
+                      {w.Circuits}
                     </h2>
                     {manage ? (
                       <Link
                         className={SMALL}
                         href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}
                       >
-                        Add a circuit
+                        {`Add ${aOrAn(w.circuit)}`}
                       </Link>
                     ) : null}
                   </div>
@@ -303,14 +303,14 @@ export function SittingDetail({
                                   ? [plural(stations, "station")]
                                   : []),
                                 circuit.supervisor_user_id
-                                  ? `Supervisor ${circuit.supervisor_name ?? "another supervisor"}`
-                                  : "No supervisor assigned",
+                                  ? `${w.Supervisor} ${circuit.supervisor_name ?? `another ${w.supervisor}`}`
+                                  : `No ${w.supervisor} assigned`,
                               ].join(" · ")}
                             </div>
                           </Link>
                           {mine ? (
                             <span className={boardChip("info")}>
-                              Your circuit
+                              {`Your ${w.circuit}`}
                             </span>
                           ) : circuit.started_at && !circuit.ended_at ? (
                             <span className={boardChip("live")}>Running</span>
@@ -344,8 +344,7 @@ export function SittingDetail({
                   )}
                   {(sitting.circuits ?? []).length > 1 ? (
                     <div className={boardRow}>
-                      {(sitting.circuits ?? []).length - 1} more circuits ·
-                      supervisors see their own circuit first
+                      {`${(sitting.circuits ?? []).length - 1} more ${w.circuits} · ${w.supervisors} see their own ${w.circuit} first`}
                     </div>
                   ) : null}
                 </div>
@@ -395,6 +394,7 @@ function CandidatesTab({
   sitting: Sitting;
   report: AsyncState<SittingReport>;
 }) {
+  const w = useAssessWords();
   const roster = useAsync(
     async (signal) => ({
       trainees: await listActiveTrainees(orgSlug, signal),
@@ -410,7 +410,7 @@ function CandidatesTab({
     } catch (cause) {
       setSent((current) => ({
         ...current,
-        [traineeId]: assessErrorMessage(cause),
+        [traineeId]: assessErrorMessage(cause, w),
       }));
     }
   };
@@ -443,7 +443,7 @@ function CandidatesTab({
                     No candidates yet
                   </h2>
                   <p className={`m-0 ${t.assessMeta}`}>
-                    Add a circuit to put people on this sitting.
+                    {`Add ${aOrAn(w.circuit)} to put people on this ${w.sitting}.`}
                   </p>
                 </div>
               );
@@ -510,7 +510,7 @@ function CandidatesTab({
                         : null
                     }
                     note={sent[trainee.id]}
-                    circuits="Not on a circuit yet"
+                    circuits={`Not on ${aOrAn(w.circuit)} yet`}
                   />
                 ))}
               </div>

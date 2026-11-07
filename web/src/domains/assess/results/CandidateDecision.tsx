@@ -28,6 +28,7 @@ import { assessFormStack } from "@/foundation/ui/b2bTokens";
 import { candidateProgress } from "@/domains/assess/results/candidateProgress";
 import { OutcomePicker, RecruitmentField, ReleasedDecision, ReopenButton, ResultPreviewButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
 import { boardRailStep } from "@/domains/assess/chrome";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * One candidate's outcome: draft, signed off, released.
@@ -53,6 +54,7 @@ export function CandidateDecision({
   stations: ReactNode;
   onChanged: () => void;
 }) {
+  const w = useAssessWords();
   const traineeId = candidate.trainee_id;
 
   const stored = useAsync(async (signal) => {
@@ -69,7 +71,7 @@ export function CandidateDecision({
   }
 
   if (stored.loading) return <Spinner />;
-  if (stored.error) return <div role="alert" className={boardAlert("bad")}>{assessErrorMessage(stored.error)}</div>;
+  if (stored.error) return <div role="alert" className={boardAlert("bad")}>{assessErrorMessage(stored.error, w)}</div>;
 
   const steps = candidateProgress(candidate);
   const nowId = steps.find((step) => step.state !== "done")?.id;
@@ -128,6 +130,7 @@ function Form({
   decision: Decision | null;
   onChanged: () => void;
 }) {
+  const w = useAssessWords();
   const [outcome, setOutcome] = useState(outcomeChoice(decision?.assessment_outcome));
   const [recruitment, setRecruitment] = useState(decision?.recruitment_outcome ?? "");
   const [rationale, setRationale] = useState(decision?.rationale ?? "");
@@ -168,7 +171,7 @@ function Form({
       // here are still worth keeping, and the latest revision has to be loaded
       // before another save can go through.
       if (hasCode(cause, "decision_revised")) setStale(true);
-      else setFailure(assessErrorMessage(cause));
+      else setFailure(assessErrorMessage(cause, w));
     } finally {
       setBusy(null);
     }

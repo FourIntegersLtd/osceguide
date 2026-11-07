@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import type { AssessWords } from "@/domains/assess/vocabulary";
 import { ConfirmModal } from "@/foundation/ui";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { hasCode } from "@/foundation/platform-client";
 import { cancelSitting, deleteCircuit, type Circuit } from "@/domains/assess/api";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /** The write a sitting's admin has asked for and not yet confirmed. */
 export type PendingSittingAction = { kind: "cancel" } | { kind: "delete"; circuit: Circuit } | null;
@@ -23,6 +25,7 @@ export function SittingActionDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const w = useAssessWords();
   const [refused, setRefused] = useState<string | null>(null);
 
   const close = () => {
@@ -35,7 +38,7 @@ export function SittingActionDialog({
       close();
       onDone();
     } catch (cause) {
-      setRefused(refusal(cause));
+      setRefused(refusal(cause, w));
     }
   };
 
@@ -70,12 +73,12 @@ export function SittingActionDialog({
 }
 
 /** A cancel or delete refusal, by its code: something started since the page loaded. */
-function refusal(cause: unknown): string {
+function refusal(cause: unknown, w: AssessWords): string {
   if (hasCode(cause, "sitting_locked")) {
-    return "A circuit on this sitting has started, so it cannot be cancelled. End its circuits instead.";
+    return `A ${w.circuit} on this ${w.sitting} has started, so it cannot be cancelled. End its ${w.circuits} instead.`;
   }
   if (hasCode(cause, "circuit_locked")) {
-    return "This circuit has started, so it holds what was sat and cannot be deleted.";
+    return `This ${w.circuit} has started, so it holds what was sat and cannot be deleted.`;
   }
-  return assessErrorMessage(cause);
+  return assessErrorMessage(cause, w);
 }

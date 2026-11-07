@@ -7,6 +7,8 @@ import { overrides, runControls, setAutoAdvance } from "@/domains/assess/session
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import { primaryTurnAction } from "@/domains/assess/sessions/turns";
 import { OverrideDialog, type OverrideRequest } from "@/domains/assess/sessions/OverrideDialog";
+import type { AssessWords } from "@/domains/assess/vocabulary";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * The controls a supervisor runs an examination from.
@@ -38,6 +40,7 @@ export function SupervisorControls({
   /** A training circuit: the primary brings in the next trainee. */
   training?: boolean;
 }) {
+  const w = useAssessWords();
   const [request, setRequest] = useState<OverrideRequest | null>(null);
   // A new dialog must not open on the last action's failure.
   const openRequest = (next: OverrideRequest) => {
@@ -50,7 +53,7 @@ export function SupervisorControls({
   const turn = primaryTurnAction(data);
   const working = busy !== null || reconnecting;
   // Shown under a disabled menu item, and read out as its reason.
-  const waitHint = working ? (reconnecting ? "Reconnecting to the circuit" : "Another action is running") : undefined;
+  const waitHint = working ? (reconnecting ? `Reconnecting to the ${w.circuit}` : "Another action is running") : undefined;
 
   async function commit(input: { reason: string | null; seconds: number }) {
     if (!request) return;
@@ -78,7 +81,7 @@ export function SupervisorControls({
 
       {started ? null : (
         <p className={assessMeta}>
-          Pausing, adding time or skipping asks for a reason. It is saved with the circuit.
+          Pausing, adding time or skipping asks for a reason. {`It is saved with the ${w.circuit}.`}
         </p>
       )}
 
@@ -91,7 +94,7 @@ export function SupervisorControls({
             disabled={working}
             onClick={() => run("start", () => runControls.start(orgSlug, circuitId))}
           >
-            Start circuit
+            {`Start ${w.circuit}`}
           </Button>
         ) : (
           <>
@@ -102,7 +105,7 @@ export function SupervisorControls({
               disabled={working}
               onClick={() =>
                 training && turn.kind === "end"
-                  ? openRequest(endRequest(orgSlug, circuitId))
+                  ? openRequest(endRequest(orgSlug, circuitId, w))
                   : run("advance", () => runControls.advance(orgSlug, circuitId))
               }
             >
@@ -114,21 +117,21 @@ export function SupervisorControls({
               variant="secondary"
               disabled={working}
               onClick={() =>
-                openRequest(circuit.paused ? resumeRequest(orgSlug, circuitId) : pauseRequest(orgSlug, circuitId))
+                openRequest(circuit.paused ? resumeRequest(orgSlug, circuitId, w) : pauseRequest(orgSlug, circuitId, w))
               }
             >
               {circuit.paused ? "Resume" : "Pause"}
             </Button>
 
             <ActionMenu
-              label="More circuit controls"
+              label={`More ${w.circuit} controls`}
               items={[
                 { label: "Add time", disabled: working, hint: waitHint, onSelect: () => openRequest(extendRequest(orgSlug, circuitId)) },
                 { label: "Restart the timer", disabled: working, hint: waitHint, onSelect: () => openRequest(resetRequest(orgSlug, circuitId)) },
                 { label: "Resend the patient", disabled: working, hint: waitHint, onSelect: () => openRequest(resendRequest(orgSlug, circuitId)) },
                 ...(training && turn.kind === "end"
                   ? []
-                  : [{ label: "End circuit", tone: "danger" as const, disabled: working, hint: waitHint, onSelect: () => openRequest(endRequest(orgSlug, circuitId)) }]),
+                  : [{ label: `End ${w.circuit}`, tone: "danger" as const, disabled: working, hint: waitHint, onSelect: () => openRequest(endRequest(orgSlug, circuitId, w)) }]),
               ]}
             />
           </>
@@ -148,7 +151,7 @@ export function SupervisorControls({
             }
             className="mt-0.5 h-[18px] w-[18px]"
           />
-          Move on by itself when time is up. If off, you press {training ? "the button above to bring in the next trainee" : "Next station"}.
+          Move on by itself when time is up. If off, you press {training ? `the button above to bring in the next ${w.trainee}` : "Next station"}.
         </label>
       ) : null}
 
@@ -163,20 +166,20 @@ export function SupervisorControls({
   );
 }
 
-function pauseRequest(slug: string, circuitId: string): OverrideRequest {
+function pauseRequest(slug: string, circuitId: string, w: AssessWords): OverrideRequest {
   return {
     name: "pause",
-    title: "Pause the circuit",
+    title: `Pause the ${w.circuit}`,
     lead: "The clock stops for everybody. The patient stays in the room.",
     commitLabel: "Pause",
     run: ({ reason }) => overrides.pause(slug, circuitId, reason),
   };
 }
 
-function resumeRequest(slug: string, circuitId: string): OverrideRequest {
+function resumeRequest(slug: string, circuitId: string, w: AssessWords): OverrideRequest {
   return {
     name: "resume",
-    title: "Resume the circuit",
+    title: `Resume the ${w.circuit}`,
     lead: "The clock starts again where it stopped.",
     commitLabel: "Resume",
     run: ({ reason }) => overrides.resume(slug, circuitId, reason),
@@ -214,12 +217,12 @@ function resendRequest(slug: string, circuitId: string): OverrideRequest {
   };
 }
 
-function endRequest(slug: string, circuitId: string): OverrideRequest {
+function endRequest(slug: string, circuitId: string, w: AssessWords): OverrideRequest {
   return {
     name: "end",
-    title: "End the circuit",
+    title: `End the ${w.circuit}`,
     lead: "Any station nobody has taken is marked as skipped. You cannot undo this. End it only when everyone has finished.",
-    commitLabel: "End the circuit",
+    commitLabel: `End the ${w.circuit}`,
     tone: "danger",
     run: ({ reason }) => runControls.end(slug, circuitId, reason),
   };

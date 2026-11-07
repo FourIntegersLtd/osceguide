@@ -120,15 +120,9 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   const earlier = (data.recent_sittings ?? []).filter((sitting) => sitting.status !== "scheduled");
 
   const scheduleAction = data.setup.ready_to_run ? (
-    w.hiring ? (
-      <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={boardBtn("primary")}>
-        {w.scheduleSitting}
-      </Link>
-    ) : (
-      <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={boardBtn("primary")}>
-        {w.scheduleSitting}
-      </Link>
-    )
+    <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={boardBtn("primary")}>
+      {w.scheduleSitting}
+    </Link>
   ) : (
     <div className="flex flex-col items-end gap-1">
       <Button themeType="b2b" variant="commit" disabled aria-describedby="schedule-blocked">
@@ -201,28 +195,17 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
       {runs && !circuits.loading && !circuits.error ? <SupervisorCircuits rows={circuitRows} sayWhenEmpty={!admin} /> : null}
     </>
   );
-  const lists = (
-    <>
-      {mine}
-      {comingUpSection}
-      {recent}
-    </>
-  );
-
   if (w.hiring && admin) {
-    // The hire overview board draws the header, the running hero, what needs a decision and three counts.
-    // Today's lists of assessments stay, under them.
+    // The hire overview board (HireHome) is the whole screen: header, the running hero, what needs a
+    // decision and three counts. The institution's lists of sittings are not drawn under it.
     return (
-      <>
-        <section aria-label="Overview" className={cn(b2bTokens.assessPage, "!w-auto")}>
-          {header}
-          {live}
-          {needs}
-          <Counts data={data} />
-        </section>
+      <section aria-label="Overview" className={cn(b2bTokens.assessPage, "!w-auto")}>
+        {header}
+        {live}
+        {needs}
         <div ref={setStatusHost} className="empty:hidden" />
-        <div className={cn(b2bTokens.assessPage, "!w-auto")}>{lists}</div>
-      </>
+        <Counts data={data} upcoming={upcoming.length} />
+      </section>
     );
   }
   if (runs && !mayDecide) {
@@ -325,7 +308,7 @@ function NeedsAttention({ loading, error, items }: { loading: boolean; error: un
  * The count tiles: the Today and setup boards' four white cards with a sans number (`setup`, `assessStat*`);
  * the hire overview's three.
  */
-function Counts({ data, setup = false, today = false }: { data: Data; setup?: boolean; today?: boolean }) {
+function Counts({ data, setup = false, today = false, upcoming }: { data: Data; setup?: boolean; today?: boolean; upcoming?: number }) {
   const w = useAssessWords();
   const { hrefFor } = useSurface();
   const counts = data.counts;
@@ -349,7 +332,9 @@ function Counts({ data, setup = false, today = false }: { data: Data; setup?: bo
   const tiles = [
     { label: w.Trainees, value: counts.trainees, path: "/trainees" },
     { label: w.Supervisors, value: counts.staff, path: "/team" },
-    { label: w.Sittings, value: counts.sittings, path: "/sittings" },
+    upcoming === undefined
+      ? { label: w.Sittings, value: counts.sittings, path: "/sittings" }
+      : { label: `Upcoming ${w.sittings}`, value: upcoming, path: "/sittings" },
   ];
   return (
     <section aria-label="At a glance" className="grid grid-cols-1 gap-3 min-[901px]:grid-cols-3">

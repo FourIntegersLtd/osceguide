@@ -17,6 +17,7 @@ import {
 } from "@/domains/assess/trainee/api";
 import { ResultView } from "@/domains/assess/trainee/ResultView";
 import { useSurface } from "@/capabilities";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * A candidate's own result, once it has been released and not before.
@@ -31,6 +32,7 @@ import { useSurface } from "@/capabilities";
  * Acknowledging is the candidate's, and it is one-way: there is no unread.
  */
 export function MyResult({ sittingId }: { sittingId: string }) {
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const state = useAsync(
     (signal) => readMyResult(sittingId, signal),
@@ -128,6 +130,7 @@ export function MyResult({ sittingId }: { sittingId: string }) {
                   )
                 }
               />
+              {w.hiring ? null : (
               <TraineeHero
                 eyebrow="Keep practising"
                 title="Practise on your own"
@@ -143,6 +146,7 @@ export function MyResult({ sittingId }: { sittingId: string }) {
               >
                 Nothing you do here is marked for the record.
               </TraineeHero>
+              )}
             </>
           )
         }

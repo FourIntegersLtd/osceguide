@@ -28,6 +28,16 @@ export type AssessWords = {
   yearGroups: string;
   YearGroup: string;
   YearGroups: string;
+  /** A circuit: the run of stations one group sits together. A rotation for an employer. */
+  circuit: string;
+  circuits: string;
+  Circuit: string;
+  Circuits: string;
+  /** A cohort: the intake an employer hires in. */
+  cohort: string;
+  cohorts: string;
+  Cohort: string;
+  Cohorts: string;
   /** What a sitting's mode is called, so it never clashes with the "Exam" noun. */
   /** True in a hire workspace, where results are hiring decisions. */
   hiring: boolean;
@@ -61,6 +71,14 @@ export const INSTITUTION_WORDS: AssessWords = {
   yearGroups: "year groups",
   YearGroup: "Year group",
   YearGroups: "Year groups",
+  circuit: "circuit",
+  circuits: "circuits",
+  Circuit: "Circuit",
+  Circuits: "Circuits",
+  cohort: "cohort",
+  cohorts: "cohorts",
+  Cohort: "Cohort",
+  Cohorts: "Cohorts",
   hiring: false,
   liveBoardLink: "Open the live board",
   formalExam: "Formal exam",
@@ -91,6 +109,14 @@ export const EMPLOYER_WORDS: AssessWords = {
   yearGroups: "intakes",
   YearGroup: "Intake",
   YearGroups: "Intakes",
+  circuit: "rotation",
+  circuits: "rotations",
+  Circuit: "Rotation",
+  Circuits: "Rotations",
+  cohort: "intake",
+  cohorts: "intakes",
+  Cohort: "Intake",
+  Cohorts: "Intakes",
   hiring: true,
   liveBoardLink: "Watch it",
   formalExam: "Formal exam",
@@ -100,4 +126,10 @@ export const EMPLOYER_WORDS: AssessWords = {
 /** Employer words in a hire workspace, institution words everywhere else. */
 export function assessWordsFor(surface: Surface | undefined): AssessWords {
   return surface === "hire" ? EMPLOYER_WORDS : INSTITUTION_WORDS;
+}
+
+/** "a rotation", "an assessment": the indefinite article for a word from `AssessWords`. */
+export function aOrAn(word: string, capital = false): string {
+  const article = /^[aeiou]/i.test(word) ? "an" : "a";
+  return `${capital ? article.replace(/^./, (c) => c.toUpperCase()) : article} ${word}`;
 }

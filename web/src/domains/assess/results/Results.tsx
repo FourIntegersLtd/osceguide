@@ -13,7 +13,8 @@ import { ReleaseAll } from "@/domains/assess/results/ReleaseAll";
 import { CohortRanking } from "@/domains/assess/results/CohortRanking";
 import { countsFromReport, sittingNext, sittingSteps, type SittingStepsInput } from "@/domains/assess/sittingSteps";
 import { can, useSession } from "@/foundation/session";
-import { releasable } from "@/domains/assess/results/support";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { releasable, signOffLeft } from "@/domains/assess/results/support";
 import { boardCard, boardHeadRow, boardPad, boardTile , boardBtn, boardAlert } from "@/foundation/ui/boardKit";
 import { boardTile6, boardTileNumber } from "@/domains/assess/results/resultsChrome";
 import { boardRailStep } from "@/domains/assess/chrome";
@@ -71,6 +72,12 @@ function Report({
   const candidates = report.candidates ?? [];
   // Only someone who may release is offered the list to release from; everyone else reads the steps.
   const waiting = progress.can.signOff && !progress.training ? candidates.filter(releasable) : [];
+  const { total, left } = signOffLeft(candidates);
+  const w = useAssessWords();
+  const signOffNote =
+    progress.can.signOff && !progress.training && left > 0
+      ? `Sign off needs a decision for all ${total} ${w.trainees}. ${left} ${left === 1 ? "is" : "are"} left.`
+      : null;
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   // One candidate's decision is open at a time, below the table, as on the board.
@@ -135,6 +142,7 @@ function Report({
               ))}
             </div>
             <div className="text-assess-label">{sittingNext(progress).line}</div>
+            {signOffNote ? <div className={t.assessMeta}>{signOffNote}</div> : null}
             {waiting.length > 0 ? (
               <ReleaseAll
                 orgSlug={orgSlug}

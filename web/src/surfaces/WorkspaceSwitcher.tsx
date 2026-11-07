@@ -7,6 +7,7 @@ import { cn, Spinner } from "@/foundation/ui";
 import { useSession } from "@/foundation/session";
 import { isPersonal, workspaceBasePath, type Workspace } from "@/foundation/routing";
 import { workspacesFor } from "@/surfaces/resolveWorkspace";
+import { switcherGroups } from "@/surfaces/switcherGroups";
 
 /**
  * Moving between your own practice and the organisations you belong to.
@@ -101,26 +102,35 @@ export function WorkspaceSwitcher({
             role="menu"
             className="absolute left-0 right-0 z-50 mt-1 max-h-[60dvh] overflow-y-auto rounded-panel border border-border bg-surface py-1 shadow-lg"
           >
-            {workspaces.map((workspace) => {
-              const active = workspace.slug === current.slug;
-              return (
-                <li key={workspace.slug}>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => void choose(workspace)}
-                    className={cn(
-                      "flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-raised",
-                      active ? "text-ink" : "text-ink-muted",
-                    )}
-                  >
-                    <WorkspaceIcon workspace={workspace} />
-                    <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
-                    {active && <LuCheck className="h-4 w-4 shrink-0 text-accent" aria-hidden />}
-                  </button>
-                </li>
-              );
-            })}
+            {switcherGroups(workspaces).map((group) => (
+              <li key={group.label ?? "workspaces"} role="none">
+                {group.label ? (
+                  <div className="px-3 pb-1 pt-2 text-osce-caption font-semibold uppercase text-b2c-text-muted">{group.label}</div>
+                ) : null}
+                <ul role="group" aria-label={group.label ?? undefined}>
+                  {group.items.map((workspace) => {
+                    const active = workspace.slug === current.slug;
+                    return (
+                      <li key={workspace.slug} role="none">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => void choose(workspace)}
+                          className={cn(
+                            "flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-raised",
+                            active ? "text-ink" : "text-ink-muted",
+                          )}
+                        >
+                          <WorkspaceIcon workspace={workspace} />
+                          <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
+                          {active && <LuCheck className="h-4 w-4 shrink-0 text-accent" aria-hidden />}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            ))}
           </ul>
         </>
       )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAsync } from "@/foundation/hooks";
+import { can, useSession } from "@/foundation/session";
 import { assessMeta } from "@/foundation/ui/b2bTokens";
 import type { RatingValue } from "@/capabilities/feedback/rubric";
 import { readMySlotReview, saveReview } from "@/domains/assess/api";
@@ -26,12 +27,15 @@ export function LiveMarkPanel({
   circuitId,
   slotId,
   tick,
+  peers = true,
 }: {
   orgSlug: string;
   circuitId: string;
   slotId: string;
   /** Changes whenever the console stream sends a frame; the peer marks are re-read on it. */
   tick: unknown;
+  /** A practice room shows what the other trainees marked. An exam has no one else marking. */
+  peers?: boolean;
 }) {
   const state = useAsync(
     async (signal) => {
@@ -52,6 +56,7 @@ export function LiveMarkPanel({
       circuitId={circuitId}
       slotId={slotId}
       tick={tick}
+      peers={peers}
       form={state.data.form}
       initial={state.data.mine?.field_values}
       released={state.data.mine?.status === "completed"}
@@ -64,6 +69,7 @@ function Ticks({
   circuitId,
   slotId,
   tick,
+  peers,
   form,
   initial,
   released,
@@ -72,11 +78,13 @@ function Ticks({
   circuitId: string;
   slotId: string;
   tick: unknown;
+  peers: boolean;
   form: ReviewForm | null;
   initial: Record<string, unknown> | undefined;
   /** The supervisor's review is already released: a live tick must not turn it back into a draft. */
   released: boolean;
 }) {
+  const { session } = useSession();
   const [ratings, setRatings] = useState<Record<string, RatingValue>>(() => initialRatings(form, initial));
   const [status, setStatus] = useState<TickSave>("idle");
   const latest = useRef(ratings);
@@ -114,6 +122,10 @@ function Ticks({
   if (released) return <p className={`${assessMeta} p-4`}>This review is already released, so it is not marked live. Reopen it on the marking page to change it.</p>;
   if (!form || domains.length === 0) return <p className={`${assessMeta} p-4`}>This station has nothing to rate live.</p>;
   return (
+    <>
+    {!peers && can(session, "sign_off_results") ? (
+      <p className={`${assessMeta} px-4 pt-3`}>These ticks are saved as your own draft. The GP lead form on the marking page starts empty.</p>
+    ) : null}
     <SchemeAccordion
       title="Marking"
       domains={domains}
@@ -135,7 +147,8 @@ function Ticks({
           <RatingInput rating={form.rating} label={item.label} value={ratings[item.key] ?? null} onChange={(value) => rate(item.key, value)} />
         </div>
       )}
-      footer={<PeerMarksSummary orgSlug={orgSlug} circuitId={circuitId} slotId={slotId} tick={tick} labels={labels} />}
+      footer={peers ? <PeerMarksSummary orgSlug={orgSlug} circuitId={circuitId} slotId={slotId} tick={tick} labels={labels} /> : undefined}
     />
+    </>
   );
 }

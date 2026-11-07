@@ -1,5 +1,5 @@
 import { LuBriefcase, LuChartNoAxesColumn, LuClipboardCheck, LuGauge, LuGraduationCap, LuPencilRuler, LuRadio, LuUsers } from "react-icons/lu";
-import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
+import type { NavContext, NavItem, ScreenName, SurfaceManifest } from "@/surfaces/contract";
 import { ASSESS_SCREEN_NAMES } from "@/surfaces/assess/surface";
 
 /**
@@ -31,11 +31,28 @@ function nav({ can, href }: NavContext): NavItem[] {
   return staff;
 }
 
+/**
+ * What an employer answers: Assess's pages without the consumer practice ones. A candidate on an
+ * assessment is never offered self practice or practice sessions, so those routes render "Not on
+ * this account" (HireRefused) rather than a screen built for a learner.
+ */
+const CONSUMER_ONLY: readonly ScreenName[] = [
+  "myPractice",
+  "mocks",
+  "mockDetail",
+  "mockStation",
+  "mockComplete",
+  "mockList",
+  "mockUpdate",
+  "practiceStation",
+];
+export const HIRE_SCREEN_NAMES: readonly ScreenName[] = ASSESS_SCREEN_NAMES.filter((name) => !CONSUMER_ONLY.includes(name));
+
 export const hireSurface: SurfaceManifest = {
   id: "hire",
   label: "Hiring",
   workspaceKinds: ["employer"],
   nav,
-  screenNames: ASSESS_SCREEN_NAMES,
+  screenNames: HIRE_SCREEN_NAMES,
   screensFrom: "assess",
 };

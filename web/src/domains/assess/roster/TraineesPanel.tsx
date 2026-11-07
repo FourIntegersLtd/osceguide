@@ -382,7 +382,7 @@ export function TraineesPanel({
             {canManage ? <span className="w-4">Select</span> : null}
             <span className="w-8" />
             <span className="flex-[1_1_180px]">Name</span>
-            <span className="w-20">Year group</span>
+            <span className="w-20">{w.YearGroup}</span>
             <span className="w-[130px]">Programme</span>
             <span className="w-[50px]">Sat</span>
             <span className="w-[170px]">Status</span>
@@ -456,7 +456,7 @@ export function TraineesPanel({
 
       {!canManage ? (
         <div className={boardPadWide}>
-          <div className={t.assessMeta}>Supervisor (read only)</div>
+          <div className={t.assessMeta}>{`${w.Supervisor} (read only)`}</div>
           <div>Contact an owner or admin to change who has access.</div>
         </div>
       ) : null}

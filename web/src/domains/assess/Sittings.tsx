@@ -1,9 +1,9 @@
 "use client";
 
-import type { AssessWords } from "@/domains/assess/vocabulary";
+import { aOrAn, type AssessWords } from "@/domains/assess/vocabulary";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AsyncBoundary, b2bTokens as t } from "@/foundation/ui";
 import { useAsync, useCursorPages } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
@@ -24,6 +24,16 @@ import {
   sittingsScopeNote,
   type SittingFilters,
 } from "@/domains/assess/support";
+import { readResultsIndex, type ResultsIndexRow } from "@/domains/assess/results/api";
+import {
+  matchesPreset,
+  modeNote,
+  needsExamFirst,
+  sittingNextStep,
+  waitingForDecisions,
+  type SittingPreset,
+} from "@/domains/assess/sittingList";
+import { NEW_EXAM_PATH } from "@/domains/assess/dashboard/setupSteps";
 import { sittingTally } from "@/domains/assess/dashboard/support";
 import { boardCard, boardHeadRow, boardPad, boardRow, boardTab, boardTabs, boardChip, boardButtonSmall , boardBtn } from "@/foundation/ui/boardKit";
 import {
@@ -61,6 +71,13 @@ const TABS: [string, string][] = [
   ["in_progress", "Running"],
   ["completed", "Finished"],
   ["cancelled", "Cancelled"],
+];
+
+const PRESETS: [SittingPreset, string][] = [
+  ["", "Everything"],
+  ["upcoming", "Upcoming"],
+  ["decisions", "Waiting for decisions"],
+  ["past", "Past"],
 ];
 
 const statusWords: Record<string, string> = {
@@ -106,12 +123,22 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
     if (next === NO_SITTING_FILTERS) setTyped("");
   };
   const canSchedule = can(session, "schedule_sittings");
+  const canSignOff = can(session, "sign_off_results");
+  // Decisions belong to people who may sign off; the results index is what says which sittings wait.
+  const results = useAsync(
+    (signal) => (canSignOff ? readResultsIndex(orgSlug, signal) : Promise.resolve(null)),
+    [orgSlug, canSignOff],
+  );
+  const resultRows = results.data?.rows ?? [];
+  const waitingIds = useMemo(() => waitingForDecisions(resultRows), [resultRows]);
+  const [preset, setPreset] = useState<SittingPreset>("");
   const schedule = canSchedule ? (
     <Link href={hrefFor("/sittings/new")} className={boardBtn("primary")}>
       {w.scheduleSitting}
     </Link>
   ) : null;
 
+  const examFirst = programmes.data ? needsExamFirst(programmes.data.items) : false;
   const loaded = pages.state.data;
   const hasAny = loaded === null || loaded.length > 0 || filtersActive(filters);
   const next = loaded ? nextUp(loaded) : null;
@@ -152,7 +179,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
           <div className={t.assessEyebrow}>Run</div>
           <h1 className={t.assessTitle}>{w.Sittings}</h1>
           <p className={t.assessDesc}>
-            {`${w.hiring ? "An" : "A"} ${w.sitting} is one occasion, such as the March mock. Its circuits are built for you when you schedule it.`}
+            {`${aOrAn(w.sitting, true)} is one occasion, such as the March mock. Its circuits are built for you when you schedule it.`}
           </p>
         </div>
         {schedule ? (
@@ -163,7 +190,21 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
       {hasAny ? hero : null}
       {hasAny ? (
         <>
-          <div role="tablist" className={boardTabs}>
+          <div role="tablist" aria-label="Show" className={boardTabs}>
+            {PRESETS.filter(([id]) => id !== "decisions" || canSignOff).map(([id, label]) => (
+              <button
+                key={label}
+                type="button"
+                role="tab"
+                aria-selected={preset === id}
+                className={boardTab(preset === id)}
+                onClick={() => setPreset(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div role="tablist" aria-label="Status" className={boardTabs}>
             {TABS.map(([status, label]) => (
               <button
                 key={label}
@@ -190,6 +231,21 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
       <AsyncBoundary state={pages.state}>
         {(sittings) =>
           sittings.length === 0 && !filtersActive(filters) ? (
+            examFirst ? (
+              <div className={boardPad}>
+                <h2 className="text-base font-semibold leading-normal">You need an exam first</h2>
+                <p className={`m-0 ${t.assessMeta}`}>
+                  {`${aOrAn(w.sitting, true)} runs an exam. ${canSchedule ? "Set one up, then schedule it here." : "An administrator sets one up."}`}
+                </p>
+                {canSchedule ? (
+                  <div className="flex self-start">
+                    <Link href={hrefFor(NEW_EXAM_PATH)} className={boardBtn("primary")}>
+                      Set up an exam
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
             <div className={boardPad}>
               <h2 className="text-base font-semibold leading-normal">{`No ${w.sittings} yet`}</h2>
               <p className={`m-0 ${t.assessMeta}`}>
@@ -199,6 +255,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                 <div className="flex self-start">{schedule}</div>
               ) : null}
             </div>
+            )
           ) : (
             <>
               {sittingsScopeNote(sittings.length, pages.hasMore) ? (
@@ -207,11 +264,16 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                 </p>
               ) : null}
               <SittingRows
-                sittings={sittings}
+                sittings={sittings.filter((sitting) => matchesPreset(sitting, preset, waitingIds))}
+                resultRows={resultRows}
+                can={{ schedule: canSchedule, signOff: canSignOff }}
                 pages={pages}
                 hrefFor={hrefFor}
                 words={w}
               />
+              {modeNote(sittings, canSchedule, w) ? (
+                <p data-footnote className={t.assessMeta}>{modeNote(sittings, canSchedule, w)}</p>
+              ) : null}
             </>
           )
         }
@@ -222,11 +284,15 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
 
 function SittingRows({
   sittings,
+  resultRows,
+  can: allowed,
   pages,
   hrefFor,
   words,
 }: {
   sittings: Sitting[];
+  resultRows: ResultsIndexRow[];
+  can: { schedule: boolean; signOff: boolean };
   pages: {
     hasMore: boolean;
     loadingMore: boolean;
@@ -240,7 +306,12 @@ function SittingRows({
     return (
       <div className={boardPad}>
         <h2 className="text-base font-semibold leading-normal">{`No ${words.sittings} match.`}</h2>
-        <p className={`m-0 ${t.assessMeta}`}>Clear a filter to see more.</p>
+        <p className={`m-0 ${t.assessMeta}`}>{pages.hasMore ? `None of the ${words.sittings} loaded so far match. Load more, or clear a filter.` : "Clear a filter to see more."}</p>
+        {pages.hasMore ? (
+          <button type="button" className={`${boardButtonSmall} self-start`} disabled={pages.loadingMore} onClick={pages.loadMore}>
+            {pages.loadingMore ? "Loading…" : "Load more"}
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -252,6 +323,7 @@ function SittingRows({
         <span className="w-[140px]">Exam</span>
         <span className="w-[110px]">Date</span>
         <span className="w-[120px]">Status</span>
+        <span data-column="next-step" className="w-[130px]">Next step</span>
       </div>
       {sittings.map((sitting) => {
         const needs = sittingNeedsCircuits(sitting);
@@ -286,6 +358,14 @@ function SittingRows({
                   ? "Needs circuits"
                   : (statusWords[sitting.status] ?? sitting.status)}
               </span>
+            </span>
+            <span data-column="next-step" className="w-[130px] font-medium">
+              {sittingNextStep(
+                sitting,
+                resultRows.find((row) => row.sitting_id === sitting.id),
+                allowed,
+                words,
+              )}
             </span>
           </Link>
         );

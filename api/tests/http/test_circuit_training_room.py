@@ -796,7 +796,7 @@ async def test_the_org_wide_peer_marks_are_the_running_staffs_alone(
     assert outsider.status_code in (403, 404)
 
 
-async def test_training_tokens_are_short_lived_and_exam_tokens_are_not(
+async def test_training_tokens_last_five_minutes_and_exam_tokens_fifteen(
     client: AsyncClient, make_actor, db_session: AsyncSession, voice_tokens: FakeVoiceTokens
 ) -> None:  # type: ignore[no-untyped-def]
     training = await a_room(client, make_actor, db_session)
@@ -806,13 +806,14 @@ async def test_training_tokens_are_short_lived_and_exam_tokens_are_not(
     assert [item["ttl_seconds"] for item in voice_tokens.issued[-2:]] == [300, 300]
 
 
-async def test_exam_tokens_keep_the_full_lifetime(
+async def test_exam_tokens_last_fifteen_minutes_for_the_candidate_and_the_examiner(
     client: AsyncClient, make_actor, db_session: AsyncSession, voice_tokens: FakeVoiceTokens
 ) -> None:  # type: ignore[no-untyped-def]
     exam = await a_room(client, make_actor, db_session, mode="exam", people=1)
     await join(client, exam, 0)
+    await client.post(f"{exam.base}/observer-token", headers=bearer(exam.admin))
 
-    assert voice_tokens.issued[-1]["ttl_seconds"] == 3600
+    assert [item["ttl_seconds"] for item in voice_tokens.issued[-2:]] == [900, 900]
 
 
 async def test_a_mic_or_close_call_to_livekit_runs_after_commit(

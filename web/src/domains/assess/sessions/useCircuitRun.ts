@@ -10,7 +10,7 @@ import {
   type CircuitConsole,
   type ConsoleSlot,
 } from "@/domains/assess/sessions/api";
-import { orderedSlots, pickFrame } from "@/domains/assess/sessions/support";
+import { LISTEN_DROPPED, listenFailureCopy, orderedSlots, pickFrame } from "@/domains/assess/sessions/support";
 
 export interface CircuitRun {
   /** The frame the screen draws: the stream's if it is up, the fetch's until then. */
@@ -87,7 +87,7 @@ export function useCircuitRun(orgSlug: string, circuitId: string): CircuitRun {
         // before the action must not be drawn over the answer: fetch it and keep it.
         setFetched({ frame: await readConsole(orgSlug, circuitId), over: streamed });
       } catch (cause) {
-        setFailure(errorMessage(cause instanceof Error ? cause : new Error(String(cause))));
+        setFailure(errorMessage(cause));
       } finally {
         setBusy(null);
       }
@@ -115,6 +115,8 @@ export interface ObserverRoom {
   failure: string | null;
   join: () => Promise<void>;
   leave: () => void;
+  /** The connection dropped without being asked to: say so, and do not rejoin by itself. */
+  dropped: () => void;
 }
 
 /**
@@ -137,11 +139,16 @@ export function useObserverRoom(orgSlug: string, circuitId: string): ObserverRoo
     try {
       setGrant(await observerToken(orgSlug, circuitId));
     } catch (cause) {
-      setFailure(errorMessage(cause instanceof Error ? cause : new Error(String(cause))));
+      setFailure(listenFailureCopy(cause));
     } finally {
       setJoining(false);
     }
   }, [orgSlug, circuitId]);
 
-  return { grant, joining, failure, join, leave: useCallback(() => setGrant(null), []) };
+  return { grant, joining, failure, join, leave: useCallback(() => setGrant(null), []),
+    dropped: useCallback(() => {
+      setGrant(null);
+      setFailure(LISTEN_DROPPED);
+    }, []),
+  };
 }

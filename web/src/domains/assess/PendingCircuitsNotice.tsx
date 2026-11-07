@@ -10,6 +10,7 @@ import {
   loadPending,
   savePending,
 } from "@/domains/assess/scheduleCircuits";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * Shown on a sitting the wizard made but could not finish building.
@@ -26,6 +27,7 @@ export function PendingCircuitsNotice({
   sittingId: string;
   onDone: () => void;
 }) {
+  const w = useAssessWords();
   const [pending, setPending] = useState(() => loadPending(sittingId));
   const [busy, setBusy] = useState(false);
   if (!pending) return null;
@@ -38,7 +40,7 @@ export function PendingCircuitsNotice({
       setPending(null);
       onDone();
     } catch (cause) {
-      const next = { ...pending, created: circuitsMade(cause, pending.created), message: assessErrorMessage(cause) };
+      const next = { ...pending, created: circuitsMade(cause, pending.created), message: assessErrorMessage(cause, w) };
       savePending(sittingId, next);
       setPending(next);
     } finally {

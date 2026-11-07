@@ -1,5 +1,5 @@
 import type { Trainee } from "@/domains/assess/api";
-import type { AssessWords } from "@/domains/assess/vocabulary";
+import { aOrAn, INSTITUTION_WORDS, type AssessWords } from "@/domains/assess/vocabulary";
 import type { Cohort } from "@/domains/assess/roster/api";
 import { errorMessage } from "@/foundation/hooks/useAsync";
 import { hasCode } from "@/foundation/platform-client";
@@ -145,14 +145,14 @@ export function addToGroupIds(existing: string[], picked: string[]): string[] {
 }
 
 /** The cohort delete prompt: how many sittings it detaches (they are kept, with no cohort). */
-export function cohortDeleteLead(name: string, sittingCount: number): string {
+export function cohortDeleteLead(name: string, sittingCount: number, words: AssessWords = INSTITUTION_WORDS): string {
   const held =
     sittingCount <= 0
-      ? "No sittings are held for it."
-      : `The ${sittingCount} sitting${sittingCount === 1 ? "" : "s"} held for it ${sittingCount === 1 ? "is" : "are"} kept but no longer belong to any year group.`;
+      ? `No ${words.sittings} are held for it.`
+      : `The ${sittingCount} ${sittingCount === 1 ? words.sitting : words.sittings} held for it ${sittingCount === 1 ? "is" : "are"} kept but no longer belong to any ${words.yearGroup}.`;
   return (
-    `Delete “${name}”? Nobody can be put into it afterwards. This cannot be undone, and a year group ` +
-    `that still has trainees in it is not deleted. ${held}`
+    `Delete “${name}”? Nobody can be put into it afterwards. This cannot be undone, and ${aOrAn(words.yearGroup)} ` +
+    `that still has ${words.trainees} in it is not deleted. ${held}`
   );
 }
 

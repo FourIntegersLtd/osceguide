@@ -24,6 +24,7 @@ import type { SlotReviews } from "@/domains/assess/results";
 import { ReviewFields } from "@/domains/assess/results/ReviewFields";
 import { fieldValuesFor, initialRatings } from "@/domains/assess/results/reviewForm";
 import { boardRailStep } from "@/domains/assess/chrome";
+import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
  * A station, marked three ways.
@@ -55,6 +56,7 @@ export function SlotReview({
   /** The sitting this was opened from, when it was opened from its results. */
   sittingId?: string | null;
 }) {
+  const w = useAssessWords();
   /*
    * My review is read directly (`GET .../reviews/mine`). An earlier version
    * called that route before it existed, answered 405 on every load and
@@ -105,9 +107,9 @@ export function SlotReview({
       </div>
       {state.data?.hidden ? (
         <div className={boardPad}>
-          <h2 className="text-base font-semibold leading-[1.2]">Not your circuit</h2>
+          <h2 className="text-base font-semibold leading-[1.2]">{`Not your ${w.circuit}`}</h2>
           <div role="alert" className={boardAlert("warn")}>
-            You are not named on this station&apos;s circuit, so its marking is hidden from you.
+            {`You are not named on this station's ${w.circuit}, so its marking is hidden from you.`}
           </div>
         </div>
       ) : null}
@@ -145,6 +147,7 @@ function Editor({
   initial: { id: string; field_values: Record<string, unknown>; notes: string | null; status: string } | null;
   onSaved: () => void;
 }) {
+  const w = useAssessWords();
   const { session } = useSession();
   const isAdmin = can(session, "sign_off_results");
   const open = openForm(isAdmin);
@@ -262,7 +265,7 @@ function Editor({
                 <h2 className="text-base font-semibold leading-normal">Your marks</h2>
                 <span className={boardChip(submitted ? "ok" : "neutral")}>{submitted ? "Submitted" : "Draft"}</span>
               </div>
-              {error && <div role="alert" className={boardAlert("bad")}>{assessErrorMessage(error)}</div>}
+              {error && <div role="alert" className={boardAlert("bad")}>{assessErrorMessage(error, w)}</div>}
               {saved && !error && <div role="status" className={boardAlert("ok")}>{saved}</div>}
 
               <ReviewFields

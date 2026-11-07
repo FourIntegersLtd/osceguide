@@ -161,7 +161,7 @@ export function CircuitBuilder({
     }
   }, [name, draft, stations, picked, isExam, bulk, onSubmit]);
 
-  const submitText = bulk ? `Create ${picked.length} circuits` : submitLabel;
+  const submitText = bulk ? `Create ${picked.length} ${w.circuits}` : submitLabel;
   const prefix = name.trim() || "Exam";
 
   return (
@@ -171,7 +171,7 @@ export function CircuitBuilder({
         circuits.
       </p>
       {above}
-      {error && <Alert tone="danger">{assessErrorMessage(error)}</Alert>}
+      {error && <Alert tone="danger">{assessErrorMessage(error, w)}</Alert>}
       {tooManyCandidates && (
         <Alert tone="warning">
           An exam run takes at most {candidateCap} candidates at a time. Deselect {picked.length - candidateCap}.
@@ -187,7 +187,7 @@ export function CircuitBuilder({
             label={bulk ? "Name prefix" : "Name"}
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder={bulk ? "Exam" : "Morning circuit"}
+            placeholder={bulk ? "Exam" : `Morning ${w.circuit}`}
           />
         </div>
       </Panel>
@@ -209,7 +209,7 @@ export function CircuitBuilder({
         title={`Stations (${stations.length})`}
         description={
           isExam
-            ? `At most ${MAX_EXAM_STATIONS} on a formal exam circuit. The picker loads more with Load more.`
+            ? `At most ${MAX_EXAM_STATIONS} on a formal exam ${w.circuit}. The picker loads more with Load more.`
             : "The picker loads more with Load more."
         }
       >
@@ -233,7 +233,7 @@ export function CircuitBuilder({
         </div>
       </Panel>
 
-      <Panel title="Supervisor">
+      <Panel title={w.Supervisor}>
         <div className="flex max-w-lg flex-col gap-4">
           <SupervisorSelect draft={draft} patch={patch} leads={leads} inviteHref={hrefFor("/team")} />
         </div>
