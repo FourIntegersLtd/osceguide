@@ -2173,6 +2173,11 @@
             "title": "Name",
             "type": "string"
           },
+          "open_floor": {
+            "default": false,
+            "title": "Open Floor",
+            "type": "boolean"
+          },
           "paused": {
             "default": false,
             "title": "Paused",
@@ -2234,6 +2239,18 @@
             "default": 1,
             "title": "Revision",
             "type": "integer"
+          },
+          "room_closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Closed At"
           },
           "room_name": {
             "anyOf": [
@@ -2729,6 +2746,11 @@
             "title": "Name",
             "type": "string"
           },
+          "open_floor": {
+            "default": false,
+            "title": "Open Floor",
+            "type": "boolean"
+          },
           "overdue_seconds": {
             "anyOf": [
               {
@@ -2812,6 +2834,18 @@
             "default": 1,
             "title": "Revision",
             "type": "integer"
+          },
+          "room_closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Closed At"
           },
           "room_name": {
             "anyOf": [
@@ -5704,6 +5738,7 @@
               "checkout_failed",
               "circuit_already_ended",
               "circuit_locked",
+              "circuit_not_ended",
               "circuit_not_found",
               "circuit_not_live",
               "circuit_not_paused",
@@ -5819,6 +5854,7 @@
               "not_a_member",
               "not_a_partner_reporter",
               "not_a_stripe_payment",
+              "not_a_training_circuit",
               "not_an_exam_sitting",
               "not_archivable",
               "not_deletable",
@@ -5846,6 +5882,11 @@
               "payment_not_found",
               "payment_not_yet_recorded",
               "payout_account_number_required",
+              "peer_mark_item_unknown",
+              "peer_mark_rating_unknown",
+              "peer_marks_closed",
+              "peer_marks_not_allowed",
+              "peer_marks_own_turn",
               "peer_session_not_found",
               "peer_session_not_open",
               "photo_not_on_station",
@@ -5878,6 +5919,7 @@
               "request_too_large",
               "result_not_found",
               "result_not_released",
+              "review_already_completed",
               "review_conflict",
               "review_incomplete",
               "review_locked",
@@ -5888,6 +5930,7 @@
               "rubric_version_not_found",
               "rubric_version_not_published",
               "saml_connection_not_found",
+              "scheme_not_shown",
               "scim_invalid_filter",
               "scim_invalid_value",
               "scim_mutability",
@@ -6521,6 +6564,19 @@
           "flagged_at"
         ],
         "title": "FlaggedEntryRead",
+        "type": "object"
+      },
+      "FloorChange": {
+        "properties": {
+          "open": {
+            "title": "Open",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "open"
+        ],
+        "title": "FloorChange",
         "type": "object"
       },
       "ForgottenCounts": {
@@ -9133,6 +9189,19 @@
         "title": "MfaVerifyRequest",
         "type": "object"
       },
+      "MicChange": {
+        "properties": {
+          "allowed": {
+            "title": "Allowed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "allowed"
+        ],
+        "title": "MicChange",
+        "type": "object"
+      },
       "MyEntitlements": {
         "description": "A person's grants, with the limits of the free trial they fall back on.\n\n`can_upgrade` tells a screen whether to offer a bigger plan: true when a bigger one is\non sale for the person's current exam, or when they hold no paid access yet to compare\nagainst.",
         "properties": {
@@ -11728,6 +11797,114 @@
           "sort_code"
         ],
         "title": "PayoutDetailsWrite",
+        "type": "object"
+      },
+      "PeerMarkIn": {
+        "description": "One mark or comment on one scheme item (`domainId` or `domainId.competencyId`).",
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "item": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Item",
+            "type": "string"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          }
+        },
+        "required": [
+          "item"
+        ],
+        "title": "PeerMarkIn",
+        "type": "object"
+      },
+      "PeerMarkRead": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "item": {
+            "title": "Item",
+            "type": "string"
+          },
+          "marker_id": {
+            "format": "uuid",
+            "title": "Marker Id",
+            "type": "string"
+          },
+          "marker_name": {
+            "title": "Marker Name",
+            "type": "string"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          }
+        },
+        "required": [
+          "marker_id",
+          "marker_name",
+          "item"
+        ],
+        "title": "PeerMarkRead",
+        "type": "object"
+      },
+      "PeerMarksRead": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PeerMarkRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slot_id",
+          "items"
+        ],
+        "title": "PeerMarksRead",
         "type": "object"
       },
       "PeerPracticeSettings": {
@@ -16215,6 +16392,23 @@
         "title": "SaveGpLeadReview",
         "type": "object"
       },
+      "SavePeerMarks": {
+        "properties": {
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/PeerMarkIn"
+            },
+            "maxItems": 200,
+            "title": "Marks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "marks"
+        ],
+        "title": "SavePeerMarks",
+        "type": "object"
+      },
       "SaveSamlConnection": {
         "description": "What an institution's IdP metadata says, and which attributes carry the address and name.\n\nThe attribute defaults are the claim URIs Entra sends. Text is stripped before it is\nchecked, so an `email_attribute` of only spaces is a 422. The optional name attributes\nare not required, so a blank one is stored as empty and read as unset.",
         "properties": {
@@ -16425,6 +16619,27 @@
           }
         },
         "title": "SceneRequest",
+        "type": "object"
+      },
+      "SchemeRead": {
+        "description": "The marking scheme of the station running now, in the author's form, and nothing else.\n\nNo system prompt, pacing or notes: this is what the people watching a training station read.",
+        "properties": {
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          },
+          "structure": {
+            "additionalProperties": true,
+            "title": "Structure",
+            "type": "object"
+          }
+        },
+        "required": [
+          "slot_id",
+          "structure"
+        ],
+        "title": "SchemeRead",
         "type": "object"
       },
       "ScimEmail": {
@@ -19958,6 +20173,11 @@
               }
             ],
             "title": "Observer Trainee Id"
+          },
+          "partial": {
+            "default": false,
+            "title": "Partial",
+            "type": "boolean"
           },
           "status": {
             "default": "draft",
@@ -32165,6 +32385,238 @@
         "x-capability": "signed_in"
       }
     },
+    "/api/v1/me/circuits/{circuit_id}/scheme": {
+      "get": {
+        "description": "Training: the scheme for a trainee waiting their turn (never the one with the turn).",
+        "operationId": "sittings_my_circuit_scheme",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scheme_not_shown",
+            "x-codes": [
+              "scheme_not_shown"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "no_active_station, trainee_revoked",
+            "x-codes": [
+              "no_active_station",
+              "trainee_revoked"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Circuit Scheme",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "signed_in"
+      }
+    },
+    "/api/v1/me/circuits/{circuit_id}/slots/{slot_id}/peer-marks": {
+      "put": {
+        "description": "A trainee watching another's turn saves their marks on it; yours only, per item.",
+        "operationId": "sittings_save_peer_marks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavePeerMarks"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerMarksRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "peer_marks_not_allowed, peer_marks_own_turn",
+            "x-codes": [
+              "peer_marks_not_allowed",
+              "peer_marks_own_turn"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found, slot_not_found",
+            "x-codes": [
+              "circuit_not_found",
+              "slot_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "peer_marks_closed, peer_mark_item_unknown, peer_mark_rating_unknown, trainee_revoked",
+            "x-codes": [
+              "peer_marks_closed",
+              "peer_mark_item_unknown",
+              "peer_mark_rating_unknown",
+              "trainee_revoked"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Peer Marks",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "signed_in"
+      }
+    },
     "/api/v1/me/close": {
       "post": {
         "description": "Close this account. Sign-in stops; the consultations stay.",
@@ -35952,6 +36404,83 @@
           }
         ],
         "summary": "Read Slot Brief",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "signed_in"
+      }
+    },
+    "/api/v1/me/slots/{slot_id}/peer-marks": {
+      "get": {
+        "description": "What the trainees who watched my practice turn marked; empty until its feedback is shared.",
+        "operationId": "sittings_read_my_peer_marks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerMarksRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "slot_not_found",
+            "x-codes": [
+              "slot_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read My Peer Marks",
         "tags": [
           "sittings"
         ],
@@ -40848,6 +41377,139 @@
         "x-platform-admin": true
       }
     },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/floor": {
+      "post": {
+        "description": "Training: open the floor (everyone may speak) or close it (the turn and the supervisor only).",
+        "operationId": "sittings_set_floor",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FloorChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_a_training_circuit, circuit_not_live",
+            "x-codes": [
+              "not_a_training_circuit",
+              "circuit_not_live"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Floor",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "org_staff",
+        "x-platform-admin": true
+      }
+    },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/interventions": {
       "get": {
         "description": "Everything a human did to this examination, and why.",
@@ -41180,6 +41842,148 @@
           }
         ],
         "summary": "Observer Token",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "org_staff",
+        "x-platform-admin": true
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/participants/{identity}/mic": {
+      "post": {
+        "description": "Training: switch one person's microphone on or off while they stay in the room.",
+        "operationId": "sittings_set_participant_mic",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "identity",
+            "required": true,
+            "schema": {
+              "title": "Identity",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MicChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_a_training_circuit, circuit_not_live",
+            "x-codes": [
+              "not_a_training_circuit",
+              "circuit_not_live"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Participant Mic",
         "tags": [
           "sittings"
         ],
@@ -42020,6 +42824,347 @@
         "summary": "Finalize Circuit Review",
         "tags": [
           "reviews"
+        ],
+        "x-capability": "org_staff",
+        "x-platform-admin": true
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/room/close": {
+      "post": {
+        "description": "Training: after End, close the room and disconnect everyone.",
+        "operationId": "sittings_close_room",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_a_training_circuit, circuit_not_live, circuit_not_ended",
+            "x-codes": [
+              "not_a_training_circuit",
+              "circuit_not_live",
+              "circuit_not_ended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Close Room",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "org_staff",
+        "x-platform-admin": true
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/scheme": {
+      "get": {
+        "description": "Training: the marking scheme of the station running now, for the supervisor's rail.",
+        "operationId": "sittings_circuit_scheme",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, scheme_not_shown, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "scheme_not_shown",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "no_active_station",
+            "x-codes": [
+              "no_active_station"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Circuit Scheme",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "org_staff",
+        "x-platform-admin": true
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/slots/{slot_id}/peer-marks": {
+      "get": {
+        "description": "Every watching trainee's marks on one turn, live, for the supervisor's panel.",
+        "operationId": "sittings_circuit_peer_marks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slot Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerMarksRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found, slot_not_found",
+            "x-codes": [
+              "circuit_not_found",
+              "slot_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Circuit Peer Marks",
+        "tags": [
+          "sittings"
         ],
         "x-capability": "org_staff",
         "x-platform-admin": true
@@ -52296,11 +53441,12 @@
                 }
               }
             },
-            "description": "review_incomplete, nothing_to_review, review_locked",
+            "description": "review_incomplete, nothing_to_review, review_locked, review_already_completed",
             "x-codes": [
               "review_incomplete",
               "nothing_to_review",
-              "review_locked"
+              "review_locked",
+              "review_already_completed"
             ]
           },
           "422": {

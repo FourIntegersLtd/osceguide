@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -68,6 +69,9 @@ class CircuitRead(BaseModel):
     paused: bool = False
     paused_at: datetime | None = None
     auto_advance: bool = True
+    # Training rooms: everyone may speak, and when the supervisor closed the room kept open after End.
+    open_floor: bool = False
+    room_closed_at: datetime | None = None
     # Distinct trainees on this circuit (derived from its slots).
     trainee_count: int = 0
     # The supervisor's display name; filled where a screen lists circuits.
@@ -260,6 +264,24 @@ class RoomGrant(BaseModel):
     can_publish: bool = True
 
 
+class FloorChange(BaseModel):
+    open: bool
+
+
+class MicChange(BaseModel):
+    allowed: bool
+
+
+class SchemeRead(BaseModel):
+    """The marking scheme of the station running now, in the author's form, and nothing else.
+
+    No system prompt, pacing or notes: this is what the people watching a training station read.
+    """
+
+    slot_id: uuid.UUID
+    structure: dict[str, Any]
+
+
 class SlotBriefRead(BaseModel):
     """A candidate's reading brief for one of their slots, during reading time and after."""
 
@@ -269,3 +291,28 @@ class SlotBriefRead(BaseModel):
     sections: list[AudienceSectionRead] = []
     # A station bound to no template carries its brief as one text instead.
     text: str | None = None
+
+
+class PeerMarkIn(BaseModel):
+    """One mark or comment on one scheme item (`domainId` or `domainId.competencyId`)."""
+
+    item: str = Field(min_length=1, max_length=160)
+    rating: str | None = Field(default=None, max_length=16)
+    comment: str | None = Field(default=None, max_length=2000)
+
+
+class SavePeerMarks(BaseModel):
+    marks: list[PeerMarkIn] = Field(max_length=200)
+
+
+class PeerMarkRead(BaseModel):
+    marker_id: uuid.UUID
+    marker_name: str
+    item: str
+    rating: str | None = None
+    comment: str | None = None
+
+
+class PeerMarksRead(BaseModel):
+    slot_id: uuid.UUID
+    items: list[PeerMarkRead]

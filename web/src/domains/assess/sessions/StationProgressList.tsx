@@ -37,6 +37,7 @@ export function StationProgressList({
   data: CircuitConsole;
   agentLive: boolean;
 }) {
+  const ended = data.circuit.ended_at !== null;
   const slots = (data.slots ?? []).slice().sort((a, b) => a.slot_index - b.slot_index);
 
   if (slots.length === 0) {
@@ -45,12 +46,12 @@ export function StationProgressList({
 
   return (
     <div>
-      <div className={boardHeadRow} aria-hidden>
+      <div className={`${boardHeadRow} max-sm:hidden`} aria-hidden>
         <span className="w-8" />
-        <span className="flex-[1_1_140px]">Candidate</span>
-        <span className="flex-[1_1_200px]">Station</span>
-        <span className="w-[130px]">Phase</span>
-        <span className="w-[60px]">Left</span>
+        <span className="flex-[1_1_100px]">Candidate</span>
+        <span className="flex-[1_1_140px]">Station</span>
+        <span className="w-[130px]">{ended ? "Marking" : "Stage"}</span>
+        {ended ? null : <span className="w-[60px]">Time left</span>}
         <span className="w-20" />
       </div>
       {slots.map((slot, index) => (
@@ -61,6 +62,7 @@ export function StationProgressList({
           secondsLeft={slot.id === data.circuit.active_slot_id ? data.circuit.remaining_seconds : null}
           paused={data.circuit.paused}
           agentLive={agentLive && slot.id === data.circuit.active_slot_id}
+          ended={ended}
         />
       ))}
     </div>
@@ -79,12 +81,14 @@ function Row({
   secondsLeft,
   paused,
   agentLive,
+  ended,
 }: {
   slot: ConsoleSlot;
   position: number;
   secondsLeft: number | null | undefined;
   paused: boolean | undefined;
   agentLive: boolean;
+  ended: boolean;
 }) {
   const { hrefFor } = useSurface();
   const progress = slotProgress(slot);
@@ -93,11 +97,11 @@ function Row({
   );
 
   return (
-    <div className={boardRow}>
-      <span aria-hidden className={boardAvatar}>
+    <div className={`${boardRow} max-sm:flex-col max-sm:items-start max-sm:gap-2`}>
+      <span aria-hidden className={`${boardAvatar} max-sm:hidden`}>
         {initials(personLabel(slot))}
       </span>
-      <span className="flex-[1_1_140px]">
+      <span className="font-medium sm:flex-[1_1_100px] sm:font-normal">
         {personLabel(slot)}
         {agentLive ? (
           <span className="mt-0.5 flex items-center gap-1 text-assess-meta text-osce-ink-500">
@@ -106,13 +110,20 @@ function Row({
           </span>
         ) : null}
       </span>
-      <span className="flex-[1_1_200px]">
+      <span className="sm:flex-[1_1_140px]">
         {position} · {stationLabel(slot)}
       </span>
-      <span className="flex w-[130px] flex-wrap gap-1">
-        <span className={boardChip(PROGRESS_CHIP[progress])}>{PROGRESS_LABEL[progress]}</span>
+      <span className="flex flex-wrap gap-1 sm:w-[130px]">
+        {ended ? (
+          <span className={boardChip(slot.marked ? "ok" : markable(slot) ? "warn" : "neutral")}>
+            {slot.marked ? "Marked" : markable(slot) ? "To mark" : "Not taken"}
+          </span>
+        ) : (
+          <span className={boardChip(PROGRESS_CHIP[progress])}>{PROGRESS_LABEL[progress]}</span>
+        )}
       </span>
-      <span data-clock className="w-[60px] font-semibold">
+      {ended ? null : (
+      <span data-clock className="font-semibold sm:w-[60px]">
         {secondsLeft !== null && secondsLeft !== undefined ? (
           <ExamClock
             secondsLeft={secondsLeft}
@@ -123,7 +134,8 @@ function Row({
           />
         ) : null}
       </span>
-      <span className="w-20">
+      )}
+      <span className="sm:w-20">
         {/* Marking opens once the station has actually been sat. Offering it
             before is how a reviewer fills in a marking scheme for a consultation
             nobody had. */}

@@ -532,8 +532,11 @@ export function saveReview(
   slotId: string,
   input: {
     fieldValues: Record<string, unknown>;
-    notes: string | null;
+    /** Left out by a live tick, which must not overwrite notes typed elsewhere. */
+    notes?: string | null;
     status: "draft" | "completed";
+    /** A live tick: merge these ratings into the draft and keep the rest as it is. */
+    partial?: boolean;
   },
 ): Promise<SlotReview> {
   return platformRequest<SlotReview>(
@@ -544,6 +547,7 @@ export function saveReview(
         field_values: input.fieldValues,
         notes: input.notes,
         status: input.status,
+        partial: input.partial,
       },
     },
   );

@@ -7,7 +7,6 @@ import {
   alertCopy,
   observerSubtitle,
   orderedSlots,
-  runnerSteps,
   markable,
   slotProgress,
   summariseCircuit,
@@ -92,59 +91,21 @@ test("an alert code is shown as a sentence, never as the code", () => {
   // The console is already in the room, so it says what to do there.
   assert.equal(
     alertCopy("voice_fault", "console"),
-    "Voice fault in the room. The candidate may not hear the patient.",
+    "Voice problem. The candidate may not hear the patient. Choose Resend the patient. Tell the candidate if it continues.",
   );
   assert.equal(
     alertCopy("attempt_failed", "console"),
-    "This station's attempt failed. Resend the patient or redo the station.",
+    "The consultation stopped working. Choose Resend the patient. If that fails, redo the station.",
   );
-  assert.equal(alertCopy("clock_overdue", "console"), "The clock is overdue. Move the circuit on by hand.");
-  assert.equal(alertCopy("clock_overdue", "console", null, 40), "The clock is overdue by 40 s. Move the circuit on by hand.");
-  assert.equal(alertCopy("clock_overdue", "board", null, 95), "The clock is overdue by 1 min 35 s. Advance it by hand.");
+  assert.equal(alertCopy("clock_overdue", "console"), "Time is up for this part. Choose Next station to move the circuit on.");
+  assert.equal(alertCopy("clock_overdue", "console", null, 40), "Time ran out 40 s ago and the circuit has not moved on. Choose Next station to move the circuit on.");
+  assert.equal(alertCopy("clock_overdue", "board", null, 95), "Time ran out 1 min 35 s ago and the circuit has not moved on. Choose Next station to move it on yourself.");
 });
 
 test("a station the circuit skipped is not a completed one", () => {
   assert.equal(slotProgress(slot({ id: "a", slot_index: 0, status: "skipped" })), "skipped");
   assert.equal(slotProgress(slot({ id: "a", slot_index: 0, status: "completed" })), "completed");
   assert.equal(slotProgress(slot({ id: "a", slot_index: 0, status: "scheduled" })), "waiting");
-});
-
-test("before it starts, the only live step is starting it", () => {
-  const steps = runnerSteps(console_({ slots: [slot({ id: "a", slot_index: 0 })] }));
-  assert.deepEqual(
-    steps.map((step) => step.state),
-    ["active", "idle", "idle", "idle"],
-  );
-});
-
-test("during reading, the consultation step has not happened yet", () => {
-  const data = console_({
-    circuit: { started_at: "2026-09-19T09:00:00Z", active_slot_id: "a", phase: "reading" },
-    slots: [slot({ id: "a", slot_index: 0, status: "reading" })],
-  });
-  const steps = runnerSteps(data);
-  assert.deepEqual(
-    steps.map((step) => step.state),
-    ["done", "active", "active", "idle"],
-  );
-});
-
-test("a dispatched patient is named on the consultation step", () => {
-  const data = console_({
-    circuit: {
-      started_at: "2026-09-19T09:00:00Z",
-      active_slot_id: "a",
-      phase: "simulation",
-      agent_dispatched: true,
-    },
-    slots: [slot({ id: "a", slot_index: 0, status: "in_consultation" })],
-  });
-  const steps = runnerSteps(data);
-  assert.deepEqual(
-    steps.map((step) => step.state),
-    ["done", "active", "done", "active"],
-  );
-  assert.match(steps[3]?.sublabel ?? "", /Patient is live/);
 });
 
 test("the header says which station of how many, and that it is paused", () => {
@@ -173,18 +134,7 @@ test("an ended circuit says how much of it was actually sat", () => {
       slot({ id: "b", slot_index: 1, status: "skipped" }),
     ],
   });
-  assert.equal(observerSubtitle(data), "Person a · Ended · 1 of 2 stations sat");
-});
-
-test("a circuit ended with nothing sat does not claim every station was", () => {
-  const data = console_({
-    circuit: { started_at: "2026-09-19T09:00:00Z", ended_at: "2026-09-19T09:05:00Z" },
-    slots: [
-      slot({ id: "a", slot_index: 0, status: "skipped" }),
-      slot({ id: "b", slot_index: 1, status: "skipped" }),
-    ],
-  });
-  assert.equal(runnerSteps(data)[1]?.sublabel, "0 of 2 stations sat");
+  assert.equal(observerSubtitle(data), "Person a · Ended · 1 of 2 stations done");
 });
 
 test("a station is markable from its consultation, not its reading time", () => {

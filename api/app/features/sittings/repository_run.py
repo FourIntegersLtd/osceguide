@@ -13,7 +13,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.sittings.models import (
@@ -23,6 +24,7 @@ from app.features.sittings.models import (
     CircuitTrainee,
     Sitting,
     Slot,
+    SlotPeerMark,
 )
 
 
@@ -172,6 +174,28 @@ async def stale_circuits(session: AsyncSession, *, quiet_since: datetime) -> lis
     ]
 
 
+async def forgotten_training_rooms(session: AsyncSession, *, ended_before: datetime) -> list[DueCircuit]:
+    """Training circuits that ended long ago and whose room nobody closed.
+
+    A training room stays open after End for the conversation; `stale_circuits` only sees circuits
+    still running, so this is the sweep that closes the ones left behind.
+    """
+    stmt = (
+        select(Circuit.org_id, Circuit.id, Circuit.phase_seq)
+        .join(Sitting, Sitting.id == Circuit.sitting_id)
+        .where(
+            Circuit.ended_at.is_not(None),
+            Circuit.ended_at < ended_before,
+            Circuit.room_closed_at.is_(None),
+            Sitting.mode == "training",
+        )
+    )
+    return [
+        DueCircuit(org_id=org_id, circuit_id=circuit_id, phase_seq=seq)
+        for org_id, circuit_id, seq in (await session.execute(stmt)).all()
+    ]
+
+
 async def circuit_for_rostered_trainee(
     session: AsyncSession, circuit_id: uuid.UUID, trainee_user_id: uuid.UUID
 ) -> Circuit | None:
@@ -311,3 +335,58 @@ async def open_slots_for_user_in_live_circuits(
         .order_by(Slot.circuit_id, Slot.slot_index)
     )
     return [(org, circuit, slot) for org, circuit, slot in (await session.execute(stmt)).all()]
+
+
+async def upsert_peer_marks(
+    session: AsyncSession,
+    *,
+    org_id: uuid.UUID,
+    circuit_id: uuid.UUID,
+    slot_id: uuid.UUID,
+    marker_id: uuid.UUID,
+    marks: Sequence[tuple[str, str | None, str | None]],
+) -> None:
+    """Save each (item, rating, comment); a second save replaces the first, and an empty one removes it."""
+    for item, rating, comment in marks:
+        if rating is None and comment is None:
+            await session.execute(
+                delete(SlotPeerMark).where(
+                    SlotPeerMark.slot_id == slot_id,
+                    SlotPeerMark.marker_id == marker_id,
+                    SlotPeerMark.item == item,
+                )
+            )
+            continue
+        stmt = pg_insert(SlotPeerMark).values(
+            org_id=org_id,
+            circuit_id=circuit_id,
+            slot_id=slot_id,
+            marker_id=marker_id,
+            item=item,
+            rating=rating,
+            comment=comment,
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_slot_peer_marks_item",
+            set_={"rating": rating, "comment": comment, "updated_at": func.now()},
+        )
+        await session.execute(stmt)
+
+
+async def peer_marks_for_slot(
+    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
+) -> Sequence[SlotPeerMark]:
+    """Every peer mark on one slot, by marker then item."""
+    stmt = (
+        select(SlotPeerMark)
+        .where(SlotPeerMark.org_id == org_id, SlotPeerMark.slot_id == slot_id)
+        .order_by(SlotPeerMark.marker_id, SlotPeerMark.item)
+    )
+    return (await session.execute(stmt)).scalars().all()
+
+
+async def delete_peer_marks_for_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> None:
+    """Forget every peer mark on one slot (the station is being done again)."""
+    await session.execute(
+        delete(SlotPeerMark).where(SlotPeerMark.org_id == org_id, SlotPeerMark.slot_id == slot_id)
+    )

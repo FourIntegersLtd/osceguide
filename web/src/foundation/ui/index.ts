@@ -145,3 +145,7 @@ export { SiteButton, SiteButtonLink } from "@/foundation/ui/site/SiteButton";
 export { LogoLink } from "@/foundation/ui/LogoLink";
 export { Eyebrow, IconTile, SectionHead } from "@/foundation/ui/site/SitePrimitives";
 export { PopupMenu } from "@/foundation/ui/PopupMenu";
+export { ActionMenu } from "@/foundation/ui/ActionMenu";
+export type { ActionMenuItem } from "@/foundation/ui/ActionMenu";
+export { LinkedStepper } from "@/foundation/ui/LinkedStepper";
+export type { LinkedStep } from "@/foundation/ui/LinkedStepper";

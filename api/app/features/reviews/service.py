@@ -165,8 +165,12 @@ async def submit_slot_review(
     status: str,
     observer_trainee_id: uuid.UUID | None,
     now: datetime,
+    partial: bool = False,
 ) -> SlotReviewRead:
     """Submit or update one reviewer's own review of a slot.
+
+    A draft never overwrites a completed review (that would un-release it), and a `partial` write (a
+    live tick) changes only the keys it sends and leaves the notes as they are.
 
     `observer_trainee_id` (a peer who watched) must be one of this organisation's roster entries.
     """
@@ -190,6 +194,16 @@ async def submit_slot_review(
         )
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
+
+    existing = await repository.slot_review_for(session, org_id, slot_id, submitted_by)
+    if existing is not None and existing.status == "completed" and normalized == "draft":
+        raise errors.ReviewAlreadyCompletedError()
+    if partial and normalized == "draft":
+        if existing is not None:
+            field_values = {**existing.field_values, **field_values}
+            notes = existing.notes
+        else:
+            notes = None
 
     slot_review = await repository.upsert_slot_review(
         session,

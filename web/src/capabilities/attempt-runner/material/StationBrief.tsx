@@ -14,9 +14,11 @@ import { AudienceSections, sectionsFor } from "./AudienceSections";
 export function StationBrief({
   brief,
   embedded = false,
+  fold = false,
 }: {
   brief: Pick<AttemptBrief, "sections">;
   embedded?: boolean;
+  fold?: boolean;
 }) {
   const sections = sectionsFor(brief.sections, "candidate");
   // The legacy screens headed the panel with the section's own name — SCA's
@@ -27,6 +29,7 @@ export function StationBrief({
       <AudienceSections
         sections={sections}
         variant="brief"
+        fold={fold}
         emptyMessage="There is no written brief for this station."
       />
     </DoctorInfoShell>

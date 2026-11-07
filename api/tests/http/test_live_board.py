@@ -21,9 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Membership
 from app.core.ports import get_clock
 from app.features.voice.service import get_room_agents
-from tests.http.test_sittings_routes import a_template_version
 from tests.support.fakes import FakeClock, FakeRoomAgents
-from tests.support.sittings import a_trainee, org_with_admin, published_station
+from tests.support.sittings import started_circuit
 from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db
@@ -42,36 +41,17 @@ def clock(client: AsyncClient) -> FakeClock:
 
 
 async def a_running_morning(
-    client: AsyncClient,
-    make_actor,
-    db_session: AsyncSession,
-    *,
-    stations: int = 2,  # type: ignore[no-untyped-def]
-) -> tuple[str, str, uuid.UUID]:
-    org_id, admin = await org_with_admin(client, make_actor)
-    template = await a_template_version(client, admin)
-    sitting = (
-        await client.post(
-            "/api/v1/orgs/kings/sittings",
-            json={"name": "Finals", "programme_id": str(template), "mode": "exam"},
-            headers=bearer(admin),
-        )
-    ).json()
-    versions = [await published_station(client, admin, "kings", f"Station {i}") for i in range(stations)]
-    trainee_id = await a_trainee(db_session, f"p-{uuid.uuid4().hex[:8]}@example.com")
-    circuit = (
-        await client.post(
-            f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
-            json={
-                "name": "Circuit A",
-                "trainee_ids": [str(trainee_id)],
-                "station_version_ids": versions,
-            },
-            headers=bearer(admin),
-        )
-    ).json()
-    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
-    return admin, circuit["id"], trainee_id
+    client: AsyncClient, make_actor, db_session: AsyncSession, *, stations: int = 2
+) -> tuple[str, str, uuid.UUID]:  # type: ignore[no-untyped-def]
+    run = await started_circuit(
+        client,
+        make_actor,
+        db_session,
+        stations=stations,
+        sitting_name="Finals",
+        circuit_name="Circuit A",
+    )
+    return run.admin, run.circuit_id, run.trainees[0]
 
 
 async def test_the_board_lists_every_running_circuit_with_its_clock(

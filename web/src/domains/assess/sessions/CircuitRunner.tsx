@@ -6,23 +6,27 @@ import { useState } from "react";
 import { useAsync } from "@/foundation/hooks";
 import { Alert, AsyncBoundary, ButtonLink } from "@/foundation/ui";
 import { assessDesc, assessEyebrow, assessMeta, assessTitle } from "@/foundation/ui/b2bTokens";
-import { boardCard, boardPad, boardRow, boardChip } from "@/foundation/ui/boardKit";
+import { boardCard, boardRow, boardChip } from "@/foundation/ui/boardKit";
 import { useSurface } from "@/capabilities";
-import { ExamClock } from "@/capabilities/attempt-runner";
 import { readCircuitReview, type CircuitConsole } from "@/domains/assess/sessions/api";
 import { AddTraineesDialog } from "@/domains/assess/sessions/AddTraineesDialog";
-import { CircuitReviewStep } from "@/domains/assess/sessions/CircuitReviewStep";
+import { CircuitHero } from "@/domains/assess/sessions/CircuitHero";
+import { CircuitRecordNote } from "@/domains/assess/sessions/CircuitRecordNote";
+import { Rail } from "@/domains/assess/sessions/RailSection";
 import { CircuitFeedbackCard } from "@/domains/assess/sessions/CircuitFeedbackCard";
 import { InterventionsLog } from "@/domains/assess/sessions/InterventionsLog";
 import { LiveMarkingSidebar } from "@/domains/assess/sessions/LiveMarkingSidebar";
 import { ObserverPanel } from "@/domains/assess/sessions/ObserverPanel";
+import { closeRoom } from "@/domains/assess/room/api";
+import { SupervisorRoom } from "@/domains/assess/room/SupervisorRoom";
+import { SplitCard } from "@/domains/assess/room/SplitCard";
+import { SidePanel } from "@/domains/assess/room/SidePanel";
+import { LiveMarkPanel } from "@/domains/assess/sessions/LiveMarkPanel";
 import { RunnerHelpPanel } from "@/domains/assess/sessions/RunnerHelpPanel";
-import { RunnerStepper } from "@/domains/assess/sessions/RunnerStepper";
 import { StationProgressList } from "@/domains/assess/sessions/StationProgressList";
-import { SupervisorControls } from "@/domains/assess/sessions/SupervisorControls";
 import { SupervisorReadingBrief } from "@/domains/assess/sessions/SupervisorReadingBrief";
 import { TurnStrip } from "@/domains/assess/sessions/TurnStrip";
-import { alertCopy, examStationNumber, observerSubtitle, orderedSlots, slotProgress, phaseLabel, runnerSteps } from "@/domains/assess/sessions/support";
+import { alertCopy, examStationNumber, observerSubtitle, orderedSlots, slotProgress } from "@/domains/assess/sessions/support";
 import { useCircuitRun, useObserverRoom } from "@/domains/assess/sessions/useCircuitRun";
 import { cardTitle } from "@/domains/assess/chrome";
 
@@ -52,7 +56,7 @@ export function CircuitRunner({
   const run = useCircuitRun(orgSlug, circuitId);
 
   return (
-    <section aria-label="Circuit console" className="flex w-full min-w-0 max-w-[1080px] flex-col gap-6">
+    <section aria-label="Circuit console" className="flex w-full min-w-0 flex-col gap-6">
       <AsyncBoundary state={run.initial}>
         {() =>
           run.data ? (
@@ -85,6 +89,11 @@ function Runner({
   const review = useAsync((signal) => readCircuitReview(orgSlug, circuitId, signal), [orgSlug, circuitId]);
   const circuit = data.circuit;
   const isExam = data.sitting.mode === "exam";
+  /** A practice room that is open: one card with the tiles and the marking beside them. */
+  const roomLive = !isExam && circuit.started_at !== null && circuit.ended_at === null && !circuit.room_closed_at;
+  /** Ended, and the supervisor has not closed the room yet: the room stands alone in its own card. */
+  const roomKept = !isExam && circuit.started_at !== null && circuit.ended_at !== null && !circuit.room_closed_at;
+  const room = <SupervisorRoom data={data} orgSlug={orgSlug} circuitId={circuitId} observer={observer} onClose={() => run.run("close-room", () => closeRoom(orgSlug, circuitId))} />;
   const onSlot = orderedSlots(data).find((slot) => ["reading", "in_consultation"].includes(slotProgress(slot)));
   const station = examStationNumber(data.sitting.mode, onSlot?.slot_index);
   const live = circuit.started_at !== null && circuit.ended_at === null;
@@ -139,9 +148,39 @@ function Runner({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-start gap-5">
+      <CircuitHero
+        data={data}
+        orgSlug={orgSlug}
+        circuitId={circuitId}
+        busy={run.busy}
+        reconnecting={run.reconnecting}
+        failure={run.failure}
+        run={run.run}
+        onDismissFailure={run.dismissFailure}
+        published={review.data?.state === "published"}
+        training={!isExam}
+      />
+
+      {roomLive ? (
+        <SplitCard
+          sideTitle="Marking"
+          main={room}
+          side={
+            circuit.active_slot_id ? (
+              <LiveMarkPanel orgSlug={orgSlug} circuitId={circuitId} slotId={circuit.active_slot_id} tick={data} />
+            ) : (
+              <SidePanel title="Marking">
+                <p className={`${assessMeta} p-4`}>Marking opens when a trainee is on.</p>
+              </SidePanel>
+            )
+          }
+        />
+      ) : null}
+
+      <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-5">
-          {!isExam ? (
+          {roomKept ? <div className={`${boardCard} p-4 sm:p-5`}>{room}</div> : null}
+          {!isExam && circuit.ended_at === null ? (
             <TurnStrip
               data={data}
               orgSlug={orgSlug}
@@ -154,77 +193,34 @@ function Runner({
             />
           ) : null}
 
-          <div className={boardPad}>
-            <RunnerStepper steps={runnerSteps(data)} />
-            {/* The clock is the server's: ExamClock only interpolates between pushes. */}
-            {circuit.remaining_seconds !== null && circuit.remaining_seconds !== undefined ? (
-              <div className="flex flex-wrap items-center gap-4">
-                <span data-clock>
-                  <ExamClock
-                    secondsLeft={circuit.remaining_seconds}
-                    label={phaseLabel(circuit.phase)}
-                    tick
-                    paused={circuit.paused}
-                    className="!border-0 !bg-transparent !p-0 [&>span:first-child]:hidden [&>span:last-child]:text-[44px] [&>span:last-child]:font-semibold [&>span:last-child]:leading-tight [&>span:last-child]:tracking-tight"
-                  />
-                </span>
-                <p className={assessMeta}>
-                  {phaseLabel(circuit.phase)}
-                  <br />
-                  Server clock
-                </p>
+          {isExam || circuit.ended_at !== null ? (
+            <div id="circuit-review" className={boardCard}>
+              <div className={`${boardRow} border-t-0`}>
+                <h2 className={cardTitle}>Station progress</h2>
               </div>
-            ) : null}
-          </div>
-
-          <div className={boardPad} data-board="controls">
-            <h2 className={cardTitle}>
-              {circuit.ended_at !== null
-                ? "This circuit has ended."
-                : circuit.started_at === null
-                  ? `${circuit.name} · Not started`
-                  : "Controls"}
-            </h2>
-            <SupervisorControls
-              data={data}
-              orgSlug={orgSlug}
-              circuitId={circuitId}
-              busy={run.busy}
-              reconnecting={run.reconnecting}
-              failure={run.failure}
-              run={run.run}
-              onDismissFailure={run.dismissFailure}
-            />
-          </div>
-
-          <div className={boardCard}>
-            <div className={`${boardRow} border-t-0`}>
-              <h2 className={cardTitle}>Station progress</h2>
+              <StationProgressList data={data} agentLive={circuit.agent_dispatched} />
             </div>
-            <StationProgressList data={data} agentLive={circuit.agent_dispatched} />
-          </div>
+          ) : null}
 
           <SupervisorReadingBrief data={data} orgSlug={orgSlug} />
         </div>
 
         <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-5">
-          <ObserverPanel data={data} observer={observer} />
-
-          <LiveMarkingSidebar data={data} orgSlug={orgSlug} />
-
-          {circuit.ended_at !== null ? <CircuitReviewStep data={data} published={review.data?.state === "published"} /> : null}
-
-          <CircuitFeedbackCard
-            data={data}
-            orgSlug={orgSlug}
-            circuitId={circuitId}
-            review={review}
-            busy={run.busy}
-            offline={run.reconnecting}
-            run={run.run}
-          />
-
-          <InterventionsLog orgSlug={orgSlug} circuitId={circuitId} />
+          <Rail>
+            {isExam && circuit.ended_at === null ? <ObserverPanel data={data} observer={observer} /> : null}
+            {isExam && circuit.ended_at === null ? <LiveMarkingSidebar data={data} orgSlug={orgSlug} /> : null}
+            {circuit.ended_at !== null ? <CircuitRecordNote /> : null}
+            <CircuitFeedbackCard
+              data={data}
+              orgSlug={orgSlug}
+              circuitId={circuitId}
+              review={review}
+              busy={run.busy}
+              offline={run.reconnecting}
+              run={run.run}
+            />
+            <InterventionsLog orgSlug={orgSlug} circuitId={circuitId} />
+          </Rail>
         </div>
       </div>
 

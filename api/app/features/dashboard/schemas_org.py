@@ -161,6 +161,9 @@ class ConsoleCircuit(BaseModel):
     started_at: datetime | None
     ended_at: datetime | None
     agent_dispatched: bool
+    # Training rooms: the supervisor's floor switch, and when a kept-open room was closed.
+    open_floor: bool = False
+    room_closed_at: datetime | None = None
     # What a rebuild names as the revision it read (B-15).
     revision: int = 1
     supervisor: ConsolePerson | None

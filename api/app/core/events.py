@@ -22,7 +22,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-from collections.abc import AsyncIterator, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from typing import Any
 
 from redis.asyncio import Redis
@@ -86,6 +86,26 @@ def publish_after_commit(
     because it crosses process boundaries over Redis in production.
     """
     session.info.setdefault(PENDING_KEY, []).append((topic, name, dict(payload or {})))
+
+
+AFTER_COMMIT_KEY = "after_commit_calls"
+
+
+def run_after_commit(session: AsyncSession, call: Callable[[], Awaitable[None]]) -> None:
+    """Queue best-effort work on another system (a LiveKit call) to run once this transaction commits.
+
+    Like `publish_after_commit`: a rolled-back request never runs it, and it never runs under the
+    row lock a request holds. A failure is the call's own to handle; it cannot fail the request.
+    """
+    session.info.setdefault(AFTER_COMMIT_KEY, []).append(call)
+
+
+async def flush_after_commit_calls(session: AsyncSession) -> None:
+    """Run what `run_after_commit` queued. Called by `core.db` only; a rollback never calls it."""
+    calls: list[Callable[[], Awaitable[None]]] = session.info.pop(AFTER_COMMIT_KEY, [])
+    for call in calls:
+        with contextlib.suppress(Exception):
+            await call()
 
 
 async def flush_pending(session: AsyncSession, bus: EventBus | None = None) -> None:

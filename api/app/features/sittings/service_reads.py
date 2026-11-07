@@ -64,6 +64,8 @@ def _circuit_ref(circuit: Circuit) -> CircuitRef:
         room_name=circuit.room_name,
         agent_dispatched_at=circuit.agent_dispatched_at,
         revision=circuit.revision,
+        room_closed_at=circuit.room_closed_at,
+        open_floor=circuit.open_floor,
         started_at=circuit.started_at,
         ended_at=circuit.ended_at,
         phase=circuit.phase,

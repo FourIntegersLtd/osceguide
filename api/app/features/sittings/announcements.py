@@ -34,6 +34,10 @@ PATIENT_RESENT = "circuit.patient_resent"
 STATION_REDONE = "circuit.station_redone"
 JUMPED = "circuit.jumped"
 AUTO_ADVANCE_CHANGED = "circuit.auto_advance_changed"
+FLOOR_CHANGED = "circuit.floor_changed"
+ROOM_CLOSED = "circuit.room_closed"
+# A watching trainee saved marks: only the console listens, so the supervisor sees them as they arrive.
+PEER_MARKS_CHANGED = "circuit.peer_marks_changed"
 TRAINEES_APPENDED = "circuit.trainees_appended"
 REBUILT = "circuit.rebuilt"
 # A candidate's attempt moved on (running, interaction complete, marked, failed): the clock did

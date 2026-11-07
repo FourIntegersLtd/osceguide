@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { Alert, AsyncBoundary, Button, ButtonLink } from "@/foundation/ui";
 import { assessMeta } from "@/foundation/ui/b2bTokens";
-import { boardPad, boardInput } from "@/foundation/ui/boardKit";
+import { boardInput } from "@/foundation/ui/boardKit";
 import type { AsyncState } from "@/foundation/hooks";
 import {
   finalizeCircuitReview,
   type CircuitReviewState,
 } from "@/domains/assess/sessions/api";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
-import { cardTitle } from "@/domains/assess/chrome";
+import { RailSection } from "@/domains/assess/sessions/RailSection";
 
 /**
  * Publishing what was marked, once the circuit is done.
@@ -101,49 +101,51 @@ function FeedbackForm({
   const compact = !ended;
 
   return (
-    <div className={boardPad} data-board="feedback">
-      <h2 className={cardTitle}>Share this circuit&apos;s feedback</h2>
+    <RailSection id="feedback" title="Send feedback to candidates" hint={`${marked} of ${total} ${total === 1 ? "station" : "stations"} marked`} data-board="feedback">
       <p className="m-0 text-assess-label leading-normal text-osce-ink-500">
         {compact
-          ? `Marked on ${marked} of ${total} station${total === 1 ? "" : "s"}. ${publishedAt ? "Published." : "Not published yet."} You can publish once at least one station is marked; this is the step that finalises the circuit's feedback.`
-          : "Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one."}
+          ? marked === 0
+            ? "Mark at least one station first. Then you can send each candidate their feedback."
+            : publishedAt
+              ? "Feedback has been sent."
+              : "Send each candidate their feedback once the stations are marked."
+          : "Each candidate sees one summary of their marks. Sending again replaces the last one."}
       </p>
 
       {compact ? (
         <ButtonLink href="#circuit-review" themeType="b2b" variant="secondary" className="self-start">
-          Go to circuit feedback
+          Send feedback
         </ButtonLink>
       ) : (
         <>
           <p className={assessMeta}>
-            Marked on {marked} of {total} station{total === 1 ? "" : "s"}
+            {marked} of {total} {total === 1 ? "station" : "stations"} marked
           </p>
 
           <label htmlFor="circuit-feedback-notes" className="sr-only">
-            Notes on the circuit as a whole
+            Note for candidates
           </label>
           <textarea
             id="circuit-feedback-notes"
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             rows={4}
-            placeholder="Anything to say about the circuit as a whole (optional)"
+            placeholder="Add a note for everyone (optional)"
             className={`${boardInput} min-h-24 py-2.5`}
           />
 
           {publishedAt ? (
             <Alert tone="success">
-              Published {new Date(publishedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.
-              Publishing again replaces it.
+              Sent {new Date(publishedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.
+              Sending again replaces it.
             </Alert>
           ) : (
-            <Alert tone="info">Not published yet.</Alert>
+            <Alert tone="info">Not sent yet.</Alert>
           )}
 
           {marked === 0 ? (
             <p className={assessMeta}>
-              You can publish once at least one station is marked; this is the step that finalises the
-              circuit&apos;s feedback.
+              Mark at least one station first. Then you can send each candidate their feedback.
             </p>
           ) : null}
 
@@ -155,10 +157,10 @@ function FeedbackForm({
             disabled={busy !== null || offline || marked === 0}
             onClick={() => publish(notes.trim() || null)}
           >
-            {publishedAt ? "Publish again" : "Publish circuit feedback"}
+            {publishedAt ? "Send again" : "Send feedback"}
           </Button>
         </>
       )}
-    </div>
+    </RailSection>
   );
 }

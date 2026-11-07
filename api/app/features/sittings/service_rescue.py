@@ -24,6 +24,7 @@ from app.features.sittings import (
     errors,
     repository,
     repository_run,
+    service_floor,
     service_steps,
 )
 from app.features.sittings.overrides import (
@@ -164,6 +165,7 @@ async def redo_station(
     # The redone station's recording first, so it is filed as a redo rather than an interruption.
     await attempts_service.fail_live_for_slot(session, slot_id=slot_id, now=now, reason="redo")
     await service_steps.clear_patient(session, org_id, circuit, agents=agents, now=now, station_sat=False)
+    await repository_run.delete_peer_marks_for_slot(session, org_id, slot_id)
     await repository.update_slot(
         session,
         org_id,
@@ -194,6 +196,7 @@ async def redo_station(
         now=now,
         slot_id=slot_id,
     )
+    await service_floor.sync_mics(session, org_id, circuit, agents=agents)
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.STATION_REDONE)
     return await read_circuit(session, org_id, circuit_id)
 
@@ -249,6 +252,7 @@ async def jump_to(
     await write_intervention(
         session, org_id, circuit, action=JUMP_TO, actor=actor, before=before, now=now, slot_id=slot_id
     )
+    await service_floor.sync_mics(session, org_id, circuit, agents=agents)
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.JUMPED)
     return await read_circuit(session, org_id, circuit_id)
 

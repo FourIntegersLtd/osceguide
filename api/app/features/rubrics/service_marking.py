@@ -337,3 +337,15 @@ def totals_read(scoring_rubric: ScoringRubric, result: Mapping[str, Any]) -> Res
             for domain_total in totals.domains
         ],
     )
+
+
+async def scheme_structure(session: AsyncSession, version_id: uuid.UUID) -> dict[str, Any]:
+    """A version's marking scheme in the author's form, for a screen that only displays it.
+
+    Not org-scoped: the caller has already authorised the circuit whose sitting is bound to this
+    version. Only `structure` leaves, never the marker's system prompt or pacing.
+    """
+    version = await repository.version_by_id_for_scoring(session, version_id)
+    if version is None:
+        raise errors.RubricVersionNotFound()
+    return domain.authoring_form(version.structure)

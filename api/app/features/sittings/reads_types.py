@@ -54,6 +54,10 @@ class CircuitRef:
     paused_seconds: int = 0
     auto_advance: bool = True
     voice_fault_at: datetime | None = None
+    # Set when the supervisor closes a training room that was kept open after End.
+    room_closed_at: datetime | None = None
+    # Whether the supervisor opened the floor to every microphone (training rooms).
+    open_floor: bool = False
     # Raised by each edit; an edit made from an older read is refused (B-15).
     revision: int = 1
 

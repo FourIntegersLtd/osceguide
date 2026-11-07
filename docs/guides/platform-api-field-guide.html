@@ -1119,7 +1119,9 @@ const SCHEMA = [
        ["paused_at", "timestamptz null", "set while the clock is stopped"],
        ["paused_seconds", "int not null default 0", "total time this phase spent paused, so elapsed excludes it"],
        ["auto_advance", "boolean not null default true", "off means a human decides every move"],
-       ["voice_fault_at", "timestamptz null", "when the voice service last refused to bring the patient in (R-16); cleared by the step that succeeds"]],
+       ["voice_fault_at", "timestamptz null", "when the voice service last refused to bring the patient in (R-16); cleared by the step that succeeds"],
+       ["open_floor", "boolean not null default false", "training rooms: every participant may speak (the end-of-session conversation)"],
+       ["room_closed_at", "timestamptz null", "training rooms: when the supervisor closed the room that stayed open after End"]],
       r:[["Why", "The examination clock is here, not on the slot. A break belongs to no slot — it is the circuit resting between stations — and that is the one thing a per-slot clock could not express, which is why breaks were stored and counted down by nobody. A pause has the same shape: stopping the clock must rewrite one deadline, and with the clock on two rows it rewrote two."],
          ["Why", "<em>phase_seq</em> is how a human beats the clock. Every transition is a job scheduled for the moment the phase ends, carrying the sequence it was scheduled against; any override bumps the sequence, so the job it raced arrives holding a number that no longer matches and does nothing. That is the whole concurrency design — no lease, no claim table, one integer."]]},
      {t:"circuit_interventions", b:"Growth: per-org. What a human did to a running examination, and why. Append-only, and no <em>updated_at</em>: an intervention is a fact about a moment, not a row anybody edits. When a candidate says their station went wrong, the question is what was done to it and by whom, and before this the answer was nowhere.", flags:["append-only", "no updated_at"], f:[
@@ -1134,6 +1136,14 @@ const SCHEMA = [
        ["at", "timestamptz not null", ""]]},
      {t:"circuit_run_history", b:"Growth: per-org. One finished run of a circuit, as the exam-day board last saw it: written once by <em>service_steps.finish</em> in the transaction that ends the circuit, never edited. The board is built live from running circuits, so without this a circuit that ended left nothing to look back at. No <em>updated_at</em>. Read by <em>GET /orgs/{org_slug}/live/history</em>.", flags:["no updated_at"], f:[
        ["org_id", "uuid not null → organizations.id CASCADE", "index <em>(org_id, ended_at)</em> — the history's query"],
+     {t:"slot_peer_marks", b:"Growth: per-org. What a trainee watching another trainee's practice turn marked on the station's scheme, one row per circuit, slot, marker and item (<em>domainId</em> or <em>domainId.competencyId</em>). The supervisor's own review stays the official mark; these are shown live to the supervisor and to the consulted trainee once the turn's feedback is shared.", f:[
+       ["org_id", "uuid not null → organizations.id CASCADE", ""],
+       ["circuit_id", "uuid not null → circuits.id CASCADE", "unique with <em>slot_id</em>, <em>marker_id</em>, <em>item</em>"],
+       ["slot_id", "uuid not null → slots.id CASCADE", "indexed with <em>org_id</em>"],
+       ["marker_id", "uuid not null → users.id CASCADE", "the watching trainee"],
+       ["item", "varchar(160) not null", "a domain id, or <em>domain.competency</em>"],
+       ["rating", "varchar(16) null", "a point on the scheme's scale"],
+       ["comment", "text null", ""]]},
        ["circuit_id", "uuid null → circuits.id SET NULL", "SET NULL so a later delete keeps what happened on the day"],
        ["sitting_id", "uuid null → sittings.id SET NULL", ""],
        ["circuit_name", "varchar(200) not null", "copied, as they were when it ended"],
@@ -1724,6 +1734,9 @@ const API = [
    ["GET","/api/v1/me/receipts-full","BEARER","This person's receipts, rendered, newest first, a page at a time, so a screen needs one call and not one per receipt"]
   ]},
   {n:"Performance and achievements", rows:[
+   ["GET","/api/v1/me/slots/{slot_id}/peer-marks","BEARER","What fellow trainees marked on the caller's published turn, named by marker, examiner notes never included"],
+   ["GET","/api/v1/me/circuits/{circuit_id}/scheme","BEARER","The marking scheme of a training circuit, without examiner notes, for the trainee watching"],
+   ["PUT","/api/v1/me/circuits/{circuit_id}/slots/{slot_id}/peer-marks","BEARER","A watching trainee saves their marks for another's turn; refused for the active trainee and for exam circuits"],
    ["GET","/api/v1/me/achievements","BEARER","This person's practice record: stations touched, and the streak it adds up to"],
    ["GET","/api/v1/me/performance","BEARER","How this person is doing at one exam: per domain, overall, over time"]
   ]},
@@ -1933,6 +1946,11 @@ const API = [
    ["PATCH","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/auto-advance","ORG_STAFF","Hand the circuit back to a human, or return it to the clock"]
   ]},
   {n:"Read models and live screens", rows:[
+   ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/floor","ORG_STAFF","Give the floor to one trainee in a training room"],
+   ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/participants/{identity}/mic","ORG_STAFF","Allow or mute one person's microphone"],
+   ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/room/close","ORG_STAFF","Close a training room after it has ended"],
+   ["GET","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/scheme","ORG_STAFF","The marking scheme for the live marking panel"],
+   ["GET","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/slots/{slot_id}/peer-marks","ORG_STAFF","Every watching trainee's marks for one turn, labelled by marker"],
    ["GET","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console","ORG_READER","One request for the screen an examination is run from."],
    ["GET","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console/stream","BEARER","The console, pushed."],
    ["GET","/api/v1/orgs/{org_slug}/dashboard","ORG_READER","The institutional home screen: counts, setup state and recent sittings."],

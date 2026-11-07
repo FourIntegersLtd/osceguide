@@ -11,13 +11,17 @@ of `osce_assessment` and the API starts without it installed.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Annotated, Any, Protocol, runtime_checkable
 
 from fastapi import Depends
+
+# LiveKit names agent participants `agent-*`: the one prefix every sweep and mic rule matches on, so a
+# candidate or supervisor is never treated as the patient.
+AGENT_PREFIX = "agent-"
 
 
 @runtime_checkable
@@ -580,7 +584,9 @@ class VoiceTokens(Protocol):
         dispatch_metadata: dict[str, str] | None,
         room_admin: bool = False,
         can_publish: bool = True,
+        can_publish_sources: list[str] | None = None,
         ttl_seconds: int = 3600,
+        display_name: str | None = None,
     ) -> str:
         """Return a signed join token.
 
@@ -588,6 +594,9 @@ class VoiceTokens(Protocol):
         consultation and cannot be heard in it. Enforced in the token, not by
         hiding a button, because a muted microphone is only a UI state and
         this has to be a guarantee.
+
+        `can_publish_sources` (`camera`, `microphone`) narrows a publisher to those
+        sources: a training room's trainee who does not have the turn gets only the camera.
         """
         ...
 
@@ -605,8 +614,21 @@ class RoomAgents(Protocol):
         """Remove every agent participant. Returns how many were removed."""
         ...
 
-    async def close_room(self, room: str) -> bool:
-        """Close the room for everyone in it once an agent has joined. False if it was not closed."""
+    async def close_room(self, room: str, *, force: bool = False) -> bool:
+        """Close the room for everyone in it once an agent has joined. False if it was not closed.
+
+        `force` closes it whether or not an agent is in it: a supervisor ending a training room.
+        """
+        ...
+
+    async def set_mic_permissions(self, room: str, may_speak: Callable[[str], bool]) -> None:
+        """Give every non-agent participant the microphone permission `may_speak(identity)` says,
+        muting a published microphone that was taken away.
+        Raises `VoiceUnavailable` if LiveKit cannot be reached."""
+        ...
+
+    async def set_mic_permission(self, room: str, identity: str, allowed: bool) -> None:
+        """The same for one participant."""
         ...
 
     async def dispatch(self, *, room: str, agent_name: str, metadata: dict[str, str]) -> None:

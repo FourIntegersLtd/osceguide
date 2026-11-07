@@ -1,19 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Button, ButtonLink } from "@/foundation/ui";
-import { can, useSession } from "@/foundation/session";
+import { ActionMenu, Alert, Button } from "@/foundation/ui";
 import { assessMeta } from "@/foundation/ui/b2bTokens";
 import { overrides, runControls, setAutoAdvance } from "@/domains/assess/sessions/api";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
+import { primaryTurnAction } from "@/domains/assess/sessions/turns";
 import { OverrideDialog, type OverrideRequest } from "@/domains/assess/sessions/OverrideDialog";
 
 /**
  * The controls a supervisor runs an examination from.
  *
- * Two kinds of button, kept visibly apart. Start, next station and end are the
- * examination running; pause, extend, reset and resend are a human stepping in
- * and are asked for a reason, which the backend keeps beside the action.
+ * One inline primary (start, or next station) and Pause/Resume, which must be one tap in a live
+ * exam. Extend, reset, resend and end sit in the "⋯" menu, end last. Pause and the menu's actions
+ * are a human stepping in and are asked for a reason, which the backend keeps beside the action.
  */
 export function SupervisorControls({
   data,
@@ -24,6 +24,7 @@ export function SupervisorControls({
   failure,
   run,
   onDismissFailure,
+  training = false,
 }: {
   data: CircuitConsole;
   orgSlug: string;
@@ -34,9 +35,9 @@ export function SupervisorControls({
   failure: string | null;
   run: (name: string, action: () => Promise<unknown>) => Promise<void>;
   onDismissFailure: () => void;
+  /** A training circuit: the primary brings in the next trainee. */
+  training?: boolean;
 }) {
-  const { session } = useSession();
-  const canMark = can(session, "sign_off_results");
   const [request, setRequest] = useState<OverrideRequest | null>(null);
   // A new dialog must not open on the last action's failure.
   const openRequest = (next: OverrideRequest) => {
@@ -46,29 +47,16 @@ export function SupervisorControls({
   const closeRequest = () => setRequest(null);
   const circuit = data.circuit;
   const started = circuit.started_at !== null;
-  const ended = circuit.ended_at !== null;
+  const turn = primaryTurnAction(data);
   const working = busy !== null || reconnecting;
+  // Shown under a disabled menu item, and read out as its reason.
+  const waitHint = working ? (reconnecting ? "Reconnecting to the circuit" : "Another action is running") : undefined;
 
   async function commit(input: { reason: string | null; seconds: number }) {
     if (!request) return;
     const pending = request;
     await run(pending.name, () => pending.run(input));
     closeRequest();
-  }
-
-  if (ended) {
-    return (
-      <>
-        {canMark ? (
-          <>
-            <p className={assessMeta}>Its stations can still be marked and its record read.</p>
-            <ButtonLink href="#circuit-review" themeType="b2b" variant="secondary" className="self-start">
-              Mark a finished station
-            </ButtonLink>
-          </>
-        ) : null}
-      </>
-    );
   }
 
   return (
@@ -90,7 +78,7 @@ export function SupervisorControls({
 
       {started ? null : (
         <p className={assessMeta}>
-          Starting begins reading time for station 1. Every override asks for a reason, kept with the record.
+          Pausing, adding time or skipping asks for a reason. It is saved with the circuit.
         </p>
       )}
 
@@ -112,9 +100,13 @@ export function SupervisorControls({
               variant="commit"
               isLoading={busy === "advance"}
               disabled={working}
-              onClick={() => run("advance", () => runControls.advance(orgSlug, circuitId))}
+              onClick={() =>
+                training && turn.kind === "end"
+                  ? openRequest(endRequest(orgSlug, circuitId))
+                  : run("advance", () => runControls.advance(orgSlug, circuitId))
+              }
             >
-              Next station
+              {training ? turn.label : "Next station"}
             </Button>
 
             <Button
@@ -128,40 +120,17 @@ export function SupervisorControls({
               {circuit.paused ? "Resume" : "Pause"}
             </Button>
 
-            <Button
-              themeType="b2b"
-              variant="secondary"
-              disabled={working}
-              onClick={() => openRequest(extendRequest(orgSlug, circuitId))}
-            >
-              Extend the clock
-            </Button>
-
-            <Button
-              themeType="b2b"
-              variant="secondary"
-              disabled={working}
-              onClick={() => openRequest(resetRequest(orgSlug, circuitId))}
-            >
-              Reset the clock
-            </Button>
-
-            <Button
-              themeType="b2b"
-              variant="secondary"
-              disabled={working}
-              onClick={() => openRequest(resendRequest(orgSlug, circuitId))}
-            >Resend the
-              patient
-            </Button>
-
-            <Button
-              themeType="b2b"
-              variant="danger"
-              disabled={working}
-              onClick={() => openRequest(endRequest(orgSlug, circuitId))}
-            >End circuit
-            </Button>
+            <ActionMenu
+              label="More circuit controls"
+              items={[
+                { label: "Add time", disabled: working, hint: waitHint, onSelect: () => openRequest(extendRequest(orgSlug, circuitId)) },
+                { label: "Restart the timer", disabled: working, hint: waitHint, onSelect: () => openRequest(resetRequest(orgSlug, circuitId)) },
+                { label: "Resend the patient", disabled: working, hint: waitHint, onSelect: () => openRequest(resendRequest(orgSlug, circuitId)) },
+                ...(training && turn.kind === "end"
+                  ? []
+                  : [{ label: "End circuit", tone: "danger" as const, disabled: working, hint: waitHint, onSelect: () => openRequest(endRequest(orgSlug, circuitId)) }]),
+              ]}
+            />
           </>
         )}
       </div>
@@ -179,7 +148,7 @@ export function SupervisorControls({
             }
             className="mt-0.5 h-[18px] w-[18px]"
           />
-          Moves to the next station automatically when time is up. When off, the circuit waits for you before each new station.
+          Move on by itself when time is up. If off, you press {training ? "the button above to bring in the next trainee" : "Next station"}.
         </label>
       ) : null}
 
@@ -208,7 +177,7 @@ function resumeRequest(slug: string, circuitId: string): OverrideRequest {
   return {
     name: "resume",
     title: "Resume the circuit",
-    lead: "The clock starts again from where it stopped.",
+    lead: "The clock starts again where it stopped.",
     commitLabel: "Resume",
     run: ({ reason }) => overrides.resume(slug, circuitId, reason),
   };
@@ -217,9 +186,9 @@ function resumeRequest(slug: string, circuitId: string): OverrideRequest {
 function extendRequest(slug: string, circuitId: string): OverrideRequest {
   return {
     name: "extend",
-    title: "Extend the clock",
-    lead: "Adds time to the phase that is running now, for this station only.",
-    commitLabel: "Add the time",
+    title: "Add time",
+    lead: "Adds time to the part running now. Later stations are not changed.",
+    commitLabel: "Add time",
     seconds: 60,
     run: ({ reason, seconds }) => overrides.extendClock(slug, circuitId, seconds, reason),
   };
@@ -228,9 +197,9 @@ function extendRequest(slug: string, circuitId: string): OverrideRequest {
 function resetRequest(slug: string, circuitId: string): OverrideRequest {
   return {
     name: "reset",
-    title: "Reset the clock",
-    lead: "Restarts the phase that is running now from its full duration.",
-    commitLabel: "Reset it",
+    title: "Restart the timer",
+    lead: "Restarts the part running now from the beginning.",
+    commitLabel: "Restart",
     run: ({ reason }) => overrides.resetClock(slug, circuitId, reason),
   };
 }
@@ -239,7 +208,7 @@ function resendRequest(slug: string, circuitId: string): OverrideRequest {
   return {
     name: "resend",
     title: "Resend the patient",
-    lead: "Dispatches a new patient to the station that is running. The consultation starts over for this candidate.",
+    lead: "Brings the patient back in. The candidate starts the consultation again.",
     commitLabel: "Resend",
     run: ({ reason }) => overrides.resendPatient(slug, circuitId, reason),
   };
@@ -249,7 +218,7 @@ function endRequest(slug: string, circuitId: string): OverrideRequest {
   return {
     name: "end",
     title: "End the circuit",
-    lead: "Stations nobody has sat are recorded as skipped. This cannot be undone.",
+    lead: "Any station nobody has taken is marked as skipped. You cannot undo this. End it only when everyone has finished.",
     commitLabel: "End the circuit",
     tone: "danger",
     run: ({ reason }) => runControls.end(slug, circuitId, reason),

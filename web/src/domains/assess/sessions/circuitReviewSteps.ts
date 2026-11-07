@@ -1,4 +1,6 @@
 import type { RailStep } from "@/foundation/ui";
+import type { CircuitConsole } from "@/domains/assess/sessions/api";
+import { markable, orderedSlots, stationLabel } from "@/domains/assess/sessions/support";
 
 /** A station of an ended circuit, as the review step lists it. */
 export type ReviewStation = {
@@ -32,20 +34,20 @@ export function circuitReviewSteps(
     },
     {
       id: "share",
-      label: "Share the circuit's feedback",
+      label: "Send feedback",
       state: published ? "done" : "todo",
-      note: published ? "Published" : "Not published yet",
+      note: published ? "Sent" : "Not sent yet",
     },
-    { id: "results", label: "Results", state: "todo", note: "Admin decides and releases" },
+    { id: "results", label: "Results", state: "todo", note: "An admin shares the results" },
   ];
   const line =
     sat.length === 0
-      ? "No one sat this circuit, so there is nothing to mark."
+      ? "No one took part in this circuit, so there is nothing to mark."
       : left > 0
-      ? `Mark the ${left === 1 ? "station" : `${left} stations`} left, then share one summary with the candidate.`
+      ? `Mark ${left === 1 ? "the last station" : `the ${left} stations left`}. Then send feedback.`
       : published
-        ? "Everything is marked and shared. The admin decides and releases the result."
-        : "Every station is marked. Share one summary with the candidate.";
+        ? "Everything is marked and sent. An admin shares the results."
+        : "Every station is marked. Now send feedback.";
   return { steps, line };
 }
 
@@ -53,4 +55,29 @@ export function circuitReviewSteps(
 export function stationsToMark(stations: ReviewStation[]): ReviewStation[] {
   const sat = stations.filter((s) => s.state !== "not_sat");
   return [...sat.filter((s) => s.state === "unmarked"), ...sat.filter((s) => s.state === "marked")];
+}
+
+export type ReviewAction =
+  | { kind: "mark"; label: string; station: ReviewStation }
+  | { kind: "publish"; label: string }
+  | { kind: "results"; label: string };
+
+/** The one thing the ended hero offers: mark what is left, then share, then the results. */
+export function nextReviewAction(stations: ReviewStation[], published: boolean): ReviewAction {
+  const station = stationsToMark(stations).find((s) => s.state === "unmarked");
+  if (station) return { kind: "mark", label: "Mark next station", station };
+  const sat = stations.some((s) => s.state !== "not_sat");
+  if (sat && !published) return { kind: "publish", label: "Send feedback" };
+  return { kind: "results", label: "Open results" };
+}
+
+/** Each slot of the circuit as the review sees it. */
+export function reviewStations(data: CircuitConsole): ReviewStation[] {
+  return orderedSlots(data).map((slot) => ({
+    slotId: slot.id,
+    attemptId: slot.attempt_id ?? null,
+    position: slot.slot_index + 1,
+    title: stationLabel(slot),
+    state: slot.marked ? "marked" : markable(slot) ? "unmarked" : "not_sat",
+  }));
 }

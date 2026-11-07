@@ -227,3 +227,9 @@ async def outcomes_for_slots(
 def review_priority(*, completion_rate: float, assessment_score: float | None) -> str:
     """Which candidates a reviewer should look at first. See `scoring.review_priority`."""
     return scoring.review_priority(completion_rate=completion_rate, assessment_score=assessment_score)
+
+
+async def has_completed_review(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> bool:
+    """Whether a reviewer has completed a review of this slot (for practice: its feedback is shared)."""
+    reviews = await repository.slot_reviews(session, org_id, slot_id)
+    return any(review.status == "completed" for review in reviews)

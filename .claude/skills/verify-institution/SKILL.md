@@ -144,3 +144,9 @@ requests is still broken. Then run `node scripts/smoke.mjs` if you touched an `a
 - Trainee board specs (`board-trainee*.spec.ts`, `board-self-practice.spec.ts`) sign in as Amara and share one cached org from `seed-trainee.ts` (delete `$TMPDIR/board-trainee-org.json` after changing the seed). Hold `**/join-token` or `JoinRoom` replaces the hero. A review "ready" tab needs a `gp_lead_reviews` row for an exam slot; SelfPractice needs published org stations. After a trainee restyle run `build-sitting.spec.ts` and `run-circuit.spec.ts`; ASSESS-2's "Patient Biodata" failure was identical with the trainee files stashed to HEAD (another lane's uncommitted api/`useCountdown` change), so it is not the restyle.
 
 Running several board specs: `$TMPDIR` and `e2e/.auth/world.json` are shared with other agents, so run one spec per call in the background, writing to a unique `$TMPDIR/inst-<spec>.txt` ending in `done exit=N`, and poll that file (foreground calls time out at 120s). Do not pkill playwright: it may be another agent's run.
+
+## Training room in a real browser
+- Use one Playwright context per person (supervisor plus two trainees) so cookies do not collide; trainee password for seeded test accounts is "correct horse battery". Login can 429: retry after a pause.
+- The seed may lack an org or programme; add them with the API before scheduling the practice circuit. Use @example.com accounts only.
+- Screenshot at 1440 and 390 wide, and assert `document.scrollingElement.scrollHeight <= innerHeight` (the page never scrolls).
+- A training room needs LiveKit and the api's `.env` configures it, so `run-circuit.spec.ts` ASSESS-3 (expects no voice) fails locally on an exam circuit; two orgs cannot be made in one pytest test (`root-kings@` collides), so split by test.

@@ -11,7 +11,8 @@ import {
 } from "@/foundation/livekit";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import { joinCircuit, type MySitting } from "@/domains/assess/trainee/api";
-import { joinFailureCopy, phaseLabel } from "@/domains/assess/trainee/support";
+import { isExam, joinFailureCopy, phaseLabel } from "@/domains/assess/trainee/support";
+import { RoomGrid } from "@/domains/assess/room/RoomGrid";
 
 /**
  * A candidate in the room, and the way in.
@@ -85,6 +86,33 @@ export function JoinRoom({
     if (!sitting.can_join) attempted.current = false;
   }, [sitting.can_join]);
 
+  const leave = () => {
+    setLeftCircuit(sitting.circuit_id);
+    setGrant(null);
+    onLeft?.();
+  };
+
+  // A practice circuit is a group video room; the microphone opens only when it is this person's turn.
+  if (grant && !isExam(sitting)) {
+    return (
+      <VoiceRoom
+        grant={grant}
+        audio={false}
+        onError={(cause) => {
+          setGrant(null);
+          setError(joinFailureCopy(cause));
+          attempted.current = false;
+        }}
+        onDisconnected={(unexpected) => {
+          setGrant(null);
+          if (unexpected) attempted.current = false;
+        }}
+      >
+        <RoomGrid controls={{ onLeave: leave }} />
+      </VoiceRoom>
+    );
+  }
+
   if (grant) {
     return (
       <VoiceRoom
@@ -113,11 +141,7 @@ export function JoinRoom({
           <Button
             themeType="b2b"
             variant="danger"
-            onClick={() => {
-              setLeftCircuit(sitting.circuit_id);
-              setGrant(null);
-              onLeft?.();
-            }}
+            onClick={leave}
           >
             <LuLogOut className="h-4 w-4" aria-hidden />
             Leave the room

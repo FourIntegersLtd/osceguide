@@ -7,7 +7,7 @@ test can say "the third email fails" without a mock.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -136,7 +136,9 @@ class FakeVoiceTokens:
         dispatch_metadata: dict[str, str] | None,
         room_admin: bool = False,
         can_publish: bool = True,
+        can_publish_sources: list[str] | None = None,
         ttl_seconds: int = 3600,
+        display_name: str | None = None,
     ) -> str:
         self.issued.append(
             {
@@ -146,7 +148,9 @@ class FakeVoiceTokens:
                 "dispatch_metadata": dispatch_metadata,
                 "room_admin": room_admin,
                 "can_publish": can_publish,
+                "can_publish_sources": can_publish_sources,
                 "ttl_seconds": ttl_seconds,
+                "display_name": display_name,
             }
         )
         return f"fake-token-{len(self.issued)}"
@@ -187,6 +191,17 @@ class FakeRoomAgents:
     fail_dispatch: bool = False
     fail_remove: bool = False
     closed: list[str] = field(default_factory=list)
+    # Who is in the room, and what each mic change decided (identity -> may speak).
+    participants: list[str] = field(default_factory=list)
+    mic_log: list[dict[str, bool]] = field(default_factory=list)
+
+    async def set_mic_permissions(self, room: str, may_speak: Callable[[str], bool]) -> None:
+        self.calls.append(("mics", room))
+        self.mic_log.append({who: may_speak(who) for who in self.participants})
+
+    async def set_mic_permission(self, room: str, identity: str, allowed: bool) -> None:
+        self.calls.append(("mic", room))
+        self.mic_log.append({identity: allowed})
 
     async def remove_agents(self, room: str) -> int:
         self.calls.append(("remove", room))
@@ -197,7 +212,7 @@ class FakeRoomAgents:
         removed, self.agents_in_room = self.agents_in_room, 0
         return removed
 
-    async def close_room(self, room: str) -> bool:
+    async def close_room(self, room: str, *, force: bool = False) -> bool:
         self.calls.append(("close", room))
         self.closed.append(room)
         return True

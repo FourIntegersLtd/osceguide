@@ -47,6 +47,13 @@ class ReviewConflictError(Conflict):
     default_message = "Someone else has changed this review since you opened it"
 
 
+class ReviewAlreadyCompletedError(Conflict):
+    """A draft write over a review that was already completed: it would quietly un-release it."""
+
+    code = "review_already_completed"
+    default_message = "This review is already complete, so a draft cannot overwrite it"
+
+
 class ReviewLockedError(Conflict):
     """The candidate's decision has been signed off or released, so the reviews behind it are fixed."""
 

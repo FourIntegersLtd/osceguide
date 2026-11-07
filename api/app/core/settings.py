@@ -166,6 +166,8 @@ class Settings(BaseSettings):
     livekit_routing_mode: str = "self-hosted"
     livekit_agent_namespace: str = ""
     livekit_token_ttl_seconds: int = 60 * 60
+    # A training token carries the mic right, so a saved one must not outlive a mute or a closed room.
+    livekit_training_token_ttl_seconds: int = 300
     voice_backend_label: str = "platform"
 
     # LiveKit Cloud concurrency is metered and shared across every product, so

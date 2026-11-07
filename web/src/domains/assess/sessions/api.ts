@@ -21,14 +21,14 @@ export function readConsole(
   return platformRequest<CircuitConsole>(`${circuit(slug, circuitId)}/console`, { signal });
 }
 
-/** A station version as the staff running it read it: every audience's sections, empty when untemplated. */
-export function readStaffSections(
+/** A station version as its candidate reads it (the only audience the console shows), empty when untemplated. */
+export function readCandidateSections(
   slug: string,
   versionId: string,
   signal?: AbortSignal,
 ): Promise<StaffSection[]> {
   return platformRequest<StaffSection[]>(
-    `${orgPath(slug)}/station-versions/${encodeURIComponent(versionId)}/sections`,
+    `${orgPath(slug)}/station-versions/${encodeURIComponent(versionId)}/sections?audience=candidate`,
     { signal },
   );
 }

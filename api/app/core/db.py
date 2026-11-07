@@ -169,9 +169,10 @@ async def dispose_engine() -> None:
 async def flush_after_commit(session: AsyncSession) -> None:
     """Send the events and run the cache operations the committed transaction queued."""
     from app.core.cache import flush_cache_ops  # avoids an import cycle
-    from app.core.events import flush_pending  # avoids an import cycle
+    from app.core.events import flush_after_commit_calls, flush_pending  # avoids an import cycle
 
     await flush_pending(session)
+    await flush_after_commit_calls(session)
     await flush_cache_ops(session)
 
 

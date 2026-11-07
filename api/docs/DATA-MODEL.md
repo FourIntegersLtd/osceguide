@@ -49,7 +49,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-81 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
+82 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -1018,6 +1018,8 @@ A scheduled event an organisation holds.
 | `paused_seconds` | `int not null default 0` | total time this phase spent paused, so elapsed excludes it |
 | `auto_advance` | `boolean not null default true` | off means a human decides every move |
 | `voice_fault_at` | `timestamptz null` | when the voice service last refused to bring the patient in (R-16); cleared by the step that succeeds |
+| `open_floor` | `boolean not null default false` | training rooms: every participant may speak (the end-of-session conversation) |
+| `room_closed_at` | `timestamptz null` | training rooms: when the supervisor closed the room that stayed open after End |
 
 **The examination clock is here, not on the slot.** A break belongs to no slot —
 it is the circuit resting between stations — and that is the one thing a per-slot
@@ -1049,6 +1051,24 @@ it and by whom, and before this the answer was nowhere.
 | `reason` | `text null` | free text, because the reasons are the ones nobody predicted |
 | `phase_seq_before` / `phase_seq_after` | `int not null` | places the intervention against the transition it displaced |
 | `at` | `timestamptz not null` | |
+
+### `slot_peer_marks`
+
+**Growth:** per-org.
+What a trainee watching another trainee's practice turn marked on the station's scheme, one row per
+circuit, slot, marker and item (`domainId` or `domainId.competencyId`). The supervisor's own review stays
+the official mark; these are shown live to the supervisor and to the consulted trainee once the turn's
+feedback is shared.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` CASCADE | |
+| `circuit_id` | `uuid not null` → `circuits.id` CASCADE | unique with `slot_id`, `marker_id`, `item` |
+| `slot_id` | `uuid not null` → `slots.id` CASCADE | indexed with `org_id` |
+| `marker_id` | `uuid not null` → `users.id` CASCADE | the watching trainee |
+| `item` | `varchar(160) not null` | a domain id, or `domain.competency` |
+| `rating` | `varchar(16) null` | a point on the scheme's scale |
+| `comment` | `text null` | |
 
 ### `circuit_run_history`
 

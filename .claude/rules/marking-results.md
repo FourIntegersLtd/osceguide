@@ -83,6 +83,11 @@ are `institution-owner`'s; this is how a mark and an outcome are computed.
   alone is not "marked". Reviewers hear an AI mark on their own `attempt` stream because
   `sittings.announcements.attempt_progress` also tells the circuit supervisor and the org admins.
 
+- **Peer marks never feed scoring.** A trainee's marks on someone else's practice turn are shown
+  to the supervisor live and to the consulted trainee after release; the delivery gate is
+  `has_completed_review` (training only), never a peer mark. A live tick is a `partial` draft that
+  merges ratings and keeps notes, and is refused over a completed review (`review_already_completed`).
+
 ## What a failure looks like here
 - A wrong score with no error: a rule never called, a v1 rubric read as v2, a field silently dropped.
 - A result changed in place instead of appended, or shown before it was released.

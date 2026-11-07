@@ -81,6 +81,9 @@ class SubmitSlotReview(BaseModel):
     notes: str | None = None
     status: str = Field(default="draft")
     observer_trainee_id: uuid.UUID | None = None
+    # A live tick: only the keys in `field_values` change and the notes are left alone, so a tick
+    # cannot undo what was typed on the marking page. Draft only.
+    partial: bool = False
 
 
 class GpLeadReviewRead(BaseModel):

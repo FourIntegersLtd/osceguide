@@ -3,13 +3,13 @@
 import { useMemo, useState } from "react";
 import { ButtonLink } from "@/foundation/ui";
 import { assessMeta } from "@/foundation/ui/b2bTokens";
-import { boardPad, boardTab, boardTabs, boardChip } from "@/foundation/ui/boardKit";
+import { boardTab, boardTabs, boardChip } from "@/foundation/ui/boardKit";
 import { useSurface } from "@/capabilities";
 import { reviewPath } from "@/domains/assess/results/candidateNeighbours";
 import { SlotReview } from "@/domains/assess/SlotReview";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import { orderedSlots, stationLabel } from "@/domains/assess/sessions/support";
-import { cardTitle } from "@/domains/assess/chrome";
+import { RailSection } from "@/domains/assess/sessions/RailSection";
 
 /**
  * Marking, without leaving the room.
@@ -40,8 +40,7 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
   const active = finished.find((slot) => slot.id === activeId) ?? first;
 
   return (
-    <div className={boardPad}>
-      <h2 className={cardTitle}>Mark a finished station</h2>
+    <RailSection id="mark" title="Mark a finished station" hint={`${finished.filter((slot) => !slot.marked).length} to mark`}>
       <div className={boardTabs} role="tablist" aria-label="Finished stations">
         {finished.map((slot) => (
           <button
@@ -53,12 +52,12 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
             className={boardTab(slot.id === active.id)}
           >
             {stationLabel(slot)}
-            {slot.marked ? null : <span className={`${boardChip("warn")} ml-2`}>Unmarked</span>}
+            {slot.marked ? null : <span className={`${boardChip("warn")} ml-2`}>To mark</span>}
           </button>
         ))}
       </div>
       <p className={assessMeta}>
-        The full marking form for this station opens here, the same as Slot review.
+        The marking form for this station opens here.
       </p>
       <ButtonLink
         href={hrefFor(reviewPath(active.id, active.attempt_id, data.sitting.id))}
@@ -74,6 +73,6 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
           <SlotReview orgSlug={orgSlug} slotId={active.id} attemptId={active.attempt_id ?? null} />
         </div>
       </details>
-    </div>
+    </RailSection>
   );
 }

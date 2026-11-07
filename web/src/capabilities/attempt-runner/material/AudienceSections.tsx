@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LuChevronDown } from "react-icons/lu";
 import { Dropdown } from "@/foundation/table";
 import { MarkdownRenderer, Modal } from "@/foundation/ui";
 import { B2CSegmentedTabs } from "@/foundation/ui/B2CSegmentedTabs";
@@ -38,15 +39,18 @@ export function AudienceSections({
   sections,
   variant = "open",
   emptyMessage,
+  fold = false,
 }: {
   sections: AudienceSection[];
   variant?: SectionsVariant;
   emptyMessage?: string;
+  /** Brief only: every section a disclosure row, the first open (a narrow side panel). */
+  fold?: boolean;
 }) {
   if (sections.length === 0) {
     return emptyMessage ? <p className="text-osce-body text-b2c-text-muted">{emptyMessage}</p> : null;
   }
-  if (variant === "brief") return <BriefSections sections={sections} />;
+  if (variant === "brief") return <BriefSections sections={sections} fold={fold} />;
   if (variant === "tabs" && sections.length > 1) return <SectionTabs sections={sections} />;
 
   return (
@@ -71,7 +75,24 @@ export function AudienceSections({
  * flattened, each block a `DoctorInfoSection` with the icon, badge tone and
  * heading its block id had there, in the legacy reading order.
  */
-function BriefSections({ sections }: { sections: AudienceSection[] }) {
+function BriefSections({ sections, fold }: { sections: AudienceSection[]; fold: boolean }) {
+  if (fold) {
+    return (
+      <div className="-mx-4 -my-4 sm:-mx-5 sm:-my-5">
+        {briefBlockEntries(sections).map(({ block, title }, index) => (
+          <details key={block.id} open={index === 0} className="group border-b border-osce-ink-100 last:border-b-0">
+            <summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-2 px-4 text-assess-desc font-medium text-osce-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-osce-accent [&::-webkit-details-marker]:hidden sm:px-5">
+              <span className="min-w-0 truncate">{title}</span>
+              <LuChevronDown aria-hidden className="h-4 w-4 shrink-0 text-osce-ink-500 transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" />
+            </summary>
+            <div className="px-4 pb-4 sm:px-5">
+              <BlockView block={block} />
+            </div>
+          </details>
+        ))}
+      </div>
+    );
+  }
   return (
     <>
       {briefBlockEntries(sections).map(({ block, title, icon, tone }) => (

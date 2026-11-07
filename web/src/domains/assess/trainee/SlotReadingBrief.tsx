@@ -19,14 +19,14 @@ import {
  * (`GET /me/slots/{id}/brief`); a templated station answers sections, an
  * older one a Markdown text.
  */
-export function SlotReadingBrief({ slot }: { slot: MySlot }) {
+export function SlotReadingBrief({ slot, embedded = false, fold = false }: { slot: MySlot; embedded?: boolean; fold?: boolean }) {
   const state = useAsync((signal) => readSlotBrief(slot.id, signal), [slot.id]);
 
   return (
     <AsyncBoundary state={state}>
       {(brief: SlotBrief) =>
         brief.sections.length > 0 ? (
-          <StationBrief brief={brief} />
+          <StationBrief brief={brief} embedded={embedded} fold={fold} />
         ) : brief.text ? (
           <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
             <h3 className="text-osce-body font-semibold text-b2b-headline mb-3">

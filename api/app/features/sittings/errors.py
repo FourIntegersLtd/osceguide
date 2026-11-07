@@ -7,7 +7,7 @@ here because this slice's routes are where a client actually meets them.
 
 from __future__ import annotations
 
-from app.core.errors import Conflict, NotFound
+from app.core.errors import Conflict, Forbidden, NotFound
 from app.features.attempts.errors import MarkingNotReady
 from app.features.roster.errors import CohortNotFound, TraineeNotOnRosterError, TraineeRevokedError
 
@@ -179,6 +179,62 @@ class NoActiveStation(Conflict):
 
     code = "no_active_station"
     default_message = "No station is in progress"
+
+
+class NotATrainingCircuit(Conflict):
+    """Mic and floor controls, and closing a kept-open room, exist for training circuits only."""
+
+    code = "not_a_training_circuit"
+    default_message = "That only applies to a training circuit."
+
+
+class CircuitNotEnded(Conflict):
+    """The room can be closed once the circuit has ended, not while it runs."""
+
+    code = "circuit_not_ended"
+    default_message = "End the circuit before closing the room."
+
+
+class SchemeNotShown(Forbidden):
+    """A marking scheme is shown during a training station, to people who are not sitting it."""
+
+    code = "scheme_not_shown"
+    default_message = "The marking scheme is not shown for this station."
+
+
+class PeerMarksNotAllowed(Forbidden):
+    """Peer marks exist on a training circuit; an exam has none."""
+
+    code = "peer_marks_not_allowed"
+    default_message = "Marking another trainee is only part of practice circuits."
+
+
+class PeerMarksOwnTurn(Forbidden):
+    """The trainee being consulted does not mark their own turn."""
+
+    code = "peer_marks_own_turn"
+    default_message = "You cannot mark your own turn."
+
+
+class PeerMarksClosed(Conflict):
+    """The turn is not running, and its feedback has already been shared."""
+
+    code = "peer_marks_closed"
+    default_message = "This turn is no longer open for marks."
+
+
+class PeerMarkRatingUnknown(Conflict):
+    """A peer mark's rating is not one of the panel's Met / Partly / Not met."""
+
+    code = "peer_mark_rating_unknown"
+    default_message = "That rating is not one of Met, Partly or Not met."
+
+
+class PeerMarkItemUnknown(Conflict):
+    """A mark names something that is not in the station's marking scheme."""
+
+    code = "peer_mark_item_unknown"
+    default_message = "That item is not in this station's marking scheme."
 
 
 # What "you cannot do that to this circuit" can mean, as one tuple: every

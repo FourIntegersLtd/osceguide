@@ -1,8 +1,10 @@
 "use client";
 
+import { ButtonLink } from "@/foundation/ui/ButtonLink";
+import { useSurface } from "@/capabilities";
 import { JoinRoom } from "@/domains/assess/trainee/JoinRoom";
 import type { MySitting } from "@/domains/assess/trainee/api";
-import { liveBannerCopy } from "@/domains/assess/trainee/support";
+import { liveBannerCopy, liveRooms, liveTitle } from "@/domains/assess/trainee/support";
 import { TraineeHero } from "@/domains/assess/trainee/traineeBoard";
 
 /**
@@ -19,6 +21,7 @@ export function LiveTurnBanner({
   sittings: readonly MySitting[];
 }) {
   if (sittings.length === 0) return null;
+  const { embedded, linked } = liveRooms(sittings);
 
   return (
     <section
@@ -28,27 +31,51 @@ export function LiveTurnBanner({
       className="flex flex-col gap-3"
     >
       <h2 className="sr-only">Live now</h2>
-      {sittings.map((sitting) => (
-        <LiveCard
-          key={`${sitting.id}-${sitting.circuit_id}`}
-          sitting={sitting}
-        />
+      {embedded ? <LiveCard sitting={embedded} embed /> : null}
+      {linked.map((sitting) => (
+        <LiveCard key={`${sitting.id}-${sitting.circuit_id}`} sitting={sitting} />
       ))}
     </section>
   );
 }
 
-function LiveCard({ sitting }: { sitting: MySitting }) {
+/** The circuit name only when it says something the sitting name does not. */
+function whereLine(sitting: MySitting): string {
+  return sitting.circuit_name && sitting.circuit_name !== sitting.name
+    ? `${sitting.name} · ${sitting.circuit_name}`
+    : sitting.name;
+}
+
+function LiveCard({
+  sitting,
+  embed = false,
+}: {
+  sitting: MySitting;
+  embed?: boolean;
+}) {
+  const { hrefFor } = useSurface();
   const copy = liveBannerCopy(sitting);
 
   return (
     <TraineeHero
       live
       eyebrow="Today"
-      title={copy.title}
-      action={<JoinRoom sitting={sitting} />}
+      title={liveTitle(sitting)}
+      action={
+        embed ? (
+          <JoinRoom sitting={sitting} />
+        ) : (
+          <ButtonLink
+            href={hrefFor(`/trainee/sittings/${sitting.id}`)}
+            themeType="b2b"
+            variant="commit"
+          >
+            Open the room
+          </ButtonLink>
+        )
+      }
     >
-      {`${sitting.name} · ${sitting.circuit_name}. ${copy.body}`}
+      {`${whereLine(sitting)}. ${copy.body}`}
     </TraineeHero>
   );
 }

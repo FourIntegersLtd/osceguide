@@ -15,6 +15,7 @@ import { useSurface } from "@/capabilities";
 import { useMicPreflight } from "@/foundation/livekit";
 import { JoinRoom } from "@/domains/assess/trainee/JoinRoom";
 import { SlotReadingBrief } from "@/domains/assess/trainee/SlotReadingBrief";
+import { TrainingRoom } from "@/domains/assess/trainee/TrainingRoom";
 import {
   mySittingsStreamPath,
   readMyResult,
@@ -179,7 +180,9 @@ function Circuit({ sitting }: { sitting: MySitting }) {
 
       {sitting.can_join || over ? null : <MicCheck />}
 
-      {sitting.can_join ? (
+      {sitting.can_join && !exam ? <TrainingRoom sitting={sitting} /> : null}
+
+      {sitting.can_join && exam ? (
         <TraineeHero
           live
           size="md"
@@ -202,12 +205,12 @@ function Circuit({ sitting }: { sitting: MySitting }) {
         </Alert>
       ) : null}
 
-      {briefSlot ? <SlotReadingBrief slot={briefSlot} /> : null}
+      {briefSlot && !(sitting.can_join && !exam) ? <SlotReadingBrief slot={briefSlot} /> : null}
 
       {slots.length === 0 ? (
         <EmptyState
           title="Nothing assigned yet"
-          description="When your organisation adds stations for you on this circuit, they appear here."
+          description="Your stations will appear here once your organiser adds them."
         />
       ) : (
         <TraineeList title={exam ? "Your stations" : "Your turns"}>
@@ -239,7 +242,7 @@ function Slot({ slot, exam }: { slot: MySlot; exam: boolean }) {
       title={`${exam ? "Station" : "Turn"} ${slot.slot_index + 1}${slot.station_title ? ` · ${slot.station_title}` : ""}`}
       meta={
         slot.marking_failed
-          ? "This station could not be marked; your school has been told."
+          ? "This station could not be marked automatically. Your school has been told and will mark it for you."
           : status.done
             ? "Read this one back below. A finished station cannot be re-entered."
             : undefined

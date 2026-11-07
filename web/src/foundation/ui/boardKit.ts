@@ -90,6 +90,10 @@ export function boardBtn(kind: BoardButtonKind = "default", small = false): stri
 }
 /** The board's `.btn.sm`, `.btn.sm.ghost` and `.btn.ghost`, as class strings for links and buttons that take one. */
 export const boardButtonSmall = boardBtn("default", true);
+/** A square icon-only row action (36px, like `.btn.sm`); its name and tooltip come from `RowActions`. */
+export function boardIconBtn(tone: "default" | "danger" = "default"): string {
+  return `${BUTTON} ${BUTTON_KINDS[tone]} h-9 w-9 shrink-0 !p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-osce-accent`;
+}
 
 /** The board's `.input`. */
 export const boardInput =

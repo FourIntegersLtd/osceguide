@@ -86,6 +86,7 @@ async def read_my_review(
         errors.ReviewIncompleteError,
         errors.NothingToReviewError,
         errors.ReviewLockedError,
+        errors.ReviewAlreadyCompletedError,
         errors.NotReviewerError,
         errors.TraineeNotFound,
     ),
@@ -109,6 +110,7 @@ async def submit_my_review(
         status=body.status,
         observer_trainee_id=body.observer_trainee_id,
         now=clock.now(),
+        partial=body.partial,
     )
 
 

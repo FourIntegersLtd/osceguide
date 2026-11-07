@@ -24,6 +24,8 @@ import {
   reviewWaitingCopy,
 } from "@/domains/assess/trainee/api";
 import { useSurface } from "@/capabilities";
+import { byMarker, feedbackLabels, ratingWord } from "@/domains/assess/room/peerMarks";
+import { readMyPeerMarks } from "@/domains/assess/room/api";
 
 /**
  * A candidate's own review of one station, once the GP lead has completed
@@ -136,6 +138,10 @@ export function MyReview({ slotId }: { slotId: string }) {
                   ) : null}
                 </TraineeList>
               ) : null}
+              <PeerFeedback
+                slotId={slotId}
+                labels={(review.summary as { domain_labels?: Record<string, string> }).domain_labels ?? {}}
+              />
             </>
           );
         }}
@@ -152,4 +158,29 @@ function chipTone(variant: string): "ok" | "warn" | "live" | "neutral" {
       : variant === "danger"
         ? "live"
         : "neutral";
+}
+
+/** What the other trainees in the room marked on this turn, shown once the review is out. Absent when there are none. */
+function PeerFeedback({ slotId, labels }: { slotId: string; labels: Record<string, string> }) {
+  const state = useAsync((signal) => readMyPeerMarks(slotId, signal), [slotId]);
+  const marks = state.data ?? null;
+  const items = feedbackLabels(marks, labels);
+  const groups = byMarker(marks, items);
+  if (groups.length === 0) return null;
+  return (
+    <TraineeList title="From the room">
+      {groups.map((group) => (
+        <TraineeRow key={group.markerId} title={group.name}>
+          <ul className="m-0 list-none p-0 text-assess-desc text-osce-ink-700">
+            {group.rows.map((row) => (
+              <li key={row.item}>
+                {row.label}{row.rating ? `: ${ratingWord(row.rating)}` : ""}
+                {row.comment ? ` · ${row.comment}` : ""}
+              </li>
+            ))}
+          </ul>
+        </TraineeRow>
+      ))}
+    </TraineeList>
+  );
 }

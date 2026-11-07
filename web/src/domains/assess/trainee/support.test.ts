@@ -12,6 +12,9 @@ import {
   splitFinished,
   firstName,
   liveSittings,
+  liveBannerCopy,
+  liveRooms,
+  liveTitle,
   orderedSlots,
   phaseLabel,
   practisable,
@@ -208,7 +211,7 @@ test("a cancelled sitting sorts after one still to sit", () => {
 });
 
 test("a join refusal is said in words a candidate can act on", () => {
-  assert.equal(joinFailureCopy(new PlatformError(409, { code: "circuit_not_live", message: "raw" })), "This circuit is not open yet. You will be let in when your supervisor starts it.");
+  assert.equal(joinFailureCopy(new PlatformError(409, { code: "circuit_not_live", message: "raw" })), "This exam is not open yet. You will be let in when your supervisor starts it.");
   assert.equal(joinFailureCopy(new PlatformError(503, { code: "voice_unavailable", message: "raw" })), "The voice service is not available right now. Try again in a minute.");
   assert.equal(joinFailureCopy(new Error("boom")), "Something went wrong. Please try again.");
 });
@@ -225,4 +228,28 @@ test("a candidate is done once the sitting is over or every station of their own
   assert.equal(candidateDone(sitting({ status: "in_progress", slots: [done] })), true);
   assert.equal(candidateDone(sitting({ status: "in_progress", slots: [done, todo] })), false);
   assert.equal(candidateDone(sitting({ status: "in_progress", slots: [] })), false);
+});
+
+test("two live sittings embed exactly one room, the first exam", () => {
+  const a = sitting({ id: "a", mode: "exam", can_join: true });
+  const b = sitting({ id: "b", mode: "exam", can_join: true });
+  const rooms = liveRooms([a, b]);
+  assert.equal(rooms.embedded?.id, "a");
+  assert.deepEqual(rooms.linked.map((each) => each.id), ["b"]);
+});
+
+test("a live practice circuit is a link, never an embedded room", () => {
+  const practice = sitting({ id: "p", mode: "training", can_join: true });
+  const exam = sitting({ id: "e", mode: "exam", can_join: true });
+  assert.equal(liveRooms([practice]).embedded, null);
+  assert.deepEqual(liveRooms([practice]).linked.map((each) => each.id), ["p"]);
+  assert.equal(liveRooms([practice, exam]).embedded?.id, "e");
+});
+
+test("the hero title names the turn only while it is the person's turn", () => {
+  const training = sitting({ mode: "training", slots: [slot({ id: "x", is_active: true })] });
+  assert.equal(liveTitle(training), "Your turn is live");
+  assert.equal(liveTitle(sitting({ mode: "training", slots: [slot({ id: "x" })] })), "Practice circuit is open");
+  assert.equal(liveBannerCopy(sitting({ mode: "exam" })).title, "Your station is open");
+  assert.equal(liveBannerCopy(sitting({ mode: "training" })).body.includes("exam"), false);
 });
