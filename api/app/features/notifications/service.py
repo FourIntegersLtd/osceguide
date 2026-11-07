@@ -199,6 +199,16 @@ async def erase_recipients(session: AsyncSession, emails: list[str]) -> None:
     )
 
 
+RESULT_TEMPLATES = ("candidate_result_released", "candidate_result_revised", "candidate_appeal_declined")
+
+
+async def erase_result_mail(session: AsyncSession, email: str, *, org_slug: str) -> None:
+    """A candidate's data is deleted by one organisation: only that organisation's result mail goes."""
+    await repository.erase_org_result_mail(
+        session, email, org_slug=org_slug, templates=RESULT_TEMPLATES, placeholder=ERASED_RECIPIENT
+    )
+
+
 async def list_undelivered(session: AsyncSession, *, limit: int) -> list[OutboundMessage]:
     """What the worker gave up on, for the console: newest first."""
     return await repository.failed_messages(session, limit=limit)
@@ -325,11 +335,16 @@ def _email_changed_notice(escaped_fields: dict[str, str]) -> str:
     )
 
 
-def _result_released(escaped_fields: dict[str, str]) -> str:
-    """The body telling a candidate their sitting's outcome is ready to read."""
-    link = _app_url(
+def _trainee_result_link(escaped_fields: dict[str, str]) -> str:
+    """Where a candidate reads one sitting's result."""
+    return _app_url(
         f"/app/{escaped_fields.get('org_slug', '')}/trainee/results/{escaped_fields.get('sitting_id', '')}"
     )
+
+
+def _result_released(escaped_fields: dict[str, str]) -> str:
+    """The body telling a candidate their sitting's outcome is ready to read."""
+    link = _trainee_result_link(escaped_fields)
     institution = escaped_fields.get("org_name") or "Your institution"
     return _page(
         "Your result is available",
@@ -340,9 +355,7 @@ def _result_released(escaped_fields: dict[str, str]) -> str:
 
 def _result_revised(escaped_fields: dict[str, str]) -> str:
     """The body telling a candidate their review finished and their result changed or was confirmed."""
-    link = _app_url(
-        f"/app/{escaped_fields.get('org_slug', '')}/trainee/results/{escaped_fields.get('sitting_id', '')}"
-    )
+    link = _trainee_result_link(escaped_fields)
     institution = escaped_fields.get("org_name") or "Your institution"
     return _page(
         "Your result has been reviewed",
@@ -353,9 +366,7 @@ def _result_revised(escaped_fields: dict[str, str]) -> str:
 
 def _appeal_declined(escaped_fields: dict[str, str]) -> str:
     """The body telling a candidate their review request was answered without a change."""
-    link = _app_url(
-        f"/app/{escaped_fields.get('org_slug', '')}/trainee/results/{escaped_fields.get('sitting_id', '')}"
-    )
+    link = _trainee_result_link(escaped_fields)
     institution = escaped_fields.get("org_name") or "Your institution"
     return _page(
         "Your review request",

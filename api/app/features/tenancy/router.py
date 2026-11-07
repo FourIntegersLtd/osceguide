@@ -18,7 +18,7 @@ from app.core.ports import ClockDep
 from app.core.rate_limit import OUTBOUND_EMAIL, OUTBOUND_RESEND, TooManyRequests, per_user
 from app.core.role_policy import policy
 from app.core.settings import SettingsDep
-from app.core.tenancy import OrgAdmin, OrgReader, PlatformAdmin, Workspace, require_org
+from app.core.tenancy import OrgAdmin, OrgInstitutionAdmin, OrgReader, PlatformAdmin, Workspace, require_org
 from app.features.tenancy import (
     errors,
     schemas,
@@ -117,7 +117,7 @@ async def set_staff_mfa_policy(
     responses=error_responses(Forbidden, errors.OrgNotFound),
 )
 async def set_retention_policy(
-    body: schemas.RetentionPolicy, workspace: OrgAdmin, session: Session, clock: ClockDep
+    body: schemas.RetentionPolicy, workspace: OrgInstitutionAdmin, session: Session, clock: ClockDep
 ) -> schemas.OrganizationRead:
     return await service.set_recording_retention(
         session,

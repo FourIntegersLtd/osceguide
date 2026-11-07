@@ -37,7 +37,7 @@ REFUSALS: dict[type[Exception], type[AppError]] = {
 }
 
 
-async def _ensure_recruitment_allowed(
+async def ensure_recruitment_allowed(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, recruitment: domain.Recruitment
 ) -> None:
     """A recruitment outcome belongs to an exam-mode (hire) sitting only."""
@@ -125,7 +125,7 @@ async def save_draft(
     assessment = domain.Assessment(assessment_outcome) if assessment_outcome else None
     recruitment = domain.Recruitment(recruitment_outcome) if recruitment_outcome else None
     if recruitment is not None:
-        await _ensure_recruitment_allowed(session, org_id, sitting_id, recruitment)
+        await ensure_recruitment_allowed(session, org_id, sitting_id, recruitment)
     await ensure_hire_reason(session, org_id, recruitment_outcome, rationale)
     if assessment and recruitment:
         try:

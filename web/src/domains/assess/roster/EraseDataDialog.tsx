@@ -7,7 +7,7 @@ import { errorMessage } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { eraseCandidateData } from "@/domains/assess/roster/api";
 import { displayName } from "@/domains/assess/roster/support";
-import { erasureConfirmed } from "@/domains/assess/results/appealsView";
+import { erasureConfirmed } from "@/domains/assess/roster/support";
 import { boardInput, boardLabel } from "@/foundation/ui/boardKit";
 
 /**

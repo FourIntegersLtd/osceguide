@@ -16,10 +16,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.features.attempts import service_retention
+from app.features.notifications import service as notifications
 from app.features.results import errors, repository, service_appeals
 from app.features.results.schemas import CandidateDataDeleted
 from app.features.roster import service as roster
 from app.features.roster import service_edit
+from app.features.tenancy import service as tenancy
 from app.features.tenancy import service_audit as audit
 
 
@@ -52,6 +54,9 @@ async def erase_candidate_data(
         attempts = await service_retention.erase_for_user_in_org(session, org_id, trainee.user_id, now=now)
     notes = await repository.scrub_text_for_trainees(session, [trainee_id])
     appeals = await service_appeals.scrub_text_for_trainee(session, trainee_id)
+    org = await tenancy.org_ref_by_id(session, org_id)
+    if org is not None:
+        await notifications.erase_result_mail(session, trainee.email, org_slug=org.slug)
     # Last, because it rewrites the address the confirmation was checked against.
     await service_edit.anonymise_trainee(session, org_id, trainee_id, actor=actor, now=now)
     await audit.record_for_owner(

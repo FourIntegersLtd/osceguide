@@ -50,6 +50,7 @@ def upgrade() -> None:
         postgresql_where=sa.text("status IN ('open', 'in_review')"),
     )
     op.create_index("ix_result_appeals_org_status", "result_appeals", ["org_id", "status"])
+    op.execute("ALTER TABLE result_appeals ENABLE ROW LEVEL SECURITY")
 
 
 def downgrade() -> None:

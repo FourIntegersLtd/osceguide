@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import SessionOpener
 from app.features.attempts import repository, repository_transcript
+from app.features.results import service_appeals
 from app.features.tenancy import service as tenancy
 
 RETENTION_BATCH = 200
@@ -47,7 +48,11 @@ async def sweep_retention(open_session: SessionOpener, *, now: datetime) -> int:
         try:
             async with open_session() as session:
                 ids = await repository.attempt_ids_past_retention(
-                    session, org_id, cutoff=now - timedelta(days=days), limit=RETENTION_BATCH
+                    session,
+                    org_id,
+                    cutoff=now - timedelta(days=days),
+                    limit=RETENTION_BATCH,
+                    keep_for_users=await service_appeals.users_with_live_appeal(session, org_id),
                 )
                 await repository_transcript.erase_transcripts_for_attempts(session, ids)
                 await repository.mark_content_erased(session, ids, at=now)

@@ -468,3 +468,8 @@ async def live_member_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list
 async def admin_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
     """Everyone with a live organisation-admin membership, for telling them something changed."""
     return await repository.admin_user_ids(session, org_id)
+
+
+async def institution_admin_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
+    """Those admins who may decide results: the roles `OrgInstitutionAdmin` lets through."""
+    return await repository.admin_user_ids(session, org_id, roles=domain.INSTITUTION_ADMIN_ROLES)

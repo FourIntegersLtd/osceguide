@@ -148,3 +148,13 @@ async def scrub_text_for_trainee(session: AsyncSession, trainee_id: uuid.UUID) -
         .execution_options(synchronize_session=False)
     )
     return int(result.rowcount or 0)  # type: ignore[attr-defined]
+
+
+async def live_trainee_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
+    """Everyone in this organisation with a review still waiting for a decision."""
+    stmt = (
+        select(ResultAppeal.trainee_id)
+        .where(ResultAppeal.org_id == org_id, ResultAppeal.status.in_(LIVE))
+        .distinct()
+    )
+    return list((await session.execute(stmt)).scalars())

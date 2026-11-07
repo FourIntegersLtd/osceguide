@@ -6,7 +6,7 @@ import { Note } from "@/domains/assess/ui";
 import { SettingsCard } from "@/domains/assess/settings/SettingsCard";
 import { errorMessage } from "@/foundation/hooks";
 import { setRecordingRetention, type Organization } from "@/domains/assess/api";
-import { RETENTION_CHOICES, retentionChoiceKey } from "@/domains/assess/results/appealsView";
+import { RETENTION_CHOICES, retentionChoiceKey } from "@/domains/assess/settings/retention";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 import { boardBtn, boardInput, boardLabel } from "@/foundation/ui/boardKit";
 

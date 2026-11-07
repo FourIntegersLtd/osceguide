@@ -245,3 +245,57 @@ async def test_another_organisations_administrator_cannot_see_or_decide_an_appea
     assert crossed.json()["code"] == "appeal_not_found"
     assert (await client.post(appeal_route(sitting), json={"reason": REASON})).status_code == 401
     _ = url
+
+
+async def first_appeal(client: AsyncClient, admin: str, candidate: str, sitting: uuid.UUID) -> str:
+    asked = await client.post(appeal_route(sitting), json={"reason": REASON}, headers=bearer(candidate))
+    assert asked.status_code == 201, asked.text
+    return f"/api/v1/orgs/kings/appeals/{asked.json()['id']}"
+
+
+async def test_a_station_reviewer_of_the_same_candidate_cannot_be_the_second_marker(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.reviews.models import SlotReview
+    from app.features.sittings.models import Slot
+
+    org_id, admin, _second, second_id, candidate, sitting, trainee = await released_result(
+        client, make_actor, db_session
+    )
+    user = await identity_repo.user_by_email(db_session, "appellant@example.com")
+    assert user is not None
+    slot = (
+        (await db_session.execute(select(Slot).where(Slot.org_id == org_id, Slot.trainee_id == user.id)))
+        .scalars()
+        .first()
+    )
+    assert slot is not None
+    db_session.add(SlotReview(slot_id=slot.id, org_id=org_id, submitted_by=second_id, status="completed"))
+    await db_session.flush()
+    base = await first_appeal(client, admin, candidate, sitting)
+
+    refused = await client.post(
+        f"{base}/assign", json={"assignee_user_id": str(second_id)}, headers=bearer(admin)
+    )
+    assert (refused.status_code, refused.json()["code"]) == (422, "second_marker_must_differ")
+
+
+async def test_only_those_who_may_decide_results_can_be_named_second_marker(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin, _second, _second_id, candidate, sitting, _trainee = await released_result(
+        client, make_actor, db_session
+    )
+    await make_actor(
+        "partner@example.com",
+        memberships=(Membership(org_id=org_id, org_slug="kings", role="partner_admin"),),
+        active_org_slug="kings",
+    )
+    partner = await identity_repo.user_by_email(db_session, "partner@example.com")
+    assert partner is not None
+    base = await first_appeal(client, admin, candidate, sitting)
+
+    refused = await client.post(
+        f"{base}/assign", json={"assignee_user_id": str(partner.id)}, headers=bearer(admin)
+    )
+    assert refused.json()["code"] == "assignee_not_admin"

@@ -61,8 +61,32 @@ async def test_deleting_a_candidates_data_keeps_the_marks_and_the_result_history
 
     # After the refused request: a refusal rolls back whatever the test had not yet committed.
     attempt_id = await give_transcript(db_session, org_id, row.user_id)
+    from app.features.notifications.models import OutboundMessage
+
+    sent = OutboundMessage(
+        recipient=email,
+        subject="Result",
+        template_key="candidate_result_released",
+        payload={"org_slug": "kings"},
+        idempotency_key=f"k-{trainee}",
+        status="sent",
+    )
+    elsewhere = OutboundMessage(
+        recipient=email,
+        subject="Other",
+        template_key="candidate_result_released",
+        payload={"org_slug": "another-school"},
+        idempotency_key=f"k2-{trainee}",
+        status="pending",
+    )
+    db_session.add_all([sent, elsewhere])
+    await db_session.flush()
     done = await client.post(route, json={"confirmation": email.upper()}, headers=bearer(admin))
     assert done.status_code == 200, done.text
+    await db_session.refresh(sent)
+    assert sent.recipient != email, "mail already sent stops naming the person"
+    await db_session.refresh(elsewhere)
+    assert elsewhere.recipient == email, "another organisation's mail to them is not ours to touch"
     assert done.json()["attempts_cleared"] == 1
 
     await db_session.refresh(row)

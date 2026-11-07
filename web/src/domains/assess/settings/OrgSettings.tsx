@@ -57,7 +57,7 @@ function OrganisationPanel({ orgSlug, setDirty }: { orgSlug: string; setDirty: (
       {(org) => (
         <>
           <RenameForm key={org.name} org={org} onSaved={state.reload} setDirty={setDirty} />
-          <RetentionCard key={org.recording_retention_days ?? "keep"} org={org} onSaved={state.reload} />
+          <RetentionCard org={org} onSaved={state.reload} />
         </>
       )}
     </AsyncBoundary>

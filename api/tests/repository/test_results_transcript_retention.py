@@ -141,3 +141,39 @@ async def test_an_organisation_sets_its_retention_and_the_change_is_audited(clie
         "/api/v1/orgs/kings/retention", json={"recording_retention_days": None}, headers=bearer(admin)
     )
     assert keep.json()["recording_retention_days"] is None
+
+
+async def test_a_person_with_a_review_under_way_keeps_their_transcript(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.features.results import service_appeals
+
+    now = FakeClock().now()
+    org = await org_keeping(db_session, 30)
+    under_review = await ended_attempt(db_session, org, now - timedelta(days=60))
+    other = await ended_attempt(db_session, org, now - timedelta(days=60))
+    owner = (await db_session.get(Attempt, under_review)).user_id  # type: ignore[union-attr]
+
+    async def waiting(session, org_id):  # type: ignore[no-untyped-def]
+        return {owner}
+
+    monkeypatch.setattr(service_appeals, "users_with_live_appeal", waiting)
+    assert await sweep_retention(opener(db_session), now=now) == 1
+    assert [await turns(db_session, a) for a in (under_review, other)] == [2, 0]
+
+
+async def test_a_partner_administrator_cannot_set_retention(client, make_actor) -> None:  # type: ignore[no-untyped-def]
+    from app.core.auth import Membership
+    from tests.http.test_results_routes import org_with_admin
+    from tests.support.tokens import bearer
+
+    org_id, _admin = await org_with_admin(client, make_actor)
+    partner = await make_actor(
+        "partner-ret@example.com",
+        memberships=(Membership(org_id=org_id, org_slug="kings", role="partner_admin"),),
+        active_org_slug="kings",
+    )
+    refused = await client.patch(
+        "/api/v1/orgs/kings/retention", json={"recording_retention_days": 30}, headers=bearer(partner)
+    )
+    assert refused.status_code == 403

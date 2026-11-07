@@ -3,8 +3,6 @@ import test from "node:test";
 import {
   appealIsLive,
   appealStatusLabel,
-  erasureConfirmed,
-  retentionChoiceKey,
   secondMarkerChoices,
 } from "@/domains/assess/results/appealsView";
 
@@ -24,17 +22,4 @@ test("statuses read in words and only open or in review count as waiting", () =>
   assert.equal(appealStatusLabel("in_review"), "With the second marker");
   assert.equal(appealIsLive({ status: "open" }), true);
   assert.equal(appealIsLive({ status: "declined" }), false);
-});
-
-test("retention maps the stored days onto the three choices, anything else is custom", () => {
-  assert.equal(retentionChoiceKey(90), "90");
-  assert.equal(retentionChoiceKey(null), "null");
-  assert.equal(retentionChoiceKey(undefined), "null");
-  assert.equal(retentionChoiceKey(200), "custom");
-});
-
-test("erasure is confirmed only by the candidate's own address, ignoring case and padding", () => {
-  assert.equal(erasureConfirmed(" Tess@X.org ", "tess@x.org"), true);
-  assert.equal(erasureConfirmed("tess", "tess@x.org"), false);
-  assert.equal(erasureConfirmed("anything", null), false);
 });

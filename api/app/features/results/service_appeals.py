@@ -26,7 +26,9 @@ from app.features.results.schemas import (
     DeclineAppeal,
     ResolveAppeal,
 )
+from app.features.reviews import service_summary as reviews
 from app.features.roster import service as roster
+from app.features.roster.schemas import TraineeRead
 from app.features.sittings import service_reads as sittings
 from app.features.tenancy import service as tenancy
 from app.features.tenancy import service_audit as audit
@@ -43,6 +45,16 @@ async def request_as_candidate(
     return _candidate_read(appeal)
 
 
+async def users_with_live_appeal(session: AsyncSession, org_id: uuid.UUID) -> set[uuid.UUID]:
+    """Accounts whose transcripts the second marker may still need, so retention leaves them alone."""
+    people: set[uuid.UUID] = set()
+    for trainee_id in await repository_appeals.live_trainee_ids(session, org_id):
+        trainee = await roster.read_trainee(session, org_id, trainee_id)
+        if trainee.user_id is not None:
+            people.add(trainee.user_id)
+    return people
+
+
 async def request_for_candidate(
     session: AsyncSession,
     org_id: uuid.UUID,
@@ -53,6 +65,8 @@ async def request_for_candidate(
     actor: Principal,
 ) -> AppealRead:
     """Staff record a request the candidate made to them, on the candidate's behalf."""
+    if (await roster.read_trainee(session, org_id, trainee_id)).anonymised:
+        raise errors.NotReleased()
     latest = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
     if latest is None or latest.workflow_state != "released":
         raise errors.NotReleased()
@@ -87,9 +101,11 @@ async def assign(
     """Name the second marker. Not the person who signed off or released the result under review."""
     appeal = await _live(session, org_id, appeal_id)
     original = await _original_revision(session, appeal)
-    if body.assignee_user_id in _original_marker_ids(original):
+    if body.assignee_user_id in await _original_marker_ids(session, appeal, original):
         raise errors.SecondMarkerMustDiffer()
-    if body.assignee_user_id not in await tenancy.admin_user_ids(session, org_id):
+    # The roles that may resolve, not the wider set of organisation admins: an assignee who is
+    # refused at resolve would leave the appeal waiting for someone to notice.
+    if body.assignee_user_id not in await tenancy.institution_admin_user_ids(session, org_id):
         raise errors.AssigneeNotAdmin()
     await repository_appeals.assign(session, appeal, assignee=body.assignee_user_id, at=now)
     await _audit(session, appeal, actor, "result_appeal.assigned", {"assignee": str(body.assignee_user_id)})
@@ -146,6 +162,10 @@ async def resolve(
     if latest is None or latest.revision != appeal.revision:
         raise errors.AppealStale()
     recruitment = body.recruitment_outcome or latest.recruitment_outcome
+    if recruitment is not None:
+        await service.ensure_recruitment_allowed(
+            session, org_id, appeal.sitting_id, domain.Recruitment(recruitment)
+        )
     try:
         domain.ensure_compatible(
             domain.Assessment(body.assessment_outcome),
@@ -254,11 +274,19 @@ async def _original_revision(session: AsyncSession, appeal: ResultAppeal) -> Can
     )
 
 
-def _original_marker_ids(revision: CandidateResultRevision | None) -> set[uuid.UUID]:
-    """Who signed off and released that revision: none of them may re-mark it."""
+async def _original_marker_ids(
+    session: AsyncSession, appeal: ResultAppeal, revision: CandidateResultRevision | None
+) -> set[uuid.UUID]:
+    """Who marked, signed off or released the result: none of them may re-mark it."""
     if revision is None:
         return set()
-    return {user for user in (revision.signed_off_by, revision.released_by) if user is not None}
+    people = {user for user in (revision.signed_off_by, revision.released_by) if user is not None}
+    trainee = await roster.read_trainee(session, appeal.org_id, appeal.trainee_id)
+    if trainee.user_id is not None:
+        slots = await sittings.slots_for_sitting(session, appeal.org_id, appeal.sitting_id)
+        mine = [slot.id for slot in slots if slot.trainee_id == trainee.user_id]
+        people |= await reviews.reviewer_ids_for_slots(session, appeal.org_id, mine)
+    return people
 
 
 async def _tell_candidate(
@@ -316,9 +344,12 @@ async def _read_many(
         session, [appeal.assigned_to for appeal in appeals if appeal.assigned_to is not None]
     )
     reads: list[AppealRead] = []
+    trainee_cache: dict[uuid.UUID, TraineeRead] = {}
     for appeal in appeals:
         sitting = await sittings.sitting_ref(session, org_id, appeal.sitting_id)
-        trainee = await roster.read_trainee(session, org_id, appeal.trainee_id)
+        if appeal.trainee_id not in trainee_cache:
+            trainee_cache[appeal.trainee_id] = await roster.read_trainee(session, org_id, appeal.trainee_id)
+        trainee = trainee_cache[appeal.trainee_id]
         shown = " ".join(part for part in (trainee.first_name, trainee.last_name) if part) or trainee.email
         original = await _original_revision(session, appeal)
         reads.append(
@@ -335,7 +366,7 @@ async def _read_many(
                 revision=appeal.revision,
                 original_outcome=None if original is None else original.assessment_outcome,
                 outcome_revision=appeal.outcome_revision,
-                original_marker_ids=sorted(_original_marker_ids(original)),
+                original_marker_ids=sorted(await _original_marker_ids(session, appeal, original)),
                 assigned_to=appeal.assigned_to,
                 assigned_to_name=(
                     people[appeal.assigned_to].name
