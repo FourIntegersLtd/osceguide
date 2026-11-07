@@ -68,7 +68,11 @@ async def rename_template(
     """Change a template's name, keeping names unique within the organisation."""
     row = await _require(session, org_id, template_id)
     await _refuse_taken(session, org_id, name, besides=template_id)
-    return _read(await repository_templates.rename(session, row, name))
+    try:
+        renamed = await repository_templates.rename(session, row, name)
+    except IntegrityError as clash:  # a concurrent rename to the same name
+        raise errors.TemplateNameTaken() from clash
+    return _read(renamed)
 
 
 async def remove_template(

@@ -59,7 +59,7 @@ export function TemplatePicker({
 
   return (
     <div className="flex flex-col gap-3 border-b border-osce-border-light pb-6" data-testid="template-picker">
-      <Field label={`Start from a ${w.exam} template`} htmlFor="sitting-template" hint="Fills in the stations, kind, timing and who reviews. Nothing about people or the date.">
+      <Field label={`Start from a saved template`} htmlFor="sitting-template" hint="Fills in the stations, kind, timing and who reviews. Nothing about people or the date.">
         <select
           id="sitting-template"
           className={boardInput}
@@ -183,7 +183,7 @@ export function SaveAsTemplate({
 
   return (
     <div className="flex flex-col gap-3" data-testid="save-template">
-      <Field label={`Save this setup as a ${w.exam} template`} htmlFor="template-name" hint="Keeps the stations, kind, timing and who reviews. Not the people or the date.">
+      <Field label={`Save this setup as a template`} htmlFor="template-name" hint="Keeps the stations, kind, timing and who reviews. Not the people or the date.">
         <div className="flex flex-wrap items-center gap-2.5">
           <input
             id="template-name"

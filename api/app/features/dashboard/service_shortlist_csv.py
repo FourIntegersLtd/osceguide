@@ -30,11 +30,11 @@ def _outcome(decision: DecisionRead) -> str:
 
 
 def _is_decided(decision: DecisionRead | None) -> bool:
-    """Signed off or released with a real outcome: a draft or a withheld one is not shared."""
+    """Signed off or released with a real outcome: not a draft, withheld or inconclusive one."""
     return (
         decision is not None
         and decision.workflow_state in _DECIDED
-        and decision.assessment_outcome not in (None, "withheld")
+        and decision.assessment_outcome not in (None, "withheld", "inconclusive")
     )
 
 

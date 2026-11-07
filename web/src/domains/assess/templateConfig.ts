@@ -3,7 +3,6 @@ import type { ScheduleDraft } from "@/domains/assess/scheduleSitting";
 import type { Programme } from "@/domains/assess/api";
 import { clampBreakMinutes, clampBreaks, clampReadingMinutes } from "@/domains/assess/timing";
 
-
 export type TemplateConfig = components["schemas"]["TemplateConfig"];
 
 /** What a template keeps of a schedule: the setup, never a date, a person or a named assessor. */
@@ -15,7 +14,7 @@ export function toTemplateConfig(draft: ScheduleDraft): TemplateConfig {
     reading_minutes: draft.readingMinutes,
     consultation_minutes: draft.consultationMinutes,
     break_minutes: draft.breakMinutes,
-    breaks: draft.mode === "exam" ? draft.breaks.map((b) => b.after) : [],
+    breaks: draft.mode === "exam" ? draft.breaks.map((b) => ({ after: b.after, minutes: b.minutes })) : [],
     assessor_style: draft.mode === "exam" && draft.perCandidate ? "per_candidate" : "one",
   };
 }
@@ -41,7 +40,13 @@ export function fromTemplateConfig(
     breakMinutes: clampBreakMinutes(config.break_minutes),
     breaks:
       mode === "exam"
-        ? clampBreaks(config.breaks ?? [], stations.length).map((after) => ({ after, minutes: clampBreakMinutes(config.break_minutes) }))
+        ? clampBreaks(
+            (config.breaks ?? []).map((b) => b.after),
+            stations.length,
+          ).map((after) => ({
+            after,
+            minutes: clampBreakMinutes(config.breaks?.find((b) => b.after === after)?.minutes ?? config.break_minutes),
+          }))
         : [],
     perCandidate: mode === "exam" && config.assessor_style === "per_candidate",
     supervisorByCandidate: {},

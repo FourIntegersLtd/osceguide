@@ -67,9 +67,10 @@ def test_ranking_uses_the_rounded_score_shares_ties_and_leaves_unscored_last() -
     ]
 
 
-def test_a_withheld_outcome_is_not_shortlisted() -> None:
+def test_a_withheld_or_inconclusive_outcome_is_not_shortlisted() -> None:
     a = _candidate("a", 70.0)
-    assert ranked_shortlist([a], {a.trainee_id: _decision(outcome="withheld")}) == []  # type: ignore[dict-item]
+    for outcome in ("withheld", "inconclusive"):
+        assert ranked_shortlist([a], {a.trainee_id: _decision(outcome=outcome)}) == []  # type: ignore[dict-item]
 
 
 pytestmark = pytest.mark.db

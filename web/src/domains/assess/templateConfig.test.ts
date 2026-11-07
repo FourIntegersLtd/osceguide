@@ -25,9 +25,15 @@ test("keeps the setup and nothing about people, date or named staff", () => {
   const config = toTemplateConfig(draft);
   assert.equal(config.mode, "exam");
   assert.equal(config.assessor_style, "per_candidate");
-  assert.deepEqual(config.breaks, [2]);
+  assert.deepEqual(config.breaks, [{ after: 2, minutes: 5 }]);
   assert.equal(config.programme_id, "p1");
   assert.doesNotMatch(JSON.stringify(config), /u1|boss|2026-11-26|Summer/);
+});
+
+test("each break keeps its own length", () => {
+  const two = { ...draft, breaks: [{ after: 1, minutes: 10 }, { after: 2, minutes: 30 }] };
+  const back = fromTemplateConfig(toTemplateConfig(two), [{ id: "p1" }], { programmeId: "p1" });
+  assert.deepEqual(back.breaks, [{ after: 1, minutes: 10 }, { after: 2, minutes: 30 }]);
 });
 
 test("round-trips onto a new schedule and drops stations if the exam is no longer ready", () => {

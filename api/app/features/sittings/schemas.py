@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -342,46 +342,49 @@ class TemplateStation(BaseModel):
     title: str = Field(max_length=200)
 
 
+class TemplateBreak(BaseModel):
+    """One break: after which station, and for how long."""
+
+    after: int = Field(ge=1, le=30)
+    minutes: int = Field(ge=1, le=60)
+
+
 class TemplateConfig(BaseModel):
     """What a template keeps of a schedule: no date, no people, no named staff."""
 
     programme_id: uuid.UUID | None = None
-    mode: str = Field(pattern="^(exam|training)$")
+    mode: Literal["exam", "training"]
     stations: list[TemplateStation] = Field(default_factory=list, max_length=30)
     reading_minutes: int = Field(ge=1, le=30)
     consultation_minutes: int = Field(ge=1, le=180)
     break_minutes: int = Field(ge=1, le=60)
-    # 1-based: a break follows each of these stations.
-    breaks: list[int] = Field(default_factory=list, max_length=30)
+    # A break follows each of these stations (1-based), each with its own length.
+    breaks: list[TemplateBreak] = Field(default_factory=list, max_length=30)
     # One assessor for every circuit, or one per candidate.
-    assessor_style: str = Field(default="one", pattern="^(one|per_candidate)$")
+    assessor_style: Literal["one", "per_candidate"] = "one"
 
 
-class CreateTemplate(BaseModel):
+class _TemplateNamed(BaseModel):
+    """A request that names a template: the name is trimmed and never blank."""
+
     name: str = Field(min_length=1, max_length=120)
+
+    @field_validator("name")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        """Keep a name's text, not the spaces around it, and refuse a blank one."""
+        value = value.strip()
+        if not value:
+            raise ValueError("name must not be blank")
+        return value
+
+
+class CreateTemplate(_TemplateNamed):
     config: TemplateConfig
 
-    @field_validator("name")
-    @classmethod
-    def _trim(cls, value: str) -> str:
-        """Keep a name's text, not the spaces around it, and refuse a blank one."""
-        value = value.strip()
-        if not value:
-            raise ValueError("name must not be blank")
-        return value
 
-
-class RenameTemplate(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
-
-    @field_validator("name")
-    @classmethod
-    def _trim(cls, value: str) -> str:
-        """Keep a name's text, not the spaces around it, and refuse a blank one."""
-        value = value.strip()
-        if not value:
-            raise ValueError("name must not be blank")
-        return value
+class RenameTemplate(_TemplateNamed):
+    pass
 
 
 class TemplateRead(BaseModel):

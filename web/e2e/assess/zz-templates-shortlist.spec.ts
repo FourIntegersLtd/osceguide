@@ -49,12 +49,13 @@ for (const viewport of VIEWPORTS) {
     await page.getByRole("button", { name: "Continue" }).click();
     const rows = page.getByRole("listitem").filter({ has: page.getByRole("checkbox") });
     await rows.nth(0).locator("label").click();
+    await rows.nth(1).locator("label").click();
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("radio", { name: /per candidate/i }).click();
     await page.getByRole("button", { name: "Continue" }).click();
     const save = page.getByTestId("save-template");
-    await expect(save).toContainText("assessment template");
+    await expect(save).toContainText("Save this setup as a template");
     await save.getByRole("textbox").fill(label);
     await save.getByRole("button", { name: "Save template" }).click();
     await expect(save.getByText(`Saved as "${label}"`)).toBeVisible();
@@ -66,6 +67,9 @@ for (const viewport of VIEWPORTS) {
     await picker.getByRole("button", { name: "Use this template" }).click();
     await expect(page.getByRole("radio", { name: /^Formal exam/ })).toBeChecked();
     await shot(page, `picker-${viewport.name}`);
+    // A template carries no name or date: those are still the new schedule's own.
+    await page.getByRole("textbox", { name: "Name" }).fill("From the template");
+    await page.locator("#sitting-date").fill("2030-03-04");
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByText("Chest pain history").first()).toBeVisible();
 
@@ -92,8 +96,7 @@ for (const viewport of VIEWPORTS) {
     expect(download.suggestedFilename()).toMatch(/-shortlist\.csv$/);
     const text = readFileSync(await download.path(), "utf8");
     expect(text.startsWith("﻿rank,name,email,score,outcome,reason\n")).toBe(true);
-    // Draft decisions are not decisions: only signed-off or released rows appear.
-    const rows = text.trim().split("\n").slice(1);
-    for (const row of rows) expect(row).toMatch(/,(pass|fail|inconclusive|hired|rejected|reserve|[a-z_]+),/);
+    // Every candidate here is still to decide, so nothing is shortlisted: only the header remains.
+    expect(text.trim().split("\n").slice(1)).toEqual([]);
   });
 }

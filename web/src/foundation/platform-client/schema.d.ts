@@ -16574,6 +16574,16 @@ export interface components {
             org_slug?: string | null;
         };
         /**
+         * TemplateBreak
+         * @description One break: after which station, and for how long.
+         */
+        TemplateBreak: {
+            /** After */
+            after: number;
+            /** Minutes */
+            minutes: number;
+        };
+        /**
          * TemplateConfig
          * @description What a template keeps of a schedule: no date, no people, no named staff.
          */
@@ -16581,16 +16591,20 @@ export interface components {
             /**
              * Assessor Style
              * @default one
+             * @enum {string}
              */
-            assessor_style: string;
+            assessor_style: "one" | "per_candidate";
             /** Break Minutes */
             break_minutes: number;
             /** Breaks */
-            breaks?: number[];
+            breaks?: components["schemas"]["TemplateBreak"][];
             /** Consultation Minutes */
             consultation_minutes: number;
-            /** Mode */
-            mode: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "exam" | "training";
             /** Programme Id */
             programme_id?: string | null;
             /** Reading Minutes */

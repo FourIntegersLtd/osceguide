@@ -26,7 +26,7 @@ def _body(name: str = "Summer OSCE") -> dict:  # type: ignore[type-arg]
             "reading_minutes": 2,
             "consultation_minutes": 8,
             "break_minutes": 3,
-            "breaks": [1],
+            "breaks": [{"after": 1, "minutes": 7}],
             "assessor_style": "per_candidate",
         },
     }
