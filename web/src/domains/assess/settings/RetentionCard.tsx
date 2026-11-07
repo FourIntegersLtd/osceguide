@@ -5,6 +5,7 @@ import { cn } from "@/foundation/ui";
 import { Note } from "@/domains/assess/ui";
 import { SettingsCard } from "@/domains/assess/settings/SettingsCard";
 import { errorMessage } from "@/foundation/hooks";
+import { can, useSession } from "@/foundation/session";
 import { setRecordingRetention, type Organization } from "@/domains/assess/api";
 import { RETENTION_CHOICES, retentionChoiceKey } from "@/domains/assess/settings/retention";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
@@ -19,11 +20,15 @@ import { boardBtn, boardInput, boardLabel } from "@/foundation/ui/boardKit";
  */
 export function RetentionCard({ org, onSaved }: { org: Organization; onSaved: () => void }) {
   const w = useAssessWords();
+  const { session } = useSession();
   const [choice, setChoice] = useState(retentionChoiceKey(org.recording_retention_days));
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const changed = choice !== retentionChoiceKey(org.recording_retention_days) && choice !== "custom";
+
+  // The server lets only an institution administrator change this; everyone else would meet a refusal on save.
+  const mayChange = can(session, "sign_off_results");
 
   async function save() {
     setBusy(true);
@@ -39,6 +44,8 @@ export function RetentionCard({ org, onSaved }: { org: Organization; onSaved: ()
       setBusy(false);
     }
   }
+
+  if (!mayChange) return null;
 
   return (
     <SettingsCard
