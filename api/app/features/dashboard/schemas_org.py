@@ -156,6 +156,9 @@ class ConsoleCircuit(BaseModel):
     id: uuid.UUID
     name: str
     timing: ConsoleTiming
+    start_offset_minutes: int = 0
+    # station_version_id to the person assessing that station; a station not listed is the lead's.
+    station_assessors: dict[uuid.UUID, ConsolePerson] = Field(default_factory=dict)
     active_slot_id: uuid.UUID | None
     room_name: str | None
     started_at: datetime | None

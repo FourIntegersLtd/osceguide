@@ -178,6 +178,9 @@ class MySitting(BaseModel):
     mode: str
     status: str
     scheduled_for: datetime | None
+    # This rotation's own start (the sitting's start plus the circuit's stagger); null when undated.
+    starts_at: datetime | None = None
+    start_offset_minutes: int = 0
     org_id: uuid.UUID
     org_slug: str | None
     circuit_id: uuid.UUID

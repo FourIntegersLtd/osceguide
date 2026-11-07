@@ -28,8 +28,10 @@ from app.features.sittings.announcements import attempt_progress as attempt_prog
 from app.features.sittings.domain import ALLOW_REJOIN as ALLOW_REJOIN
 from app.features.sittings.domain import CONNECTION_ENDED as CONNECTION_ENDED
 from app.features.sittings.domain import MARK_ABSENT as MARK_ABSENT
+from app.features.sittings.domain import join_opens_at as join_opens_at
+from app.features.sittings.domain import rotation_starts_at as rotation_starts_at
 from app.features.sittings.models import Circuit, Sitting, Slot
-from app.features.sittings.reads import timing_read
+from app.features.sittings.reads import assessor_map, timing_read
 from app.features.sittings.reads_types import CircuitDetail as CircuitDetail
 from app.features.sittings.reads_types import CircuitRef as CircuitRef
 from app.features.sittings.reads_types import CircuitRun as CircuitRun
@@ -63,6 +65,8 @@ def _circuit_ref(circuit: Circuit) -> CircuitRef:
         name=circuit.name,
         supervisor_user_id=circuit.supervisor_user_id,
         timing=timing_read(circuit.timing),
+        start_offset_minutes=circuit.start_offset_minutes,
+        station_assessors=assessor_map(circuit),
         active_slot_id=circuit.active_slot_id,
         room_name=circuit.room_name,
         agent_dispatched_at=circuit.agent_dispatched_at,

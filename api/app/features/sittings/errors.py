@@ -47,6 +47,20 @@ class LeadCannotRun(Conflict):
     default_message = "A circuit's lead must be an administrator or supervisor of this organisation"
 
 
+class NotYourStation(Forbidden):
+    """An assessor asked to hear a station that is assigned to somebody else."""
+
+    code = "not_your_station"
+    default_message = "This station is assigned to another assessor"
+
+
+class JoinNotOpen(Conflict):
+    """A staggered rotation's join window has not opened for this candidate yet."""
+
+    code = "join_not_open"
+    default_message = "Your rotation has not opened yet"
+
+
 class CircuitLockedError(Conflict):
     """A structural edit was refused because a station is running or has feedback."""
 

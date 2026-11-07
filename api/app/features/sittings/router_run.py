@@ -142,7 +142,7 @@ async def read_edit_lock(
 @router.post(
     "/orgs/{org_slug}/circuits/{circuit_id}/observer-token",
     response_model=schemas.RoomGrant,
-    responses=error_responses(*_LIVE, errors.VoiceUnavailable),
+    responses=error_responses(*_LIVE, errors.NotYourStation, errors.VoiceUnavailable),
 )
 async def observer_token(
     circuit_id: uuid.UUID,
@@ -160,6 +160,7 @@ async def observer_token(
         user_id=principal.user_id,
         tokens=tokens,
         settings=settings,
+        role=workspace.role,
     )
 
 
@@ -176,6 +177,7 @@ async def observer_token(
         errors.TraineeRevokedError,
         errors.MarkingNotReady,
         errors.TraineeNotOnRosterError,
+        errors.JoinNotOpen,
     ),
 )
 async def join_token(
@@ -184,6 +186,7 @@ async def join_token(
     session: Session,
     settings: SettingsDep,
     tokens: Tokens,
+    clock: ClockDep,
 ) -> schemas.RoomGrant:
     """A candidate's way in, at the start of the circuit rather than per station.
 
@@ -192,7 +195,7 @@ async def join_token(
     to sit its examination.
     """
     return await service_join.join_token_for_trainee(
-        session, circuit_id, user_id=principal.user_id, tokens=tokens, settings=settings
+        session, circuit_id, user_id=principal.user_id, tokens=tokens, settings=settings, now=clock.now()
     )
 
 

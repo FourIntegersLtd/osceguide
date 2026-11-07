@@ -161,6 +161,8 @@ async def rebuild_circuit(
     name: str | None = None,
     supervisor_user_id: uuid.UUID | None = None,
     timing: TimingIn | None = None,
+    start_offset_minutes: int | None = None,
+    station_assessors: dict[uuid.UUID, uuid.UUID] | None = None,
     revision: int | None = None,
 ) -> CircuitRead:
     """Change who is on a circuit and which stations they sit (C3).
@@ -213,6 +215,21 @@ async def rebuild_circuit(
                 station_count=len(station_version_ids),
             )
         )
+    if start_offset_minutes is not None:
+        values["start_offset_minutes"] = start_offset_minutes
+    # Sent whole (an empty map clears them); left out, the circuit keeps those it still runs.
+    kept = (
+        station_assessors
+        if station_assessors is not None
+        else {
+            uuid.UUID(k): uuid.UUID(v)
+            for k, v in (circuit.station_assessors or {}).items()
+            if uuid.UUID(k) in station_version_ids
+        }
+    )
+    values["station_assessors"] = (
+        await service.resolve_station_assessors(session, org_id, station_version_ids, kept) or None
+    )
     if values:
         await repository.update_circuit(session, org_id, circuit_id, **values)
     await repository.bump_circuit_revision(session, org_id, circuit_id)

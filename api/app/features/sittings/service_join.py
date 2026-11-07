@@ -14,13 +14,25 @@ join button to appear per station was the browser's idea, not an examination's.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ports import VoiceTokens
+from app.core.role_policy import policy
 from app.core.settings import Settings
 from app.features.roster import service as roster
-from app.features.sittings import errors, floor, repository, repository_run, service_floor, service_run
+from app.features.sittings import (
+    domain,
+    errors,
+    floor,
+    repository,
+    repository_reads,
+    repository_run,
+    service_floor,
+    service_run,
+)
+from app.features.sittings.models import Circuit
 from app.features.sittings.overrides import MARK_ABSENT
 from app.features.sittings.schemas import RoomGrant
 from app.features.voice import service as voice
@@ -49,6 +61,7 @@ async def join_token_for_trainee(
     user_id: uuid.UUID,
     tokens: VoiceTokens,
     settings: Settings,
+    now: datetime,
 ) -> RoomGrant:
     """A candidate's token for the circuit they are rostered onto.
 
@@ -75,6 +88,7 @@ async def join_token_for_trainee(
     service_run.ensure_room_open(circuit, training=training)
     if await _marked_absent(session, circuit.id, user_id):
         raise errors.CandidateMarkedAbsent()
+    await ensure_join_window_open(session, circuit, now=now)
 
     # A training trainee always has a camera; the microphone is the turn's (and the floor's).
     sources = ["microphone"]  # exam: the candidate speaks, nothing else (no screen share)
@@ -105,6 +119,7 @@ async def observer_token(
     user_id: uuid.UUID,
     tokens: VoiceTokens,
     settings: Settings,
+    role: str | None = None,
 ) -> RoomGrant:
     """An examiner's token: they hear the station and, in training, may be seen.
 
@@ -117,6 +132,7 @@ async def observer_token(
     the safer default.
     """
     circuit, can_publish = await service_run.require_room_open(session, org_id, circuit_id)
+    await _ensure_assessor_of_active_station(session, circuit, user_id=user_id, role=role)
     return _grant(
         voice.grant_for_room(
             room=floor.room_name_for(circuit.id),
@@ -131,6 +147,37 @@ async def observer_token(
         ),
         can_publish=can_publish,
     )
+
+
+async def _ensure_assessor_of_active_station(
+    session: AsyncSession, circuit: Circuit, *, user_id: uuid.UUID, role: str | None
+) -> None:
+    """With per-station assessors, an assessor hears only the station that is theirs.
+
+    An administrator hears any. Before a station is active (not started, or between stations) the
+    circuit's lead and its named assessors may wait in the room.
+    """
+    if not circuit.station_assessors or policy("is_institution_admin")(role):
+        return
+    if circuit.active_slot_id is None:
+        if user_id == circuit.supervisor_user_id or str(user_id) in circuit.station_assessors.values():
+            return
+    elif (
+        await repository_reads.circuit_supervisor_for_slot(session, circuit.org_id, circuit.active_slot_id)
+        == user_id
+    ):
+        return
+    raise errors.NotYourStation()
+
+
+async def ensure_join_window_open(session: AsyncSession, circuit: Circuit, *, now: datetime) -> None:
+    """A staggered candidate is let in from ten minutes before their own start, not the sitting's."""
+    if circuit.start_offset_minutes <= 0:
+        return
+    sitting = await repository.sitting_by_id(session, circuit.org_id, circuit.sitting_id)
+    opens = domain.join_opens_at(sitting.scheduled_for if sitting else None, circuit.start_offset_minutes)
+    if opens is not None and now < opens:
+        raise errors.JoinNotOpen()
 
 
 def _grant(granted: voice.RoomGrant, *, can_publish: bool = True) -> RoomGrant:

@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.identity import service as identity
 from app.features.notifications import service as notifications
 from app.features.roster import service as roster
-from app.features.sittings import domain_edit, repository, repository_reads
+from app.features.sittings import domain, domain_edit, repository, repository_reads
 from app.features.sittings.models import Circuit, Sitting
 from app.features.tenancy import service as tenancy
 
@@ -29,6 +29,8 @@ EMPLOYER_ORG_TYPE = "employer"
 DAY_BEFORE_WINDOW = timedelta(hours=24)
 DAY_BEFORE_MIN = timedelta(hours=12)
 HOUR_BEFORE_WINDOW = timedelta(hours=1)
+# The longest stagger a circuit may carry (`CreateCircuit.start_offset_minutes`).
+MAX_OFFSET = timedelta(minutes=480)
 
 
 async def _queue(
@@ -52,6 +54,7 @@ async def _queue(
         return
     org = await tenancy.org_ref_by_id(session, org_id)
     hire = bool(org and org.org_type == EMPLOYER_ORG_TYPE)
+    starts = domain.rotation_starts_at(sitting.scheduled_for, circuit.start_offset_minutes if circuit else 0)
     await notifications.enqueue_email(
         session,
         recipient=person.email,
@@ -62,7 +65,8 @@ async def _queue(
             "org_name": org.name if org else "",
             "sitting_id": str(sitting.id),
             "sitting_name": sitting.name,
-            "scheduled_at": sitting.scheduled_for.isoformat() if sitting.scheduled_for else "",
+            # A staggered rotation's candidate is told their own start, not the sitting's.
+            "scheduled_at": starts.isoformat() if starts else "",
             "circuit_id": str(circuit.id) if circuit else "",
             "circuit_name": circuit.name if circuit else "",
             # An employer's candidate reads "assessment", not "sitting" (the email words follow this).
@@ -162,19 +166,22 @@ async def send_candidate_reminders(session: AsyncSession, *, now: datetime) -> i
     completed sittings, suspended organisations, candidates taken off the roster and circuits that have
     finished are skipped. Supervisors are not candidates and are left to the morning-of email.
     """
+    # A staggered rotation starts up to MAX_OFFSET after its sitting, so look that far back and judge
+    # each circuit by its own start.
     sittings = await repository_reads.sittings_scheduled_between(
-        session, start=now, end=now + DAY_BEFORE_WINDOW, excluding_status=domain_edit.CANCELLED
+        session, start=now - MAX_OFFSET, end=now + DAY_BEFORE_WINDOW, excluding_status=domain_edit.CANCELLED
     )
     inactive = await tenancy.inactive_org_ids(session, {sitting.org_id for sitting in sittings}, now=now)
-    covered = 0
+    covered: set[uuid.UUID] = set()
     for sitting in sittings:
-        kind = _reminder_kind(sitting.scheduled_for, now) if sitting.scheduled_for else None
-        if kind is None or sitting.status == "completed" or sitting.org_id in inactive:
+        if sitting.scheduled_for is None or sitting.status == "completed" or sitting.org_id in inactive:
             continue
-        covered += 1
         for circuit in await repository.circuits_for_sitting(session, sitting.org_id, sitting.id):
-            if circuit.ended_at is not None:
+            starts_at = domain.rotation_starts_at(sitting.scheduled_for, circuit.start_offset_minutes)
+            kind = _reminder_kind(starts_at, now) if starts_at else None
+            if kind is None or circuit.ended_at is not None:
                 continue
+            covered.add(sitting.id)
             people = await repository_reads.circuit_trainee_ids(session, sitting.org_id, circuit.id)
             roster_rows = await roster.trainees_by_user_id(session, sitting.org_id, people)
             for user_id in people:
@@ -189,7 +196,7 @@ async def send_candidate_reminders(session: AsyncSession, *, now: datetime) -> i
                     template_key="sitting_reminder",
                     subject="OSCE Guide - Reminder: your {word} is "
                     + ("tomorrow" if kind == "day_before" else "starting soon"),
-                    key=f"candidate-reminder:{kind}:{sitting.id}:{user_id}:{sitting.scheduled_for:%Y%m%d%H%M}",
+                    key=f"candidate-reminder:{kind}:{sitting.id}:{user_id}:{starts_at:%Y%m%d%H%M}",
                     extra={"kind": kind},
                 )
-    return covered
+    return len(covered)

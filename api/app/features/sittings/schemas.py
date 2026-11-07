@@ -54,6 +54,10 @@ class CircuitRead(BaseModel):
     name: str
     supervisor_user_id: uuid.UUID | None
     timing: TimingRead
+    # Minutes after the sitting's start that this rotation begins; 0 starts with the sitting.
+    start_offset_minutes: int = 0
+    # station_version_id to the assessor of that station; a station not listed is the lead's.
+    station_assessors: dict[uuid.UUID, uuid.UUID] = Field(default_factory=dict)
     active_slot_id: uuid.UUID | None
     room_name: str | None
     started_at: datetime | None
@@ -143,6 +147,8 @@ class CreateCircuit(BaseModel):
     station_version_ids: list[uuid.UUID]
     supervisor_user_id: uuid.UUID | None = None
     timing: TimingIn = Field(default_factory=TimingIn)
+    start_offset_minutes: int = Field(default=0, ge=0, le=480)
+    station_assessors: dict[uuid.UUID, uuid.UUID] = Field(default_factory=dict)
 
 
 class CreateExamCircuits(BaseModel):
@@ -153,6 +159,8 @@ class CreateExamCircuits(BaseModel):
     station_version_ids: list[uuid.UUID]
     supervisor_user_id: uuid.UUID | None = None
     timing: TimingIn | None = None
+    start_offset_minutes: int = Field(default=0, ge=0, le=480)
+    station_assessors: dict[uuid.UUID, uuid.UUID] = Field(default_factory=dict)
 
     @field_validator("candidate_user_ids")
     @classmethod
@@ -176,6 +184,9 @@ class RebuildCircuit(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     supervisor_user_id: uuid.UUID | None = None
     timing: TimingIn | None = None
+    # Omitted keeps what the circuit has; sent, they replace it (an empty map clears the assessors).
+    start_offset_minutes: int | None = Field(default=None, ge=0, le=480)
+    station_assessors: dict[uuid.UUID, uuid.UUID] | None = None
     # The revision the caller read; an older one is refused 409 `stale_revision` (B-15).
     revision: int | None = None
 

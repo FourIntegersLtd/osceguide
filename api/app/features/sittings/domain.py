@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
@@ -272,3 +273,18 @@ def normalise_timing(raw: Mapping[str, Any], *, mode: Mode = Mode.TRAINING, stat
         break_minutes=break_minutes,
         breaks=breaks,
     )
+
+
+# A staggered rotation lets its candidate in this long before its own start.
+JOIN_EARLY = timedelta(minutes=10)
+
+
+def rotation_starts_at(scheduled_for: datetime | None, offset_minutes: int) -> datetime | None:
+    """When a circuit's rotation begins: the sitting's start plus the circuit's stagger."""
+    return scheduled_for + timedelta(minutes=offset_minutes) if scheduled_for else None
+
+
+def join_opens_at(scheduled_for: datetime | None, offset_minutes: int) -> datetime | None:
+    """When a staggered candidate may join; None for an unstaggered circuit (the lead's start opens it)."""
+    starts = rotation_starts_at(scheduled_for, offset_minutes)
+    return starts - JOIN_EARLY if starts and offset_minutes > 0 else None
