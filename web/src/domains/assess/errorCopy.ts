@@ -35,6 +35,17 @@ function assessErrorCopy(w: AssessWords): Partial<Record<PlatformErrorCode, stri
     not_an_exam_sitting: w.hiring
       ? "An intake summary is only produced for a formal exam assessment"
       : "A cohort summary is only produced for an exam sitting",
+    // appeals and deletion
+    appeal_already_open: "A review of this result has already been asked for. Wait for the answer.",
+    appeal_closed: "This request has already been answered.",
+    appeal_not_assigned: "Name a second marker before recording an outcome.",
+    appeal_not_found: "That request could not be found. Reload the list.",
+    appeal_open: "A review request for this person is still open. Answer it before deleting their data.",
+    appeal_stale: "The result changed after this request was made. Decline it and ask for a new one.",
+    assignee_not_admin: "The second marker must be an administrator of this organisation.",
+    not_assigned_marker: "Only the second marker named for this request can record its outcome.",
+    second_marker_must_differ: "The second marker cannot be the person who signed off or released this result.",
+    confirmation_mismatch: "That is not their email address. Type it exactly as it appears.",
     // reviews
     review_conflict: "Another reviewer saved since you opened this. Load theirs before saving.",
     review_incomplete: "Rate every required area before completing the review.",

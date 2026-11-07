@@ -31,6 +31,8 @@ import { candidateProgress } from "@/domains/assess/results/candidateProgress";
 import { OutcomePicker, RecruitmentField, ReleasedDecision, ReopenButton, ResultPreviewButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
 import { boardRailStep } from "@/domains/assess/chrome";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { can, useSession } from "@/foundation/session";
+import { AskForReviewOnBehalf } from "@/domains/assess/results/AskForReviewOnBehalf";
 
 /**
  * One candidate's outcome: draft, signed off, released.
@@ -133,6 +135,7 @@ function Form({
   onChanged: () => void;
 }) {
   const w = useAssessWords();
+  const { session } = useSession();
   const [outcome, setOutcome] = useState(outcomeChoice(decision?.assessment_outcome));
   const [recruitment, setRecruitment] = useState(decision?.recruitment_outcome ?? "");
   const [rationale, setRationale] = useState(decision?.rationale ?? "");
@@ -190,6 +193,9 @@ function Form({
       <div className="flex flex-col gap-3.5">
         <ReleasedDecision decision={decision} />
         {preview}
+        {can(session, "sign_off_results") ? (
+          <AskForReviewOnBehalf orgSlug={orgSlug} sittingId={sittingId} traineeId={traineeId} />
+        ) : null}
       </div>
     );
   }

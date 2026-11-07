@@ -33,6 +33,14 @@ export function renameOrganization(
   });
 }
 
+/** How long candidates' transcripts are kept after an attempt ends; null keeps them. An organisation admin's call. */
+export function setRecordingRetention(slug: string, days: number | null): Promise<Organization> {
+  return platformRequest<Organization>(`${org(slug)}/retention`, {
+    method: "PATCH",
+    body: { recording_retention_days: days },
+  });
+}
+
 /** The organisation itself: its name, type and sign-in rules. */
 export function readOrganization(
   slug: string,

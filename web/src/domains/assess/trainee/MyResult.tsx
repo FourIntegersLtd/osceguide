@@ -16,6 +16,7 @@ import {
   readMyResult,
 } from "@/domains/assess/trainee/api";
 import { ResultView } from "@/domains/assess/trainee/ResultView";
+import { RequestReview } from "@/domains/assess/trainee/RequestReview";
 import { useSurface } from "@/capabilities";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 
@@ -130,6 +131,7 @@ export function MyResult({ sittingId }: { sittingId: string }) {
                   )
                 }
               />
+              <RequestReview sittingId={sittingId} />
               {w.hiring ? null : (
               <TraineeHero
                 eyebrow="Keep practising"
