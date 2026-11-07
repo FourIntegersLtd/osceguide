@@ -117,7 +117,7 @@ async def test_an_exam_candidate_and_examiner_keep_their_grants(
     room = await a_room(client, make_actor, db_session, mode="exam", people=1)
 
     await join(client, room, 0)
-    assert voice_tokens.issued[-1]["can_publish_sources"] is None
+    assert voice_tokens.issued[-1]["can_publish_sources"] == ["microphone"]
     assert voice_tokens.issued[-1]["can_publish"] is True
     await client.post(f"{room.base}/observer-token", headers=bearer(room.admin))
     assert voice_tokens.issued[-1]["can_publish_sources"] is None

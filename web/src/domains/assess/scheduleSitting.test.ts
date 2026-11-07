@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
 import {
   EMPTY_DRAFT,
+  SCHEDULE_STEPS,
+  STEP_HELP,
+  scheduleWords,
   candidateStanding,
   circuitPlan,
   circuitTiming,
@@ -188,4 +192,14 @@ test("candidateStanding: an invited account nobody has used is not 'signed in'",
   assert.equal(candidateStanding({ ...row, user_id: "u1", invitation_pending: true }), "invited");
   assert.equal(candidateStanding({ ...row, user_id: "u1", invitation_pending: false }), "signed_in");
   assert.equal(candidateStanding({ ...row, user_id: "u1" }), "signed_in");
+});
+
+test("hire step copy uses hire words and never reads wrong", () => {
+  const all = [...SCHEDULE_STEPS.flatMap((s) => [s.label, s.title, s.desc]), ...Object.values(STEP_HELP).flatMap((h) => [h.title, h.body])];
+  for (const text of all) {
+    const hire = scheduleWords(text, EMPLOYER_WORDS);
+    assert.doesNotMatch(hire, /\b(sitting|supervisors?)\b/i, hire);
+    assert.equal(scheduleWords(text, INSTITUTION_WORDS), text);
+  }
+  assert.equal(scheduleWords("Who is sitting it?", EMPLOYER_WORDS), "Who is being assessed?");
 });

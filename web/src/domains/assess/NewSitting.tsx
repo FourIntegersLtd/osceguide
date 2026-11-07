@@ -49,6 +49,7 @@ import {
   examTimings,
   SCHEDULE_STEPS,
   STEP_HELP,
+  scheduleWords,
   candidateNames,
   peopleFormula,
   MODE_OPTIONS,
@@ -65,6 +66,7 @@ import {
   type TraineeRow,
 } from "@/domains/assess/scheduleSitting";
 import { circuitLeads } from "@/domains/assess/support";
+import { assessorTally, tallyText } from "@/domains/assess/rotations";
 import { NEW_EXAM_PATH } from "@/domains/assess/dashboard/setupSteps";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
@@ -84,6 +86,11 @@ import {
  */
 /** The board's button: 44px tall, 9px corners, 18px sides. */
 const BOARD_BUTTON = "!h-11 min-h-11 rounded-board px-[18px]";
+
+/** Who has how many rotations, for the review. */
+function rotationLine(candidateIds: string[], byCandidate: Record<string, string>, leads: { value: string; label: string }[]): string {
+  return tallyText(assessorTally(candidateIds, byCandidate, Object.fromEntries(leads.map((l) => [l.value, l.label])))) || "Nobody yet";
+}
 
 export function NewSitting({ orgSlug }: { orgSlug: string }) {
   const context = useAsync(
@@ -337,7 +344,7 @@ function Wizard({
                 >
                   {done ? "✓" : at + 1}
                 </span>
-                {item.label}
+                {scheduleWords(item.label, w)}
               </button>
             );
           })}
@@ -349,11 +356,11 @@ function Wizard({
               <p className={t.assessEyebrow}>
                 Step {index + 1} of {SCHEDULE_STEPS.length}
               </p>
-              <h2 className={t.assessTitle}>{current?.title}</h2>
+              <h2 className={t.assessTitle}>{current ? scheduleWords(current.title, w) : null}</h2>
               <p className={t.assessDesc}>
                 {step === "stations"
                   ? `Published stations from ${programme?.exam_name ?? "this exam"}. Drag to set the order every candidate goes round.`
-                  : current?.desc}
+                  : current ? scheduleWords(current.desc, w) : null}
               </p>
             </header>
 
@@ -494,9 +501,9 @@ function Wizard({
                     ["Year group", year],
                     ["Timing", timingSummary(draft)],
                     [
-                      "Supervisor",
+                      w.Supervisor,
                       draft.perCandidate && draft.mode === "exam"
-                        ? "One for each candidate"
+                        ? rotationLine(draft.candidateIds, draft.supervisorByCandidate, leads)
                         : leadLabel(draft.supervisorId),
                     ],
                   ]}
@@ -564,8 +571,8 @@ function Wizard({
             className={cn(t.assessCard, "h-fit flex-[1_1_302px] p-5")}
           >
             <p className={t.assessEyebrow}>Help</p>
-            <p className="mt-2 font-medium text-ink">{STEP_HELP[step].title}</p>
-            <p className={cn(t.assessMeta, "mt-1")}>{STEP_HELP[step].body}</p>
+            <p className="mt-2 font-medium text-ink">{scheduleWords(STEP_HELP[step].title, w)}</p>
+            <p className={cn(t.assessMeta, "mt-1")}>{scheduleWords(STEP_HELP[step].body, w)}</p>
           </aside>
         </div>
       </div>

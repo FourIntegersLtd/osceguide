@@ -74,7 +74,7 @@ async def join_token_for_trainee(
     service_run.ensure_room_open(circuit, training=training)
 
     # A training trainee always has a camera; the microphone is the turn's (and the floor's).
-    sources = None
+    sources = ["microphone"]  # exam: the candidate speaks, nothing else (no screen share)
     display_name = None  # training only: a person's name on their tile; exam tokens stay anonymous
     if training:
         display_name = (await roster.names_for_users(session, circuit.org_id, [user_id])).get(user_id)

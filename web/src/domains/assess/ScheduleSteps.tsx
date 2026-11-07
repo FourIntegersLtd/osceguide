@@ -60,6 +60,7 @@ import {
   BREAK_MINUTES_BOUNDS,
   READING_MINUTES_BOUNDS,
 } from "@/domains/assess/timing";
+import { RotationBuilder } from "@/domains/assess/RotationBuilder";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 
 /**
@@ -834,6 +835,7 @@ export function SupervisorStep({
   const each = canSplit && draft.perCandidate;
   return (
     <div className="flex flex-col gap-6">
+      {canSplit ? <RotationBuilder draft={draft} patch={patch} leads={leads} /> : null}
       {canSplit ? (
         <OptionCards
           label="Who supervises"

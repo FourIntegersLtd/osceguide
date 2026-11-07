@@ -10,6 +10,7 @@ import { downloadSittingResults, readSittingReport } from "@/domains/assess/resu
 import type { CandidateReport, SittingReport } from "@/domains/assess/results/api";
 import { CandidateDetail, CandidateRow } from "@/domains/assess/results/CandidateCard";
 import { ReleaseAll } from "@/domains/assess/results/ReleaseAll";
+import { CandidateRanking } from "@/domains/assess/results/CandidateRanking";
 import { CohortRanking } from "@/domains/assess/results/CohortRanking";
 import { countsFromReport, sittingNext, sittingSteps, type SittingStepsInput } from "@/domains/assess/sittingSteps";
 import { can, useSession } from "@/foundation/session";
@@ -154,6 +155,12 @@ function Report({
             ) : null}
           </div>
 
+          {w.hiring && report.sitting.mode === "exam" ? (
+            <CandidateRanking candidates={candidates} openId={openId} onOpen={(id) => {
+                setOpenId(id);
+                requestAnimationFrame(() => document.getElementById("candidate-detail")?.scrollIntoView({ block: "start" }));
+              }} />
+          ) : null}
           {report.sitting.mode === "exam" ? <CohortRanking orgSlug={orgSlug} sittingId={sittingId} /> : null}
 
           <section aria-label="Candidates" className={`${boardCard} overflow-hidden`}>
@@ -178,6 +185,7 @@ function Report({
             ))}
           </section>
           {opened ? (
+            <div id="candidate-detail" tabIndex={-1} className="scroll-mt-4 outline-none">
             <CandidateDetail
               key={opened.user_id}
               orgSlug={orgSlug}
@@ -187,6 +195,7 @@ function Report({
               hire={report.sitting.mode === "exam"}
               onChanged={onChanged}
             />
+            </div>
           ) : null}
         </>
       )}

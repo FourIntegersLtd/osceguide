@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { ADMIN, call, login, register, stamp, switchWorkspace, PASSWORD } from "../support/api";
+import { call, createPlatformOrg, login, register, stamp, switchWorkspace, PASSWORD } from "../support/api";
 import { compareRegion, openBoard, serveBoards, styleDifferences, type BoardServer, type StyleCheck } from "../support/board-diff";
 import { openPage, signedInAs } from "../support/session";
 
@@ -43,8 +43,7 @@ test.beforeAll(async () => {
   const id = stamp();
   slug = `board-${id}`;
   account = { email: `board-admin-${id}@example.com`, password: PASSWORD };
-  const platform = await login(ADMIN.email, ADMIN.password);
-  await call(platform, "/api/v1/platform/organizations", { method: "POST", body: { name: "St Mary's", slug, org_type: "institution" } });
+  const platform = await createPlatformOrg(slug, "St Mary's", "institution");
   await register(account.email, "Board Admin");
   await call(platform, `/api/v1/platform/organizations/${slug}/memberships`, { method: "POST", body: { email: account.email, role: "institution_admin" } });
   await switchWorkspace(await login(account.email, PASSWORD), slug);

@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { ADMIN, API, assertLocalApi, call, login, orgPath, PASSWORD, register, stamp, switchWorkspace } from "./support/api";
+import { ADMIN, API, assertLocalApi, call, createPlatformOrg, login, orgPath, PASSWORD, register, stamp, switchWorkspace } from "./support/api";
 import { ensureScaPlanOnSale } from "./support/db";
 import { ensureTitledStations } from "./support/seed-sittings";
 import { stagingWorld } from "./support/staging";
@@ -30,6 +30,7 @@ export default async function globalSetup(): Promise<void> {
   if (!health?.ok) throw new Error(`platform-api is not answering at ${API}. Start it first (docs/CORE-JOURNEYS.md).`);
 
   const id = stamp();
+  process.env.E2E_RUN_ID = id; // workers inherit it: the org ledger is per run
   const slug = `e2e-${id}`;
   const orgName = `E2E Institute ${id}`;
   const hireSlug = `e2e-hire-${id}`;
@@ -58,16 +59,12 @@ export default async function globalSetup(): Promise<void> {
     partnerAdmin: { slug: partnerSlug, role: "partner_admin" },
   };
 
-  const platform = await login(ADMIN.email, ADMIN.password);
-  await call(platform, "/api/v1/platform/organizations", {
-    method: "POST",
-    body: { name: orgName, slug, org_type: "institution" },
-  });
+  const platform = await createPlatformOrg(slug, orgName, "institution");
   for (const [orgSlug, name, orgType] of [
     [hireSlug, `E2E Employer ${id}`, "employer"],
     [partnerSlug, `E2E Partner ${id}`, "partner"],
-  ]) {
-    await call(platform, "/api/v1/platform/organizations", { method: "POST", body: { name, slug: orgSlug, org_type: orgType } });
+  ] as const) {
+    await createPlatformOrg(orgSlug, name, orgType);
   }
   for (const role of Object.keys(accounts) as Role[]) {
     if (role === "platform") continue;

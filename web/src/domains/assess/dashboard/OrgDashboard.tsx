@@ -18,6 +18,8 @@ import { useSurface } from "@/capabilities";
 import { readOrgDashboard, readSupervisorCircuits, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
 import { BoardRow, BoardSection, RowChevron, RowText } from "@/domains/assess/dashboard/BoardParts";
 import { HireAttention, HireHeader } from "@/domains/assess/dashboard/HireParts";
+import { HireSetup } from "@/domains/assess/dashboard/HireSetup";
+import { hireSetupComplete, hireSetupSteps } from "@/domains/assess/dashboard/hireSteps";
 import { LiveNow } from "@/domains/assess/dashboard/LiveNow";
 import { SetupAssistant } from "@/domains/assess/dashboard/SetupAssistant";
 import { NextCircuit, SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
@@ -65,7 +67,16 @@ function Body({ data, orgSlug, admin, runs }: { data: Data; orgSlug: string; adm
   const { session } = useSession();
   const settingUp = admin && !setupComplete(assistantSteps(data.setup, w));
 
-  if (settingUp) {
+  // An employer's first assessment is the board's four-step checklist; it goes once an assessment exists.
+  if (w.hiring && admin && !hireSetupComplete(hireSetupSteps(data.setup, w))) {
+    return (
+      <div className={b2bTokens.assessPage}>
+        <HireSetup orgName={data.name} setup={data.setup} />
+        <Counts data={data} upcoming={comingUp(data.recent_sittings ?? []).length} />
+      </div>
+    );
+  }
+  if (settingUp && !w.hiring) {
     return (
       <div className={b2bTokens.assessPage}>
         <SetupAssistant orgName={data.name} setup={data.setup} />

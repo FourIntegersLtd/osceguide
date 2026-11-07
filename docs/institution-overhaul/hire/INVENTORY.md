@@ -72,6 +72,12 @@ Exam, Marking scheme, Station, Domain and Competency are the same on both arms.
   Phase 3 reverse direction: Every page reachable on hire maps to a board above
   or to HireRefused, and every refusal code above has a hire-worded line in `errorCopy.ts`.
 
+## Hire Part 2: built and still needs api
+
+Built (web only, uncommitted): first-assessment checklist on HireHome (`HireSetup.tsx`, `hireSteps.ts`); rotations dealt automatically to assessors in HireScheduleAssessment (`RotationBuilder.tsx`, `rotations.ts`); ranked candidate comparison with a required reason for a hire on HireDecisions (`CandidateRanking.tsx`, `ranking.ts`); wizard step labels in hire words (`scheduleWords`). Proof: `web/e2e/assess/hire-part2.spec.ts` at 1440 and 390.
+
+Still needs api: per-station assessors; staggered start times; server-enforced hire rationale (today the browser requires it); candidate reminders and tech-check link; no-show and dropped-connection actions with audit trail; exam templates; CSV shortlist export; appeals and re-mark; data retention and delete-on-request.
+
 ## Follow-ups (out of scope)
 
 - A list of hired candidates across assessments needs a filter on `{o}/results`.

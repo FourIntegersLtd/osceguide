@@ -7,6 +7,7 @@
  */
 
 import { plural } from "@/foundation/format";
+import type { AssessWords } from "@/domains/assess/vocabulary";
 import type { CircuitTiming, SittingMode } from "@/domains/assess/api";
 import { displayName } from "@/domains/assess/roster/support";
 import {
@@ -135,6 +136,31 @@ export const STEP_HELP: Record<
     body: "A formal exam makes one circuit per candidate. Training makes one shared circuit where trainees rotate.",
   },
 };
+
+/** Copy where swapping words would read wrong ("sitting" as a verb, a button that keeps its name). */
+const HIRE_COPY: Record<string, string> = {
+  "Who is sitting it?": "Who is being assessed?",
+  'Reviews each station, makes decisions and presses "Publish circuit feedback" to finalise. Supervisors are the examiners.':
+    'Reviews each station, makes decisions and presses "Publish circuit feedback" to finalise. Assessors are the examiners.',
+};
+
+/** Say a step's words in this workspace's vocabulary: a hire workspace reads "assessment", "assessor", "rotation". */
+export function scheduleWords(text: string, w: AssessWords): string {
+  if (!w.hiring) return text;
+  const fixed = HIRE_COPY[text];
+  if (fixed) return fixed;
+  const cap = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+  return text
+    .replace(/\bsittings\b/g, w.sittings)
+    .replace(/\bsitting\b/g, w.sitting)
+    .replace(/\bSupervisors\b/g, w.Supervisors)
+    .replace(/\bSupervisor\b/g, w.Supervisor)
+    .replace(/\bsupervisors\b/g, w.supervisors)
+    .replace(/\bsupervisor\b/g, w.supervisor)
+    .replace(/\bcircuits\b/g, w.circuits)
+    .replace(/\bcircuit\b/g, w.circuit)
+    .replace(/\bCircuit\b/g, cap(w.circuit));
+}
 
 /** The two kinds of sitting, as the first step offers them. */
 export const MODE_OPTIONS: {

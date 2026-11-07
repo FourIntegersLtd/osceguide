@@ -25,6 +25,7 @@ import {
   workflowLabel,
 } from "@/domains/assess/results/support";
 import { assessFormStack } from "@/foundation/ui/b2bTokens";
+import { decisionBlockers } from "@/domains/assess/results/ranking";
 import { candidateProgress } from "@/domains/assess/results/candidateProgress";
 import { OutcomePicker, RecruitmentField, ReleasedDecision, ReopenButton, ResultPreviewButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
 import { boardRailStep } from "@/domains/assess/chrome";
@@ -155,6 +156,8 @@ function Form({
   const signedOff = state === "signed_off";
   const canRelease = releasable({ decision });
   const blockers = signOffBlockers({ outcome: outcome || null, rationale });
+  // A hire is never recorded without its reason, even as a draft.
+  const hireBlockers = hire ? decisionBlockers({ recruitment, rationale }) : [];
 
   const run = useCallback(async (label: string, action: () => Promise<unknown>, said: string) => {
     setBusy(label);
@@ -211,7 +214,7 @@ function Form({
 
         <div>
           <label htmlFor="decision-rationale" className={`${boardLabel} mb-2`}>
-            Rationale
+            {recruitment === "hired" ? "Rationale (required for a hire)" : "Rationale"}
           </label>
           <textarea
             id="decision-rationale"
@@ -223,6 +226,11 @@ function Form({
             placeholder="Why this outcome, in the words you would use to a candidate or an appeal panel."
             className={`${boardInput} min-h-24 py-2.5`}
           />
+          {hireBlockers.map((blocker) => (
+            <div key={blocker} role="alert" className={`mt-2 ${boardAlert("warn")}`}>
+              {blocker}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -246,7 +254,7 @@ function Form({
             <button
               type="button"
               className={boardBtn()}
-              disabled={busy !== null}
+              disabled={busy !== null || hireBlockers.length > 0}
               onClick={() =>
                 run("save", () => saveDecision(orgSlug, sittingId, traineeId, draft), "Draft saved.")
               }
