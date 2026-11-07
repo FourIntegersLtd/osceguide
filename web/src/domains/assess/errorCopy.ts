@@ -35,6 +35,8 @@ function assessErrorCopy(w: AssessWords): Partial<Record<PlatformErrorCode, stri
     not_an_exam_sitting: w.hiring
       ? "An intake summary is only produced for a formal exam assessment"
       : "A cohort summary is only produced for an exam sitting",
+    template_name_taken: `You already have a ${w.exam} template with that name. Choose another name.`,
+    template_not_found: "That template no longer exists. It may have been deleted.",
     // reviews
     review_conflict: "Another reviewer saved since you opened this. Load theirs before saving.",
     review_incomplete: "Rate every required area before completing the review.",

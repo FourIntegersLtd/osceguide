@@ -47,6 +47,16 @@ export function downloadSittingResults(
   );
 }
 
+/** The decided candidates, best first with the reason, as a CSV file the browser saves. */
+export function downloadSittingShortlist(
+  slug: string,
+  sittingId: string,
+): Promise<PlatformDownload> {
+  return platformDownload(
+    `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/shortlist.csv`,
+  );
+}
+
 /**
  * One candidate's released result as a PDF.
  *

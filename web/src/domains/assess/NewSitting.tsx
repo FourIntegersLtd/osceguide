@@ -70,6 +70,8 @@ import { assessorTally, tallyText } from "@/domains/assess/rotations";
 import { NEW_EXAM_PATH } from "@/domains/assess/dashboard/setupSteps";
 import { useAssessWords } from "@/domains/assess/useAssessWords";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
+import { SaveAsTemplate, TemplatePicker } from "@/domains/assess/SittingTemplates";
+import { fromTemplateConfig, toTemplateConfig } from "@/domains/assess/templateConfig";
 import {
   circuitsMade,
   createSittingCircuits,
@@ -190,6 +192,7 @@ function Wizard({
   const [reached, setReached] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templatesKey, setTemplatesKey] = useState(0);
 
   const patch = useCallback(
     (change: Partial<ScheduleDraft>) =>
@@ -363,6 +366,13 @@ function Wizard({
 
             {step === "basics" ? (
               <div className={cn(t.assessCard, "p-6", t.assessFormStack)}>
+                <TemplatePicker
+                  orgSlug={orgSlug}
+                  reloadKey={templatesKey}
+                  onApply={(config) =>
+                    setDraft((now) => ({ ...now, ...fromTemplateConfig(config, ready, now) }))
+                  }
+                />
                 <Field label="Name" htmlFor="sitting-name">
                   <input
                     id="sitting-name"
@@ -504,6 +514,11 @@ function Wizard({
                         : leadLabel(draft.supervisorId),
                     ],
                   ]}
+                />
+                <SaveAsTemplate
+                  orgSlug={orgSlug}
+                  config={toTemplateConfig(draft)}
+                  onSaved={() => setTemplatesKey((now) => now + 1)}
                 />
                 <p className={t.assessMeta}>
                   If the {w.sitting} is made but its circuits fail, you land on

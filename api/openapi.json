@@ -4302,6 +4302,25 @@
         "title": "CreateStationTemplate",
         "type": "object"
       },
+      "CreateTemplate": {
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/TemplateConfig"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "config"
+        ],
+        "title": "CreateTemplate",
+        "type": "object"
+      },
       "CreateTrainee": {
         "properties": {
           "cohort_id": {
@@ -5979,6 +5998,8 @@
               "stripe_refund_failed",
               "stripe_refund_refused",
               "tag_too_long",
+              "template_name_taken",
+              "template_not_found",
               "template_not_published",
               "too_early_to_join",
               "too_many_requests",
@@ -15206,6 +15227,21 @@
         "title": "RenameRubric",
         "type": "object"
       },
+      "RenameTemplate": {
+        "properties": {
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RenameTemplate",
+        "type": "object"
+      },
       "RenewContract": {
         "description": "New contract dates, and whether a suspension should lift with them.",
         "properties": {
@@ -20338,6 +20374,125 @@
           }
         },
         "title": "SwitchWorkspace",
+        "type": "object"
+      },
+      "TemplateConfig": {
+        "description": "What a template keeps of a schedule: no date, no people, no named staff.",
+        "properties": {
+          "assessor_style": {
+            "default": "one",
+            "pattern": "^(one|per_candidate)$",
+            "title": "Assessor Style",
+            "type": "string"
+          },
+          "break_minutes": {
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Break Minutes",
+            "type": "integer"
+          },
+          "breaks": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 30,
+            "title": "Breaks",
+            "type": "array"
+          },
+          "consultation_minutes": {
+            "maximum": 180.0,
+            "minimum": 1.0,
+            "title": "Consultation Minutes",
+            "type": "integer"
+          },
+          "mode": {
+            "pattern": "^(exam|training)$",
+            "title": "Mode",
+            "type": "string"
+          },
+          "programme_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Programme Id"
+          },
+          "reading_minutes": {
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Reading Minutes",
+            "type": "integer"
+          },
+          "stations": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateStation"
+            },
+            "maxItems": 30,
+            "title": "Stations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "reading_minutes",
+          "consultation_minutes",
+          "break_minutes"
+        ],
+        "title": "TemplateConfig",
+        "type": "object"
+      },
+      "TemplateRead": {
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/TemplateConfig"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "config",
+          "created_at"
+        ],
+        "title": "TemplateRead",
+        "type": "object"
+      },
+      "TemplateStation": {
+        "properties": {
+          "title": {
+            "maxLength": 200,
+            "title": "Title",
+            "type": "string"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id",
+          "title"
+        ],
+        "title": "TemplateStation",
         "type": "object"
       },
       "TimingIn": {
@@ -50971,6 +51126,379 @@
         "x-capability": "public"
       }
     },
+    "/api/v1/orgs/{org_slug}/sitting-templates": {
+      "get": {
+        "operationId": "sittings_list_templates",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateRead"
+                  },
+                  "title": "Response Sittings List Templates",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Templates",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "org_admin",
+        "x-platform-admin": false
+      },
+      "post": {
+        "operationId": "sittings_create_template",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "template_name_taken",
+            "x-codes": [
+              "template_name_taken"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Template",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "org_admin",
+        "x-platform-admin": false
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sitting-templates/{template_id}": {
+      "delete": {
+        "operationId": "sittings_remove_template",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "template_not_found",
+            "x-codes": [
+              "template_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Template",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "org_admin",
+        "x-platform-admin": false
+      },
+      "put": {
+        "operationId": "sittings_rename_template",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameTemplate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "template_not_found",
+            "x-codes": [
+              "template_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "template_name_taken",
+            "x-codes": [
+              "template_name_taken"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rename Template",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "org_admin",
+        "x-platform-admin": false
+      }
+    },
     "/api/v1/orgs/{org_slug}/sittings": {
       "get": {
         "operationId": "sittings_list_sittings",
@@ -53046,6 +53574,102 @@
           }
         ],
         "summary": "Read Sitting Report Csv",
+        "tags": [
+          "dashboard"
+        ],
+        "x-capability": "org_admin",
+        "x-platform-admin": false
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/shortlist.csv": {
+      "get": {
+        "operationId": "dashboard_read_sitting_shortlist_csv",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The sitting's decided candidates, ranked, as a CSV file."
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sitting_not_found",
+            "x-codes": [
+              "sitting_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Sitting Shortlist Csv",
         "tags": [
           "dashboard"
         ],

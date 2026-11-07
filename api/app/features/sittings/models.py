@@ -276,3 +276,21 @@ class SlotPeerMark(Base, UUIDPrimaryKey, Timestamps):
     item: Mapped[str] = mapped_column(String(160), nullable=False)
     rating: Mapped[str | None] = mapped_column(String(16))
     comment: Mapped[str | None] = mapped_column(Text)
+
+
+class SittingTemplate(Base, UUIDPrimaryKey, Timestamps):
+    """A named setup an organisation keeps to start new schedules from.
+
+    `config` is the closed shape in `schemas.TemplateConfig` (programme, mode, stations in
+    order, timing, assessor style). It holds no people: a template never carries candidates.
+    """
+
+    __tablename__ = "sitting_templates"
+    __table_args__ = (Index("uq_sitting_templates_org_name", "org_id", text("lower(name)"), unique=True),)
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

@@ -270,3 +270,17 @@ class RejoinAlreadyUsed(Conflict):
 # spellings of one list is how a route ends up advertising a code it cannot
 # raise.
 LIVE_CIRCUIT_REFUSALS = (CircuitNotFound, CircuitNotLive)
+
+
+class TemplateNotFound(NotFound):
+    """No sitting template exists with the given id, for this organisation."""
+
+    code = "template_not_found"
+    default_message = "No such template"
+
+
+class TemplateNameTaken(Conflict):
+    """Another template of this organisation already has that name."""
+
+    code = "template_name_taken"
+    default_message = "A template with that name already exists"

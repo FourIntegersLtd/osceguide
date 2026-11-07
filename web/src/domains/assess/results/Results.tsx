@@ -6,7 +6,7 @@ import { AsyncBoundary, b2bTokens as t } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
-import { downloadSittingResults, readSittingReport } from "@/domains/assess/results/api";
+import { downloadSittingResults, downloadSittingShortlist, readSittingReport } from "@/domains/assess/results/api";
 import type { CandidateReport, SittingReport } from "@/domains/assess/results/api";
 import { CandidateDetail, CandidateRow } from "@/domains/assess/results/CandidateCard";
 import { ReleaseAll } from "@/domains/assess/results/ReleaseAll";
@@ -85,11 +85,11 @@ function Report({
   const [openId, setOpenId] = useState<string | null>(null);
   const opened = candidates.find((candidate) => candidate.user_id === openId) ?? null;
 
-  const downloadCsv = useCallback(async () => {
+  const downloadCsv = useCallback(async (download: typeof downloadSittingResults = downloadSittingResults) => {
     setDownloading(true);
     setDownloadError(null);
     try {
-      const file = await downloadSittingResults(orgSlug, sittingId);
+      const file = await download(orgSlug, sittingId);
       saveBlob(file.blob, file.filename);
     } catch (cause) {
       setDownloadError(errorMessage(cause));
@@ -121,6 +121,11 @@ function Report({
             <button type="button" className={boardBtn()} disabled={downloading} onClick={() => downloadCsv()}>
               Download CSV
             </button>
+            {progress.training ? null : (
+              <button type="button" className={boardBtn()} disabled={downloading} onClick={() => downloadCsv(downloadSittingShortlist)}>
+                Download shortlist
+              </button>
+            )}
           </div>
         ) : null}
       </div>

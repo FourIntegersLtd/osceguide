@@ -622,3 +622,28 @@ export function setInvoicePoNumber(slug: string, invoiceId: string, poNumber: st
     body: { po_number: poNumber },
   });
 }
+
+export type SittingTemplateRead = components["schemas"]["TemplateRead"];
+
+/** The organisation's saved schedule setups, by name. Org admin only. */
+export function listSittingTemplates(slug: string, signal?: AbortSignal): Promise<SittingTemplateRead[]> {
+  return platformRequest<SittingTemplateRead[]>(`${org(slug)}/sitting-templates`, { signal });
+}
+
+export function saveSittingTemplate(
+  slug: string,
+  input: { name: string; config: SittingTemplateRead["config"] },
+): Promise<SittingTemplateRead> {
+  return platformRequest<SittingTemplateRead>(`${org(slug)}/sitting-templates`, { method: "POST", body: input });
+}
+
+export function renameSittingTemplate(slug: string, id: string, name: string): Promise<SittingTemplateRead> {
+  return platformRequest<SittingTemplateRead>(`${org(slug)}/sitting-templates/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: { name },
+  });
+}
+
+export function deleteSittingTemplate(slug: string, id: string): Promise<void> {
+  return platformRequest<void>(`${org(slug)}/sitting-templates/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

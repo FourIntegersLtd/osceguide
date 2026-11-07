@@ -145,8 +145,9 @@ NO_IN_USE_CHECK: dict[str, str] = {
     "app/features/voice/service.py::close_own_room": "closing a room ends it; nothing depends on it",
     "app/features/voice/service.py::leave_queue": "a queue place; nothing depends on it",
     "app/features/peer_practice/service.py::leave_queue": "a queue place; nothing depends on it",
+    "app/features/sittings/service_templates.py::remove_template": "a saved setup copy, no dependants",
 }
-NO_IN_USE_CEILING = 26
+NO_IN_USE_CEILING = 27
 
 
 def _service_functions() -> dict[Path, dict[str, ast.AsyncFunctionDef | ast.FunctionDef]]:
