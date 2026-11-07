@@ -60,7 +60,7 @@ async def workspace_org(session: AsyncSession, slug: str, *, now: datetime) -> O
 async def org_ref_by_slug(session: AsyncSession, slug: str) -> OrgSummary | None:
     """The minimal organisation reference other slices use, by slug."""
     org = await repository.organization_by_slug(session, slug)
-    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name)
+    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name, org_type=org.org_type)
 
 
 async def is_partner_org(session: AsyncSession, slug: str) -> bool:
@@ -118,6 +118,7 @@ class OrgSummary:
     id: uuid.UUID
     slug: str
     name: str
+    org_type: str = "institution"
 
 
 async def password_was_relayed(session: AsyncSession, *, user_id: uuid.UUID, email: str) -> bool:
@@ -128,7 +129,7 @@ async def password_was_relayed(session: AsyncSession, *, user_id: uuid.UUID, ema
 async def org_ref_by_id(session: AsyncSession, org_id: uuid.UUID) -> OrgSummary | None:
     """An organisation's name, for another slice to display."""
     org = await repository.organization_by_id(session, org_id)
-    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name)
+    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name, org_type=org.org_type)
 
 
 async def org_type_of(session: AsyncSession, org_id: uuid.UUID) -> str:
@@ -140,7 +141,7 @@ async def org_type_of(session: AsyncSession, org_id: uuid.UUID) -> str:
 async def org_refs_by_ids(session: AsyncSession, org_ids: set[uuid.UUID]) -> dict[uuid.UUID, OrgSummary]:
     """Several organisations' names, in one query."""
     return {
-        org.id: OrgSummary(id=org.id, slug=org.slug, name=org.name)
+        org.id: OrgSummary(id=org.id, slug=org.slug, name=org.name, org_type=org.org_type)
         for org in await repository.organizations_by_ids(session, org_ids)
     }
 

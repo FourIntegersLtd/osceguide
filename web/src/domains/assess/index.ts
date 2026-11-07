@@ -5,6 +5,7 @@ export { CircuitRunner } from "@/domains/assess/sessions";
 export {
   TraineeHome,
   MySittingDetail,
+  TechCheck,
   SelfPractice,
   SelfPracticeStation,
   StationRecord,

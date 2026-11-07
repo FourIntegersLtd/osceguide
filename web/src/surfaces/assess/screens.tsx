@@ -37,6 +37,7 @@ import {
   StationRecord,
   People,
   initialPeopleTab,
+  TechCheck,
   TraineeHome,
 } from "@/domains/assess";
 
@@ -145,6 +146,10 @@ function AssessMySitting({ params }: ScreenProps) {
   return <MySittingDetail sittingId={params?.sittingId ?? ""} />;
 }
 
+function AssessTechCheck() {
+  return <TechCheck />;
+}
+
 function AssessMyResult({ params }: ScreenProps) {
   return <MyResult sittingId={params?.sittingId ?? ""} />;
 }
@@ -236,6 +241,7 @@ export const assessScreens: ScreenMap = {
   resultsIndex: AssessResultsIndex,
   myTraining: AssessMyTraining,
   mySitting: AssessMySitting,
+  techCheck: AssessTechCheck,
   myResult: AssessMyResult,
   myReview: AssessMyReview,
   myPractice: AssessMyPractice,
