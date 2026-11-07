@@ -69,8 +69,13 @@ test.describe.serial("exam-day attendance", () => {
     await openPage(admin, `/app/${w.slug}/circuits/${live.circuitId}`);
     await admin.getByRole("button", { name: "Start circuit" }).click();
     await expect(admin.getByText("Reading time").first()).toBeVisible();
-    await admin.getByRole("button", { name: "More circuit controls" }).click();
-    await admin.getByRole("menuitem", { name: "Allow one re-join" }).click();
+    // The live feed re-renders the console after Start and can close a menu opened too early: open it until it stays.
+    const rejoin = admin.getByRole("menuitem", { name: "Allow one re-join" });
+    await expect(async () => {
+      if (!(await rejoin.isVisible())) await admin.getByRole("button", { name: "More circuit controls" }).click();
+      await expect(rejoin).toBeVisible({ timeout: 1500 });
+    }).toPass({ timeout: 15000 });
+    await rejoin.click();
     await expect(admin.getByRole("dialog").getByRole("button", { name: "Allow re-join" })).toBeDisabled();
     await shot(admin, "admin-rejoin-dialog");
   });
