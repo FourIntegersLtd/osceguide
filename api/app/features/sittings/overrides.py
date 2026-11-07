@@ -15,6 +15,8 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.sittings import announcements, domain_run, errors, repository_run
+from app.features.sittings.domain import ALLOW_REJOIN as ALLOW_REJOIN
+from app.features.sittings.domain import MARK_ABSENT as MARK_ABSENT
 from app.features.sittings.models import Circuit
 from app.features.sittings.schemas import CircuitRead, Intervention, Interventions
 from app.features.sittings.service import _require_circuit, read_circuit
@@ -35,6 +37,8 @@ ADVANCE = "advance"
 AUTO_ADVANCE = "auto_advance"
 # The reaper ending a circuit nobody closed: no human, so the record is the only notice (R-15).
 AUTO_END = "auto_end"
+# Attendance (exam day): a person who never joined is recorded absent; a dropped connection is let back
+# in once per station. Both require a reason.
 # Training room controls: they never move the clock, so the sequence does not change.
 FLOOR_CHANGED = "floor_changed"
 MIC_CHANGED = "mic_changed"

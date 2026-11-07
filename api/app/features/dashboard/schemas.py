@@ -199,6 +199,11 @@ class MySitting(BaseModel):
     active_slot_id: uuid.UUID | None = None
     # An exam sitting's result has been released to this person (T-5); false for practice, which has none.
     released: bool = False
+    # Every station of theirs on this circuit was skipped and none was sat: absent, as a supervisor
+    # recorded or because the circuit moved on without them.
+    marked_absent: bool = False
+    # Their connection to the station ended while its clock still runs; a supervisor can let them back in.
+    waiting_for_rejoin: bool = False
     slots: list[MySlot] = Field(default_factory=list)
 
 

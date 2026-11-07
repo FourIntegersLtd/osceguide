@@ -3266,6 +3266,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/allow-rejoin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Allow Rejoin
+         * @description Let a candidate whose connection dropped back into their station, once, on the same clock.
+         */
+        post: operations["sittings_allow_rejoin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/append-trainees": {
         parameters: {
             query?: never;
@@ -3475,6 +3495,26 @@ export interface paths {
          * @description Move to a station out of order. Stations passed over are marked skipped.
          */
         post: operations["sittings_jump_to"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/mark-absent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Absent
+         * @description Record that a candidate who never started did not come. The reason is required and audited.
+         */
+        post: operations["sittings_mark_absent"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10718,7 +10758,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_not_found" | "account_suspended" | "already_published" | "already_purchased" | "already_queued" | "announcement_not_found" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_not_running" | "av_unavailable" | "billing_event_not_found" | "candidate_did_not_sit" | "cannot_claim_own_post" | "cannot_revoke_own_console_access" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_ended" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "circuit_review_finalized" | "claim_outside_item" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "contract_dates_out_of_order" | "contract_end_in_past" | "cv_not_found" | "debrief_not_found" | "decision_outside_exam" | "decision_revised" | "draft_exists" | "email_taken" | "empty_content" | "empty_plan_update" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_already_imported" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_required_for_category" | "exam_rubric_not_ready" | "fact_check_running" | "forbidden" | "generation_empty" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "import_not_ready" | "inbox_message_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_avatar_file" | "invalid_bucket" | "invalid_category" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_date_range" | "invalid_email" | "invalid_email_change_token" | "invalid_exam_code" | "invalid_exam_settings" | "invalid_import_file" | "invalid_input" | "invalid_invoice_line" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_mfa_code" | "invalid_photo" | "invalid_rating" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_saml_connection" | "invalid_signature" | "invalid_sso_binding" | "invalid_trial_transcript" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "invitation_pending" | "invoice_not_editable" | "invoice_not_found" | "job_not_cancellable" | "job_not_found" | "job_not_retryable" | "knowledge_unavailable" | "last_admin" | "lead_cannot_run" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "marker_unavailable" | "marking_not_ready" | "media_already_published" | "media_being_produced" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_not_published" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "message_not_repliable" | "message_not_retryable" | "mfa_already_enrolled" | "mfa_challenge_expired" | "mfa_not_enrolled" | "mfa_required_by_policy" | "no_active_station" | "no_stations_for_exam" | "not_a_media_block" | "not_a_member" | "not_a_partner_reporter" | "not_a_stripe_payment" | "not_a_training_circuit" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_slot_reviewer" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "outcome_not_releasable" | "partner_unavailable" | "password_already_chosen" | "password_change_required" | "password_login_disabled" | "password_not_set" | "password_reset_not_sent" | "payment_already_recorded" | "payment_already_refunded" | "payment_not_found" | "payment_not_yet_recorded" | "payout_account_number_required" | "peer_mark_item_unknown" | "peer_mark_rating_unknown" | "peer_marks_closed" | "peer_marks_not_allowed" | "peer_marks_own_turn" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_code_taken" | "plan_not_available" | "plan_not_found" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_access_exists" | "practice_feedback_not_open" | "practice_session_ended" | "practice_session_not_accepted" | "practice_session_not_found" | "price_creation_failed" | "programme_exists" | "programme_not_active" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "recruitment_outside_exam" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "reporter_not_found" | "request_too_large" | "result_not_found" | "result_not_released" | "review_already_completed" | "review_conflict" | "review_incomplete" | "review_locked" | "review_not_draft" | "review_not_found" | "reviews_pending" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "saml_connection_not_found" | "scheme_not_shown" | "scim_invalid_filter" | "scim_invalid_value" | "scim_mutability" | "scim_not_found" | "scim_token_not_found" | "scim_unauthorized" | "scim_uniqueness" | "script_not_checked" | "set_entry_has_attempts" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_already_claimed" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_only_password_members" | "sso_provider_unsupported" | "sso_verification_failed" | "stale_revision" | "station_being_produced" | "station_empty" | "station_exam_mismatch" | "station_flag_not_found" | "station_has_no_template" | "station_import_not_found" | "station_not_approvable" | "station_not_found" | "station_not_in_plan" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "station_version_not_usable" | "stripe_refund_failed" | "stripe_refund_refused" | "tag_too_long" | "template_not_published" | "too_early_to_join" | "too_many_requests" | "too_many_streams" | "too_many_tags" | "too_many_trainees" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "trial_station_limit" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_not_found" | "account_suspended" | "already_published" | "already_purchased" | "already_queued" | "announcement_not_found" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_not_running" | "av_unavailable" | "billing_event_not_found" | "candidate_already_sat" | "candidate_did_not_sit" | "candidate_marked_absent" | "candidate_still_connected" | "cannot_claim_own_post" | "cannot_revoke_own_console_access" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_ended" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "circuit_review_finalized" | "claim_outside_item" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "contract_dates_out_of_order" | "contract_end_in_past" | "cv_not_found" | "debrief_not_found" | "decision_outside_exam" | "decision_revised" | "draft_exists" | "email_taken" | "empty_content" | "empty_plan_update" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_already_imported" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_required_for_category" | "exam_rubric_not_ready" | "fact_check_running" | "forbidden" | "generation_empty" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "import_not_ready" | "inbox_message_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_avatar_file" | "invalid_bucket" | "invalid_category" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_date_range" | "invalid_email" | "invalid_email_change_token" | "invalid_exam_code" | "invalid_exam_settings" | "invalid_import_file" | "invalid_input" | "invalid_invoice_line" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_mfa_code" | "invalid_photo" | "invalid_rating" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_saml_connection" | "invalid_signature" | "invalid_sso_binding" | "invalid_trial_transcript" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "invitation_pending" | "invoice_not_editable" | "invoice_not_found" | "job_not_cancellable" | "job_not_found" | "job_not_retryable" | "knowledge_unavailable" | "last_admin" | "lead_cannot_run" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "marker_unavailable" | "marking_not_ready" | "media_already_published" | "media_being_produced" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_not_published" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "message_not_repliable" | "message_not_retryable" | "mfa_already_enrolled" | "mfa_challenge_expired" | "mfa_not_enrolled" | "mfa_required_by_policy" | "no_active_station" | "no_stations_for_exam" | "not_a_media_block" | "not_a_member" | "not_a_partner_reporter" | "not_a_stripe_payment" | "not_a_training_circuit" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_slot_reviewer" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "outcome_not_releasable" | "partner_unavailable" | "password_already_chosen" | "password_change_required" | "password_login_disabled" | "password_not_set" | "password_reset_not_sent" | "payment_already_recorded" | "payment_already_refunded" | "payment_not_found" | "payment_not_yet_recorded" | "payout_account_number_required" | "peer_mark_item_unknown" | "peer_mark_rating_unknown" | "peer_marks_closed" | "peer_marks_not_allowed" | "peer_marks_own_turn" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_code_taken" | "plan_not_available" | "plan_not_found" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_access_exists" | "practice_feedback_not_open" | "practice_session_ended" | "practice_session_not_accepted" | "practice_session_not_found" | "price_creation_failed" | "programme_exists" | "programme_not_active" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "recruitment_outside_exam" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "rejoin_already_used" | "reporter_not_found" | "request_too_large" | "result_not_found" | "result_not_released" | "review_already_completed" | "review_conflict" | "review_incomplete" | "review_locked" | "review_not_draft" | "review_not_found" | "reviews_pending" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "saml_connection_not_found" | "scheme_not_shown" | "scim_invalid_filter" | "scim_invalid_value" | "scim_mutability" | "scim_not_found" | "scim_token_not_found" | "scim_unauthorized" | "scim_uniqueness" | "script_not_checked" | "set_entry_has_attempts" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_already_claimed" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_only_password_members" | "sso_provider_unsupported" | "sso_verification_failed" | "stale_revision" | "station_being_produced" | "station_empty" | "station_exam_mismatch" | "station_flag_not_found" | "station_has_no_template" | "station_import_not_found" | "station_not_approvable" | "station_not_found" | "station_not_in_plan" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "station_version_not_usable" | "stripe_refund_failed" | "stripe_refund_refused" | "tag_too_long" | "template_not_published" | "too_early_to_join" | "too_many_requests" | "too_many_streams" | "too_many_tags" | "too_many_trainees" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "trial_station_limit" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -11817,6 +11857,16 @@ export interface components {
             /** Self Hosted Seats Total */
             self_hosted_seats_total: number;
         };
+        /** MarkAbsent */
+        MarkAbsent: {
+            /** Reason */
+            reason: string;
+            /**
+             * Trainee Id
+             * Format: uuid
+             */
+            trainee_id: string;
+        };
         /**
          * MarkedResultRead
          * @description One marked result, with the numbers its own rubric makes of it.
@@ -12133,6 +12183,11 @@ export interface components {
              * @default false
              */
             live: boolean;
+            /**
+             * Marked Absent
+             * @default false
+             */
+            marked_absent: boolean;
             /** Mode */
             mode: string;
             /** Name */
@@ -12168,6 +12223,11 @@ export interface components {
             slots?: components["schemas"]["MySlot"][];
             /** Status */
             status: string;
+            /**
+             * Waiting For Rejoin
+             * @default false
+             */
+            waiting_for_rejoin: boolean;
         };
         /**
          * MySittings
@@ -14030,6 +14090,14 @@ export interface components {
             priorities?: {
                 [key: string]: number;
             };
+        };
+        /**
+         * ReasonedOverride
+         * @description An override that cannot be done without saying why: a person is being marked absent or let back in.
+         */
+        ReasonedOverride: {
+            /** Reason */
+            reason: string;
         };
         /**
          * RebuildCircuit
@@ -22810,7 +22878,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description circuit_not_live, trainee_revoked, marking_not_ready, trainee_not_on_roster */
+            /** @description circuit_not_live, candidate_marked_absent, trainee_revoked, marking_not_ready, trainee_not_on_roster */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -27787,6 +27855,86 @@ export interface operations {
             };
         };
     };
+    sittings_allow_rejoin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                circuit_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonedOverride"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DispatchResult"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description circuit_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description circuit_not_live, no_active_station, candidate_still_connected, rejoin_already_used, trainee_revoked, marking_not_ready */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description voice_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     sittings_append_trainees: {
         parameters: {
             query?: never;
@@ -28439,6 +28587,77 @@ export interface operations {
                 };
             };
             /** @description circuit_not_live, invalid_circuit */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sittings_mark_absent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                circuit_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkAbsent"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CircuitRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description circuit_not_found, slot_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description circuit_not_live, candidate_already_sat */
             409: {
                 headers: {
                     [name: string]: unknown;

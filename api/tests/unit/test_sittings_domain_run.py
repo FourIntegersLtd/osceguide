@@ -45,6 +45,14 @@ def test_the_consultation_follows_the_reading_of_the_same_station() -> None:
     assert step == domain_run.Simulation(slot_index=0)
 
 
+def test_a_station_skipped_while_being_read_is_passed_over() -> None:
+    """A candidate marked absent during reading: the consultation never starts for them."""
+    step = domain_run.next_step(
+        at(domain_run.RunPhase.READING, 0), slot_count=3, timing=PLAIN, done=frozenset({0})
+    )
+    assert step == domain_run.Reading(slot_index=1)
+
+
 def test_the_next_station_follows_a_consultation() -> None:
     step = domain_run.next_step(at(domain_run.RunPhase.SIMULATION, 0), slot_count=3, timing=PLAIN)
     assert step == domain_run.Reading(slot_index=1)

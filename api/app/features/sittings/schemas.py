@@ -187,6 +187,25 @@ class Override(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
+class ReasonedOverride(BaseModel):
+    """An override that cannot be done without saying why: a person is being marked absent or let back in."""
+
+    reason: str = Field(min_length=3, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _stripped(cls, value: str) -> str:
+        """A reason of only spaces or a word or two is refused, so the record says something."""
+        value = value.strip()
+        if len(value) < 3:
+            raise ValueError("A reason is required")
+        return value
+
+
+class MarkAbsent(ReasonedOverride):
+    trainee_id: uuid.UUID
+
+
 class ExtendClock(Override):
     # An hour is generous for a station and short enough that a mistyped value
     # cannot strand a circuit until the reaper finds it.

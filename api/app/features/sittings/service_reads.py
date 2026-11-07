@@ -25,6 +25,9 @@ from app.features.sittings import (
 # Re-exported: a caller asks this module for a circuit and is handed a
 # `CircuitRef`, so it should not have to know which file the dataclass is in.
 from app.features.sittings.announcements import attempt_progress as attempt_progress
+from app.features.sittings.domain import ALLOW_REJOIN as ALLOW_REJOIN
+from app.features.sittings.domain import CONNECTION_ENDED as CONNECTION_ENDED
+from app.features.sittings.domain import MARK_ABSENT as MARK_ABSENT
 from app.features.sittings.models import Circuit, Sitting, Slot
 from app.features.sittings.reads import timing_read
 from app.features.sittings.reads_types import CircuitDetail as CircuitDetail
@@ -368,3 +371,10 @@ overdue_seconds = domain_run.overdue_seconds
 FINISHED_SLOT_STATUSES = frozenset(str(status) for status in domain.FINISHED_SLOT_STATUSES)
 # A station the candidate actually sat (or is sitting), as opposed to one the circuit moved past.
 SAT_SLOT_STATUSES = frozenset({str(domain.SlotStatus.IN_CONSULTATION), str(domain.SlotStatus.COMPLETED)})
+
+
+async def slots_with_intervention(
+    session: AsyncSession, slot_ids: list[uuid.UUID], *, action: str
+) -> set[uuid.UUID]:
+    """Which of these slots a supervisor has acted on in this way (`MARK_ABSENT`, `ALLOW_REJOIN`)."""
+    return await repository_run.slots_with_intervention(session, slot_ids, action=action)

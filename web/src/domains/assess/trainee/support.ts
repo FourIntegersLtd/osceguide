@@ -317,8 +317,14 @@ export function splitFinished(sittings: readonly MySitting[]): { current: MySitt
   return { current: sittings.filter((s) => !isOver(s)), past: sittings.filter(isOver) };
 }
 
+/** What a candidate is told when a supervisor marked them absent, on the portal and when a join is refused. */
+export function markedAbsentCopy(w: AssessWords): string {
+  return `You were marked absent from this ${w.hiring ? "assessment" : "exam"}. Contact your organiser if you think this is a mistake.`;
+}
+
 const JOIN_REFUSALS: Record<string, (w: AssessWords) => string> = {
   circuit_not_live: (w) => `This ${w.hiring ? "assessment" : "exam"} is not open yet. You will be let in when your ${w.supervisor} starts it.`,
+  candidate_marked_absent: (w) => markedAbsentCopy(w),
   circuit_not_found: () => "You are no longer down to sit this. Contact your organiser.",
   voice_unavailable: () => "The voice service is not available right now. Try again in a minute.",
   trainee_revoked: () => "You no longer have access to this organisation. Contact them if you think this is a mistake.",
