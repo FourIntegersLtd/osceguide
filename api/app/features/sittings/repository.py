@@ -260,6 +260,18 @@ async def slots_for_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id
     return list((await session.execute(stmt)).scalars())
 
 
+async def slots_for_circuit_of_user(
+    session: AsyncSession, circuit_id: uuid.UUID, user_id: uuid.UUID
+) -> list[Slot]:
+    """This person's slots on the circuit."""
+    stmt = (
+        select(Slot)
+        .where(Slot.circuit_id == circuit_id, Slot.trainee_id == user_id)
+        .order_by(Slot.slot_index)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
 async def slots_for_circuits(
     session: AsyncSession, org_id: uuid.UUID, circuit_ids: Collection[uuid.UUID]
 ) -> dict[uuid.UUID, list[Slot]]:

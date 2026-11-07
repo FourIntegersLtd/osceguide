@@ -20,7 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ports import VoiceTokens
 from app.core.settings import Settings
 from app.features.roster import service as roster
-from app.features.sittings import errors, floor, repository_run, service_floor, service_run
+from app.features.sittings import errors, floor, repository, repository_run, service_floor, service_run
+from app.features.sittings.overrides import MARK_ABSENT
 from app.features.sittings.schemas import RoomGrant
 from app.features.voice import service as voice
 
@@ -72,6 +73,8 @@ async def join_token_for_trainee(
     await roster.ensure_rosterable(session, circuit.org_id, [user_id])
     training = await service_floor.is_training(session, circuit.id)
     service_run.ensure_room_open(circuit, training=training)
+    if await _marked_absent(session, circuit.id, user_id):
+        raise errors.CandidateMarkedAbsent()
 
     # A training trainee always has a camera; the microphone is the turn's (and the floor's).
     sources = ["microphone"]  # exam: the candidate speaks, nothing else (no screen share)
@@ -138,3 +141,9 @@ def _grant(granted: voice.RoomGrant, *, can_publish: bool = True) -> RoomGrant:
     return RoomGrant(
         token=granted.token, server_url=granted.server_url, room=granted.room, can_publish=can_publish
     )
+
+
+async def _marked_absent(session: AsyncSession, circuit_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    """A supervisor recorded this person absent (`mark_absent`): the room is closed to them."""
+    slots = [slot.id for slot in await repository.slots_for_circuit_of_user(session, circuit_id, user_id)]
+    return bool(await repository_run.slots_with_intervention(session, slots, action=MARK_ABSENT))

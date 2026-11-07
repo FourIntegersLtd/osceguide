@@ -45,7 +45,7 @@ import {
   TraineePage,
   TraineeRow,
 } from "@/domains/assess/trainee/traineeBoard";
-import { whenWords } from "@/domains/assess/trainee/support";
+import { markedAbsentCopy, whenWords } from "@/domains/assess/trainee/support";
 
 /**
  * One sitting, as the candidate sitting it sees it.
@@ -167,7 +167,19 @@ function Circuit({ sitting }: { sitting: MySitting }) {
         }
       />
 
-      {sitting.can_join || over ? null : (
+      {sitting.marked_absent ? (
+        <Alert tone="warning" title="You were marked absent">
+          {markedAbsentCopy(w)}
+        </Alert>
+      ) : null}
+
+      {sitting.waiting_for_rejoin ? (
+        <Alert tone="info" title="Waiting to be let back in">
+          {`Your connection dropped. Your ${w.supervisor} can let you back in once. The station clock keeps running, so stay on this page.`}
+        </Alert>
+      ) : null}
+
+      {sitting.can_join || over || sitting.marked_absent || sitting.waiting_for_rejoin ? null : (
         <Alert
           tone="info"
           title={exam ? "Before you start" : `How a practice ${w.circuit} works`}

@@ -15,6 +15,8 @@ const ACTION_LABEL: Record<string, string> = {
   extend_clock: "Time added",
   reset_clock: "Timer restarted",
   resend_patient: "Patient sent in again",
+  mark_absent: "Marked absent",
+  allow_rejoin: "One re-join allowed",
   redo_station: "Station repeated",
   jump_to: "Moved to another station",
   auto_advance: "Automatic next station changed",

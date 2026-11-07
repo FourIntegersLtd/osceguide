@@ -170,6 +170,7 @@ async def observer_token(
         Unauthenticated,
         errors.CircuitNotFound,
         errors.CircuitNotLive,
+        errors.CandidateMarkedAbsent,
         errors.VoiceUnavailable,
         OrgSuspended,
         errors.TraineeRevokedError,

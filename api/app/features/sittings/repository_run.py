@@ -301,6 +301,18 @@ async def record_intervention(
     return intervention
 
 
+async def slots_with_intervention(
+    session: AsyncSession, slot_ids: list[uuid.UUID], *, action: str
+) -> set[uuid.UUID]:
+    """Which of these slots have this action recorded against them."""
+    if not slot_ids:
+        return set()
+    stmt = select(CircuitIntervention.slot_id).where(
+        CircuitIntervention.slot_id.in_(slot_ids), CircuitIntervention.action == action
+    )
+    return {slot_id for slot_id in (await session.execute(stmt)).scalars() if slot_id is not None}
+
+
 async def interventions_for_circuit(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
 ) -> list[CircuitIntervention]:

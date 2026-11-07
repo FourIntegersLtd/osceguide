@@ -5732,7 +5732,10 @@
               "av_not_running",
               "av_unavailable",
               "billing_event_not_found",
+              "candidate_already_sat",
               "candidate_did_not_sit",
+              "candidate_marked_absent",
+              "candidate_still_connected",
               "cannot_claim_own_post",
               "cannot_revoke_own_console_access",
               "checkout_failed",
@@ -5916,6 +5919,7 @@
               "referral_discount_unavailable",
               "referral_not_found",
               "referral_not_redeemed",
+              "rejoin_already_used",
               "reporter_not_found",
               "request_too_large",
               "result_not_found",
@@ -8589,6 +8593,27 @@
         "title": "MachineryCapacity",
         "type": "object"
       },
+      "MarkAbsent": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "trainee_id"
+        ],
+        "title": "MarkAbsent",
+        "type": "object"
+      },
       "MarkedResultRead": {
         "description": "One marked result, with the numbers its own rubric makes of it.",
         "properties": {
@@ -9278,6 +9303,11 @@
             "title": "Live",
             "type": "boolean"
           },
+          "marked_absent": {
+            "default": false,
+            "title": "Marked Absent",
+            "type": "boolean"
+          },
           "mode": {
             "title": "Mode",
             "type": "string"
@@ -9380,6 +9410,11 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "waiting_for_rejoin": {
+            "default": false,
+            "title": "Waiting For Rejoin",
+            "type": "boolean"
           }
         },
         "required": [
@@ -14373,6 +14408,22 @@
           "computed_at"
         ],
         "title": "ReadoutSummary",
+        "type": "object"
+      },
+      "ReasonedOverride": {
+        "description": "An override that cannot be done without saying why: a person is being marked absent or let back in.",
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ReasonedOverride",
         "type": "object"
       },
       "RebuildCircuit": {
@@ -32342,9 +32393,10 @@
                 }
               }
             },
-            "description": "circuit_not_live, trainee_revoked, marking_not_ready, trainee_not_on_roster",
+            "description": "circuit_not_live, candidate_marked_absent, trainee_revoked, marking_not_ready, trainee_not_on_roster",
             "x-codes": [
               "circuit_not_live",
+              "candidate_marked_absent",
               "trainee_revoked",
               "marking_not_ready",
               "trainee_not_on_roster"
@@ -40572,6 +40624,143 @@
         "x-platform-admin": true
       }
     },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/allow-rejoin": {
+      "post": {
+        "description": "Let a candidate whose connection dropped back into their station, once, on the same clock.",
+        "operationId": "sittings_allow_rejoin",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonedOverride"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live, no_active_station, candidate_still_connected, rejoin_already_used, trainee_revoked, marking_not_ready",
+            "x-codes": [
+              "circuit_not_live",
+              "no_active_station",
+              "candidate_still_connected",
+              "rejoin_already_used",
+              "trainee_revoked",
+              "marking_not_ready"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Allow Rejoin",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "org_staff",
+        "x-platform-admin": true
+      }
+    },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/append-trainees": {
       "post": {
         "description": "Add people to a training circuit, into the room it is already using.\n\nEach arrival may name the station it takes, positionally with\n`trainee_ids`; name none and they all join the station the circuit is\ncurrently on. Either way, the station must already be one this circuit\nruns.",
@@ -41721,6 +41910,127 @@
           }
         ],
         "summary": "Jump To",
+        "tags": [
+          "sittings"
+        ],
+        "x-capability": "org_staff",
+        "x-platform-admin": true
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/mark-absent": {
+      "post": {
+        "description": "Record that a candidate who never started did not come. The reason is required and audited.",
+        "operationId": "sittings_mark_absent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkAbsent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found, slot_not_found",
+            "x-codes": [
+              "circuit_not_found",
+              "slot_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live, candidate_already_sat",
+            "x-codes": [
+              "circuit_not_live",
+              "candidate_already_sat"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mark Absent",
         "tags": [
           "sittings"
         ],

@@ -237,6 +237,34 @@ class PeerMarkItemUnknown(Conflict):
     default_message = "That item is not in this station's marking scheme."
 
 
+class CandidateAlreadySat(Conflict):
+    """Marking absent is for somebody who never started: they have a station under way or marked."""
+
+    code = "candidate_already_sat"
+    default_message = "This person has already started a station, so they cannot be marked absent."
+
+
+class CandidateMarkedAbsent(Conflict):
+    """The supervisor recorded this candidate as absent, so the room is closed to them."""
+
+    code = "candidate_marked_absent"
+    default_message = "You have been marked absent from this session."
+
+
+class CandidateStillConnected(Conflict):
+    """A re-join is for a connection that dropped; the patient is still talking to the candidate."""
+
+    code = "candidate_still_connected"
+    default_message = "The candidate is still connected, so there is nothing to re-join."
+
+
+class RejoinAlreadyUsed(Conflict):
+    """One re-join per station; a second is a decision for the Add time or Repeat station controls."""
+
+    code = "rejoin_already_used"
+    default_message = "A re-join has already been allowed for this station."
+
+
 # What "you cannot do that to this circuit" can mean, as one tuple: every
 # route that acts on a live examination declares the same three, and three
 # spellings of one list is how a route ends up advertising a code it cannot

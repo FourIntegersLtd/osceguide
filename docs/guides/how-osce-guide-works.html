@@ -959,6 +959,10 @@
 <div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
 <li data-code="circuit_not_started"><b>Acting on a circuit that has not been started.</b> You read: <span class="says">"The circuit has not been started yet."</span></li>
 <li data-code="circuit_not_live"><b>Joining a circuit that is not running</b>, because it has not begun or is over. You read: <span class="says">"The circuit is not running, so nothing can be sat on it now."</span></li>
+<li data-code="candidate_marked_absent"><b>A candidate the supervisor recorded as absent trying to join</b>. You read: <span class="says">"You have been marked absent from this session."</span></li>
+<li data-code="candidate_already_sat"><b>Marking absent someone who has already started a station</b>. You read: <span class="says">"This person has already started a station, so they cannot be marked absent."</span></li>
+<li data-code="candidate_still_connected"><b>Allowing a re-join while the candidate is still connected</b>. You read: <span class="says">"The candidate is still connected, so there is nothing to re-join."</span></li>
+<li data-code="rejoin_already_used"><b>A second re-join on the same station</b>. You read: <span class="says">"A re-join has already been allowed for this station."</span></li>
 <li data-code="circuit_paused"><b>Moving on while the clock is paused.</b> You read: <span class="says">"The circuit is paused. Resume it first."</span></li>
 <li data-code="circuit_not_paused"><b>Resuming a clock that is running.</b> You read: <span class="says">"The circuit is not paused."</span></li>
 <li data-code="circuit_already_ended"><b>Acting on a circuit that has finished.</b> You read: <span class="says">"The circuit has already ended."</span></li>

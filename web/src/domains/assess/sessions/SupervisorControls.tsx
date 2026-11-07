@@ -55,6 +55,20 @@ export function SupervisorControls({
   // Shown under a disabled menu item, and read out as its reason.
   const waitHint = working ? (reconnecting ? `Reconnecting to the ${w.circuit}` : "Another action is running") : undefined;
 
+  // Anyone who has not sat can be marked absent, before or during the run.
+  const slots = data.slots ?? [];
+  const hasSat = new Set(
+    slots.filter((slot) => slot.status !== "scheduled" && slot.status !== "reading").map((slot) => slot.trainee.user_id),
+  );
+  const absentItems = [...new Map(slots.map((slot) => [slot.trainee.user_id, slot])).values()]
+    .filter((slot) => !hasSat.has(slot.trainee.user_id))
+    .map((slot) => ({
+      label: `Mark ${slot.trainee.name ?? w.trainee} absent`,
+      disabled: working,
+      hint: waitHint,
+      onSelect: () => openRequest(absentRequest(orgSlug, circuitId, slot.trainee.user_id, slot.trainee.name ?? w.trainee, w)),
+    }));
+
   async function commit(input: { reason: string | null; seconds: number }) {
     if (!request) return;
     const pending = request;
@@ -87,6 +101,7 @@ export function SupervisorControls({
 
       <div className="flex flex-wrap items-center gap-2.5">
         {!started ? (
+          <>
           <Button
             themeType="b2b"
             variant="commit"
@@ -96,6 +111,8 @@ export function SupervisorControls({
           >
             {`Start ${w.circuit}`}
           </Button>
+          <ActionMenu label={`More ${w.circuit} controls`} items={absentItems} />
+          </>
         ) : (
           <>
             <Button
@@ -129,6 +146,8 @@ export function SupervisorControls({
                 { label: "Add time", disabled: working, hint: waitHint, onSelect: () => openRequest(extendRequest(orgSlug, circuitId)) },
                 { label: "Restart the timer", disabled: working, hint: waitHint, onSelect: () => openRequest(resetRequest(orgSlug, circuitId)) },
                 { label: "Resend the patient", disabled: working, hint: waitHint, onSelect: () => openRequest(resendRequest(orgSlug, circuitId)) },
+                { label: "Allow one re-join", disabled: working, hint: waitHint, onSelect: () => openRequest(rejoinRequest(orgSlug, circuitId, w)) },
+                ...absentItems,
                 ...(training && turn.kind === "end"
                   ? []
                   : [{ label: `End ${w.circuit}`, tone: "danger" as const, disabled: working, hint: waitHint, onSelect: () => openRequest(endRequest(orgSlug, circuitId, w)) }]),
@@ -225,5 +244,28 @@ function endRequest(slug: string, circuitId: string, w: AssessWords): OverrideRe
     commitLabel: `End the ${w.circuit}`,
     tone: "danger",
     run: ({ reason }) => runControls.end(slug, circuitId, reason),
+  };
+}
+
+function rejoinRequest(slug: string, circuitId: string, w: AssessWords): OverrideRequest {
+  return {
+    name: "rejoin",
+    title: "Allow one re-join",
+    lead: `Lets the ${w.trainee} whose connection dropped back into this station, once. The clock does not stop or restart; use Add time if they need it.`,
+    commitLabel: "Allow re-join",
+    reasonRequired: true,
+    run: ({ reason }) => overrides.allowRejoin(slug, circuitId, reason ?? ""),
+  };
+}
+
+function absentRequest(slug: string, circuitId: string, traineeId: string, name: string, w: AssessWords): OverrideRequest {
+  return {
+    name: "absent",
+    title: `Mark ${name} absent`,
+    lead: `${name} has not joined. Their stations are skipped and they cannot join this ${w.circuit} afterwards.`,
+    commitLabel: "Mark absent",
+    tone: "danger",
+    reasonRequired: true,
+    run: ({ reason }) => overrides.markAbsent(slug, circuitId, traineeId, reason ?? ""),
   };
 }

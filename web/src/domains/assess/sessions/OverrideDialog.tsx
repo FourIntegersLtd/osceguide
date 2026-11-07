@@ -9,6 +9,9 @@ import {
 } from "@/domains/assess/sessions/support";
 import { boardInput } from "@/foundation/ui/boardKit";
 
+/** The api refuses a shorter reason on the overrides that require one. */
+const MIN_REASON_LENGTH = 3;
+
 export interface OverrideRequest {
   /** The control being confirmed, used as the busy key. */
   name: string;
@@ -18,6 +21,8 @@ export interface OverrideRequest {
   tone?: "commit" | "danger";
   /** Shown when the override needs a number as well as a reason. */
   seconds?: number;
+  /** The record is not accepted without a reason (an absence, a re-join). */
+  reasonRequired?: boolean;
   run: (input: { reason: string | null; seconds: number }) => Promise<unknown>;
 }
 
@@ -81,7 +86,10 @@ function OverrideForm({
       lead={request.lead}
       error={error}
       busy={busy}
-      commitDisabled={request.seconds !== undefined && !validOverrideSeconds(seconds)}
+      commitDisabled={
+        (request.seconds !== undefined && !validOverrideSeconds(seconds)) ||
+        (request.reasonRequired === true && reason.trim().length < MIN_REASON_LENGTH)
+      }
       tone={request.tone ?? "commit"}
       commitLabel={request.commitLabel}
       busyLabel="Working…"
@@ -105,7 +113,7 @@ function OverrideForm({
 
         <label className={assessFormHeading}>
           <span className="text-assess-label font-medium">
-            Reason <span className="font-normal text-osce-ink-500">(kept with the record)</span>
+            Reason <span className="font-normal text-osce-ink-500">({request.reasonRequired ? "required, " : ""}kept with the record)</span>
           </span>
           <input
             value={reason}
@@ -114,7 +122,7 @@ function OverrideForm({
             onChange={(event) => setReason(event.target.value)}
             className={boardInput}
           />
-          <span className={assessHelper}>Optional. Your answer is saved with the circuit.</span>
+          <span className={assessHelper}>{request.reasonRequired ? "Required. Your answer is saved with the record." : "Optional. Your answer is saved with the circuit."}</span>
         </label>
       </div>
     </PeopleDialog>

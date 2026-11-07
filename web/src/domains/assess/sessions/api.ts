@@ -75,6 +75,10 @@ export const overrides = {
     post<Circuit>(slug, circuitId, "extend-clock", { seconds, reason }),
   resendPatient: (slug: string, circuitId: string, reason: string | null) =>
     post<DispatchResult>(slug, circuitId, "resend-patient", { reason }),
+  markAbsent: (slug: string, circuitId: string, traineeId: string, reason: string) =>
+    post<Circuit>(slug, circuitId, "mark-absent", { trainee_id: traineeId, reason }),
+  allowRejoin: (slug: string, circuitId: string, reason: string) =>
+    post<DispatchResult>(slug, circuitId, "allow-rejoin", { reason }),
   redoStation: (slug: string, circuitId: string, slotId: string, reason: string | null) =>
     post<Circuit>(slug, circuitId, "redo-station", { slot_id: slotId, reason }),
   jumpTo: (slug: string, circuitId: string, slotId: string, reason: string | null) =>

@@ -51,6 +51,13 @@ class SlotStatus(StrEnum):
 
 # A station that will not be sat again, whichever way it ended.
 FINISHED_SLOT_STATUSES = frozenset({SlotStatus.COMPLETED, SlotStatus.SKIPPED})
+# Interventions recorded against a candidate, not the clock.
+MARK_ABSENT = "mark_absent"
+ALLOW_REJOIN = "allow_rejoin"
+
+# A conversation that is over while the station's clock still runs: the connection dropped, or it failed.
+CONNECTION_ENDED = frozenset({"interaction_complete", "evaluated", "failed"})
+
 # Not yet sat, and not given up: what is left to do on a station.
 UNSAT_SLOT_STATUSES = (SlotStatus.SCHEDULED, SlotStatus.READING, SlotStatus.IN_CONSULTATION)
 
