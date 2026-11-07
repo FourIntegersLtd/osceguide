@@ -281,7 +281,14 @@ export interface ScheduleDraft {
   /** Formal exam only: a supervisor for each candidate's circuit instead of one for all. */
   perCandidate: boolean;
   supervisorByCandidate: Record<string, string>;
+  /** Formal exam in a hire workspace: minutes between one candidate's start and the next; 0 starts them together. */
+  staggerMinutes: number;
+  /** Station version id to the assessor of that station; a station left out is the lead's. */
+  stationAssessors: Record<string, string>;
 }
+
+/** Minutes between two rotations' starts (a candidate's own offset is capped at 480 by the api). */
+export const STAGGER_BOUNDS = { min: 0, max: 60 };
 
 export const EMPTY_DRAFT: ScheduleDraft = {
   name: "",
@@ -299,6 +306,8 @@ export const EMPTY_DRAFT: ScheduleDraft = {
   supervisorId: "",
   perCandidate: false,
   supervisorByCandidate: {},
+  staggerMinutes: 0,
+  stationAssessors: {},
 };
 
 const inBounds = (value: number, bounds: { min: number; max: number }) =>
@@ -563,7 +572,24 @@ export type CircuitPlan =
 
 export function circuitPlan(draft: ScheduleDraft): CircuitPlan {
   if (draft.mode === "training") return { kind: "training" };
-  if (draft.perCandidate && draft.candidateIds.length > 1)
+  if ((draft.perCandidate || draft.staggerMinutes > 0) && draft.candidateIds.length > 1)
     return { kind: "each", candidateIds: draft.candidateIds };
   return { kind: "bulk" };
+}
+
+/** Minutes after the sitting's start that the nth candidate (0-based) begins. */
+export function startOffsetFor(draft: Pick<ScheduleDraft, "mode" | "staggerMinutes">, index: number): number {
+  if (draft.mode !== "exam") return 0;
+  return Math.min(480, Math.max(0, Math.round(draft.staggerMinutes)) * index);
+}
+
+/** The per-station assessors to send: only stations still on the draft, only where somebody was picked. */
+export function stationAssessorsFor(
+  draft: Pick<ScheduleDraft, "mode" | "stations" | "stationAssessors">,
+): Record<string, string> {
+  if (draft.mode !== "exam") return {};
+  const onDraft = new Set(draft.stations.map((station) => station.version_id));
+  return Object.fromEntries(
+    Object.entries(draft.stationAssessors).filter(([station, person]) => person && onDraft.has(station)),
+  );
 }

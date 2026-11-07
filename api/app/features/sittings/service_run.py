@@ -91,6 +91,10 @@ async def start_circuit(
         return await read_circuit(session, org_id, circuit_id)
     sitting = await _require_sitting(session, org_id, circuit.sitting_id)
     ensure_sitting_not_cancelled(sitting)
+    # A staggered rotation is not started before its candidate may come in (ten minutes before its start).
+    opens = domain.join_opens_at(sitting.scheduled_for, circuit.start_offset_minutes)
+    if opens is not None and now < opens:
+        raise errors.JoinNotOpen()
     await ensure_sitting_programme_active(session, org_id, sitting)
     # S-17: nothing new starts for a suspended organisation, whoever asks.
     await tenancy.ensure_org_active(session, org_id, now=now)

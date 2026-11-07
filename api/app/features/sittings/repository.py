@@ -139,6 +139,8 @@ async def create_circuit(
     name: str,
     supervisor_user_id: uuid.UUID | None,
     timing: dict[str, Any],
+    start_offset_minutes: int = 0,
+    station_assessors: dict[str, str] | None = None,
 ) -> Circuit:
     """Write a new circuit row and return it, refreshed with its defaults."""
     circuit = Circuit(
@@ -147,6 +149,8 @@ async def create_circuit(
         name=name,
         supervisor_user_id=supervisor_user_id,
         timing=timing,
+        start_offset_minutes=start_offset_minutes,
+        station_assessors=station_assessors or None,
     )
     session.add(circuit)
     await session.flush()

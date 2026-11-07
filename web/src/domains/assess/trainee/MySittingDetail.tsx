@@ -153,8 +153,8 @@ function Circuit({ sitting }: { sitting: MySitting }) {
       </div>
       <TraineeHead
         eyebrow={
-          sitting.scheduled_for
-            ? whenWords(sitting.scheduled_for) || modeLabel(sitting)
+          sitting.starts_at ?? sitting.scheduled_for
+            ? whenWords((sitting.starts_at ?? sitting.scheduled_for) as string) || modeLabel(sitting)
             : modeLabel(sitting)
         }
         title={sitting.name}

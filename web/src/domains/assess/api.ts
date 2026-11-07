@@ -308,6 +308,10 @@ export interface CircuitShape {
   traineeIds: string[];
   supervisorUserId: string | null;
   timing: CircuitTiming;
+  /** Minutes after the sitting's start that this rotation begins; left out keeps what the circuit has. */
+  startOffsetMinutes?: number;
+  /** Station version id to assessor user id; left out keeps what the circuit has, `{}` clears them. */
+  stationAssessors?: Record<string, string>;
 }
 
 /**
@@ -378,6 +382,8 @@ export function createCircuit(
         trainee_ids: input.traineeIds,
         supervisor_user_id: input.supervisorUserId,
         timing: timingBody(input.timing),
+        start_offset_minutes: input.startOffsetMinutes,
+        station_assessors: input.stationAssessors,
       },
     },
   );
@@ -433,6 +439,8 @@ export function rebuildCircuit(
         trainee_ids: input.traineeIds,
         supervisor_user_id: input.supervisorUserId,
         timing: timingBody(input.timing),
+        start_offset_minutes: input.startOffsetMinutes,
+        station_assessors: input.stationAssessors,
       },
     },
   );

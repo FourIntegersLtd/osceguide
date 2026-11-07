@@ -82,6 +82,10 @@ async def my_sittings(
                 mode=trainee_slot.sitting.mode,
                 status=trainee_slot.sitting.status,
                 scheduled_for=trainee_slot.sitting.scheduled_for,
+                starts_at=sittings.rotation_starts_at(
+                    trainee_slot.sitting.scheduled_for, trainee_slot.circuit.start_offset_minutes
+                ),
+                start_offset_minutes=trainee_slot.circuit.start_offset_minutes,
                 org_id=trainee_slot.sitting.org_id,
                 org_slug=org_slugs.get(trainee_slot.sitting.org_id),
                 circuit_id=trainee_slot.circuit.id,

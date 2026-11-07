@@ -51,6 +51,7 @@ _LIVE = (Forbidden, *errors.LIVE_CIRCUIT_REFUSALS)
         errors.SittingLockedError,
         errors.LeadCannotRun,
         errors.ProgrammeNotActive,
+        errors.JoinNotOpen,
         OrgSuspended,
     ),
 )
@@ -142,7 +143,7 @@ async def read_edit_lock(
 @router.post(
     "/orgs/{org_slug}/circuits/{circuit_id}/observer-token",
     response_model=schemas.RoomGrant,
-    responses=error_responses(*_LIVE, errors.VoiceUnavailable),
+    responses=error_responses(*_LIVE, errors.NotYourStation, errors.VoiceUnavailable),
 )
 async def observer_token(
     circuit_id: uuid.UUID,
@@ -160,6 +161,7 @@ async def observer_token(
         user_id=principal.user_id,
         tokens=tokens,
         settings=settings,
+        role=workspace.role,
     )
 
 

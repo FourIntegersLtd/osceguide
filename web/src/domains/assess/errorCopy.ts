@@ -59,6 +59,8 @@ function assessErrorCopy(w: AssessWords): Partial<Record<PlatformErrorCode, stri
     invalid_rating: "One of the ratings is not one this station accepts. Pick again from the list.",
     review_locked: "This candidate's result has been signed off or released, so its reviews can no longer be changed",
     not_slot_reviewer: `Only the ${supervisor} named on this ${circuit}, or an administrator, can review it`,
+    not_your_station: `You are not the ${supervisor} for the station running now. Only that station's ${supervisor}, or an administrator, can listen in.`,
+    join_not_open: `This ${circuit} cannot start yet. It opens ten minutes before its own start time.`,
     circuit_review_finalized: `This ${circuit}'s review has already been finalised`,
     // sittings and circuits
     circuit_locked: `This ${circuit} has started or has feedback recorded, so its stations can no longer be changed. Reload to see where it is now.`,

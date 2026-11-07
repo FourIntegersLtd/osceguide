@@ -150,6 +150,7 @@ function Builder({
           candidate_user_ids: shape.traineeIds,
           station_version_ids: shape.stationVersionIds,
           supervisor_user_id: shape.supervisorUserId,
+          start_offset_minutes: 0,
           timing: timingBody(shape.timing),
         });
       } else {

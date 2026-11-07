@@ -157,6 +157,21 @@ async def ensure_lead_may_run(session: AsyncSession, org_id: uuid.UUID, lead: uu
         raise errors.LeadCannotRun()
 
 
+async def resolve_station_assessors(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    station_version_ids: list[uuid.UUID],
+    assessors: dict[uuid.UUID, uuid.UUID],
+) -> dict[str, str]:
+    """Check a per-station assessor map (each station is on the circuit, each person may run circuits)
+    and return it as the JSON the circuit stores."""
+    if any(station not in station_version_ids for station in assessors):
+        raise errors.StationNotOnCircuitError()
+    for person in set(assessors.values()):
+        await ensure_lead_may_run(session, org_id, person)
+    return {str(station): str(person) for station, person in assessors.items()}
+
+
 async def add_circuit(
     session: AsyncSession,
     org_id: uuid.UUID,
@@ -167,6 +182,8 @@ async def add_circuit(
     station_version_ids: list[uuid.UUID],
     supervisor_user_id: uuid.UUID | None,
     timing: TimingIn,
+    start_offset_minutes: int = 0,
+    station_assessors: dict[uuid.UUID, uuid.UUID] | None = None,
 ) -> CircuitRead:
     """Build a new circuit inside a sitting: check the sitting, then build and write the circuit."""
     sitting = await _open_sitting(session, org_id, sitting_id)
@@ -179,6 +196,8 @@ async def add_circuit(
         station_version_ids=station_version_ids,
         supervisor_user_id=supervisor_user_id,
         timing=timing,
+        start_offset_minutes=start_offset_minutes,
+        station_assessors=station_assessors or {},
     )
 
 
@@ -203,6 +222,8 @@ async def add_exam_circuits(
             station_version_ids=body.station_version_ids,
             supervisor_user_id=body.supervisor_user_id,
             timing=body.timing or TimingIn(),
+            start_offset_minutes=body.start_offset_minutes,
+            station_assessors=body.station_assessors,
         )
         for candidate in body.candidate_user_ids
     ]
@@ -226,12 +247,15 @@ async def _create_circuit(
     station_version_ids: list[uuid.UUID],
     supervisor_user_id: uuid.UUID | None,
     timing: TimingIn,
+    start_offset_minutes: int,
+    station_assessors: dict[uuid.UUID, uuid.UUID],
 ) -> CircuitRead:
     """Check the roster, build the slots, write the circuit and tell the people on it."""
     mode = domain.Mode(sitting.mode)
     # R3: a revoked trainee is not scheduled into an examination.
     await roster.ensure_rosterable(session, org_id, trainee_ids)
     await ensure_lead_may_run(session, org_id, supervisor_user_id)
+    assessors = await resolve_station_assessors(session, org_id, station_version_ids, station_assessors)
 
     try:
         planned = domain.build_slots(
@@ -255,6 +279,8 @@ async def _create_circuit(
         name=name,
         supervisor_user_id=supervisor_user_id,
         timing=timing_json(resolved_timing),
+        start_offset_minutes=start_offset_minutes,
+        station_assessors=assessors,
     )
     await repository.add_circuit_members(
         session, circuit.id, trainee_ids=trainee_ids, station_version_ids=station_version_ids

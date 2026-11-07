@@ -78,6 +78,10 @@ class Circuit(Base, UUIDPrimaryKey, Timestamps, Revisioned):
     # A closed shape with a handful of fields, kept as JSON because the break
     # list is variable-length and read as a unit.
     timing: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Minutes after the sitting's start time that this circuit's rotation begins (staggered starts).
+    start_offset_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    # {station_version_id: user_id}: who assesses a station when it is not the circuit's own supervisor.
+    station_assessors: Mapped[dict[str, str] | None] = mapped_column(JSONB)
     active_slot_id: Mapped[uuid.UUID | None] = mapped_column()
     room_name: Mapped[str | None] = mapped_column(String(200))
     agent_dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

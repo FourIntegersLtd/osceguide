@@ -2568,6 +2568,11 @@
             "title": "Slots",
             "type": "array"
           },
+          "start_offset_minutes": {
+            "default": 0,
+            "title": "Start Offset Minutes",
+            "type": "integer"
+          },
           "started_at": {
             "anyOf": [
               {
@@ -2579,6 +2584,17 @@
               }
             ],
             "title": "Started At"
+          },
+          "station_assessors": {
+            "additionalProperties": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "title": "Station Assessors",
+            "type": "object"
           },
           "supervisor_name": {
             "anyOf": [
@@ -3151,6 +3167,11 @@
             ],
             "title": "Room Name"
           },
+          "start_offset_minutes": {
+            "default": 0,
+            "title": "Start Offset Minutes",
+            "type": "integer"
+          },
           "started_at": {
             "anyOf": [
               {
@@ -3162,6 +3183,16 @@
               }
             ],
             "title": "Started At"
+          },
+          "station_assessors": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ConsolePerson"
+            },
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "title": "Station Assessors",
+            "type": "object"
           },
           "supervisor": {
             "anyOf": [
@@ -3769,6 +3800,24 @@
             "title": "Name",
             "type": "string"
           },
+          "start_offset_minutes": {
+            "default": 0,
+            "maximum": 480.0,
+            "minimum": 0.0,
+            "title": "Start Offset Minutes",
+            "type": "integer"
+          },
+          "station_assessors": {
+            "additionalProperties": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "title": "Station Assessors",
+            "type": "object"
+          },
           "station_version_ids": {
             "items": {
               "format": "uuid",
@@ -3925,6 +3974,24 @@
             "minLength": 1,
             "title": "Name Prefix",
             "type": "string"
+          },
+          "start_offset_minutes": {
+            "default": 0,
+            "maximum": 480.0,
+            "minimum": 0.0,
+            "title": "Start Offset Minutes",
+            "type": "integer"
+          },
+          "station_assessors": {
+            "additionalProperties": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "title": "Station Assessors",
+            "type": "object"
           },
           "station_version_ids": {
             "items": {
@@ -6180,6 +6247,7 @@
               "job_not_cancellable",
               "job_not_found",
               "job_not_retryable",
+              "join_not_open",
               "knowledge_unavailable",
               "last_admin",
               "lead_cannot_run",
@@ -6221,6 +6289,7 @@
               "not_signable",
               "not_slot_reviewer",
               "not_your_post",
+              "not_your_station",
               "nothing_to_debrief",
               "nothing_to_review",
               "org_not_found",
@@ -9761,6 +9830,23 @@
             },
             "title": "Slots",
             "type": "array"
+          },
+          "start_offset_minutes": {
+            "default": 0,
+            "title": "Start Offset Minutes",
+            "type": "integer"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
           },
           "status": {
             "title": "Status",
@@ -14818,6 +14904,37 @@
               }
             ],
             "title": "Revision"
+          },
+          "start_offset_minutes": {
+            "anyOf": [
+              {
+                "maximum": 480.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Offset Minutes"
+          },
+          "station_assessors": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "propertyNames": {
+                  "format": "uuid"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Assessors"
           },
           "station_version_ids": {
             "items": {
@@ -41801,12 +41918,13 @@
                 }
               }
             },
-            "description": "stale_revision, circuit_already_ended, circuit_locked, lead_cannot_run, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster",
+            "description": "stale_revision, circuit_already_ended, circuit_locked, lead_cannot_run, station_not_on_circuit, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster",
             "x-codes": [
               "stale_revision",
               "circuit_already_ended",
               "circuit_locked",
               "lead_cannot_run",
+              "station_not_on_circuit",
               "invalid_circuit",
               "trainee_revoked",
               "marking_not_ready",
@@ -43437,9 +43555,10 @@
                 }
               }
             },
-            "description": "forbidden, organization_suspended",
+            "description": "forbidden, not_your_station, organization_suspended",
             "x-codes": [
               "forbidden",
+              "not_your_station",
               "organization_suspended"
             ]
           },
@@ -44907,12 +45026,13 @@
                 }
               }
             },
-            "description": "circuit_already_ended, sitting_locked, lead_cannot_run, programme_not_active",
+            "description": "circuit_already_ended, sitting_locked, lead_cannot_run, programme_not_active, join_not_open",
             "x-codes": [
               "circuit_already_ended",
               "sitting_locked",
               "lead_cannot_run",
-              "programme_not_active"
+              "programme_not_active",
+              "join_not_open"
             ]
           },
           "422": {
@@ -49097,7 +49217,7 @@
         "tags": [
           "tenancy"
         ],
-        "x-capability": "org_admin",
+        "x-capability": "institution_admin",
         "x-platform-admin": false
       }
     },
@@ -54351,10 +54471,11 @@
                 }
               }
             },
-            "description": "sitting_locked, lead_cannot_run, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster, programme_not_active",
+            "description": "sitting_locked, lead_cannot_run, station_not_on_circuit, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster, programme_not_active",
             "x-codes": [
               "sitting_locked",
               "lead_cannot_run",
+              "station_not_on_circuit",
               "invalid_circuit",
               "trainee_revoked",
               "marking_not_ready",
@@ -54479,10 +54600,11 @@
                 }
               }
             },
-            "description": "sitting_locked, lead_cannot_run, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster, programme_not_active, not_permitted_in_mode",
+            "description": "sitting_locked, lead_cannot_run, station_not_on_circuit, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster, programme_not_active, not_permitted_in_mode",
             "x-codes": [
               "sitting_locked",
               "lead_cannot_run",
+              "station_not_on_circuit",
               "invalid_circuit",
               "trainee_revoked",
               "marking_not_ready",
