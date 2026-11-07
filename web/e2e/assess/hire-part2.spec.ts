@@ -81,7 +81,7 @@ for (const viewport of VIEWPORTS) {
     await expect(pool.getByRole("status")).toContainText("3");
     await expect(pool.getByRole("status")).toContainText("2");
     // Each candidate's rotation is editable under the proposal.
-    await expect(page.getByRole("combobox", { name: /^Assessor for/ })).toHaveCount(5);
+    await expect(page.getByRole("combobox", { name: /^Assessor for (?!station)/ })).toHaveCount(5);
     await shot(page, `rotations-${viewport.name}`);
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByText("with nobody")).toHaveCount(0);

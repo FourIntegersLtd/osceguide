@@ -49,7 +49,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-83 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
+84 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -975,6 +975,15 @@ A rubric filled in against one slot, by staff or by a peer observer.
 UNIQUE `(slot_id, submitted_by)` — one review per person per slot; submitting twice
 edits the first.
 
+### `sitting_templates`
+
+**Growth:** per-org.
+A named setup an organisation keeps to start new schedules from. Holds no people.
+
+`org_id` → `organizations.id` CASCADE, `name varchar(120) not null` (UNIQUE per org on
+`lower(name)`), `config jsonb not null` (programme, mode, stations in order, timing, assessor
+style: `schemas.TemplateConfig`), `created_by` → `users.id` SET NULL.
+
 ### `gp_lead_reviews`
 
 **Growth:** per-attempt.
@@ -1047,6 +1056,8 @@ A scheduled event an organisation holds.
 | `voice_fault_at` | `timestamptz null` | when the voice service last refused to bring the patient in (R-16); cleared by the step that succeeds |
 | `open_floor` | `boolean not null default false` | training rooms: every participant may speak (the end-of-session conversation) |
 | `room_closed_at` | `timestamptz null` | training rooms: when the supervisor closed the room that stayed open after End |
+| `start_offset_minutes` | `int not null default 0` | staggered starts: how long after the sitting's start this rotation begins; join opens 10 minutes before |
+| `station_assessors` | `jsonb not null default {}` | station version id → the user who marks that station; empty means the circuit's supervisor |
 
 **The examination clock is here, not on the slot.** A break belongs to no slot —
 it is the circuit resting between stations — and that is the one thing a per-slot
