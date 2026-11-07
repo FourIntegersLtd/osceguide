@@ -145,3 +145,19 @@ export function stationScoreLabel(station: TraineeStationResult): string {
   const mark = `${station.score.toFixed(0)} / 100`;
   return station.passed === null ? mark : `${mark} · ${station.passed ? "Pass" : "Fail"}`;
 }
+
+/** A candidate's own review request for a released result; its status is theirs to read. */
+export type MyAppeal = components["schemas"]["CandidateAppealRead"];
+
+/** The request made for this sitting's result, or null when none was made. */
+export function readMyAppeal(sittingId: string, signal?: AbortSignal): Promise<MyAppeal | null> {
+  return platformRequest<MyAppeal | null>(`/api/v1/me/results/${encodeURIComponent(sittingId)}/appeal`, { signal });
+}
+
+/** Ask the organisation to look at a released result again, with the reason in the candidate's words. */
+export function requestMyAppeal(sittingId: string, reason: string): Promise<MyAppeal> {
+  return platformRequest<MyAppeal>(`/api/v1/me/results/${encodeURIComponent(sittingId)}/appeal`, {
+    method: "POST",
+    body: { reason },
+  });
+}

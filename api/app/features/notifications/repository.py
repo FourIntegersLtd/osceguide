@@ -55,6 +55,24 @@ async def erase_recipients(session: AsyncSession, emails: set[str], *, placehold
     await session.execute(update(OutboundMessage).where(matching).values(recipient=placeholder))
 
 
+async def erase_org_result_mail(
+    session: AsyncSession, email: str, *, org_slug: str, templates: tuple[str, ...], placeholder: str
+) -> None:
+    """One organisation's result mail to this address: unsent is dropped, sent stops naming them.
+
+    Other organisations' mail to the same person, and account mail, are left alone.
+    """
+    matching = (
+        func.lower(OutboundMessage.recipient) == email.lower(),
+        OutboundMessage.template_key.in_(templates),
+        OutboundMessage.payload["org_slug"].astext == org_slug,
+    )
+    await session.execute(
+        delete(OutboundMessage).where(*matching, OutboundMessage.status.in_(("pending", "failed")))
+    )
+    await session.execute(update(OutboundMessage).where(*matching).values(recipient=placeholder))
+
+
 async def scrub_recipient(session: AsyncSession, message_id: uuid.UUID, *, placeholder: str) -> None:
     """Stop a delivered message naming the person it was sent to."""
     await session.execute(

@@ -16,6 +16,7 @@ import {
   type ResultsTab,
 } from "@/domains/assess/results/support";
 import { resultsWhere } from "@/domains/assess/sittingList";
+import { AppealsQueue } from "@/domains/assess/results/AppealsQueue";
 import { useStationsToReview } from "@/domains/assess/results/StationsToReview";
 import { boardCard, boardHeadRow, boardPad, boardRow, boardTab, boardTabs, boardButtonSmall } from "@/foundation/ui/boardKit";
 
@@ -29,6 +30,7 @@ const TABS: [ResultsTab, string][] = [
 export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
   const [tab, setTab] = useState<ResultsTab>("needs_decision");
+  const [appeals, setAppeals] = useState(false);
   const state = useAsync((signal) => readResultsIndex(orgSlug, signal), [orgSlug]);
   const w = useAssessWords();
   const { session } = useSession();
@@ -66,15 +68,24 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
             key={id}
             type="button"
             role="tab"
-            aria-selected={tab === id}
-            className={boardTab(tab === id)}
-            onClick={() => setTab(id)}
+            aria-selected={!appeals && tab === id}
+            className={boardTab(!appeals && tab === id)}
+            onClick={() => {
+              setAppeals(false);
+              setTab(id);
+            }}
           >
             {label}
           </button>
         ))}
+        {can(session, "sign_off_results") ? (
+          <button type="button" role="tab" aria-selected={appeals} className={boardTab(appeals)} onClick={() => setAppeals(true)}>
+            Appeals
+          </button>
+        ) : null}
       </div>
-      <AsyncBoundary
+      {appeals ? <AppealsQueue orgSlug={orgSlug} /> : null}
+      {appeals ? null : <AsyncBoundary
         state={state}
         isEmpty={(data) => (data.rows ?? []).length === 0}
         empty={{
@@ -117,7 +128,7 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
             </>
           );
         }}
-      </AsyncBoundary>
+      </AsyncBoundary>}
     </section>
   );
 }

@@ -233,3 +233,14 @@ async def has_completed_review(session: AsyncSession, org_id: uuid.UUID, slot_id
     """Whether a reviewer has completed a review of this slot (for practice: its feedback is shared)."""
     reviews = await repository.slot_reviews(session, org_id, slot_id)
     return any(review.status == "completed" for review in reviews)
+
+
+async def reviewer_ids_for_slots(
+    session: AsyncSession, org_id: uuid.UUID, slot_ids: Sequence[uuid.UUID]
+) -> set[uuid.UUID]:
+    """Everyone who marked or second-reviewed any of these slots, for keeping a re-mark independent."""
+    by_slot = await repository.slot_reviews_for_slots(session, org_id, slot_ids)
+    gp_leads = await repository.gp_lead_reviews_for_slots(session, org_id, slot_ids)
+    people = {review.submitted_by for reviews in by_slot.values() for review in reviews}
+    people |= {review.reviewed_by for review in gp_leads.values() if review.reviewed_by is not None}
+    return people

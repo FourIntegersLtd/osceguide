@@ -381,12 +381,14 @@ async def live_member_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list
     return list((await session.execute(stmt)).scalars().unique())
 
 
-async def admin_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
-    """Everyone with a live organisation-admin membership here."""
+async def admin_user_ids(
+    session: AsyncSession, org_id: uuid.UUID, *, roles: frozenset[str] = ORG_ADMIN_ROLES
+) -> list[uuid.UUID]:
+    """Everyone with a live membership in one of these admin roles here (organisation admins by default)."""
     stmt = select(Membership.user_id).where(
         Membership.org_id == org_id,
         Membership.revoked_at.is_(None),
-        Membership.role.in_(sorted(ORG_ADMIN_ROLES)),
+        Membership.role.in_(sorted(roles)),
     )
     return list((await session.execute(stmt)).scalars().unique())
 
@@ -421,3 +423,11 @@ async def member_user_ids(
         Membership.revoked_at.is_(None),
     )
     return set((await session.execute(stmt)).scalars())
+
+
+async def retention_policies(session: AsyncSession) -> dict[uuid.UUID, int]:
+    """Organisations that set a transcript retention, with the number of days."""
+    stmt = select(Organization.id, Organization.recording_retention_days).where(
+        Organization.recording_retention_days.is_not(None)
+    )
+    return {org_id: days for org_id, days in (await session.execute(stmt)).all() if days is not None}

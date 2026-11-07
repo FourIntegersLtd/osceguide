@@ -26,6 +26,7 @@ import {
 } from "@/domains/assess/roster/api";
 import { TraineeBulkBar } from "@/domains/assess/roster/TraineeBulkBar";
 import { TraineeEditDialog } from "@/domains/assess/roster/TraineeEditDialog";
+import { EraseDataDialog } from "@/domains/assess/roster/EraseDataDialog";
 import { TraineeRowActions } from "@/domains/assess/roster/TraineeRowActions";
 import {
   accessActive,
@@ -92,6 +93,7 @@ export function TraineesPanel({
 }) {
   const w = useAssessWords();
   const [pending, setPending] = useState<Pending>(null);
+  const [erasing, setErasing] = useState<Trainee | null>(null);
   const [editing, setEditing] = useState<Trainee | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -439,6 +441,7 @@ export function TraineesPanel({
                     setError(null);
                     setPending({ kind: "anonymise", trainee });
                   }}
+                  onErase={() => setErasing(trainee)}
                 />
               </div>
             );
@@ -506,6 +509,18 @@ export function TraineesPanel({
         }
         onClose={() => setPending(null)}
         onCommit={() => void commit()}
+      />
+
+      <EraseDataDialog
+        orgSlug={orgSlug}
+        trainee={erasing}
+        onClose={() => setErasing(null)}
+        onErased={(text) => {
+          setErasing(null);
+          setNotice({ tone: "success", text });
+          pages.state.reload();
+          onChanged();
+        }}
       />
 
       <Dialog

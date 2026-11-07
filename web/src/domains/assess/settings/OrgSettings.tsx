@@ -17,6 +17,7 @@ import {
 } from "@/domains/assess/api";
 import { describeSsoStatus } from "@/domains/assess/settings/ssoStatus";
 import { InvoicesTab } from "@/domains/assess/settings/InvoicesPage";
+import { RetentionCard } from "@/domains/assess/settings/RetentionCard";
 import { ScimTokens } from "@/domains/assess/settings/ScimTokens";
 import { boardBtn, boardInput, boardLabel as labelClass, type BoardChipTone } from "@/foundation/ui/boardKit";
 
@@ -53,7 +54,12 @@ function OrganisationPanel({ orgSlug, setDirty }: { orgSlug: string; setDirty: (
   const state = useAsync((signal) => readOrganization(orgSlug, signal), [orgSlug]);
   return (
     <AsyncBoundary state={state}>
-      {(org) => <RenameForm key={org.name} org={org} onSaved={state.reload} setDirty={setDirty} />}
+      {(org) => (
+        <>
+          <RenameForm key={org.name} org={org} onSaved={state.reload} setDirty={setDirty} />
+          <RetentionCard org={org} onSaved={state.reload} />
+        </>
+      )}
     </AsyncBoundary>
   );
 }

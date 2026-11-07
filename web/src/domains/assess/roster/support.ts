@@ -191,3 +191,8 @@ export function shortDay(iso: string | null | undefined): string {
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
+
+/** Whether what was typed is the candidate's address, as the server will compare it (case aside). */
+export function erasureConfirmed(typed: string, email: string | null | undefined): boolean {
+  return !!email && typed.trim().toLowerCase() === email.trim().toLowerCase();
+}

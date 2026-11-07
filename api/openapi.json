@@ -354,6 +354,194 @@
         "title": "AddReporter",
         "type": "object"
       },
+      "AppealPage": {
+        "properties": {
+          "appeals": {
+            "items": {
+              "$ref": "#/components/schemas/AppealRead"
+            },
+            "title": "Appeals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "appeals"
+        ],
+        "title": "AppealPage",
+        "type": "object"
+      },
+      "AppealRead": {
+        "description": "One appeal as the queue shows it.",
+        "properties": {
+          "assigned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned At"
+          },
+          "assigned_to": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To"
+          },
+          "assigned_to_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To Name"
+          },
+          "candidate_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Name"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decision_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Note"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "on_behalf": {
+            "title": "On Behalf",
+            "type": "boolean"
+          },
+          "original_marker_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Original Marker Ids",
+            "type": "array"
+          },
+          "original_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Outcome"
+          },
+          "outcome_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome Revision"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "sitting_id": {
+            "format": "uuid",
+            "title": "Sitting Id",
+            "type": "string"
+          },
+          "sitting_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sitting Name"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sitting_id",
+          "sitting_name",
+          "trainee_id",
+          "candidate_name",
+          "status",
+          "reason",
+          "on_behalf",
+          "requested_at",
+          "revision",
+          "original_outcome",
+          "outcome_revision",
+          "assigned_to",
+          "assigned_to_name",
+          "assigned_at",
+          "decision_note",
+          "decided_at"
+        ],
+        "title": "AppealRead",
+        "type": "object"
+      },
       "AppendTrainees": {
         "description": "Who has just arrived, and where they go.\n\n`station_version_ids` pairs positionally with `trainee_ids` \u2014 the nth\narrival takes the nth station. Omit it and everyone joins the station the\ncircuit is currently running.",
         "properties": {
@@ -538,6 +726,21 @@
           "scored_at"
         ],
         "title": "AssessmentResultRead",
+        "type": "object"
+      },
+      "AssignAppeal": {
+        "description": "The second marker for an appeal: an administrator who did not sign off or release the result.",
+        "properties": {
+          "assignee_user_id": {
+            "format": "uuid",
+            "title": "Assignee User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assignee_user_id"
+        ],
+        "title": "AssignAppeal",
         "type": "object"
       },
       "AssistantPersona": {
@@ -1867,6 +2070,96 @@
           }
         },
         "title": "BulkTraineesResult",
+        "type": "object"
+      },
+      "CandidateAppealRead": {
+        "description": "The candidate's own view of a review they asked for. The assigned marker's name stays internal.",
+        "properties": {
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decision_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Note"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "sitting_id": {
+            "format": "uuid",
+            "title": "Sitting Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sitting_id",
+          "status",
+          "reason",
+          "requested_at"
+        ],
+        "title": "CandidateAppealRead",
+        "type": "object"
+      },
+      "CandidateDataDeleted": {
+        "description": "What a deletion removed, so the screen can say so.",
+        "properties": {
+          "appeals_scrubbed": {
+            "title": "Appeals Scrubbed",
+            "type": "integer"
+          },
+          "attempts_cleared": {
+            "title": "Attempts Cleared",
+            "type": "integer"
+          },
+          "result_notes_scrubbed": {
+            "title": "Result Notes Scrubbed",
+            "type": "integer"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id",
+          "attempts_cleared",
+          "result_notes_scrubbed",
+          "appeals_scrubbed"
+        ],
+        "title": "CandidateDataDeleted",
         "type": "object"
       },
       "CandidateReport": {
@@ -4956,6 +5249,37 @@
         "title": "DecisionSummary",
         "type": "object"
       },
+      "DeclineAppeal": {
+        "properties": {
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "DeclineAppeal",
+        "type": "object"
+      },
+      "DeleteCandidateData": {
+        "description": "The typed confirmation for an irreversible deletion: the candidate's address, as on the roster.",
+        "properties": {
+          "confirmation": {
+            "maxLength": 320,
+            "minLength": 1,
+            "title": "Confirmation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmation"
+        ],
+        "title": "DeleteCandidateData",
+        "type": "object"
+      },
       "DeleteStationProgress": {
         "properties": {
           "reason": {
@@ -5734,6 +6058,13 @@
               "already_purchased",
               "already_queued",
               "announcement_not_found",
+              "appeal_already_open",
+              "appeal_closed",
+              "appeal_not_assigned",
+              "appeal_not_found",
+              "appeal_open",
+              "appeal_stale",
+              "assignee_not_admin",
               "assistant_session_not_found",
               "assistant_session_not_joinable",
               "assistant_session_not_ready",
@@ -5771,6 +6102,7 @@
               "cohort_exists",
               "cohort_in_use",
               "cohort_not_found",
+              "confirmation_mismatch",
               "conflict",
               "content_too_long",
               "contract_dates_out_of_order",
@@ -5880,6 +6212,7 @@
               "not_a_training_circuit",
               "not_an_exam_sitting",
               "not_archivable",
+              "not_assigned_marker",
               "not_deletable",
               "not_editable",
               "not_entitled",
@@ -5963,6 +6296,7 @@
               "scim_unauthorized",
               "scim_uniqueness",
               "script_not_checked",
+              "second_marker_must_differ",
               "set_entry_has_attempts",
               "set_entry_not_found",
               "set_has_attempts",
@@ -10139,6 +10473,17 @@
               }
             ],
             "title": "Parent Org Id"
+          },
+          "recording_retention_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recording Retention Days"
           },
           "require_staff_mfa": {
             "default": false,
@@ -15393,6 +15738,22 @@
         "title": "ReporterRead",
         "type": "object"
       },
+      "RequestAppeal": {
+        "description": "Why a released result should be looked at again.",
+        "properties": {
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "RequestAppeal",
+        "type": "object"
+      },
       "RescoreRequest": {
         "description": "Re-queue the marking. Left empty, under the policy the attempt was\nfrozen with; named, under another one, whose result sits beside the old.",
         "properties": {
@@ -15440,6 +15801,40 @@
           "policy_version"
         ],
         "title": "RescoreResult",
+        "type": "object"
+      },
+      "ResolveAppeal": {
+        "description": "The second marker's outcome, which becomes a new released revision of the result.\n\nA recruitment outcome left out is carried over from the result being reviewed.",
+        "properties": {
+          "assessment_outcome": {
+            "pattern": "^(pass|fail)$",
+            "title": "Assessment Outcome",
+            "type": "string"
+          },
+          "rationale": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Rationale",
+            "type": "string"
+          },
+          "recruitment_outcome": {
+            "anyOf": [
+              {
+                "pattern": "^(hired|reserve|not_hired|withdrawn|pending)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recruitment Outcome"
+          }
+        },
+        "required": [
+          "assessment_outcome",
+          "rationale"
+        ],
+        "title": "ResolveAppeal",
         "type": "object"
       },
       "ResolveRosterRequest": {
@@ -15670,6 +16065,26 @@
           "released"
         ],
         "title": "ResultsIndexRow",
+        "type": "object"
+      },
+      "RetentionPolicy": {
+        "description": "How long candidates' transcripts are kept after an attempt ends. Null keeps them.",
+        "properties": {
+          "recording_retention_days": {
+            "anyOf": [
+              {
+                "maximum": 3650.0,
+                "minimum": 30.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recording Retention Days"
+          }
+        },
+        "title": "RetentionPolicy",
         "type": "object"
       },
       "RevenueByPlanRow": {
@@ -36384,6 +36799,177 @@
         "x-capability": "signed_in"
       }
     },
+    "/api/v1/me/results/{sitting_id}/appeal": {
+      "get": {
+        "description": "The newest review this candidate asked for on the sitting. Null if they never asked.",
+        "operationId": "results_read_my_appeal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CandidateAppealRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Results Read My Appeal"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read My Appeal",
+        "tags": [
+          "results",
+          "results"
+        ],
+        "x-capability": "signed_in"
+      },
+      "post": {
+        "operationId": "results_request_my_appeal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestAppeal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateAppealRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "result_not_released",
+            "x-codes": [
+              "result_not_released"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "appeal_already_open",
+            "x-codes": [
+              "appeal_already_open"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request My Appeal",
+        "tags": [
+          "results",
+          "results"
+        ],
+        "x-capability": "signed_in"
+      }
+    },
     "/api/v1/me/sittings": {
       "get": {
         "description": "What a trainee is rostered onto, and whether it is their turn.",
@@ -40311,6 +40897,460 @@
         "x-platform-admin": false
       }
     },
+    "/api/v1/orgs/{org_slug}/appeals": {
+      "get": {
+        "operationId": "results_list_appeals",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Decided appeals instead of waiting ones.",
+            "in": "query",
+            "name": "decided",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Decided appeals instead of waiting ones.",
+              "title": "Decided",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Appeals",
+        "tags": [
+          "results",
+          "results"
+        ],
+        "x-capability": "institution_admin",
+        "x-platform-admin": false
+      }
+    },
+    "/api/v1/orgs/{org_slug}/appeals/{appeal_id}/assign": {
+      "post": {
+        "operationId": "results_assign_appeal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appeal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appeal Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignAppeal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "appeal_not_found",
+            "x-codes": [
+              "appeal_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "appeal_closed",
+            "x-codes": [
+              "appeal_closed"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "second_marker_must_differ, assignee_not_admin",
+            "x-codes": [
+              "second_marker_must_differ",
+              "assignee_not_admin"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Assign Appeal",
+        "tags": [
+          "results",
+          "results"
+        ],
+        "x-capability": "institution_admin",
+        "x-platform-admin": false
+      }
+    },
+    "/api/v1/orgs/{org_slug}/appeals/{appeal_id}/decline": {
+      "post": {
+        "operationId": "results_decline_appeal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appeal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appeal Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeclineAppeal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "appeal_not_found",
+            "x-codes": [
+              "appeal_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "appeal_closed",
+            "x-codes": [
+              "appeal_closed"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline Appeal",
+        "tags": [
+          "results",
+          "results"
+        ],
+        "x-capability": "institution_admin",
+        "x-platform-admin": false
+      }
+    },
+    "/api/v1/orgs/{org_slug}/appeals/{appeal_id}/resolve": {
+      "post": {
+        "operationId": "results_resolve_appeal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appeal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appeal Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveAppeal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, not_assigned_marker, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "not_assigned_marker",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "appeal_not_found",
+            "x-codes": [
+              "appeal_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "appeal_closed, appeal_not_assigned, appeal_stale, decision_revised",
+            "x-codes": [
+              "appeal_closed",
+              "appeal_not_assigned",
+              "appeal_stale",
+              "decision_revised"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "incompatible_outcomes, hire_reason_required",
+            "x-codes": [
+              "incompatible_outcomes",
+              "hire_reason_required"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resolve Appeal",
+        "tags": [
+          "results",
+          "results"
+        ],
+        "x-capability": "institution_admin",
+        "x-platform-admin": false
+      }
+    },
     "/api/v1/orgs/{org_slug}/audit": {
       "get": {
         "operationId": "tenancy_list_audit",
@@ -40446,6 +41486,128 @@
           "tenancy"
         ],
         "x-capability": "org_admin",
+        "x-platform-admin": false
+      }
+    },
+    "/api/v1/orgs/{org_slug}/candidates/{trainee_id}/erase-data": {
+      "post": {
+        "operationId": "results_erase_candidate_data",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trainee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Trainee Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteCandidateData"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateDataDeleted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "trainee_not_found",
+            "x-codes": [
+              "trainee_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "appeal_open",
+            "x-codes": [
+              "appeal_open"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "confirmation_mismatch",
+            "x-codes": [
+              "confirmation_mismatch"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Erase Candidate Data",
+        "tags": [
+          "results",
+          "results"
+        ],
+        "x-capability": "institution_admin",
         "x-platform-admin": false
       }
     },
@@ -47844,6 +49006,101 @@
         "x-platform-admin": true
       }
     },
+    "/api/v1/orgs/{org_slug}/retention": {
+      "patch": {
+        "operationId": "tenancy_set_retention_policy",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionPolicy"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "org_not_found",
+            "x-codes": [
+              "org_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Retention Policy",
+        "tags": [
+          "tenancy"
+        ],
+        "x-capability": "org_admin",
+        "x-platform-admin": false
+      }
+    },
     "/api/v1/orgs/{org_slug}/roster/resolve": {
       "post": {
         "description": "Preview who a circuit would contain.\n\nA POST because it takes a body, not because it changes anything \u2014 the\nalternative is a query string of repeated uuids.",
@@ -52175,6 +53432,136 @@
           "sittings"
         ],
         "x-capability": "org_admin",
+        "x-platform-admin": false
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/appeals": {
+      "post": {
+        "operationId": "results_request_appeal_for_candidate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "trainee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Trainee Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestAppeal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "result_not_released, trainee_not_found",
+            "x-codes": [
+              "result_not_released",
+              "trainee_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "appeal_already_open",
+            "x-codes": [
+              "appeal_already_open"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Appeal For Candidate",
+        "tags": [
+          "results",
+          "results"
+        ],
+        "x-capability": "institution_admin",
         "x-platform-admin": false
       }
     },

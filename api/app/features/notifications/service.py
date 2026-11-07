@@ -199,6 +199,16 @@ async def erase_recipients(session: AsyncSession, emails: list[str]) -> None:
     )
 
 
+RESULT_TEMPLATES = ("candidate_result_released", "candidate_result_revised", "candidate_appeal_declined")
+
+
+async def erase_result_mail(session: AsyncSession, email: str, *, org_slug: str) -> None:
+    """A candidate's data is deleted by one organisation: only that organisation's result mail goes."""
+    await repository.erase_org_result_mail(
+        session, email, org_slug=org_slug, templates=RESULT_TEMPLATES, placeholder=ERASED_RECIPIENT
+    )
+
+
 async def list_undelivered(session: AsyncSession, *, limit: int) -> list[OutboundMessage]:
     """What the worker gave up on, for the console: newest first."""
     return await repository.failed_messages(session, limit=limit)
@@ -325,16 +335,43 @@ def _email_changed_notice(escaped_fields: dict[str, str]) -> str:
     )
 
 
-def _result_released(escaped_fields: dict[str, str]) -> str:
-    """The body telling a candidate their sitting's outcome is ready to read."""
-    link = _app_url(
+def _trainee_result_link(escaped_fields: dict[str, str]) -> str:
+    """Where a candidate reads one sitting's result."""
+    return _app_url(
         f"/app/{escaped_fields.get('org_slug', '')}/trainee/results/{escaped_fields.get('sitting_id', '')}"
     )
+
+
+def _result_released(escaped_fields: dict[str, str]) -> str:
+    """The body telling a candidate their sitting's outcome is ready to read."""
+    link = _trainee_result_link(escaped_fields)
     institution = escaped_fields.get("org_name") or "Your institution"
     return _page(
         "Your result is available",
         f"<p>{institution} has released the outcome for this sitting.</p>"
         f'<p><a href="{link}">Read your result</a></p>',
+    )
+
+
+def _result_revised(escaped_fields: dict[str, str]) -> str:
+    """The body telling a candidate their review finished and their result changed or was confirmed."""
+    link = _trainee_result_link(escaped_fields)
+    institution = escaped_fields.get("org_name") or "Your institution"
+    return _page(
+        "Your result has been reviewed",
+        f"<p>{institution} has finished reviewing your result.</p>"
+        f'<p><a href="{link}">Read your updated result</a></p>',
+    )
+
+
+def _appeal_declined(escaped_fields: dict[str, str]) -> str:
+    """The body telling a candidate their review request was answered without a change."""
+    link = _trainee_result_link(escaped_fields)
+    institution = escaped_fields.get("org_name") or "Your institution"
+    return _page(
+        "Your review request",
+        f"<p>{institution} has answered your request to review your result. Your result is unchanged.</p>"
+        f'<p><a href="{link}">Read the reply</a></p>',
     )
 
 
@@ -642,6 +679,8 @@ _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "practice_access_invitation": _practice_access_invitation,
     "practice_access_granted": _practice_access_granted,
     "candidate_result_released": _result_released,
+    "candidate_result_revised": _result_revised,
+    "candidate_appeal_declined": _appeal_declined,
     "peer_practice_abuse_report": _abuse_report,
     "peer_practice_no_show_report": _no_show_report,
     "partner_spend_alert": _partner_spend_alert,

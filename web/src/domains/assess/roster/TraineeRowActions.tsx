@@ -28,6 +28,7 @@ export function TraineeRowActions({
   onAccess,
   onDelete,
   onAnonymise,
+  onErase,
 }: {
   trainee: Trainee;
   invitationSettled: boolean;
@@ -41,6 +42,8 @@ export function TraineeRowActions({
   onDelete: () => void;
   /** The GDPR path `onDelete` refuses to — always available, never destroys anything. */
   onAnonymise: () => void;
+  /** Opens the typed-confirmation dialog; the removal itself cannot be undone. */
+  onErase: () => void;
 }) {
   if (!canManage) return null;
 
@@ -101,6 +104,14 @@ export function TraineeRowActions({
           onClick={onAnonymise}
         >
           Anonymise
+        </button>
+      )}
+      {trainee.anonymised ? null : (
+        <button type="button" className={boardBtn("danger", true)}
+          title="Permanently remove their transcripts and personal details. Marks are kept, anonymised."
+          onClick={onErase}
+        >
+          Delete data
         </button>
       )}
     </div>

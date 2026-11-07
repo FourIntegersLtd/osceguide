@@ -194,6 +194,25 @@ export function anonymiseTrainee(
   );
 }
 
+export type CandidateDataDeleted = components["schemas"]["CandidateDataDeleted"];
+
+/**
+ * Irreversibly remove a candidate's transcripts, name, address and notes.
+ *
+ * The marks and the result ledger stay, anonymised. `confirmation` is the candidate's address,
+ * typed by the administrator; the server refuses anything else (`confirmation_mismatch`).
+ */
+export function eraseCandidateData(
+  slug: string,
+  traineeId: string,
+  confirmation: string,
+): Promise<CandidateDataDeleted> {
+  return platformRequest<CandidateDataDeleted>(
+    `${orgPath(slug)}/candidates/${encodeURIComponent(traineeId)}/erase-data`,
+    { method: "POST", body: { confirmation } },
+  );
+}
+
 /**
  * What the roster edit sheet may correct about somebody already on it.
  *

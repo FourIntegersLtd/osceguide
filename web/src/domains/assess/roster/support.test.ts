@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Trainee } from "@/domains/assess/api";
 import { PlatformError } from "@/foundation/platform-client";
-import { cohortDeleteLead, cohortName, deleteLead, rosterErrorMessage, shortDay, traineeStatus } from "@/domains/assess/roster/support";
+import { cohortDeleteLead, cohortName, deleteLead, erasureConfirmed, rosterErrorMessage, shortDay, traineeStatus } from "@/domains/assess/roster/support";
 import { loadRoster, type RosterData, type RosterPart } from "@/domains/assess/roster/useRosterData";
 
 function trainee(over: Partial<Trainee> = {}): Trainee {
@@ -118,4 +118,10 @@ test("shortDay writes day and short month, and nothing for a missing or bad date
   assert.equal(shortDay("2026-11-01T09:00:00Z"), "1 Nov");
   assert.equal(shortDay(null), "");
   assert.equal(shortDay("not a date"), "");
+});
+
+test("erasure is confirmed only by the candidate's own address, ignoring case and padding", () => {
+  assert.equal(erasureConfirmed(" Tess@X.org ", "tess@x.org"), true);
+  assert.equal(erasureConfirmed("tess", "tess@x.org"), false);
+  assert.equal(erasureConfirmed("anything", null), false);
 });

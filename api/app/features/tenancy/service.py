@@ -293,6 +293,37 @@ async def set_require_staff_mfa(
     return _org_read(refreshed)
 
 
+async def set_recording_retention(
+    session: AsyncSession, org_id: uuid.UUID, *, days: int | None, actor: Principal, now: datetime
+) -> OrganizationRead:
+    """Set how long this organisation keeps candidates' transcripts; the retention job enforces it."""
+    org = await repository.organization_by_id(session, org_id)
+    if org is None:
+        raise OrgNotFound()
+    await repository.update_organization(session, org_id, recording_retention_days=days)
+    await repository.write_audit(
+        session,
+        org_id=org_id,
+        actor_user_id=actor.user_id,
+        actor_email=actor.email,
+        action="org.retention_changed",
+        at=now,
+        target_type="organization",
+        target_id=str(org_id),
+        summary="Transcripts are kept until deleted"
+        if days is None
+        else f"Transcripts are kept for {days} days",
+        meta={"recording_retention_days": days, "was": org.recording_retention_days},
+    )
+    refreshed = await repository.organization_by_id(session, org_id)
+    return _org_read(refreshed)
+
+
+async def retention_policies(session: AsyncSession) -> dict[uuid.UUID, int]:
+    """Every organisation that keeps transcripts for a limited time, with the days. For the retention job."""
+    return await repository.retention_policies(session)
+
+
 async def read_organization(session: AsyncSession, org_id: uuid.UUID) -> OrganizationRead:
     """Fetch an organisation, or refuse if it does not exist."""
     org = await repository.organization_by_id(session, org_id)
@@ -372,6 +403,7 @@ def _org_read(org: Any) -> OrganizationRead:
         contract_starts_at=org.contract_starts_at,
         contract_ends_at=org.contract_ends_at,
         require_staff_mfa=org.require_staff_mfa,
+        recording_retention_days=org.recording_retention_days,
         contact_name=org.contact_name,
         contact_email=org.contact_email,
         parent_org_id=org.parent_org_id,
@@ -436,3 +468,8 @@ async def live_member_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list
 async def admin_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
     """Everyone with a live organisation-admin membership, for telling them something changed."""
     return await repository.admin_user_ids(session, org_id)
+
+
+async def institution_admin_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
+    """Those admins who may decide results: the roles `OrgInstitutionAdmin` lets through."""
+    return await repository.admin_user_ids(session, org_id, roles=domain.INSTITUTION_ADMIN_ROLES)
