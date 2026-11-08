@@ -35,7 +35,7 @@ test("HIRE-2 a candidate is shown only My assessments @staging", async ({ page, 
 });
 
 // HIRE-3: the admin opens the finished assessment and its decisions page shows the hiring tiles and decision pills.
-test("HIRE-3 an admin reaches the decisions page with Hired tiles and hiring decision pills @staging", async ({ page, context }) => {
+test("HIRE-3 an admin reaches the decisions page with Hired tiles and hiring decision pills", async ({ page, context }) => {
   test.setTimeout(300_000);
   const org = await seedHireOrg();
   const done = psql(`SELECT id FROM sittings WHERE name = 'Band 5 recruitment day' AND org_id = (SELECT id FROM organizations WHERE slug = '${org.slug}');`).trim();
@@ -60,7 +60,7 @@ test("HIRE-3 an admin reaches the decisions page with Hired tiles and hiring dec
 
 // HIRE-4: the employer's candidate reads My assessments, the assessment and a released result in employer words,
 // is never offered practice, and never sees the hiring decision (docs/institution-overhaul/hire/boards/HireCandidate*).
-test("HIRE-4 a candidate sees their assessments and result, no practice and no hiring decision @staging", async ({ page, context }) => {
+test("HIRE-4 a candidate sees their assessments and result, no practice and no hiring decision", async ({ page, context }) => {
   test.setTimeout(300_000);
   const org = await seedHireOrg();
   const done = psql(`SELECT id FROM sittings WHERE name = 'Band 5 recruitment day' AND org_id = (SELECT id FROM organizations WHERE slug = '${org.slug}');`).trim();
@@ -97,7 +97,7 @@ test("HIRE-5 an employer admin opening mocks gets the refusal page with a way ba
 });
 
 // HIRE-6: a training assessment keeps feedback only: its results page says so and offers no hiring decision.
-test("HIRE-6 a training assessment's results show the notice and no hiring decision @staging", async ({ page, context }) => {
+test("HIRE-6 a training assessment's results show the notice and no hiring decision", async ({ page, context }) => {
   test.setTimeout(300_000);
   const org = await seedHireOrg({ training: true });
   const id = psql(`SELECT id FROM sittings WHERE name = 'Band 5 training rotation' AND org_id = (SELECT id FROM organizations WHERE slug = '${org.slug}');`).trim();
