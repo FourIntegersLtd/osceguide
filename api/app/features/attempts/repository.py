@@ -8,7 +8,7 @@ worker-facing reads take an attempt id because that is all a worker is given.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import datetime
 from typing import Any
 
@@ -669,3 +669,53 @@ async def trial_candidates(
     return await keyset_page(
         session, stmt, sort_col=Attempt.created_at, id_col=Attempt.id, limit=limit, cursor=cursor
     )
+
+
+async def attempt_ids_past_retention(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    cutoff: datetime,
+    limit: int,
+    keep_for_users: Collection[uuid.UUID] = (),
+) -> list[uuid.UUID]:
+    """An organisation's finished attempts that ended before `cutoff` and still hold their transcript.
+
+    `keep_for_users` are left alone: a person whose result is under review has the transcript the
+    second marker needs.
+    """
+    ended = func.coalesce(Attempt.completed_at, Attempt.created_at)
+    stmt = (
+        select(Attempt.id)
+        .where(
+            Attempt.org_id == org_id,
+            Attempt.content_erased_at.is_(None),
+            Attempt.status.in_(("interaction_complete", "evaluated", "failed")),
+            ended < cutoff,
+        )
+        .order_by(ended)
+        .limit(limit)
+    )
+    if keep_for_users:
+        stmt = stmt.where(Attempt.user_id.not_in(keep_for_users))
+    return list((await session.execute(stmt)).scalars())
+
+
+async def attempt_ids_for_user_in_org(
+    session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID
+) -> list[uuid.UUID]:
+    """This person's attempts inside one organisation that still hold their transcript."""
+    stmt = select(Attempt.id).where(
+        Attempt.org_id == org_id, Attempt.user_id == user_id, Attempt.content_erased_at.is_(None)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def mark_content_erased(
+    session: AsyncSession, attempt_ids: Sequence[uuid.UUID], *, at: datetime
+) -> None:
+    """Note on the attempts when their transcripts were removed, so the sweep does not pick them again."""
+    if attempt_ids:
+        await session.execute(
+            update(Attempt).where(Attempt.id.in_(list(attempt_ids))).values(content_erased_at=at)
+        )

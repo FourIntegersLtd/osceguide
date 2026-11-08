@@ -56,6 +56,7 @@ export function SlotReview({
   /** The sitting this was opened from, when it was opened from its results. */
   sittingId?: string | null;
 }) {
+  const w = useAssessWords();
   /*
    * My review is read directly (`GET .../reviews/mine`). An earlier version
    * called that route before it existed, answered 405 on every load and
@@ -78,7 +79,6 @@ export function SlotReview({
   );
 
   const { hrefFor } = useSurface();
-  const w = useAssessWords();
   // The sitting's report names the circuit and candidate and gives the neighbours to step to; it is a convenience, so a failure says so beside the form.
   const report = useAsync(
     (signal) => (sittingId ? readSittingReport(orgSlug, sittingId, signal) : Promise.resolve(null)),
@@ -111,9 +111,9 @@ export function SlotReview({
       </div>
       {state.data?.hidden ? (
         <div className={boardPad}>
-          <h2 className="text-base font-semibold leading-[1.2]">Not your {w.circuit}</h2>
+          <h2 className="text-base font-semibold leading-[1.2]">{`Not your ${w.circuit}`}</h2>
           <div role="alert" className={boardAlert("warn")}>
-            You are not named on this station&apos;s {w.circuit}, so its marking is hidden from you.
+            {`You are not named on this station's ${w.circuit}, so its marking is hidden from you.`}
           </div>
         </div>
       ) : null}

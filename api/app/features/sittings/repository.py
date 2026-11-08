@@ -139,6 +139,8 @@ async def create_circuit(
     name: str,
     supervisor_user_id: uuid.UUID | None,
     timing: dict[str, Any],
+    start_offset_minutes: int = 0,
+    station_assessors: dict[str, str] | None = None,
 ) -> Circuit:
     """Write a new circuit row and return it, refreshed with its defaults."""
     circuit = Circuit(
@@ -147,6 +149,8 @@ async def create_circuit(
         name=name,
         supervisor_user_id=supervisor_user_id,
         timing=timing,
+        start_offset_minutes=start_offset_minutes,
+        station_assessors=station_assessors or None,
     )
     session.add(circuit)
     await session.flush()
@@ -229,7 +233,6 @@ async def create_slots(
     *,
     planned: list[tuple[int, uuid.UUID, uuid.UUID]],
     room_name: str | None = None,
-    assessors: list[uuid.UUID | None] | None = None,
 ) -> list[Slot]:
     """Build slots, optionally already in a room.
 
@@ -245,7 +248,6 @@ async def create_slots(
             trainee_id=trainee_id,
             station_version_id=station_version_id,
             room_name=room_name,
-            assessor_user_id=assessors[index] if assessors else None,
         )
         for index, trainee_id, station_version_id in planned
     ]
@@ -259,6 +261,18 @@ async def create_slots(
 async def slots_for_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> list[Slot]:
     """Every slot on this circuit, in station order."""
     stmt = select(Slot).where(Slot.org_id == org_id, Slot.circuit_id == circuit_id).order_by(Slot.slot_index)
+    return list((await session.execute(stmt)).scalars())
+
+
+async def slots_for_circuit_of_user(
+    session: AsyncSession, circuit_id: uuid.UUID, user_id: uuid.UUID
+) -> list[Slot]:
+    """This person's slots on the circuit."""
+    stmt = (
+        select(Slot)
+        .where(Slot.circuit_id == circuit_id, Slot.trainee_id == user_id)
+        .order_by(Slot.slot_index)
+    )
     return list((await session.execute(stmt)).scalars())
 
 

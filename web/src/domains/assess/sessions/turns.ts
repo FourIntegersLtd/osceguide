@@ -3,7 +3,7 @@ import { orderedSlots, personLabel, slotProgress, stationLabel } from "@/domains
 
 export type TurnState = "done" | "now" | "next" | "waiting";
 
-type TurnRow = { slot: ConsoleSlot; state: TurnState; person: string; station: string };
+export type TurnRow = { slot: ConsoleSlot; state: TurnState; person: string; station: string };
 
 /**
  * A training circuit read as people taking turns, not stations in a list.

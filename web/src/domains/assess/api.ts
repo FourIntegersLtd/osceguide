@@ -35,6 +35,14 @@ export function updateOrganization(
   });
 }
 
+/** How long candidates' transcripts are kept after an attempt ends; null keeps them. An organisation admin's call. */
+export function setRecordingRetention(slug: string, days: number | null): Promise<Organization> {
+  return platformRequest<Organization>(`${org(slug)}/retention`, {
+    method: "PATCH",
+    body: { recording_retention_days: days },
+  });
+}
+
 /** The organisation itself: its name, type and sign-in rules. */
 export function readOrganization(
   slug: string,
@@ -302,8 +310,11 @@ export interface CircuitShape {
   traineeIds: string[];
   supervisorUserId: string | null;
   /** An employer's assessor for each station, in station order; left out, nothing about assessors is sent. */
-  stationAssessorIds?: (string | null)[];
   timing: CircuitTiming;
+  /** Minutes after the sitting's start that this rotation begins; left out keeps what the circuit has. */
+  startOffsetMinutes?: number;
+  /** Station version id to assessor user id; left out keeps what the circuit has, `{}` clears them. */
+  stationAssessors?: Record<string, string>;
 }
 
 /**
@@ -373,8 +384,9 @@ export function createCircuit(
         station_version_ids: input.stationVersionIds,
         trainee_ids: input.traineeIds,
         supervisor_user_id: input.supervisorUserId,
-        station_assessor_ids: input.stationAssessorIds,
         timing: timingBody(input.timing),
+        start_offset_minutes: input.startOffsetMinutes,
+        station_assessors: input.stationAssessors,
       },
     },
   );
@@ -429,8 +441,9 @@ export function rebuildCircuit(
         station_version_ids: input.stationVersionIds,
         trainee_ids: input.traineeIds,
         supervisor_user_id: input.supervisorUserId,
-        station_assessor_ids: input.stationAssessorIds,
         timing: timingBody(input.timing),
+        start_offset_minutes: input.startOffsetMinutes,
+        station_assessors: input.stationAssessors,
       },
     },
   );
@@ -627,4 +640,29 @@ export function setInvoicePoNumber(slug: string, invoiceId: string, poNumber: st
     method: "PUT",
     body: { po_number: poNumber },
   });
+}
+
+export type SittingTemplateRead = components["schemas"]["TemplateRead"];
+
+/** The organisation's saved schedule setups, by name. Org admin only. */
+export function listSittingTemplates(slug: string, signal?: AbortSignal): Promise<SittingTemplateRead[]> {
+  return platformRequest<SittingTemplateRead[]>(`${org(slug)}/sitting-templates`, { signal });
+}
+
+export function saveSittingTemplate(
+  slug: string,
+  input: { name: string; config: SittingTemplateRead["config"] },
+): Promise<SittingTemplateRead> {
+  return platformRequest<SittingTemplateRead>(`${org(slug)}/sitting-templates`, { method: "POST", body: input });
+}
+
+export function renameSittingTemplate(slug: string, id: string, name: string): Promise<SittingTemplateRead> {
+  return platformRequest<SittingTemplateRead>(`${org(slug)}/sitting-templates/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: { name },
+  });
+}
+
+export function deleteSittingTemplate(slug: string, id: string): Promise<void> {
+  return platformRequest<void>(`${org(slug)}/sitting-templates/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

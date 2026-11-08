@@ -10,13 +10,16 @@
  * tolerates what is already there.
  *
  *   node scripts/seed-demo-org.mjs --email dev@example.com --password ...
+ *   add --employer for the dev hiring workspace: "Acme Health Trust" (slug acme-health-trust, org_type employer),
+ *   with the signed-in account as its admin and nothing else (the hire dashboard starts empty). Dev databases only.
  *   add --empty to stop after the admin membership: the state of docs/institution-overhaul/boards/Main.dc.html
  *   (0 exams ready, 0 published stations, 0 trainees, 1 staff). Use a database where st-marys has no data yet.
  */
 import { signInWithPassword } from "./admin-totp.mjs";
 
 const API = process.env.PLATFORM_API_URL ?? "http://127.0.0.1:8002";
-const SLUG = "st-marys";
+const EMPLOYER = process.argv.includes("--employer");
+const SLUG = EMPLOYER ? "acme-health-trust" : "st-marys";
 
 function arg(name, fallback) {
   const i = process.argv.indexOf(`--${name}`);
@@ -58,7 +61,9 @@ async function main() {
   if (!org) {
     org = await call("/api/v1/platform/organizations", {
       method: "POST",
-      body: { name: "St Mary's Medical School", slug: SLUG, org_type: "institution" },
+      body: EMPLOYER
+        ? { name: "Acme Health Trust", slug: SLUG, org_type: "employer" }
+        : { name: "St Mary's Medical School", slug: SLUG, org_type: "institution" },
     });
     say(`created organisation ${org.slug}`);
   } else {
@@ -80,6 +85,10 @@ async function main() {
     body: { org_slug: SLUG },
   });
   token = switched.access_token;
+  if (EMPLOYER) {
+    say(`employer workspace ready: open it from the workspace switcher (Hiring), or /app/${SLUG}/dashboard`);
+    return;
+  }
   if (process.argv.includes("--empty")) {
     say("--empty: stopping with 1 staff, no programme, no trainees");
     return;

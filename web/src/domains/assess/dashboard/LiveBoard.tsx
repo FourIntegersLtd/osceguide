@@ -270,8 +270,8 @@ function Row({ circuit }: { circuit: LiveCircuit }) {
         title={circuit.circuit_name}
         meta={`${circuit.sitting_name} · ${modeLabel(circuit.mode, w)} · ${station} · ${candidatesLabel(circuit)}${
           circuit.supervisor
-            ? ` · ${circuit.supervisor.name ?? circuit.supervisor.email ?? "Supervisor"}`
-            : " · no supervisor named"
+            ? ` · ${circuit.supervisor.name ?? circuit.supervisor.email ?? w.Supervisor}`
+            : ` · no ${w.supervisor} named`
         }${circuit.room_name ? " · room open" : ""}`}
       />
       <StageStrip circuit={circuit} />

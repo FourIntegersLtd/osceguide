@@ -23,6 +23,7 @@ import {
 } from "@/domains/assess/roster/api";
 import type { PickerSet, TraineeRow } from "@/domains/assess/scheduleSitting";
 import { useAssessWords } from "@/capabilities/assess-words";
+import { aOrAn } from "@/capabilities/assess-words/vocabulary";
 
 /**
  * Put a circuit on a sitting: who sits it, at which stations, for how long.
@@ -98,7 +99,7 @@ export function NewCircuit({
                 href: hrefFor(`/sittings/${sittingId}`),
                 label: data.sitting.name,
               }}
-              title={`Add a ${w.circuit}`}
+              title={`Add ${aOrAn(w.circuit)}`}
               subtitle={`${data.sitting.name} · ${data.sitting.mode}`}
             />
             <Builder
@@ -149,7 +150,7 @@ function Builder({
           candidate_user_ids: shape.traineeIds,
           station_version_ids: shape.stationVersionIds,
           supervisor_user_id: shape.supervisorUserId,
-          station_assessor_ids: shape.stationAssessorIds,
+          start_offset_minutes: 0,
           timing: timingBody(shape.timing),
         });
       } else {

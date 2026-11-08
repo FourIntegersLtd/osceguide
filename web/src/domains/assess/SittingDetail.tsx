@@ -38,13 +38,12 @@ import { sittingStatusLabel } from "@/domains/assess/support";
 import { plural } from "@/foundation/format";
 import {
   cancelMenuLabel,
-  candidatesEmptyBody,
-  circuitsEmpty,
   editLabel,
   moreCircuitsLine,
 } from "@/domains/assess/sittingCopy";
-import { rotationAssessors, rotationChip, rotationTime } from "@/domains/assess/sittingWords";
+import { rotationChip, rotationTime } from "@/domains/assess/sittingWords";
 import { useAssessWords } from "@/capabilities/assess-words";
+import { aOrAn } from "@/capabilities/assess-words/vocabulary";
 
 /** One sitting and its circuits, with the way into each console. */
 export function SittingDetail({
@@ -255,9 +254,11 @@ export function SittingDetail({
                 0 ? (
                 <div className={boardPad}>
                   <h2 className="text-base font-semibold leading-normal">
-                    {circuitsEmpty(w).title}
+                    {`No ${w.circuits} yet`}
                   </h2>
-                  <p className={`m-0 ${t.assessMeta}`}>{circuitsEmpty(w).body}</p>
+                  <p className={`m-0 ${t.assessMeta}`}>
+                    {`Add at least one ${w.circuit} so candidates can take this ${w.sitting}.`}
+                  </p>
                 </div>
               ) : (
                 <div className={`${boardCard} overflow-hidden`}>
@@ -270,7 +271,7 @@ export function SittingDetail({
                         className={SMALL}
                         href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}
                       >
-                        {`Add a ${w.circuit}`}
+                        {`Add ${aOrAn(w.circuit)}`}
                       </Link>
                     ) : null}
                   </div>
@@ -304,7 +305,6 @@ export function SittingDetail({
                                 ...(stations > 0
                                   ? [plural(stations, "station")]
                                   : []),
-                                ...rotationAssessors(circuit.assessor_names ?? [], w.hiring),
                                 circuit.supervisor_user_id
                                   ? `${w.hiring ? "" : `${w.Supervisor} `}${circuit.supervisor_name ?? `another ${w.supervisor}`}`
                                   : `No ${w.supervisor} assigned`,
@@ -444,7 +444,7 @@ function CandidatesTab({
                     No candidates yet
                   </h2>
                   <p className={`m-0 ${t.assessMeta}`}>
-                    {candidatesEmptyBody(w)}
+                    {`Add ${aOrAn(w.circuit)} to put people on this ${w.sitting}.`}
                   </p>
                 </div>
               );
@@ -511,7 +511,7 @@ function CandidatesTab({
                         : null
                     }
                     note={sent[trainee.id]}
-                    circuits={`Not on a ${w.circuit} yet`}
+                    circuits={`Not on ${aOrAn(w.circuit)} yet`}
                   />
                 ))}
               </div>

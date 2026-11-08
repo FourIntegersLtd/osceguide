@@ -18,9 +18,20 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ports import VoiceTokens
+from app.core.role_policy import policy
 from app.core.settings import Settings
 from app.features.roster import service as roster
-from app.features.sittings import errors, floor, repository_run, service_floor, service_run
+from app.features.sittings import (
+    errors,
+    floor,
+    repository,
+    repository_reads,
+    repository_run,
+    service_floor,
+    service_run,
+)
+from app.features.sittings.models import Circuit
+from app.features.sittings.overrides import MARK_ABSENT
 from app.features.sittings.schemas import RoomGrant
 from app.features.voice import service as voice
 
@@ -32,6 +43,13 @@ get_voice_tokens = voice.get_voice_tokens
 # list, and deliberately not `agent-*`: the sweep that clears stale patients
 # from a room matches on that prefix and would throw the examiner out with them.
 OBSERVER_PREFIX = floor.OBSERVER_PREFIX
+
+
+def _ttl(settings: Settings, *, training: bool) -> int:
+    """A training token carries the mic right, so it is short; an exam token outlasts one station."""
+    if training:
+        return settings.livekit_training_token_ttl_seconds
+    return settings.livekit_exam_token_ttl_seconds
 
 
 async def join_token_for_trainee(
@@ -65,9 +83,11 @@ async def join_token_for_trainee(
     await roster.ensure_rosterable(session, circuit.org_id, [user_id])
     training = await service_floor.is_training(session, circuit.id)
     service_run.ensure_room_open(circuit, training=training)
+    if await _marked_absent(session, circuit.id, user_id):
+        raise errors.CandidateMarkedAbsent()
 
     # A training trainee always has a camera; the microphone is the turn's (and the floor's).
-    sources = None
+    sources = ["microphone"]  # exam: the candidate speaks, nothing else (no screen share)
     display_name = None  # training only: a person's name on their tile; exam tokens stay anonymous
     if training:
         display_name = (await roster.names_for_users(session, circuit.org_id, [user_id])).get(user_id)
@@ -80,7 +100,7 @@ async def join_token_for_trainee(
             can_publish=True,
             can_publish_sources=sources,
             display_name=display_name,
-            ttl_seconds=settings.livekit_training_token_ttl_seconds if training else None,
+            ttl_seconds=_ttl(settings, training=training),
             tokens=tokens,
             settings=settings,
         )
@@ -95,6 +115,7 @@ async def observer_token(
     user_id: uuid.UUID,
     tokens: VoiceTokens,
     settings: Settings,
+    role: str | None = None,
 ) -> RoomGrant:
     """An examiner's token: they hear the station and, in training, may be seen.
 
@@ -107,6 +128,7 @@ async def observer_token(
     the safer default.
     """
     circuit, can_publish = await service_run.require_room_open(session, org_id, circuit_id)
+    await _ensure_assessor_of_active_station(session, circuit, user_id=user_id, role=role)
     return _grant(
         voice.grant_for_room(
             room=floor.room_name_for(circuit.id),
@@ -115,12 +137,38 @@ async def observer_token(
             # The supervisor is always heard, so a training grant is both sources.
             can_publish_sources=floor.publish_sources(True) if can_publish else None,
             # A training token carries the mic right: short, so a saved one cannot outlive a mute or close.
-            ttl_seconds=settings.livekit_training_token_ttl_seconds if can_publish else None,
+            ttl_seconds=_ttl(settings, training=can_publish),
             tokens=tokens,
             settings=settings,
         ),
         can_publish=can_publish,
     )
+
+
+async def _ensure_assessor_of_active_station(
+    session: AsyncSession, circuit: Circuit, *, user_id: uuid.UUID, role: str | None
+) -> None:
+    """With per-station assessors, an assessor hears only the station that is theirs.
+
+    An administrator and a lead assessor (who reads the transcript to write the lead review) hear any.
+    Before a station is active (not started, or between stations) the circuit's lead and its
+    named assessors may wait in the room.
+    """
+    if (
+        not circuit.station_assessors
+        or policy("is_institution_admin")(role)
+        or policy("may_lead_review")(role)
+    ):
+        return
+    if circuit.active_slot_id is None:
+        if user_id == circuit.supervisor_user_id or str(user_id) in circuit.station_assessors.values():
+            return
+    elif (
+        await repository_reads.circuit_supervisor_for_slot(session, circuit.org_id, circuit.active_slot_id)
+        == user_id
+    ):
+        return
+    raise errors.NotYourStation()
 
 
 def _grant(granted: voice.RoomGrant, *, can_publish: bool = True) -> RoomGrant:
@@ -131,3 +179,9 @@ def _grant(granted: voice.RoomGrant, *, can_publish: bool = True) -> RoomGrant:
     return RoomGrant(
         token=granted.token, server_url=granted.server_url, room=granted.room, can_publish=can_publish
     )
+
+
+async def _marked_absent(session: AsyncSession, circuit_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    """A supervisor recorded this person absent (`mark_absent`): the room is closed to them."""
+    slots = [slot.id for slot in await repository.slots_for_circuit_of_user(session, circuit_id, user_id)]
+    return bool(await repository_run.slots_with_intervention(session, slots, action=MARK_ABSENT))

@@ -1,4 +1,3 @@
-import type { AssessWords } from "@/capabilities/assess-words/vocabulary";
 import { plural } from "@/foundation/format";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
 import { orderedSlots } from "@/domains/assess/sessions/support";
@@ -86,9 +85,6 @@ export function hireFinishState(stations: ReviewStation[]): { disabled: boolean;
     reason: blocked ? `Finish needs your mark on all ${plural(sat.length, "station")}.` : null,
   };
 }
-
-/** "Pause the circuit" in an institution, "Pause the rotation" for an employer. */
-export const circuitCopy = (verb: "Pause" | "Resume" | "End", w: AssessWords) => `${verb} the ${w.circuit}`;
 
 /** The stations Jump offers: any not yet started, in order, never the one running or one already finished. */
 export function jumpChoices(data: CircuitConsole): ConsoleSlot[] {

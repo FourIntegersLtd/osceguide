@@ -85,8 +85,3 @@ export function rotationTime(
   const minutes = stations * (timing.reading_minutes + timing.simulation_minutes) + rests;
   return `${clock(start)} to ${clock(new Date(start.getTime() + minutes * 60000))}`;
 }
-
-/** An employer's rotation row names the people assessing its stations; an institution's row does not. */
-export function rotationAssessors(names: string[], hiring: boolean): string[] {
-  return hiring && names.length > 0 ? [names.join(", ")] : [];
-}

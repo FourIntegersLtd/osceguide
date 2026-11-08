@@ -27,9 +27,10 @@ from app.features.roster import service as roster
 from app.features.sittings import service_reads as sittings
 from app.features.tenancy import service as tenancy
 
-_REFUSALS: dict[type[Exception], type[AppError]] = {
+REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.IncompatibleOutcomes: errors.IncompatibleOutcomesError,
     domain.NotSignable: errors.NotSignableError,
+    domain.HireReasonRequired: errors.HireReasonRequiredError,
     domain.InvalidWorkflow: errors.InvalidWorkflowError,
     domain.EvidenceChanged: errors.EvidenceChangedError,
     domain.NotReleasable: errors.NotReleasableError,
@@ -39,7 +40,7 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
 }
 
 
-async def _ensure_recruitment_allowed(
+async def ensure_recruitment_allowed(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, recruitment: domain.Recruitment
 ) -> None:
     """A recruitment outcome belongs to an exam-mode (hire) sitting only."""
@@ -49,7 +50,23 @@ async def _ensure_recruitment_allowed(
     try:
         domain.ensure_recruitment_allowed(sitting.mode, recruitment)
     except domain.RecruitmentOutsideExam as exc:
-        raise_mapped(exc, _REFUSALS)
+        raise_mapped(exc, REFUSALS)
+
+
+async def ensure_hire_reason(
+    session: AsyncSession, org_id: uuid.UUID, recruitment: str | None, rationale: str | None
+) -> None:
+    """A hire on an employer's workspace needs a reason, on the server as well as in the form."""
+    if recruitment is None:
+        return
+    try:
+        domain.ensure_hire_reason(
+            org_type=await tenancy.org_type_of(session, org_id),
+            recruitment=domain.Recruitment(recruitment),
+            rationale=rationale,
+        )
+    except domain.HireReasonRequired as exc:
+        raise_mapped(exc, REFUSALS)
 
 
 async def _ensure_decidable(
@@ -70,7 +87,7 @@ async def _ensure_decidable(
     try:
         domain.ensure_decidable(sitting_mode=sitting.mode, sat_a_station=sat)
     except domain.NotDecidable as exc:
-        raise_mapped(exc, _REFUSALS)
+        raise_mapped(exc, REFUSALS)
 
 
 async def save_draft(
@@ -98,7 +115,7 @@ async def save_draft(
 
     latest = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
     if latest and latest.workflow_state == "released":
-        raise_mapped(domain.InvalidWorkflow("A released result cannot be redrafted."), _REFUSALS)
+        raise_mapped(domain.InvalidWorkflow("A released result cannot be redrafted."), REFUSALS)
 
     try:
         domain.ensure_current(stored=latest.revision if latest else None, presented=expected_revision)
@@ -111,12 +128,13 @@ async def save_draft(
     assessment = domain.Assessment(assessment_outcome) if assessment_outcome else None
     recruitment = domain.Recruitment(recruitment_outcome) if recruitment_outcome else None
     if recruitment is not None:
-        await _ensure_recruitment_allowed(session, org_id, sitting_id, recruitment)
+        await ensure_recruitment_allowed(session, org_id, sitting_id, recruitment)
+    await ensure_hire_reason(session, org_id, recruitment_outcome, rationale)
     if assessment and recruitment:
         try:
             domain.ensure_compatible(assessment, recruitment)
         except domain.IncompatibleOutcomes as exc:
-            raise_mapped(exc, _REFUSALS)
+            raise_mapped(exc, REFUSALS)
 
     revision_row = await repository.append_revision(
         session,
@@ -155,6 +173,7 @@ async def sign_off(
         session, org_id, [uuid.UUID(station["slot_id"]) for station in current["stations"]]
     ):
         raise errors.ReviewsPendingError()
+    await ensure_hire_reason(session, org_id, latest.recruitment_outcome, latest.rationale)
     try:
         domain.transition(domain.Workflow(latest.workflow_state), domain.Workflow.SIGNED_OFF)
         assessment = domain.Assessment(latest.assessment_outcome) if latest.assessment_outcome else None
@@ -164,7 +183,7 @@ async def sign_off(
             signed=latest.evidence_fingerprint, current=domain.fingerprint(current)
         )
     except Exception as exc:  # noqa: BLE001 - mapped above
-        raise_mapped(exc, _REFUSALS)
+        raise_mapped(exc, REFUSALS)
 
     revision_row = await repository.append_revision(
         session,
@@ -274,7 +293,7 @@ async def release(
             signed=latest.evidence_fingerprint, current=domain.fingerprint(current)
         )
     except Exception as exc:  # noqa: BLE001 - mapped above
-        raise_mapped(exc, _REFUSALS)
+        raise_mapped(exc, REFUSALS)
     # Looked up before anything is written, so every refusal comes ahead of the
     # first write and a bulk release can skip this candidate cleanly.
     recipient = await roster.trainee_email(session, org_id, trainee_id)

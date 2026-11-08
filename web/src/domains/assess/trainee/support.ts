@@ -1,7 +1,7 @@
 import { PlatformError } from "@/foundation/platform-client";
 import { errorMessage } from "@/foundation/hooks/useAsync";
+import { INSTITUTION_WORDS, type AssessWords } from "@/capabilities/assess-words/vocabulary";
 import type { MySitting, MySlot, OrgStation } from "@/domains/assess/trainee/api";
-import type { AssessWords } from "@/capabilities/assess-words/vocabulary";
 
 /**
  * The vocabulary and the arithmetic of a candidate's own view.
@@ -128,7 +128,8 @@ function priority(sitting: MySitting): number {
 }
 
 function scheduledAt(sitting: MySitting): number {
-  const parsed = sitting.scheduled_for ? Date.parse(sitting.scheduled_for) : Number.NaN;
+  const start = sitting.starts_at ?? sitting.scheduled_for;
+  const parsed = start ? Date.parse(start) : Number.NaN;
   return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
 }
 
@@ -210,8 +211,9 @@ export function summaryLine(sitting: MySitting, w: AssessWords): string {
   // A finished sitting's row says only what to do next (the board), not when it was or how far it got.
   if (isOver(sitting)) return parts.join(" · ");
   if (isExam(sitting) && total > 0) parts.push(`${completed} of ${total} stations completed`);
-  if (sitting.scheduled_for) {
-    const when = whenWords(sitting.scheduled_for);
+  // A staggered rotation reads its own start, not the sitting's.
+  if (sitting.starts_at ?? sitting.scheduled_for) {
+    const when = whenWords((sitting.starts_at ?? sitting.scheduled_for) as string);
     if (when) parts.push(when);
   }
   return parts.join(" · ");
@@ -319,20 +321,22 @@ export function splitFinished(sittings: readonly MySitting[]): { current: MySitt
   return { current: sittings.filter((s) => !isOver(s)), past: sittings.filter(isOver) };
 }
 
-/** An institution trainee is told "circuit"; a candidate is told the employer's word. */
-const joinRefusals = (w: AssessWords): Record<string, string> => ({
-  circuit_not_live: `This ${w.circuit} is not open yet. You will be let in when your ${w.supervisor} starts it.`,
-  circuit_not_found: w.hiring
-    ? "You are no longer down to sit this. Contact your organiser."
-    : "That circuit is not on your list any more. Ask your organiser.",
-  voice_unavailable: "The voice service is not available right now. Try again in a minute.",
-  trainee_revoked: w.hiring
-    ? "You no longer have access to this organisation. Contact them if you think this is a mistake."
-    : "Your access to this organisation has been withdrawn.",
-  trainee_not_on_roster: w.hiring ? `You are not on the list for this ${w.sitting}.` : "You are not on this circuit.",
-});
+/** What a candidate is told when a supervisor marked them absent, on the portal and when a join is refused. */
+export function markedAbsentCopy(w: AssessWords): string {
+  return `You were marked absent from this ${w.hiring ? "assessment" : "exam"}. Contact your organiser if you think this is a mistake.`;
+}
+
+const JOIN_REFUSALS: Record<string, (w: AssessWords) => string> = {
+  circuit_not_live: (w) => `This ${w.hiring ? "assessment" : "exam"} is not open yet. You will be let in when your ${w.supervisor} starts it.`,
+  candidate_marked_absent: (w) => markedAbsentCopy(w),
+  circuit_not_found: () => "You are no longer down to sit this. Contact your organiser.",
+  voice_unavailable: () => "The voice service is not available right now. Try again in a minute.",
+  trainee_revoked: () => "You no longer have access to this organisation. Contact them if you think this is a mistake.",
+  trainee_not_on_roster: (w) => `You are not on the list for this ${w.hiring ? "assessment" : "exam"}.`,
+};
 
 /** Why a join was refused, in words a candidate can act on (T-7). */
-export function joinFailureCopy(cause: unknown, w: AssessWords): string {
-  return (cause instanceof PlatformError ? joinRefusals(w)[cause.code] : undefined) ?? errorMessage(cause);
+export function joinFailureCopy(cause: unknown, words: AssessWords = INSTITUTION_WORDS): string {
+  const refusal = cause instanceof PlatformError ? JOIN_REFUSALS[cause.code] : undefined;
+  return refusal ? refusal(words) : errorMessage(cause);
 }

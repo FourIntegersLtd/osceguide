@@ -9,7 +9,7 @@ Plan: `~/.claude/plans/i-want-us-to-tidy-pelican.md`.
 
 Decisions (2026-11-06): hire stays exam mode with no new entity, API or migration; employers keep
 Formal exam and Training; the hiring outcome shows only when the arm is hire **and** the mode is exam,
-and never to the candidate. **Awaiting sign-off:** the boards, and "Rotation" as the hire word for
+and never to the candidate. **Signed off (2026-11-07):** the boards and "Rotation" as the hire word for
 circuit.
 
 ## Words
@@ -22,7 +22,7 @@ circuit.
 | Year group (cohort) | Intake |
 | Home | Overview |
 | My training | My assessments |
-| Circuit | Rotation (needs sign-off) |
+| Circuit | Rotation |
 
 Exam, Marking scheme, Station, Domain and Competency are the same on both arms.
 
@@ -67,30 +67,28 @@ Exam, Marking scheme, Station, Domain and Competency are the same on both arms.
 - Every `/api/v1` path on the boards exists in `api/openapi.json` (script check, 2026-11-06; the
   console's short sibling names were checked under `{o}/circuits/{id}/`).
 - Every board in `canvas.json` has a file, and every link between boards resolves.
-- Still to do in Phase 3: the reverse direction. Every page reachable on hire maps to a board above
+- Built in the worktree (uncommitted): vocabulary and words-aware `errorCopy`, `HIRE_SCREEN_NAMES` + `NotOnThisAccount`, a "Hiring" group in the workspace switcher, `seed-demo-org.mjs --employer` (Acme Health Trust, `acme-health-trust`), Sittings presets and Next step, Results Where-it-is, Team role labels, cohort dialogs, JoinRoom refusals.
+- Still to do: MyReview and trainee screens beyond JoinRoom refusals; LiveNow/People residue; the reverse direction.
+  Phase 3 reverse direction: Every page reachable on hire maps to a board above
   or to HireRefused, and every refusal code above has a hire-worded line in `errorCopy.ts`.
+
+## Hire Part 2: built and still needs api
+
+Built (web only, uncommitted): first-assessment checklist on HireHome (`HireSetup.tsx`, `hireSteps.ts`); rotations dealt automatically to assessors in HireScheduleAssessment (`RotationBuilder.tsx`, `rotations.ts`); ranked candidate comparison with a required reason for a hire on HireDecisions (`CandidateRanking.tsx`, `ranking.ts`); wizard step labels in hire words (`scheduleWords`). Proof: `web/e2e/assess/hire-part2.spec.ts` at 1440 and 390.
+
+Still needs api: per-station assessors; staggered start times; server-enforced hire rationale (today the browser requires it); candidate reminders and tech-check link; no-show and dropped-connection actions with audit trail; exam templates; CSV shortlist export; appeals and re-mark; data retention and delete-on-request.
 
 ## Follow-ups (out of scope)
 
 - A list of hired candidates across assessments needs a filter on `{o}/results`.
 - The assistant's `employer` surface is refused by the backend today.
 
-## Build status (2026-11-08)
+## Build status (2026-11-08, re-ported after the merge with origin/main)
 
-All 32 boards are built in `web/` with no new entity or migration. Hire stays exam mode. Decisions: the hire word for circuit is "Rotation"; the hire decision UI (tiles, pills, column, copy) shows only when the arm is hire and the mode is exam, and never to the candidate, while institution exam sittings keep the recruitment field they already had; employers keep Formal exam and Training. Practice stations and mock exams are refused on hire with a named screen (`refusal` in the surface manifest).
+Hire stays exam mode, with no new entity. The hire word for circuit is "Rotation"; the hire decision UI shows only when the arm is hire and the mode is exam, and never to the candidate. Practice stations and mock exams land on "Not on this account" (`surfaces/hire/NotOnThisAccount.tsx`), the remote's design, not a `refusal` field on the manifest.
 
-Follow-ups closed on 2026-11-08 (third pass): invitation preview with organisation type and role (`InvitationLookup`, role null for practice-access links); revoking a seat now spends its invitation links; editable contact email; "Start from ours" on exams; next rotation on an empty live board; candidate names on "Earlier today"; console Redo and Jump to (hire menu), the AI "Ready" status on Mark it; sheet-level "Sign off results" with the signer's name; reporting per-station table and "Assessors marking" tile; wizard station reorder (already existed); viva option (already existed).
+Closed on hire: next rotation and "Earlier today" candidate names on the live board (`hireLive.ts`, `LiveBoard.next_sitting`, `LiveCircuit.candidates`); console Redo station and Jump to (hire menu in `SupervisorControls`, `OverrideDialog` choices, `hireConsole.ts`; the api refuses a jump to a finished station, so a supervisor uses Redo); "Start from ours" on New exam and the empty station list; Kind pills on exams (`examKind.ts`); the Assessors nav entry for a lead assessor; `decisions_incomplete` in hire words.
 
-Follow-ups closed on 2026-11-08 (fourth pass): the invitable Lead assessor (api role `gp_lead`, employer organisations only, no migration: it writes the lead review and reads any transcript, signs nothing off) and the role on an invitation link (`password_reset_tokens.membership_role`, migration `f4a5b6c7d8e9`, oldest-seat fallback when null); reissuing an invitation no longer spends the person's links from other organisations.
+Per-station assessors are the remote's `circuits.station_assessors` with `start_offset_minutes`; the earlier `slots.assessor_user_id` and `station_assessor_ids` design is dropped, and the console hero shows no per-slot assessor name.
 
-Fifth pass (2026-11-08, migration `a5b6c7d8e9f0`): Kind pills on exams (from the latest sitting's mode, hire only, blank for an exam never scheduled); per-station assessors (`slots.assessor_user_id`, set through `station_assessor_ids` on the circuit routes, display only) in the wizard and rotation editor; Plan seats (`organizations.candidate_seats`, staff-set, "Employer · 120 candidate seats, 58 used"). Assessors are optional; names print on the rotation row and the console hero (hire only). The editor has no lock-holder line to remove.
-
-Still held:
-- Rotation edit-lock holder's name: the api lock is derived state with no holder; drop the line or build a presence record.
-- Reporting has no period or exam filter.
-- Institution console (SupervisorControls, TurnStrip) differs from HEAD because of another lane's uncommitted console redesign (untracked CircuitHero, EndedActions); settings and invoice copy likewise. Confirm before committing.
-- Jumping to a finished station is now refused by the api, so a training supervisor can no longer jump back to a completed station (use Redo).
-
-Second pass (2026-11-08, all 32 boards re-audited screen by screen): the assessment detail, scheduling wizard, rotation editor and live board; console, review, decisions and the candidate's home; authoring, marking schemes, stations and layouts; the refused screen and settings now carry the boards' words and states, each pinned by a literal copy test. Still api-limited, besides the list above: per-station assessor, the lock holder's name, "Signed off by <name>", sitting-level sign-off, reporting filters and tiles. Proof: `npm run ci` green; every `/api/v1` path the boards name exists in `api/openapi.json`; `scripts/smoke.mjs` 34/35 against a local api (the one failure is the local `/health` content check from a leftover e2e station, not a hire path); the hire journeys HIRE-1..5 and the board specs run against the local api. The HireHome pixel-diff spec (`web/e2e/assess/board-hire.spec.ts`) compared the 5 November board in `docs/institution-overhaul/boards/`, which this redesign supersedes; it now pins the redesigned board's busy-state words (Needs you, the three count tiles) and the pixel diff is gone, because the new board draws its three states behind a switcher that board-diff.ts does not drive.
-
-Behaviour changes on hire only: a station cannot publish without a candidate brief; finishing marking needs a mark on every sat station; "Add 2 minutes" is 120 seconds; Save and next candidate is the primary on decisions.
+Still held: reporting has no period or exam filter; the rotation lock holder's name has no api source.

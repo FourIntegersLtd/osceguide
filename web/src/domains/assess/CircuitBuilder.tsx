@@ -11,14 +11,12 @@ import {
   DefaultBreakInput,
   DurationInputs,
   StationOrder,
-  StationAssessors,
   SupervisorSelect,
 } from "@/domains/assess/ScheduleSteps";
 import type { CircuitShape } from "@/domains/assess/api";
 import {
   EMPTY_DRAFT,
   circuitTiming,
-  stationAssessorIds,
   type PickerSet,
   type ScheduleDraft,
   type TraineeRow,
@@ -153,7 +151,6 @@ export function CircuitBuilder({
           // who has never signed in has no user row and cannot be put on one.
           traineeIds: picked,
           supervisorUserId: draft.supervisorId || null,
-          stationAssessorIds: stationAssessorIds(draft, w),
           timing: circuitTiming(draft),
         },
         bulk,
@@ -242,11 +239,6 @@ export function CircuitBuilder({
         </div>
       </Panel>
 
-      {w.hiring ? (
-        <Panel title="Who assesses?">
-          <StationAssessors draft={draft} patch={patch} leads={leads} />
-        </Panel>
-      ) : null}
       </fieldset>
 
       <div className="flex items-center justify-end gap-3">

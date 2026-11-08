@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import procrastinate
@@ -367,8 +367,12 @@ def register() -> None:
     @app.periodic(cron="*/10 * * * *")
     @app.task(name="compact_transcripts", queue="attempts")
     async def compact_transcripts(timestamp: int = 0) -> None:
-        """Fold finished transcripts' rows into one document each, every ten minutes."""
+        """Fold finished transcripts' rows into one document each, every ten minutes. Then remove the
+        transcripts that have outlived their organisation's retention."""
         from app.core.db import job_session
         from app.features.attempts.service_compaction import compact_ready_transcripts
+        from app.features.attempts.service_retention import sweep_retention
 
         await compact_ready_transcripts(job_session, limit=COMPACTION_BATCH)
+        # Same schedule: the sweep is a cheap indexed read when nothing has expired.
+        await sweep_retention(job_session, now=datetime.now(UTC))

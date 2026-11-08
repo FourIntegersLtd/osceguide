@@ -146,6 +146,7 @@ async def cancel_sitting(sitting_id: uuid.UUID, workspace: OrgAdmin, session: Se
         errors.SittingNotFound,
         errors.SittingLockedError,
         errors.LeadCannotRun,
+        errors.StationNotOnCircuitError,
         errors.InvalidCircuitError,
         errors.TraineeRevokedError,
         errors.MarkingNotReady,
@@ -165,7 +166,8 @@ async def add_circuit(
         station_version_ids=body.station_version_ids,
         supervisor_user_id=body.supervisor_user_id,
         timing=body.timing,
-        station_assessor_ids=body.station_assessor_ids,
+        start_offset_minutes=body.start_offset_minutes,
+        station_assessors=body.station_assessors,
     )
 
 
@@ -179,6 +181,7 @@ async def add_circuit(
         errors.SittingNotFound,
         errors.SittingLockedError,
         errors.LeadCannotRun,
+        errors.StationNotOnCircuitError,
         errors.InvalidCircuitError,
         errors.TraineeRevokedError,
         errors.MarkingNotReady,
@@ -204,6 +207,7 @@ async def add_exam_circuits(
         errors.CircuitAlreadyEndedError,
         errors.CircuitLockedError,
         errors.LeadCannotRun,
+        errors.StationNotOnCircuitError,
         errors.InvalidCircuitError,
         errors.TraineeRevokedError,
         errors.MarkingNotReady,
@@ -227,8 +231,9 @@ async def rebuild_circuit(
         name=body.name,
         supervisor_user_id=body.supervisor_user_id,
         timing=body.timing,
+        start_offset_minutes=body.start_offset_minutes,
+        station_assessors=body.station_assessors,
         revision=body.revision,
-        station_assessor_ids=body.station_assessor_ids,
     )
 
 

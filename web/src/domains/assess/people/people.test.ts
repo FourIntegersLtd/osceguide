@@ -4,7 +4,7 @@ import type { Membership } from "@/domains/assess/team/api";
 import { revokeMemberships } from "@/domains/assess/team/api";
 import {
   LAST_ADMIN_MESSAGE,
-  ROLE_CHOICE_HELP,
+  roleHelp,
   bulkRevokeFailure,
   isAwaitingInvite,
   resendSummary,
@@ -156,7 +156,7 @@ describe("staff bulk revoke", () => {
 
   it("explains the two roles together in the change-role box", () => {
     assert.equal(
-      ROLE_CHOICE_HELP,
+      roleHelp(INSTITUTION_WORDS),
       "Supervisor: runs circuits and marks the candidates on them. Admin: also manages the team and the organisation's settings, and signs off results.",
     );
   });

@@ -5,6 +5,8 @@
  */
 import { signInWithPassword } from "../../scripts/admin-totp.mjs";
 import { ACCOUNT, API, WEB } from "../../.claude/skills/verify/harness.mjs";
+import { appendFileSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 export { API, WEB };
 export const PASSWORD = "e2e-correct-horse-1";
@@ -77,6 +79,18 @@ export interface SeededOrg {
   account: { email: string; password: string };
 }
 
+/** This run's ledger of created organisations (one slug per line); global-teardown deletes them. Scoped by E2E_RUN_ID so concurrent runs never delete each other's. */
+export const orgsFile = () => join(process.cwd(), "e2e", ".auth", `orgs-${process.env.E2E_RUN_ID}.txt`);
+
+/** Create an organisation as the platform admin, recording its slug first so a half-built one is swept too. Every spec creates organisations through this. */
+export async function createPlatformOrg(slug: string, name: string, orgType: string): Promise<string> {
+  mkdirSync(dirname(orgsFile()), { recursive: true });
+  appendFileSync(orgsFile(), `${slug}\n`);
+  const platform = await login(ADMIN.email, ADMIN.password);
+  await call(platform, "/api/v1/platform/organizations", { method: "POST", body: { name, slug, org_type: orgType } });
+  return platform;
+}
+
 /**
  * A fresh institution "St Mary's Medical School" (slug `<prefix>-<stamp>`) with its signed-in admin as `role`.
  * The admin's address is unique per run unless `email` is given (a saved account being re-seeded).
@@ -85,8 +99,7 @@ export async function createOrg(options: { prefix: string; role: "owner" | "inst
   const id = stamp();
   const slug = `${options.prefix}-${id}`;
   const account = { email: options.email ?? `${options.prefix}-admin-${id}@example.com`, password: PASSWORD };
-  const platform = await login(ADMIN.email, ADMIN.password);
-  await call(platform, "/api/v1/platform/organizations", { method: "POST", body: { name: options.orgName ?? "St Mary's Medical School", slug, org_type: options.orgType ?? "institution" } });
+  const platform = await createPlatformOrg(slug, options.orgName ?? "St Mary's Medical School", options.orgType ?? "institution");
   await register(account.email, options.adminName);
   await call(platform, `/api/v1/platform/organizations/${slug}/memberships`, { method: "POST", body: { email: account.email, role: options.role } });
   const token = await switchWorkspace(await login(account.email, PASSWORD), slug);

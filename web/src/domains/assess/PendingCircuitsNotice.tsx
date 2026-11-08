@@ -35,7 +35,7 @@ export function PendingCircuitsNotice({
   const retry = async () => {
     setBusy(true);
     try {
-      await createSittingCircuits(orgSlug, sittingId, pending.draft, pending.created, w);
+      await createSittingCircuits(orgSlug, sittingId, pending.draft, pending.created);
       clearPending(sittingId);
       setPending(null);
       onDone();
@@ -49,11 +49,11 @@ export function PendingCircuitsNotice({
   };
 
   return (
-    <Alert tone="danger" title={`The ${w.circuits} were not made`}>
+    <Alert tone="danger" title="The circuits were not made">
       <p>{pending.message}</p>
       <div className="mt-2">
         <Button themeType="b2b" variant="secondary" disabled={busy} onClick={() => void retry()}>
-          {busy ? <Spinner label={`Making the ${w.circuits}`} className="text-current" /> : "Try again"}
+          {busy ? <Spinner label="Making the circuits" className="text-current" /> : "Try again"}
         </Button>
       </div>
     </Alert>

@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -146,3 +147,53 @@ class CandidateResultNotification(Base, UUIDPrimaryKey, Timestamps):
     )
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_error: Mapped[str | None] = mapped_column(Text)
+
+
+class ResultAppeal(Base, UUIDPrimaryKey, Timestamps):
+    """A request to look again at a released result.
+
+    The row is the workflow (open, in review, resolved, declined); the result it leads to is a new
+    revision on `candidate_result_revisions`, never an edit of the one appealed. `reason` and
+    `decision_note` are personal text and become `[erased]` when the candidate's data is deleted.
+    """
+
+    __tablename__ = "result_appeals"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('open', 'in_review', 'resolved', 'declined')", name="ck_result_appeals_status"
+        ),
+        CheckConstraint(
+            "status <> 'in_review' OR assigned_to IS NOT NULL", name="ck_result_appeals_assigned"
+        ),
+        # One appeal at a time per candidate and sitting: a second request while one is live is a mistake.
+        Index(
+            "uq_result_appeals_active",
+            "sitting_id",
+            "trainee_id",
+            unique=True,
+            postgresql_where=text("status IN ('open', 'in_review')"),
+        ),
+        Index("ix_result_appeals_org_status", "org_id", "status"),
+    )
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    sitting_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sittings.id", ondelete="CASCADE"), nullable=False
+    )
+    trainee_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("trainees.id", ondelete="RESTRICT"), nullable=False
+    )
+    # The released revision being questioned, and the one the outcome appended (null until resolved).
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    outcome_revision: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'open'"))
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    requested_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    on_behalf: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    assigned_to: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_note: Mapped[str | None] = mapped_column(Text)
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

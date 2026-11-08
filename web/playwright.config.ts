@@ -26,6 +26,7 @@ process.env.VERIFY_WEB_URL = WEB;
 export default defineConfig({
   testDir: "./e2e",
   globalSetup: "./e2e/global-setup.ts",
+  globalTeardown: "./e2e/global-teardown.ts",
   // One shared world per run, and the api rate-limits sign-ins: run serially.
   workers: 1,
   fullyParallel: false,

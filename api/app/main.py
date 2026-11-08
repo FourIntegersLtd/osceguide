@@ -76,6 +76,7 @@ from app.features.rubrics.router_org import router as org_rubrics_router
 from app.features.sittings.router import router as sittings_router
 from app.features.sittings.router_overrides import router as circuit_overrides_router
 from app.features.sittings.router_run import router as circuit_run_router
+from app.features.sittings.router_templates import router as sitting_templates_router
 from app.features.sso.router import router as sso_router
 from app.features.station_sets.router import router as station_sets_router
 from app.features.station_sets.router_platform import router as platform_station_sets_router
@@ -145,6 +146,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(sittings_router)
     router.include_router(circuit_run_router)
     router.include_router(circuit_overrides_router)
+    router.include_router(sitting_templates_router)
     router.include_router(roster_router)
     router.include_router(scim_router)
     router.include_router(reviews_router)

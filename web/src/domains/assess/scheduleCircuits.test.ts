@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { rotationAssessors, rotationChip, rotationTime } from "@/domains/assess/sittingWords";
+import { rotationChip, rotationTime } from "@/domains/assess/sittingWords";
 
 test("a rotation's chip says what to do next", () => {
   const base = { started_at: null, ended_at: null, supervisor_user_id: "u", trainee_count: 1 };
@@ -17,8 +17,3 @@ test("a rotation's time runs from the start for its stations and breaks", () => 
   assert.equal(rotationTime(null, 5, timing), "");
 });
 
-test("only an employer's rotation row lists its assessors", () => {
-  assert.deepEqual(rotationAssessors(["Dan Lowe", "Sara Khan"], true), ["Dan Lowe, Sara Khan"]);
-  assert.deepEqual(rotationAssessors(["Dan Lowe"], false), []);
-  assert.deepEqual(rotationAssessors([], true), []);
-});

@@ -34,8 +34,8 @@ test("Save and next goes to the next candidate still to decide, then wraps, then
 });
 
 test("the save button names what it does", () => {
-  assert.equal(saveNextLabel(true), "Save and next candidate");
-  assert.equal(saveNextLabel(false), "Save decision");
+  assert.equal(saveNextLabel(true), "Save draft and next candidate");
+  assert.equal(saveNextLabel(false), "Save draft");
 });
 
 test("a Pass with no hiring decision is still to decide; a pending one too", () => {

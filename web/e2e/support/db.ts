@@ -167,3 +167,24 @@ BEGIN
 END $$;`);
   return userIdByEmail(email);
 }
+
+/**
+ * Delete organisations by slug, with what hangs off them (local runs only). The api has no delete-organisation
+ * route. Two things the foreign keys cannot do alone: `circuit_stations` and `invoices` restrict, and the two
+ * result tables refuse deletes by trigger, so those triggers are off for the length of this one transaction.
+ */
+export function deleteOrgs(slugs: string[]): void {
+  if (slugs.length === 0) return;
+  const mine = `select id from organizations where slug in (${slugs.map(q).join(", ")})`;
+  psql(`
+BEGIN;
+SET LOCAL lock_timeout = '5s';
+ALTER TABLE candidate_result_revisions DISABLE TRIGGER candidate_result_revisions_append_only;
+ALTER TABLE candidate_result_events DISABLE TRIGGER candidate_result_events_append_only;
+DELETE FROM circuit_stations WHERE circuit_id IN (SELECT id FROM circuits WHERE org_id IN (${mine}));
+DELETE FROM invoices WHERE org_id IN (${mine});
+DELETE FROM organizations WHERE id IN (${mine});
+ALTER TABLE candidate_result_revisions ENABLE TRIGGER candidate_result_revisions_append_only;
+ALTER TABLE candidate_result_events ENABLE TRIGGER candidate_result_events_append_only;
+COMMIT;`);
+}

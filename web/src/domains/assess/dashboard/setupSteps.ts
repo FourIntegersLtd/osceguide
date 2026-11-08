@@ -1,5 +1,6 @@
 import type { OrgSetup } from "@/domains/assess/dashboard/api";
-import type { AssessWords } from "@/capabilities/assess-words";
+import type { AssessWords } from "@/capabilities/assess-words/vocabulary";
+import { aOrAn } from "@/capabilities/assess-words/vocabulary";
 
 /** The setup assistant on Home: its five steps and the judgements about them, from the flags `/dashboard` returns. */
 
@@ -51,7 +52,7 @@ export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[]
       tag: "Next", title: `Add stations to your ${w.exam}`,
       body: "Write your own, import a PDF or Word file, ask the AI to draft one from a brief, or copy ours. Publish each one when it is ready.",
       whyTitle: "What counts",
-      why: `Only published stations for this ${w.exam} can go into a ${w.sitting}. A formal ${w.exam} takes up to 12.`,
+      why: `Only published stations for this ${w.exam} can go into ${aOrAn(w.sitting)}. A formal ${w.exam} takes up to 12.`,
       cta: "Add a station", href: "/authoring/stations", alt: "Browse the station library", altHref: "/authoring",
     },
     {
@@ -59,7 +60,7 @@ export function assistantSteps(setup: OrgSetup, w: AssessWords): AssistantStep[]
       tag: "Next", title: `Add your ${w.trainees}`,
       body: `Add one person, or upload a spreadsheet. Each ${w.trainee} gets an invitation email and joins when they set a password.`,
       whyTitle: "Tip",
-      why: `Put ${w.trainees} in a ${w.yearGroup} as you add them. You can schedule a whole ${w.yearGroup} in one step later.`,
+      why: `Put ${w.trainees} in ${aOrAn(w.yearGroup)} as you add them. You can schedule a whole ${w.yearGroup} in one step later.`,
       cta: `Add ${w.trainees}`, href: "/trainees", alt: "Download the spreadsheet template", altDownload: true,
     },
     {
@@ -137,47 +138,4 @@ export function setupComplete(steps: AssistantStep[]): boolean {
 export function firstOpenStep(steps: AssistantStep[]): number {
   const index = steps.findIndex((step) => !step.done);
   return index === -1 ? steps.length - 1 : index;
-}
-
-export type HireRailStep = {
-  id: "exam" | "candidates" | "assessors" | "assessment";
-  label: string;
-  optional: boolean;
-  done: boolean;
-  cta: string;
-  /** Surface-relative; the caller runs it through `hrefFor`. */
-  href: string;
-  /** Why the step cannot be used yet, in words beneath its button. */
-  blocked: string | null;
-};
-
-/** What still stands between the account and its first assessment, from the flags the api derives `ready_to_run` from. */
-function assessmentBlocked(setup: OrgSetup, w: AssessWords): string {
-  const missing: string[] = [];
-  if (!setup.programme_exam_rubric_ready) missing.push(withArticle(w.exam));
-  if (!setup.stations_available) missing.push("stations");
-  if (!setup.trainees_added) missing.push(w.trainees);
-  const list = missing.length > 1 ? `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}` : (missing[0] ?? "your team");
-  return `You need ${list} first.`;
-}
-
-/** A new hire account's four-step rail (Exam, Candidates, Assessors, Assessment), from the same flags as the assistant. */
-export function hireRail(setup: OrgSetup, w: AssessWords): HireRailStep[] {
-  return [
-    {
-      id: "exam", label: w.Exam, optional: false, done: setup.programme_exam_rubric_ready && setup.stations_available,
-      cta: `Set up an ${w.exam}`, href: NEW_EXAM_PATH, blocked: null,
-    },
-    { id: "candidates", label: w.Trainees, optional: false, done: setup.trainees_added, cta: w.addPeople, href: "/trainees", blocked: null },
-    { id: "assessors", label: w.Supervisors, optional: true, done: setup.team_invited, cta: `Invite ${withArticle(w.supervisor)}`, href: "/team", blocked: null },
-    {
-      id: "assessment", label: w.Sitting, optional: false, done: setup.sitting_scheduled, cta: w.scheduleSitting, href: SCHEDULE_SITTING_PATH,
-      blocked: setup.ready_to_run ? null : assessmentBlocked(setup, w),
-    },
-  ];
-}
-
-/** The one step the rail asks for next: the first required step not done. */
-export function hireRailNext(steps: readonly HireRailStep[]): HireRailStep | null {
-  return steps.find((step) => !step.done && !step.optional) ?? null;
 }

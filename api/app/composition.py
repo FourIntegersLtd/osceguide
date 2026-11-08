@@ -22,8 +22,8 @@ from app.features.identity.service import account_status, may_call_with_temporar
 from app.features.roster.service import audiences_for_viewer
 from app.features.tenancy.service import (
     is_institution_admin,
-    may_lead_review,
     is_org_admin,
+    may_lead_review,
     may_read_org,
     may_run_circuit,
     memberships_for_token,

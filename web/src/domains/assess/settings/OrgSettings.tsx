@@ -30,6 +30,7 @@ import {
 import { MFA_PILLS_CHANGE, MFA_PILLS_HINT, mfaPills, ssoLead, staffMfaCopy } from "@/domains/assess/settings/signInCopy";
 import { describeSsoStatus } from "@/domains/assess/settings/ssoStatus";
 import { InvoicesTab } from "@/domains/assess/settings/InvoicesPage";
+import { RetentionCard } from "@/domains/assess/settings/RetentionCard";
 import { ScimTokens } from "@/domains/assess/settings/ScimTokens";
 import { boardBtn, boardInput, boardLabel as labelClass, type BoardChipTone } from "@/foundation/ui/boardKit";
 
@@ -76,7 +77,12 @@ function OrganisationPanel({ orgSlug, setDirty }: { orgSlug: string; setDirty: (
   }, [orgSlug, hiring]);
   return (
     <AsyncBoundary state={state}>
-      {({ org, used }) => <OrganisationForm key={`${org.name}|${org.contact_email ?? ""}`} org={org} seatsUsed={used} onSaved={state.reload} setDirty={setDirty} />}
+      {({ org, used }) => (
+        <>
+          <OrganisationForm key={`${org.name}|${org.contact_email ?? ""}`} org={org} seatsUsed={used} onSaved={state.reload} setDirty={setDirty} />
+          <RetentionCard org={org} onSaved={state.reload} />
+        </>
+      )}
     </AsyncBoundary>
   );
 }

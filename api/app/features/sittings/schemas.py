@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -24,8 +24,6 @@ class SlotRead(BaseModel):
     room_name: str | None = None
     started_at: datetime | None = None
     ended_at: datetime | None = None
-    # Who assesses this station, when the schedule names one.
-    assessor_user_id: uuid.UUID | None = None
     # The circuit's clock, shown against the slot it is currently on and null
     # for every other slot. Derived, not stored: the clock is the circuit's.
     phase: str | None = None
@@ -56,6 +54,10 @@ class CircuitRead(BaseModel):
     name: str
     supervisor_user_id: uuid.UUID | None
     timing: TimingRead
+    # Minutes after the sitting's start that this rotation begins; 0 starts with the sitting.
+    start_offset_minutes: int = 0
+    # station_version_id to the assessor of that station; a station not listed is the lead's.
+    station_assessors: dict[uuid.UUID, uuid.UUID] = Field(default_factory=dict)
     active_slot_id: uuid.UUID | None
     room_name: str | None
     started_at: datetime | None
@@ -78,8 +80,6 @@ class CircuitRead(BaseModel):
     trainee_count: int = 0
     # The supervisor's display name; filled where a screen lists circuits.
     supervisor_name: str | None = None
-    # The people named as station assessors, once each, in station order (set when a sitting is read).
-    assessor_names: list[str] = []
     slots: list[SlotRead] = Field(default_factory=list)
 
 
@@ -145,10 +145,10 @@ class CreateCircuit(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     trainee_ids: list[uuid.UUID]
     station_version_ids: list[uuid.UUID]
-    # Who assesses each station, paired positionally with `station_version_ids`; a null leaves one open.
-    station_assessor_ids: list[uuid.UUID | None] | None = None
     supervisor_user_id: uuid.UUID | None = None
     timing: TimingIn = Field(default_factory=TimingIn)
+    start_offset_minutes: int = Field(default=0, ge=0, le=480)
+    station_assessors: dict[uuid.UUID, uuid.UUID] = Field(default_factory=dict)
 
 
 class CreateExamCircuits(BaseModel):
@@ -157,9 +157,10 @@ class CreateExamCircuits(BaseModel):
     name_prefix: str = Field("Exam", min_length=1, max_length=120)
     candidate_user_ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
     station_version_ids: list[uuid.UUID]
-    station_assessor_ids: list[uuid.UUID | None] | None = None
     supervisor_user_id: uuid.UUID | None = None
     timing: TimingIn | None = None
+    start_offset_minutes: int = Field(default=0, ge=0, le=480)
+    station_assessors: dict[uuid.UUID, uuid.UUID] = Field(default_factory=dict)
 
     @field_validator("candidate_user_ids")
     @classmethod
@@ -181,10 +182,11 @@ class RebuildCircuit(BaseModel):
     trainee_ids: list[uuid.UUID]
     station_version_ids: list[uuid.UUID]
     name: str | None = Field(default=None, min_length=1, max_length=200)
-    # Omit to keep each station's assessor; send the whole list, nulls included, to replace them.
-    station_assessor_ids: list[uuid.UUID | None] | None = None
     supervisor_user_id: uuid.UUID | None = None
     timing: TimingIn | None = None
+    # Omitted keeps what the circuit has; sent, they replace it (an empty map clears the assessors).
+    start_offset_minutes: int | None = Field(default=None, ge=0, le=480)
+    station_assessors: dict[uuid.UUID, uuid.UUID] | None = None
     # The revision the caller read; an older one is refused 409 `stale_revision` (B-15).
     revision: int | None = None
 
@@ -194,6 +196,25 @@ class Override(BaseModel):
     action for later review."""
 
     reason: str | None = Field(default=None, max_length=500)
+
+
+class ReasonedOverride(BaseModel):
+    """An override that cannot be done without saying why: a person is being marked absent or let back in."""
+
+    reason: str = Field(min_length=3, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _stripped(cls, value: str) -> str:
+        """A reason of only spaces or a word or two is refused, so the record says something."""
+        value = value.strip()
+        if len(value) < 3:
+            raise ValueError("A reason is required")
+        return value
+
+
+class MarkAbsent(ReasonedOverride):
+    trainee_id: uuid.UUID
 
 
 class ExtendClock(Override):
@@ -325,3 +346,60 @@ class PeerMarkRead(BaseModel):
 class PeerMarksRead(BaseModel):
     slot_id: uuid.UUID
     items: list[PeerMarkRead]
+
+
+class TemplateStation(BaseModel):
+    version_id: uuid.UUID
+    title: str = Field(max_length=200)
+
+
+class TemplateBreak(BaseModel):
+    """One break: after which station, and for how long."""
+
+    after: int = Field(ge=1, le=30)
+    minutes: int = Field(ge=1, le=60)
+
+
+class TemplateConfig(BaseModel):
+    """What a template keeps of a schedule: no date, no people, no named staff."""
+
+    programme_id: uuid.UUID | None = None
+    mode: Literal["exam", "training"]
+    stations: list[TemplateStation] = Field(default_factory=list, max_length=30)
+    reading_minutes: int = Field(ge=1, le=30)
+    consultation_minutes: int = Field(ge=1, le=180)
+    break_minutes: int = Field(ge=1, le=60)
+    # A break follows each of these stations (1-based), each with its own length.
+    breaks: list[TemplateBreak] = Field(default_factory=list, max_length=30)
+    # One assessor for every circuit, or one per candidate.
+    assessor_style: Literal["one", "per_candidate"] = "one"
+
+
+class _TemplateNamed(BaseModel):
+    """A request that names a template: the name is trimmed and never blank."""
+
+    name: str = Field(min_length=1, max_length=120)
+
+    @field_validator("name")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        """Keep a name's text, not the spaces around it, and refuse a blank one."""
+        value = value.strip()
+        if not value:
+            raise ValueError("name must not be blank")
+        return value
+
+
+class CreateTemplate(_TemplateNamed):
+    config: TemplateConfig
+
+
+class RenameTemplate(_TemplateNamed):
+    pass
+
+
+class TemplateRead(BaseModel):
+    id: uuid.UUID
+    name: str
+    config: TemplateConfig
+    created_at: datetime

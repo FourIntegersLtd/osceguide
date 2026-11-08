@@ -28,5 +28,5 @@ test("hire intro, last button and review labels", () => {
 });
 
 test("hire names the assessor options in its words, institution keeps its own", () => {
-  assert.deepEqual(supervisorOptions(EMPLOYER_WORDS).map((o) => o.title), ["One assessor for every rotation", "An assessor for each candidate"]);
+  assert.deepEqual(supervisorOptions(EMPLOYER_WORDS).map((o) => o.title), ["One assessor for every rotation", "An assessor per candidate"]);
 });

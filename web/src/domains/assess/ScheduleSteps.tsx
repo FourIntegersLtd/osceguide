@@ -1,7 +1,6 @@
 "use client";
 
 import { boardBtn } from "@/foundation/ui/boardKit";
-import { useAssessWords } from "@/capabilities/assess-words";
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -29,7 +28,6 @@ import {
   type StationLibraryScope,
 } from "@/capabilities/stations";
 import { errorMessage } from "@/foundation/hooks";
-import { PEOPLE_DIALOG_SIZE } from "@/domains/assess/ui";
 import { plural } from "@/foundation/format";
 import { resendInvitation } from "@/domains/assess/roster/api";
 import { moveItem } from "@/domains/assess/support";
@@ -57,11 +55,14 @@ import {
   type PickerSet,
   type ScheduleDraft,
   type TraineeRow,
+  STAGGER_BOUNDS,
 } from "@/domains/assess/scheduleSitting";
 import {
   BREAK_MINUTES_BOUNDS,
   READING_MINUTES_BOUNDS,
 } from "@/domains/assess/timing";
+import { RotationBuilder } from "@/domains/assess/RotationBuilder";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * The step bodies of "Schedule a sitting" (docs/institution-overhaul/boards/ScheduleSitting.dc.html).
@@ -173,7 +174,6 @@ export function StationOrder({
   note?: string;
 }) {
   const { hrefFor } = useSurface();
-  const w = useAssessWords();
   const [adding, setAdding] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -233,7 +233,7 @@ export function StationOrder({
           className={boardBtn()}
           onClick={() => setAdding(true)}
         >
-          {w.hiring ? "Add a station" : "Add from this exam"}
+          Add from this exam
         </button>
         <Link
           href={hrefFor("/authoring/stations/new")}
@@ -243,22 +243,15 @@ export function StationOrder({
         >
           Write a new station
         </Link>
-        {w.hiring && stations.length > 1 ? (
-          <span className={`${t.assessMeta} self-center`}>Drag rows to change the order.</span>
-        ) : null}
       </div>
       {adding ? (
         <Modal
-          labelledBy="add-station-title"
-          hideCloseButton
+          title={`Add from ${examName}`}
           onClose={() => setAdding(false)}
-          {...PEOPLE_DIALOG_SIZE}
-          bodyClassName="p-6"
+          width={{ mobile: "100%", desktop: "48rem" }}
         >
-          <div className="flex min-h-0 flex-col gap-4">
-            <h2 id="add-station-title" className="m-0 text-assess-desc font-semibold text-osce-ink-900">
-              Find a station for {examName}
-            </h2>
+          <div className="flex flex-col gap-6">
+            <h2 className={t.assessTitle}>Find a station for {examName}</h2>
             <StationLibrary
               scope={scope}
               onPick={(station: LibraryStation) =>
@@ -279,7 +272,7 @@ export function StationOrder({
                 new Set(stations.map((station) => station.version_id))
               }
             />
-            <div className="flex justify-end border-t border-osce-border-light pt-3">
+            <div className="flex justify-end">
               <button
                 type="button"
                 className={boardBtn("primary")}
@@ -409,7 +402,7 @@ export function CandidatePicker({
   const tabs: { key: PeopleTab; label: string }[] = [
     { key: "people", label: "People" },
     { key: "groups", label: "Groups" },
-    { key: "years", label: "Year groups" },
+    { key: "years", label: w.YearGroups },
   ];
   const sets = tab === "groups" ? groups : yearGroups;
 
@@ -436,7 +429,7 @@ export function CandidatePicker({
           <input
             className={fieldInput}
             placeholder="Search by name or email"
-            aria-label="Search trainees"
+            aria-label={`Search ${w.trainees}`}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -528,7 +521,7 @@ export function CandidatePicker({
         </>
       ) : sets.length === 0 ? (
         <p className={t.assessMeta}>
-          {tab === "groups" ? "No groups yet." : "No year groups yet."}
+          {tab === "groups" ? "No groups yet." : `No ${w.yearGroups} yet.`}
         </p>
       ) : (
         <ul className={flushCard}>
@@ -536,7 +529,7 @@ export function CandidatePicker({
             <li key={set.id} className={flushRow}>
               <span className="min-w-0 flex-[1_1_220px]">
                 <span className="font-medium">
-                  {tab === "groups" ? "Group" : "Year group"}: {set.label}
+                  {tab === "groups" ? "Group" : w.YearGroup}: {set.label}
                 </span>
                 {set.count !== undefined ? (
                   <span className={cn(t.assessMeta, "block")}>
@@ -545,7 +538,7 @@ export function CandidatePicker({
                 ) : null}
               </span>
               <Chip tone="info">
-                {tab === "groups" ? "Group" : "Year group"}
+                {tab === "groups" ? "Group" : w.YearGroup}
               </Chip>
               <button
                 type="button"
@@ -647,11 +640,12 @@ export function DefaultBreakInput({
   draft: ScheduleDraft;
   patch: Patch;
 }) {
+  const w = useAssessWords();
   return (
     <Field
       label="Default break length (minutes)"
       htmlFor="sitting-default-break"
-      hint="A break goes between two stations, never after the last one. Everyone on the circuit pauses during it."
+      hint={`A break goes between two stations, never after the last one. Everyone on the ${w.circuit} pauses during it.`}
     >
       <MinutesInput
         id="sitting-default-break"
@@ -763,6 +757,7 @@ export function TimingStep({
   draft: ScheduleDraft;
   patch: Patch;
 }) {
+  const w = useAssessWords();
   const ends = endsAbout(draft);
   return (
     <div className={cn(t.assessCard, "p-6", t.assessFormStack)}>
@@ -781,6 +776,34 @@ export function TimingStep({
       {draft.mode === "exam" ? (
         <div className="border-t border-osce-border-light pt-7">
           <BreakEditor draft={draft} patch={patch} />
+        </div>
+      ) : null}
+      {w.hiring && draft.mode === "exam" ? (
+        <div className="border-t border-osce-border-light pt-7">
+          <Field label={`Stagger ${w.circuits} (minutes apart)`} htmlFor="sitting-stagger">
+            <input
+              id="sitting-stagger"
+              className={cn(fieldInput, "w-32")}
+              type="number"
+              inputMode="numeric"
+              min={STAGGER_BOUNDS.min}
+              max={STAGGER_BOUNDS.max}
+              value={draft.staggerMinutes}
+              onChange={(event) =>
+                patch({
+                  staggerMinutes: Math.min(
+                    STAGGER_BOUNDS.max,
+                    Math.max(STAGGER_BOUNDS.min, Math.round(Number(event.target.value)) || 0),
+                  ),
+                })
+              }
+            />
+          </Field>
+          <p className={cn(t.assessMeta, "mt-2")}>
+            {draft.staggerMinutes > 0
+              ? `Each ${w.trainee} starts ${draft.staggerMinutes} minutes after the one before. The first starts at the start time.`
+              : `0 starts every ${w.trainee} together at the start time.`}
+          </p>
         </div>
       ) : null}
       {ends ? (
@@ -813,7 +836,7 @@ export function SupervisorSelect({
         options={[{ value: "", label: "Unassigned" }, ...leads]}
       />
       <p className={t.assessMeta}>
-        No {w.supervisors} yet?{" "}
+        {`No ${w.supervisors} yet?`}{" "}
         <Link href={inviteHref} className={linkClass}>
           Invite staff
         </Link>
@@ -822,35 +845,41 @@ export function SupervisorSelect({
   );
 }
 
-/** An employer's "Who assesses?" list: an assessor for each station, one person may cover several. */
-export function StationAssessors({
+/** Hire: a different assessor for each station; a station left on the default is the lead's. */
+function StationAssessors({
   draft,
   patch,
-  leads,
+  options,
 }: {
   draft: ScheduleDraft;
   patch: Patch;
-  leads: { value: string; label: string }[];
+  options: { value: string; label: string }[];
 }) {
-  const options = [{ value: "", label: "Choose" }, ...leads];
+  const w = useAssessWords();
   return (
-    <div className="flex flex-col gap-2">
-      <p className={t.assessMeta}>Naming an assessor for each station is optional. One person can cover more than one station.</p>
+    <div className={cn(t.assessCard, "p-6", t.assessFormStack)}>
+      <p className="font-medium">{w.Supervisor} for each station</p>
+      <p className={t.assessMeta}>
+        A station left on the default is assessed by the {w.circuit}&apos;s own {w.supervisor}. An assessor
+        sees and marks only their station.
+      </p>
       <ul className={flushCard}>
-        {draft.stations.map((station, index) => (
+        {draft.stations.map((station, at) => (
           <li key={station.version_id} className={flushRow}>
-            <span className="min-w-0 flex-[1_1_200px] font-medium">{`${index + 1} ${station.title}`}</span>
+            <span className="min-w-0 flex-[1_1_200px] font-medium">{`Station ${at + 1}: ${station.title}`}</span>
             <select
               className={cn(fieldInput, "w-[200px]")}
-              aria-label={`Assessor for station ${index + 1}`}
+              aria-label={`${w.Supervisor} for station ${at + 1}`}
               value={draft.stationAssessors[station.version_id] ?? ""}
               onChange={(event) =>
-                patch({ stationAssessors: { ...draft.stationAssessors, [station.version_id]: event.target.value } })
+                patch({
+                  stationAssessors: { ...draft.stationAssessors, [station.version_id]: event.target.value },
+                })
               }
             >
               {options.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {option.value === "" ? "Default" : option.label}
                 </option>
               ))}
             </select>
@@ -893,6 +922,10 @@ export function SupervisorStep({
           }))}
         />
       ) : null}
+      {each && w.hiring ? <RotationBuilder draft={draft} patch={patch} leads={leads} /> : null}
+      {w.hiring && draft.mode === "exam" && draft.stations.length > 0 ? (
+        <StationAssessors draft={draft} patch={patch} options={options} />
+      ) : null}
       {each ? (
         <ul className={flushCard}>
           {draft.candidateIds.map((id) => (
@@ -932,7 +965,6 @@ export function SupervisorStep({
           />
         </div>
       )}
-      {w.hiring ? <StationAssessors draft={draft} patch={patch} leads={leads} /> : null}
     </div>
   );
 }

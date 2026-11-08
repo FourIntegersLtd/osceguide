@@ -71,6 +71,7 @@ async def my_sittings(
     )
 
     grouped: dict[uuid.UUID, MySitting] = {}
+    waiting_slots: list[uuid.UUID] = []
     for trainee_slot in trainee_slots:
         open_to_join = _circuit_live(trainee_slot.circuit)
         entry = grouped.get(trainee_slot.circuit.id)
@@ -81,6 +82,10 @@ async def my_sittings(
                 mode=trainee_slot.sitting.mode,
                 status=trainee_slot.sitting.status,
                 scheduled_for=trainee_slot.sitting.scheduled_for,
+                starts_at=sittings.rotation_starts_at(
+                    trainee_slot.sitting.scheduled_for, trainee_slot.circuit.start_offset_minutes
+                ),
+                start_offset_minutes=trainee_slot.circuit.start_offset_minutes,
                 org_id=trainee_slot.sitting.org_id,
                 org_slug=org_slugs.get(trainee_slot.sitting.org_id),
                 circuit_id=trainee_slot.circuit.id,
@@ -105,6 +110,14 @@ async def my_sittings(
         summary = titles.get(trainee_slot.slot.station_version_id)
         attempt = live.get(trainee_slot.slot.id)
         attempt_id = attempt.id if attempt is not None and trainee_slot.sitting.id not in sealed else None
+        if (
+            is_active
+            and trainee_slot.circuit.phase == "simulation"
+            and attempt is not None
+            and attempt.status in sittings.CONNECTION_ENDED
+        ):
+            waiting_slots.append(trainee_slot.slot.id)
+            entry.waiting_for_rejoin = True
         entry.slots.append(
             MySlot(
                 id=trainee_slot.slot.id,
@@ -131,6 +144,14 @@ async def my_sittings(
                 phase_ends_at=trainee_slot.circuit.phase_ends_at if is_active else None,
             )
         )
+    # Only the supervisor's own record counts: a station skipped by an early end is not an absence.
+    every_slot = [slot.id for entry in grouped.values() for slot in entry.slots]
+    absent = await sittings.slots_with_intervention(session, every_slot, action=sittings.MARK_ABSENT)
+    rejoin_used = await sittings.slots_with_intervention(session, waiting_slots, action=sittings.ALLOW_REJOIN)
+    for entry in grouped.values():
+        entry.marked_absent = any(slot.id in absent for slot in entry.slots)
+        if entry.waiting_for_rejoin:
+            entry.waiting_for_rejoin = not any(slot.id in rejoin_used for slot in entry.slots)
     return MySittings(items=list(grouped.values()))
 
 

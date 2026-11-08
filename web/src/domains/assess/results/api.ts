@@ -47,6 +47,16 @@ export function downloadSittingResults(
   );
 }
 
+/** The decided candidates, best first with the reason, as a CSV file the browser saves. */
+export function downloadSittingShortlist(
+  slug: string,
+  sittingId: string,
+): Promise<PlatformDownload> {
+  return platformDownload(
+    `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/shortlist.csv`,
+  );
+}
+
 /**
  * One candidate's released result as a PDF.
  *
@@ -322,4 +332,61 @@ export function readResultsIndex(
   signal?: AbortSignal,
 ): Promise<ResultsIndex> {
   return platformRequest<ResultsIndex>(`${orgPath(slug)}/results`, { signal });
+}
+
+/* ------------------------------------------------------------------------
+ * Appeals: a released result looked at again by a second marker.
+ * --------------------------------------------------------------------- */
+
+export type Appeal = components["schemas"]["AppealRead"];
+
+/** The organisation's appeals queue: the ones waiting, or (`decided`) the ones already answered. */
+export async function listAppeals(slug: string, decided: boolean, signal?: AbortSignal): Promise<Appeal[]> {
+  const page = await platformRequest<components["schemas"]["AppealPage"]>(`${orgPath(slug)}/appeals`, {
+    signal,
+    query: { decided },
+  });
+  return page.appeals;
+}
+
+/** Name the second marker. The server refuses whoever signed off or released the result under review. */
+export function assignAppeal(slug: string, appealId: string, assigneeUserId: string): Promise<Appeal> {
+  return platformRequest<Appeal>(`${orgPath(slug)}/appeals/${encodeURIComponent(appealId)}/assign`, {
+    method: "POST",
+    body: { assignee_user_id: assigneeUserId },
+  });
+}
+
+/** Turn a request down; the candidate is sent the reason. */
+export function declineAppeal(slug: string, appealId: string, reason: string): Promise<Appeal> {
+  return platformRequest<Appeal>(`${orgPath(slug)}/appeals/${encodeURIComponent(appealId)}/decline`, { method: "POST", body: { reason } });
+}
+
+/** The second marker's outcome, which the server appends as a new released revision of the result. */
+export function resolveAppeal(
+  slug: string,
+  appealId: string,
+  input: { assessmentOutcome: string; rationale: string; recruitmentOutcome: string | null },
+): Promise<Appeal> {
+  return platformRequest<Appeal>(`${orgPath(slug)}/appeals/${encodeURIComponent(appealId)}/resolve`, {
+    method: "POST",
+    body: {
+      assessment_outcome: input.assessmentOutcome,
+      rationale: input.rationale,
+      recruitment_outcome: input.recruitmentOutcome,
+    },
+  });
+}
+
+/** Staff record a review request for a candidate who asked outside the product. */
+export function requestReviewForCandidate(
+  slug: string,
+  sittingId: string,
+  traineeId: string,
+  reason: string,
+): Promise<Appeal> {
+  return platformRequest<Appeal>(
+    `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/candidates/${encodeURIComponent(traineeId)}/appeals`,
+    { method: "POST", body: { reason } },
+  );
 }

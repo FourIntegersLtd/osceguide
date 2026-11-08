@@ -36,6 +36,7 @@ from app.features.dashboard import (
     service_report_csv,
     service_reporting,
     service_results_index,
+    service_shortlist_csv,
     service_streams,
     service_trainee,
 )
@@ -192,6 +193,32 @@ async def read_sitting_report_csv(
         org_id=workspace.org_id,
         sitting_id=sitting_id,
         actor=workspace.principal,
+    )
+    return StreamingResponse(
+        rows,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# The decided candidates, best first, with the reason: org admin only, because the reason is the
+# decision's rationale, which the report leaves out.
+@router.get(
+    "/orgs/{org_slug}/sittings/{sitting_id}/shortlist.csv",
+    response_class=StreamingResponse,
+    responses={
+        **error_responses(Forbidden, errors.SittingNotFound),
+        200: {
+            "description": "The sitting's decided candidates, ranked, as a CSV file.",
+            "content": {"text/csv": {"schema": {"type": "string", "format": "binary"}}},
+        },
+    },
+)
+async def read_sitting_shortlist_csv(
+    sitting_id: uuid.UUID, workspace: OrgAdmin, session: Session
+) -> StreamingResponse:
+    rows, filename = await service_shortlist_csv.export_shortlist(
+        session, org_id=workspace.org_id, sitting_id=sitting_id, actor=workspace.principal
     )
     return StreamingResponse(
         rows,

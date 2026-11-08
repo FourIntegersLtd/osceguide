@@ -11,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from tests.http.test_reviews_routes import a_slot
+from tests.http.test_station_assessors import two_station_circuit
 from tests.support.catalog import create_exam
-from tests.support.tokens import bearer
+from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db
 
@@ -112,3 +113,29 @@ async def test_an_employer_with_a_lead_assessor_cannot_become_an_institution(  #
         "/api/v1/platform/organizations/hirecorp", json={"org_type": "institution"}, headers=bearer(root)
     )
     assert (refused.status_code, refused.json()["code"]) == (422, "invalid_input"), refused.text
+
+
+async def test_a_lead_assessor_not_named_on_a_station_observes_it_and_a_plain_assessor_does_not(  # type: ignore[no-untyped-def]
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:
+    s = await two_station_circuit(client, db_session, make_actor)
+    from app.features.tenancy import repository as tenancy_repository
+
+    org = await tenancy_repository.organization_by_slug(db_session, "kings")
+    assert org is not None
+    started = await client.post(
+        f"/api/v1/orgs/kings/circuits/{s.circuit['id']}/start", headers=bearer(s.admin)
+    )
+    assert started.status_code == 200, started.text
+    observe = f"/api/v1/orgs/kings/circuits/{s.circuit['id']}/observer-token"
+    gp_lead = mint_token(
+        user_id=uuid.uuid4(),
+        email="gplead@example.com",
+        memberships=(Membership(org_id=org.id, org_slug="kings", role="gp_lead"),),
+        active_org_slug="kings",
+    )
+
+    refused = await client.post(observe, headers=bearer(s.other[1]))
+    assert (refused.status_code, refused.json()["code"]) == (403, "not_your_station")
+    allowed = await client.post(observe, headers=bearer(gp_lead))
+    assert allowed.status_code == 200, allowed.text

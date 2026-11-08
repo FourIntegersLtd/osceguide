@@ -15,9 +15,11 @@ import {
   resultsDate,
   type ResultsTab,
 } from "@/domains/assess/results/support";
+import { resultsWhere } from "@/domains/assess/sittingList";
 import { HIRE_RESULTS, whereItIs } from "@/domains/assess/results/resultsWhere";
+import { AppealsQueue } from "@/domains/assess/results/AppealsQueue";
 import { useStationsToReview } from "@/domains/assess/results/StationsToReview";
-import { boardBtn, boardChip, boardCard, boardHeadRow, boardPad, boardRow, boardTab, boardTabs, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { boardCard, boardHeadRow, boardPad, boardRow, boardTab, boardTabs, boardButtonSmall, boardBtn, boardChip } from "@/foundation/ui/boardKit";
 
 const TABS: [ResultsTab, string][] = [
   ["needs_decision", "Needs a decision"],
@@ -29,6 +31,7 @@ const TABS: [ResultsTab, string][] = [
 export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
   const [tab, setTab] = useState<ResultsTab>("needs_decision");
+  const [appeals, setAppeals] = useState(false);
   const state = useAsync((signal) => readResultsIndex(orgSlug, signal), [orgSlug]);
   const w = useAssessWords();
   const { session } = useSession();
@@ -66,15 +69,24 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
             key={id}
             type="button"
             role="tab"
-            aria-selected={tab === id}
-            className={boardTab(tab === id)}
-            onClick={() => setTab(id)}
+            aria-selected={!appeals && tab === id}
+            className={boardTab(!appeals && tab === id)}
+            onClick={() => {
+              setAppeals(false);
+              setTab(id);
+            }}
           >
             {label}
           </button>
         ))}
+        {can(session, "sign_off_results") ? (
+          <button type="button" role="tab" aria-selected={appeals} className={boardTab(appeals)} onClick={() => setAppeals(true)}>
+            Appeals
+          </button>
+        ) : null}
       </div>
-      <AsyncBoundary
+      {appeals ? <AppealsQueue orgSlug={orgSlug} /> : null}
+      {appeals ? null : <AsyncBoundary
         state={state}
         isEmpty={(data) => (data.rows ?? []).length === 0}
         empty={
@@ -117,10 +129,9 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
                         <span className="w-[70px]">{w.Trainees}</span>
                         <span className="w-[120px]">{HIRE_RESULTS.whereHeading}</span>
                       </>
-                    ) : null}
-                    {w.hiring ? null : <span className="flex-[1_1_200px]">{w.Sitting}</span>}
-                    {w.hiring ? null : (
+                    ) : (
                       <>
+                        <span className="flex-[1_1_200px]">{w.Sitting}</span>
                         <span className="w-20">Date</span>
                         <span className="w-[100px]">Kind</span>
                         <span className="w-[70px]">Candidates</span>
@@ -128,6 +139,7 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
                         <span className="w-[50px]">Draft</span>
                         <span className="w-20">Signed off</span>
                         <span className="w-[70px]">Released</span>
+                        <span className="w-[170px]">Where it is</span>
                       </>
                     )}
                   </div>
@@ -139,7 +151,7 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
             </>
           );
         }}
-      </AsyncBoundary>
+      </AsyncBoundary>}
     </section>
   );
 }
@@ -173,6 +185,7 @@ function ResultsRow({ row, href, hiring }: { row: ResultsIndexRow; href: string;
       <span className="w-[50px]">{num(row.draft)}</span>
       <span className="w-20">{num(row.signed_off)}</span>
       <span className="w-[70px]">{num(row.released)}</span>
+      <span className="w-[170px] font-medium">{resultsWhere(row)}</span>
     </Link>
   );
 }

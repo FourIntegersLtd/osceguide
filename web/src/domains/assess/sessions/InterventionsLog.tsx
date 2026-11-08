@@ -4,7 +4,6 @@ import { Alert, EmptyState, Spinner } from "@/foundation/ui";
 import { assessMeta } from "@/foundation/ui/b2bTokens";
 import { boardRow } from "@/foundation/ui/boardKit";
 import { useAsync } from "@/foundation/hooks";
-import { useAssessWords } from "@/capabilities/assess-words";
 import { RailSection } from "@/domains/assess/sessions/RailSection";
 import { listInterventions } from "@/domains/assess/sessions/api";
 
@@ -13,13 +12,15 @@ const ACTION_LABEL: Record<string, string> = {
   advance: "Advanced to the next station",
   pause: "Paused",
   resume: "Resumed",
-  extend_clock: "Clock extended",
-  reset_clock: "Clock reset",
+  extend_clock: "Time added",
+  reset_clock: "Timer restarted",
   resend_patient: "Patient sent in again",
+  mark_absent: "Marked absent",
+  allow_rejoin: "One re-join allowed",
   redo_station: "Station repeated",
   jump_to: "Moved to another station",
   auto_advance: "Automatic next station changed",
-  floor_changed: "Floor opened or closed",
+  floor_changed: "Open floor switched",
   mic_changed: "A microphone was changed",
   room_closed: "Room closed",
 };
@@ -36,9 +37,8 @@ const ACTION_LABEL: Record<string, string> = {
  * spend a request on a log nobody has asked for.
  */
 export function InterventionsLog({ orgSlug, circuitId }: { orgSlug: string; circuitId: string }) {
-  const w = useAssessWords();
   return (
-    <RailSection id="changes" title={`Changes made during the ${w.circuit}`} lazy>
+    <RailSection id="changes" title="Changes made during the circuit" lazy>
       <Entries orgSlug={orgSlug} circuitId={circuitId} />
     </RailSection>
   );

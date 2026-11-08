@@ -3,13 +3,12 @@
 import { ExamClock } from "@/capabilities/attempt-runner";
 import { assessMeta } from "@/foundation/ui/b2bTokens";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
-import { useAssessWords } from "@/capabilities/assess-words";
-import { reviewStations } from "@/domains/assess/sessions/circuitReviewSteps";
-import { heroSummary } from "@/domains/assess/sessions/consoleHero";
+import { examNowLine, heroSummary } from "@/domains/assess/sessions/consoleHero";
 import { nowLine } from "@/domains/assess/sessions/turns";
 import { phaseLabel } from "@/domains/assess/sessions/support";
 import { EndedActions } from "@/domains/assess/sessions/EndedActions";
 import { SupervisorControls } from "@/domains/assess/sessions/SupervisorControls";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * The one thing the console is about: where the circuit is, the server's clock, and the next thing to do.
@@ -41,14 +40,14 @@ export function CircuitHero({
 }) {
   const w = useAssessWords();
   const circuit = data.circuit;
-  const summary = heroSummary(data, w.hiring ? reviewStations(data) : [], w);
+  const summary = heroSummary(data);
   const running = circuit.started_at !== null && circuit.ended_at === null;
   const title = summary.title;
-  const detail = training && running && !w.hiring ? nowLine(data) : summary.detail;
+  const detail = running ? (training ? nowLine(data) : examNowLine(data)) : summary.detail;
   const seconds = circuit.remaining_seconds;
   return (
     <section
-      aria-label="Circuit status"
+      aria-label={`${w.Circuit} status`}
       data-board="controls"
       className="flex flex-col gap-6 rounded-board bg-osce-surface p-6 shadow-sm ring-1 ring-osce-border-light sm:p-8"
     >

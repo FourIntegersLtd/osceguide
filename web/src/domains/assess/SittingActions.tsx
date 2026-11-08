@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import type { AssessWords } from "@/capabilities/assess-words/vocabulary";
 import { ConfirmModal } from "@/foundation/ui";
-import type { AssessWords } from "@/capabilities/assess-words";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
+import { cancelMessage } from "@/domains/assess/sittingCopy";
 import { hasCode } from "@/foundation/platform-client";
 import { cancelSitting, deleteCircuit, type Circuit } from "@/domains/assess/api";
 import { useAssessWords } from "@/capabilities/assess-words";
-import { cancelMessage } from "@/domains/assess/sittingCopy";
 
 /** The write a sitting's admin has asked for and not yet confirmed. */
 export type PendingSittingAction = { kind: "cancel" } | { kind: "delete"; circuit: Circuit } | null;
@@ -81,7 +81,7 @@ function refusal(cause: unknown, w: AssessWords): string {
   if (hasCode(cause, "circuit_locked")) {
     return w.hiring
       ? `This ${w.circuit} has started and holds candidates' work, so it cannot be deleted. You can end it instead.`
-      : "This circuit has started, so it holds what was sat and cannot be deleted.";
+      : `This ${w.circuit} has started, so it holds what was sat and cannot be deleted.`;
   }
   return assessErrorMessage(cause, w);
 }

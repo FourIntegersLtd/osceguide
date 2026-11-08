@@ -1,8 +1,9 @@
 "use client";
 
+import { aOrAn, type AssessWords } from "@/capabilities/assess-words/vocabulary";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AsyncBoundary, b2bTokens as t } from "@/foundation/ui";
 import { useAsync, useCursorPages } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
@@ -23,15 +24,24 @@ import {
   sittingsScopeNote,
   type SittingFilters,
 } from "@/domains/assess/support";
+import { readResultsIndex, type ResultsIndexRow } from "@/domains/assess/results/api";
+import {
+  matchesPreset,
+  modeNote,
+  needsExamFirst,
+  sittingNextStep,
+  waitingForDecisions,
+  type SittingPreset,
+} from "@/domains/assess/sittingList";
 import {
   assessmentBuckets,
   assessmentNoExam,
   bucketLabel,
-  sittingNextStep,
+  sittingNextStep as hireNextStep,
   type AssessmentBucket,
   type DecisionRow,
 } from "@/domains/assess/hireAssessments";
-import { readResultsIndex } from "@/domains/assess/results/api";
+import { NEW_EXAM_PATH } from "@/domains/assess/dashboard/setupSteps";
 import { sittingTally } from "@/domains/assess/dashboard/support";
 import { boardCard, boardHeadRow, boardPad, boardRow, boardTab, boardTabs, boardChip, boardButtonSmall , boardBtn } from "@/foundation/ui/boardKit";
 import {
@@ -39,7 +49,7 @@ import {
   sittingWhen,
   sittingWhenAt,
 } from "@/domains/assess/sittingWords";
-import { useAssessWords, type AssessWords } from "@/capabilities/assess-words";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /** The sitting running now, else the soonest one still to come; finished ones are never next. */
 export function nextUp(
@@ -71,6 +81,13 @@ const TABS: [string, string][] = [
   ["cancelled", "Cancelled"],
 ];
 
+const PRESETS: [SittingPreset, string][] = [
+  ["", "Everything"],
+  ["upcoming", "Upcoming"],
+  ["decisions", "Waiting for decisions"],
+  ["past", "Past"],
+];
+
 const statusWords: Record<string, string> = {
   scheduled: "Scheduled",
   in_progress: "Running",
@@ -100,15 +117,6 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
     (signal) => listProgrammes(orgSlug, signal),
     [orgSlug],
   );
-  // Hire: the Next step chip counts decisions from the results index (one read, no polling).
-  const hire = w.hiring;
-  const decisions = useAsync(
-    (signal) => (hire ? readResultsIndex(orgSlug, signal) : Promise.resolve(null)),
-    [orgSlug, hire],
-  );
-  const decisionRows: Record<string, DecisionRow> = {};
-  for (const row of decisions.data?.rows ?? []) decisionRows[row.sitting_id] = row;
-  const [pill, setPill] = useState<AssessmentBucket>("upcoming");
   // The box answers every keystroke; the server is asked once typing pauses.
   const [typed, setTyped] = useState("");
   useEffect(() => {
@@ -123,11 +131,28 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
     if (next === NO_SITTING_FILTERS) setTyped("");
   };
   const canSchedule = can(session, "schedule_sittings");
-  // Hire with no exam open for scheduling: the button is off and says why beneath it.
-  const noExam = hire && programmes.data !== null && !programmes.data.items.some((programme) => programme.status === "active");
+  const canSignOff = can(session, "sign_off_results");
+  // Hire: the Next step chip counts decisions from the results index (one read, no polling).
+  const hire = w.hiring;
+  // Decisions belong to people who may sign off; the results index is what says which sittings wait.
+  const results = useAsync(
+    (signal) => (canSignOff || hire ? readResultsIndex(orgSlug, signal) : Promise.resolve(null)),
+    [orgSlug, canSignOff, hire],
+  );
+  const resultRows = results.data?.rows ?? [];
+  const waitingIds = useMemo(() => waitingForDecisions(resultRows), [resultRows]);
+  const decisionRows = useMemo(() => {
+    const byId: Record<string, DecisionRow> = {};
+    for (const row of resultRows) byId[row.sitting_id] = row;
+    return byId;
+  }, [resultRows]);
+  const [preset, setPreset] = useState<SittingPreset>("");
+  const [pill, setPill] = useState<AssessmentBucket>("upcoming");
+  const examFirst = programmes.data ? needsExamFirst(programmes.data.items) : false;
   const noExamWords = assessmentNoExam(w);
+  // Hire with no exam open for scheduling: the button is off and says why beneath it.
   const schedule = canSchedule ? (
-    noExam ? (
+    hire && examFirst ? (
       <div className="flex flex-col gap-1.5">
         <button type="button" disabled className={boardBtn("primary")}>
           {w.scheduleSitting}
@@ -183,7 +208,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
           <p className={t.assessDesc}>
             {hire
               ? `Each ${w.sitting} is one day of ${w.circuits} for a group of ${w.trainees}, on one exam.`
-              : `A ${w.sitting} is one occasion, such as the March mock. Its circuits are built for you when you schedule it.`}
+              : `${aOrAn(w.sitting, true)} is one occasion, such as the March mock. Its circuits are built for you when you schedule it.`}
           </p>
         </div>
         {schedule ? (
@@ -194,8 +219,28 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
       {hasAny ? hero : null}
       {hasAny ? (
         <>
-          <div role="tablist" className={boardTabs}>
-            {hire ? <HirePills sittings={loaded ?? []} rows={decisionRows} pill={pill} onPick={setPill} /> : TABS.map(([status, label]) => (
+          {hire ? (
+            <div role="tablist" className={boardTabs}>
+              <HirePills sittings={loaded ?? []} rows={decisionRows} pill={pill} onPick={setPill} />
+            </div>
+          ) : (
+            <>
+          <div role="tablist" aria-label="Show" className={boardTabs}>
+            {PRESETS.filter(([id]) => id !== "decisions" || canSignOff).map(([id, label]) => (
+              <button
+                key={label}
+                type="button"
+                role="tab"
+                aria-selected={preset === id}
+                className={boardTab(preset === id)}
+                onClick={() => setPreset(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div role="tablist" aria-label="Status" className={boardTabs}>
+            {TABS.map(([status, label]) => (
               <button
                 key={label}
                 type="button"
@@ -208,6 +253,8 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
               </button>
             ))}
           </div>
+            </>
+          )}
           <SittingFilterBar
             filters={filters}
             onChange={changeFilters}
@@ -221,22 +268,31 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
       <AsyncBoundary state={pages.state}>
         {(sittings) =>
           sittings.length === 0 && !filtersActive(filters) ? (
+            examFirst ? (
+              <div className={boardPad}>
+                <h2 className="text-base font-semibold leading-normal">{hire ? noExamWords.title : "You need an exam first"}</h2>
+                <p className={`m-0 ${t.assessMeta}`}>
+                  {hire ? noExamWords.body : `${aOrAn(w.sitting, true)} runs an exam. ${canSchedule ? "Set one up, then schedule it here." : "An administrator sets one up."}`}
+                </p>
+                {canSchedule ? (
+                  <div className="flex self-start">
+                    <Link href={hrefFor(NEW_EXAM_PATH)} className={boardBtn("primary")}>
+                      {hire ? noExamWords.action : "Set up an exam"}
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
             <div className={boardPad}>
-              <h2 className="text-base font-semibold leading-normal">{noExam ? noExamWords.title : `No ${w.sittings} yet`}</h2>
+              <h2 className="text-base font-semibold leading-normal">{`No ${w.sittings} yet`}</h2>
               <p className={`m-0 ${t.assessMeta}`}>
-                {noExam ? noExamWords.body : hire && canSchedule ? `Schedule one when you have an exam and at least one ${w.trainee}.` : sittingsEmptyDescription(canSchedule, w)}
+                {sittingsEmptyDescription(canSchedule, w)}
               </p>
-              {noExam ? (
-                <div className="flex self-start">
-                  <Link href={hrefFor("/authoring/exams/new")} className={boardBtn("primary")}>
-                    {noExamWords.action}
-                  </Link>
-                </div>
-              ) : null}
               {schedule ? (
                 <div className="flex self-start">{schedule}</div>
               ) : null}
             </div>
+            )
           ) : (
             <>
               {sittingsScopeNote(sittings.length, pages.hasMore) ? (
@@ -245,12 +301,21 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                 </p>
               ) : null}
               <SittingRows
-                sittings={hire ? assessmentBuckets(sittings, decisionRows)[pill] : sittings}
-                rows={decisionRows}
+                sittings={
+                  hire
+                    ? assessmentBuckets(sittings, decisionRows)[pill]
+                    : sittings.filter((sitting) => matchesPreset(sitting, preset, waitingIds))
+                }
+                resultRows={resultRows}
+                decisionRows={decisionRows}
+                can={{ schedule: canSchedule, signOff: canSignOff }}
                 pages={pages}
                 hrefFor={hrefFor}
                 words={w}
               />
+              {modeNote(sittings, canSchedule, w) ? (
+                <p data-footnote className={t.assessMeta}>{modeNote(sittings, canSchedule, w)}</p>
+              ) : null}
             </>
           )
         }
@@ -261,13 +326,17 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
 
 function SittingRows({
   sittings,
-  rows,
+  resultRows,
+  decisionRows,
+  can: allowed,
   pages,
   hrefFor,
   words,
 }: {
   sittings: Sitting[];
-  rows: Record<string, DecisionRow>;
+  resultRows: ResultsIndexRow[];
+  decisionRows: Record<string, DecisionRow>;
+  can: { schedule: boolean; signOff: boolean };
   pages: {
     hasMore: boolean;
     loadingMore: boolean;
@@ -277,12 +346,16 @@ function SittingRows({
   hrefFor: (path: string) => string;
   words: AssessWords;
 }) {
-  const w = useAssessWords();
   if (sittings.length === 0) {
     return (
       <div className={boardPad}>
         <h2 className="text-base font-semibold leading-normal">{`No ${words.sittings} match.`}</h2>
-        <p className={`m-0 ${t.assessMeta}`}>Clear a filter to see more.</p>
+        <p className={`m-0 ${t.assessMeta}`}>{pages.hasMore ? `None of the ${words.sittings} loaded so far match. Load more, or clear a filter.` : "Clear a filter to see more."}</p>
+        {pages.hasMore ? (
+          <button type="button" className={`${boardButtonSmall} self-start`} disabled={pages.loadingMore} onClick={pages.loadMore}>
+            {pages.loadingMore ? "Loading…" : "Load more"}
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -302,13 +375,14 @@ function SittingRows({
             <span className="w-[140px]">Exam</span>
             <span className="w-[110px]">Date</span>
             <span className="w-[120px]">Status</span>
+            <span data-column="next-step" className="w-[130px]">Next step</span>
           </>
         )}
       </div>
       {sittings.map((sitting) => {
         const needs = sittingNeedsCircuits(sitting);
         if (words.hiring) {
-          const step = sittingNextStep(sitting, words, rows[sitting.id]);
+          const step = hireNextStep(sitting, words, decisionRows[sitting.id]);
           return (
             <Link key={sitting.id} href={hrefFor(`/sittings/${sitting.id}`)} className={`${boardRow} hover:bg-osce-surface-inset`}>
               <div className="flex-[1_1_240px]">
@@ -353,18 +427,21 @@ function SittingRows({
                 className={boardChip(sittingChipTone(sitting.status, needs))}
               >
                 {needs
-                  ? `Needs ${w.circuits}`
+                  ? "Needs circuits"
                   : (statusWords[sitting.status] ?? sitting.status)}
               </span>
+            </span>
+            <span data-column="next-step" className="w-[130px] font-medium">
+              {sittingNextStep(
+                sitting,
+                resultRows.find((row) => row.sitting_id === sitting.id),
+                allowed,
+                words,
+              )}
             </span>
           </Link>
         );
       })}
-      {words.hiring ? (
-        <div className={`${boardRow} ${t.assessMeta}`}>
-          Training {words.sittings} give feedback only. Hiring decisions are made on {words.formalExam} {words.sittings}.
-        </div>
-      ) : null}
       {pages.hasMore || pages.moreError ? (
         <div className={`${boardRow} justify-center`}>
           {pages.moreError ? (

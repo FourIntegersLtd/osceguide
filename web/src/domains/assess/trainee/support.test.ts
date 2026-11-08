@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { INSTITUTION_WORDS } from "@/capabilities/assess-words/vocabulary";
+import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/capabilities/assess-words/vocabulary";
 import { PlatformError } from "@/foundation/platform-client";
 import type { MySitting, MySlot, OrgStation } from "@/domains/assess/trainee/api";
 import {
@@ -212,9 +212,11 @@ test("a cancelled sitting sorts after one still to sit", () => {
 });
 
 test("a join refusal is said in words a candidate can act on", () => {
-  assert.equal(joinFailureCopy(new PlatformError(409, { code: "circuit_not_live", message: "raw" }), INSTITUTION_WORDS), "This circuit is not open yet. You will be let in when your supervisor starts it.");
-  assert.equal(joinFailureCopy(new PlatformError(503, { code: "voice_unavailable", message: "raw" }), INSTITUTION_WORDS), "The voice service is not available right now. Try again in a minute.");
-  assert.equal(joinFailureCopy(new Error("boom"), INSTITUTION_WORDS), "Something went wrong. Please try again.");
+  assert.equal(joinFailureCopy(new PlatformError(409, { code: "circuit_not_live", message: "raw" })), "This exam is not open yet. You will be let in when your supervisor starts it.");
+  assert.equal(joinFailureCopy(new PlatformError(409, { code: "candidate_marked_absent", message: "raw" }), EMPLOYER_WORDS), "You were marked absent from this assessment. Contact your organiser if you think this is a mistake.");
+  assert.equal(joinFailureCopy(new PlatformError(503, { code: "voice_unavailable", message: "raw" })), "The voice service is not available right now. Try again in a minute.");
+  assert.equal(joinFailureCopy(new PlatformError(409, { code: "circuit_not_live", message: "raw" }), EMPLOYER_WORDS), "This assessment is not open yet. You will be let in when your assessor starts it.");
+  assert.equal(joinFailureCopy(new Error("boom")), "Something went wrong. Please try again.");
 });
 
 test("a sitting is over when completed, ended or cancelled, not while in progress", () => {

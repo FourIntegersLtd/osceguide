@@ -15,6 +15,7 @@ import {
   workspaceTarget,
   type SwitchTarget,
 } from "@/surfaces/switcherTargets";
+import { switcherGroups } from "@/surfaces/switcherGroups";
 
 /**
  * Moving between your own practice and the organisations you belong to.
@@ -122,18 +123,27 @@ export function WorkspaceSwitcher({
             role="menu"
             className="absolute left-0 right-0 z-50 mt-1 max-h-[60dvh] overflow-y-auto rounded-panel border border-border bg-surface py-1 shadow-lg"
           >
-            {workspaces.map((workspace) => {
-              const target = workspaceTarget(workspace);
-              return (
-                <SwitcherRow
-                  key={target.key}
-                  icon={<WorkspaceIcon workspace={workspace} />}
-                  name={workspace.name}
-                  active={target.key === currentKey}
-                  onSelect={() => void choose(target)}
-                />
-              );
-            })}
+            {switcherGroups(workspaces).map((group) => (
+              <li key={group.label ?? "workspaces"} role="none">
+                {group.label ? (
+                  <div className="px-3 pb-1 pt-2 text-osce-caption font-semibold uppercase text-b2c-text-muted">{group.label}</div>
+                ) : null}
+                <ul role="group" aria-label={group.label ?? undefined}>
+                  {group.items.map((workspace) => {
+                    const target = workspaceTarget(workspace);
+                    return (
+                      <SwitcherRow
+                        key={target.key}
+                        icon={<WorkspaceIcon workspace={workspace} />}
+                        name={workspace.name}
+                        active={target.key === currentKey}
+                        onSelect={() => void choose(target)}
+                      />
+                    );
+                  })}
+                </ul>
+              </li>
+            ))}
             {platform ? (
               <SwitcherRow
                 key={CONSOLE_TARGET.key}

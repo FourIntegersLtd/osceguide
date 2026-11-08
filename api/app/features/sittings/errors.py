@@ -16,30 +16,28 @@ class SittingNotFound(NotFound):
     """No sitting exists with the given id, for this organisation."""
 
     code = "sitting_not_found"
-    default_message = "We couldn't find that sitting"
+    default_message = "No such sitting"
 
 
 class CircuitNotFound(NotFound):
     """No circuit exists with the given id, for this organisation."""
 
     code = "circuit_not_found"
-    default_message = "We couldn't find that circuit"
+    default_message = "No such circuit"
 
 
 class SlotNotFound(NotFound):
     """No slot exists with the given id, on this circuit."""
 
     code = "slot_not_found"
-    default_message = "We couldn't find that slot"
+    default_message = "No such slot"
 
 
 class InvalidCircuitError(Conflict):
     """The roster and stations sent do not describe a circuit the rules allow."""
 
     code = "invalid_circuit"
-    default_message = (
-        "That circuit can't be set up the way you described. Check the stations and people and try again."
-    )
+    default_message = "That circuit cannot be built as described"
 
 
 class LeadCannotRun(Conflict):
@@ -49,11 +47,25 @@ class LeadCannotRun(Conflict):
     default_message = "A circuit's lead must be an administrator or supervisor of this organisation"
 
 
+class NotYourStation(Forbidden):
+    """An assessor asked to hear a station that is assigned to somebody else."""
+
+    code = "not_your_station"
+    default_message = "This station is assigned to another assessor"
+
+
+class JoinNotOpen(Conflict):
+    """A staggered rotation cannot start before its own start time (less ten minutes)."""
+
+    code = "join_not_open"
+    default_message = "This circuit's start time has not come yet"
+
+
 class CircuitLockedError(Conflict):
     """A structural edit was refused because a station is running or has feedback."""
 
     code = "circuit_locked"
-    default_message = "This circuit can't be changed because a station is running or feedback already exists."
+    default_message = "A station is in progress or feedback exists; the circuit cannot be changed"
 
 
 class CircuitAlreadyEndedError(Conflict):
@@ -239,8 +251,50 @@ class PeerMarkItemUnknown(Conflict):
     default_message = "That item is not in this station's marking scheme."
 
 
+class CandidateAlreadySat(Conflict):
+    """Marking absent is for somebody who never started: they have a station under way or marked."""
+
+    code = "candidate_already_sat"
+    default_message = "This person has already started a station, so they cannot be marked absent."
+
+
+class CandidateMarkedAbsent(Conflict):
+    """The supervisor recorded this candidate as absent, so the room is closed to them."""
+
+    code = "candidate_marked_absent"
+    default_message = "You have been marked absent from this session."
+
+
+class CandidateStillConnected(Conflict):
+    """A re-join is for a connection that dropped; the patient is still talking to the candidate."""
+
+    code = "candidate_still_connected"
+    default_message = "The candidate is still connected, so there is nothing to re-join."
+
+
+class RejoinAlreadyUsed(Conflict):
+    """One re-join per station; a second is a decision for the Add time or Repeat station controls."""
+
+    code = "rejoin_already_used"
+    default_message = "A re-join has already been allowed for this station."
+
+
 # What "you cannot do that to this circuit" can mean, as one tuple: every
 # route that acts on a live examination declares the same three, and three
 # spellings of one list is how a route ends up advertising a code it cannot
 # raise.
 LIVE_CIRCUIT_REFUSALS = (CircuitNotFound, CircuitNotLive)
+
+
+class TemplateNotFound(NotFound):
+    """No sitting template exists with the given id, for this organisation."""
+
+    code = "template_not_found"
+    default_message = "No such template"
+
+
+class TemplateNameTaken(Conflict):
+    """Another template of this organisation already has that name."""
+
+    code = "template_name_taken"
+    default_message = "A template with that name already exists"

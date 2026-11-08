@@ -93,15 +93,12 @@ async def read_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uui
     for circuit in await repository.circuits_for_sitting(session, org_id, sitting_id):
         slots = await repository.slots_for_circuit(session, org_id, circuit.id)
         reads.append(circuit_read(circuit, slots))
-    assessor_ids = {slot.assessor_user_id for read in reads for slot in read.slots if slot.assessor_user_id}
-    people = await identity.user_refs_by_ids(
-        session, [read.supervisor_user_id for read in reads if read.supervisor_user_id] + list(assessor_ids)
+    supervisors = await identity.user_refs_by_ids(
+        session, [read.supervisor_user_id for read in reads if read.supervisor_user_id]
     )
     for read in reads:
-        person = people.get(read.supervisor_user_id) if read.supervisor_user_id else None
+        person = supervisors.get(read.supervisor_user_id) if read.supervisor_user_id else None
         read.supervisor_name = (person.name or person.email) if person else None
-        named = [people[slot.assessor_user_id] for slot in read.slots if slot.assessor_user_id in people]
-        read.assessor_names = list(dict.fromkeys((who.name or who.email) for who in named))
     return (await _with_totals(session, org_id, [sitting_read(sitting, reads)]))[0]
 
 
@@ -160,39 +157,19 @@ async def ensure_lead_may_run(session: AsyncSession, org_id: uuid.UUID, lead: uu
         raise errors.LeadCannotRun()
 
 
-async def station_assessors(
+async def resolve_station_assessors(
     session: AsyncSession,
     org_id: uuid.UUID,
     station_version_ids: list[uuid.UUID],
-    assessor_ids: list[uuid.UUID | None] | None,
-    *,
-    keep: list[tuple[uuid.UUID, uuid.UUID | None]] | None = None,
-) -> list[uuid.UUID | None]:
-    """Who assesses each station, one entry per station position (so a station used twice can differ).
-
-    A list pairs positionally with the stations and must match their count; left out (`None`), each
-    station keeps the assessor it had in `keep` (a rebuild's old `(station, assessor)` pairs: by position
-    when the stations are unchanged, else by station) if they can still run circuits, or has none. Each named person must be
-    able to run circuits here (the lead rule), so a candidate is refused. Display only.
-    """
-    if assessor_ids is None:
-        old = keep or []
-        if [version for version, _ in old] == station_version_ids:
-            kept = [person for _, person in old]
-        else:
-            by_station: dict[uuid.UUID, uuid.UUID | None] = {}
-            for version, person in old:
-                by_station.setdefault(version, person)
-            kept = [by_station.get(version) for version in station_version_ids]
-        allowed = {
-            person: await tenancy.may_run_circuits(session, org_id, person) for person in {who for who in kept if who}
-        }
-        return [person if person and allowed[person] else None for person in kept]
-    if len(assessor_ids) != len(station_version_ids):
-        raise errors.InvalidCircuitError("Name an assessor, or leave it open, for every station.")
-    for person in {person for person in assessor_ids if person is not None}:
+    assessors: dict[uuid.UUID, uuid.UUID],
+) -> dict[str, str]:
+    """Check a per-station assessor map (each station is on the circuit, each person may run circuits)
+    and return it as the JSON the circuit stores."""
+    if any(station not in station_version_ids for station in assessors):
+        raise errors.StationNotOnCircuitError()
+    for person in set(assessors.values()):
         await ensure_lead_may_run(session, org_id, person)
-    return list(assessor_ids)
+    return {str(station): str(person) for station, person in assessors.items()}
 
 
 async def add_circuit(
@@ -205,7 +182,8 @@ async def add_circuit(
     station_version_ids: list[uuid.UUID],
     supervisor_user_id: uuid.UUID | None,
     timing: TimingIn,
-    station_assessor_ids: list[uuid.UUID | None] | None = None,
+    start_offset_minutes: int = 0,
+    station_assessors: dict[uuid.UUID, uuid.UUID] | None = None,
 ) -> CircuitRead:
     """Build a new circuit inside a sitting: check the sitting, then build and write the circuit."""
     sitting = await _open_sitting(session, org_id, sitting_id)
@@ -218,7 +196,8 @@ async def add_circuit(
         station_version_ids=station_version_ids,
         supervisor_user_id=supervisor_user_id,
         timing=timing,
-        station_assessor_ids=station_assessor_ids,
+        start_offset_minutes=start_offset_minutes,
+        station_assessors=station_assessors or {},
     )
 
 
@@ -243,7 +222,8 @@ async def add_exam_circuits(
             station_version_ids=body.station_version_ids,
             supervisor_user_id=body.supervisor_user_id,
             timing=body.timing or TimingIn(),
-            station_assessor_ids=body.station_assessor_ids,
+            start_offset_minutes=body.start_offset_minutes,
+            station_assessors=body.station_assessors,
         )
         for candidate in body.candidate_user_ids
     ]
@@ -267,14 +247,15 @@ async def _create_circuit(
     station_version_ids: list[uuid.UUID],
     supervisor_user_id: uuid.UUID | None,
     timing: TimingIn,
-    station_assessor_ids: list[uuid.UUID | None] | None = None,
+    start_offset_minutes: int,
+    station_assessors: dict[uuid.UUID, uuid.UUID],
 ) -> CircuitRead:
     """Check the roster, build the slots, write the circuit and tell the people on it."""
     mode = domain.Mode(sitting.mode)
     # R3: a revoked trainee is not scheduled into an examination.
     await roster.ensure_rosterable(session, org_id, trainee_ids)
     await ensure_lead_may_run(session, org_id, supervisor_user_id)
-    assessors = await station_assessors(session, org_id, station_version_ids, station_assessor_ids)
+    assessors = await resolve_station_assessors(session, org_id, station_version_ids, station_assessors)
 
     try:
         planned = domain.build_slots(
@@ -298,6 +279,8 @@ async def _create_circuit(
         name=name,
         supervisor_user_id=supervisor_user_id,
         timing=timing_json(resolved_timing),
+        start_offset_minutes=start_offset_minutes,
+        station_assessors=assessors,
     )
     await repository.add_circuit_members(
         session, circuit.id, trainee_ids=trainee_ids, station_version_ids=station_version_ids
@@ -310,7 +293,6 @@ async def _create_circuit(
             (slot.index, uuid.UUID(slot.trainee_user_id), uuid.UUID(slot.station_version_id))
             for slot in planned
         ],
-        assessors=assessors,
     )
     await service_notify.trainees_scheduled(session, org_id, sitting, trainee_ids)
     await service_notify.reviewer_assigned(session, org_id, sitting, circuit)

@@ -26,6 +26,7 @@ import {
 } from "@/domains/assess/roster/api";
 import { TraineeBulkBar } from "@/domains/assess/roster/TraineeBulkBar";
 import { TraineeEditDialog } from "@/domains/assess/roster/TraineeEditDialog";
+import { EraseDataDialog } from "@/domains/assess/roster/EraseDataDialog";
 import { TraineeRowActions } from "@/domains/assess/roster/TraineeRowActions";
 import {
   accessActive,
@@ -105,6 +106,7 @@ export function TraineesPanel({
 }) {
   const w = useAssessWords();
   const [pending, setPending] = useState<Pending>(null);
+  const [erasing, setErasing] = useState<Trainee | null>(null);
   const [editing, setEditing] = useState<Trainee | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -205,7 +207,7 @@ export function TraineesPanel({
         setNotice({
           tone: "success",
           text: revoking
-            ? `Access removed for ${displayName(pending.trainee)}.`
+            ? `Revoked access for ${displayName(pending.trainee)}.`
             : `Restored access for ${displayName(pending.trainee)}.`,
         });
       }
@@ -412,7 +414,7 @@ export function TraineesPanel({
             {canManage ? <span className="w-4">Select</span> : null}
             <span className="w-8" />
             <span className="flex-[1_1_180px]">{w.hiring ? w.Trainee : "Name"}</span>
-            <span className="w-20">{say(w, "Year group")}</span>
+            <span className="w-20">{w.YearGroup}</span>
             {w.hiring ? null : <span className="w-[130px]">Programme</span>}
             {w.hiring ? null : <span className="w-[50px]">Sat</span>}
             <span className="w-[170px]">Status</span>
@@ -476,6 +478,7 @@ export function TraineesPanel({
                     setError(null);
                     setPending({ kind: "anonymise", trainee });
                   }}
+                  onErase={() => setErasing(trainee)}
                 />
               </div>
             );
@@ -495,7 +498,7 @@ export function TraineesPanel({
 
       {!canManage ? (
         <div className={boardPadWide}>
-          <div className={t.assessMeta}>{w.Supervisor} (read only)</div>
+          <div className={t.assessMeta}>{`${w.Supervisor} (read only)`}</div>
           <div>Contact an owner or admin to change who has access.</div>
         </div>
       ) : null}
@@ -547,10 +550,22 @@ export function TraineesPanel({
         onCommit={() => void commit()}
       />
 
+      <EraseDataDialog
+        orgSlug={orgSlug}
+        trainee={erasing}
+        onClose={() => setErasing(null)}
+        onErased={(text) => {
+          setErasing(null);
+          setNotice({ tone: "success", text });
+          pages.state.reload();
+          onChanged();
+        }}
+      />
+
       <Dialog
         open={confirmingBulkRevoke}
         title={say(w, `Revoke access for ${selectedIds.length} ${selectedIds.length === 1 ? "person" : "people"}?`)}
-        lead={say(w, "They will not be able to sign in or sit anything. They stay on your list and keep their results.")}
+        lead={say(w, "They will not be able to sign in or sit anything, and stay on the roster with their results intact.")}
         error={error}
         busy={bulkBusy}
         tone="danger"

@@ -18,6 +18,9 @@ things here: a LiveKit room, an HTTP session, and a database session.
   wrong — pause and resume the clock, extend or reset it, send the patient in
   again, give a station back, jump to another station, move on early, or hand
   the circuit to a human entirely.
+- As a **supervisor**, I mark a candidate who never came as absent, and let one whose
+  connection dropped back into the station once, each with a reason that lands in the
+  interventions log and the org audit log. A re-join never adds time; Add time does.
 - As a **supervisor**, I add a trainee to a circuit already running, and say
   which station they take.
 - As an **org admin**, I correct a sitting I scheduled wrong — its name, its
@@ -121,6 +124,8 @@ Overriding (`router_overrides.py`), org staff:
 | POST | `…/pause` · `…/resume` | `circuit_paused` / `circuit_not_paused` (409) |
 | POST | `…/extend-clock` · `…/reset-clock` | more time, or the whole phase back |
 | POST | `…/resend-patient` | `no_active_station` (409) during a break |
+| POST | `…/mark-absent` | reason required; `candidate_already_sat` / `circuit_not_live` (409); skips their unsat slots, ends the circuit if none remain |
+| POST | `…/allow-rejoin` | reason required; once per station; `candidate_still_connected` / `rejoin_already_used` (409); the deadline is not moved |
 | POST | `…/redo-station` · `…/jump-to` | `slot_not_found` (404) |
 | PATCH | `…/auto-advance` | hand the circuit to a human, or back to the clock |
 

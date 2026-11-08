@@ -46,21 +46,3 @@ describe("the next thing to do once a circuit has ended", () => {
     assert.deepEqual(nextReviewAction([st(1, "not_sat")], false), { kind: "results", label: "Open results" });
   });
 });
-
-import { hireFinishState, hireMarkRows } from "@/domains/assess/sessions/hireConsole";
-
-describe("hire Mark it", () => {
-  it("blocks Finish marking with the board's reason until every sat station is marked", () => {
-    assert.deepEqual(hireFinishState([st(1, "marked"), st(2, "unmarked"), st(3, "marked"), st(4, "not_sat")]), {
-      disabled: true,
-      reason: "Finish needs your mark on all 3 stations.",
-    });
-    assert.deepEqual(hireFinishState([st(1, "marked")]), { disabled: false, reason: null });
-  });
-  it("shows the AI mark beside the assessor's, Not marked when there is none", () => {
-    assert.deepEqual(hireMarkRows([st(1, "marked"), st(2, "unmarked")], [{ id: "s1", ai_marked: true }, { id: "s2" }]).map((r) => [r.ai, r.yours]), [
-      ["Ready", "Done"],
-      ["Marking…", "Not marked"],
-    ]);
-  });
-});

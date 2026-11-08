@@ -19,6 +19,7 @@ from app.core.ports import ClockDep, RoomAgents
 from app.core.settings import SettingsDep
 from app.core.tenancy import OrgStaffRunning
 from app.features.sittings import errors, schemas, service_run
+from app.features.sittings import service_attendance as attendance
 from app.features.sittings import service_control as control
 from app.features.sittings import service_overrides as overrides
 from app.features.sittings import service_rescue as rescue
@@ -244,3 +245,72 @@ async def list_interventions(
 ) -> schemas.Interventions:
     """Everything a human did to this examination, and why."""
     return await overrides.list_interventions(session, workspace.org_id, circuit_id)
+
+
+@router.post(
+    "/orgs/{org_slug}/circuits/{circuit_id}/mark-absent",
+    response_model=schemas.CircuitRead,
+    responses=error_responses(
+        Forbidden,
+        errors.CircuitNotFound,
+        errors.CircuitNotLive,
+        errors.SlotNotFound,
+        errors.CandidateAlreadySat,
+    ),
+)
+async def mark_absent(
+    circuit_id: uuid.UUID,
+    body: schemas.MarkAbsent,
+    workspace: OrgStaffRunning,
+    session: Session,
+    principal: CurrentPrincipal,
+    clock: ClockDep,
+    agents: Agents,
+) -> schemas.CircuitRead:
+    """Record that a candidate who never started did not come. The reason is required and audited."""
+    return await attendance.mark_absent(
+        session,
+        workspace.org_id,
+        circuit_id,
+        trainee_id=body.trainee_id,
+        agents=agents,
+        actor=overrides.Actor.for_user(principal.user_id, body.reason),
+        principal=principal,
+        now=clock.now(),
+    )
+
+
+@router.post(
+    "/orgs/{org_slug}/circuits/{circuit_id}/allow-rejoin",
+    response_model=schemas.DispatchResult,
+    responses=error_responses(
+        *_LIVE,
+        errors.NoActiveStation,
+        errors.CandidateStillConnected,
+        errors.RejoinAlreadyUsed,
+        errors.VoiceUnavailable,
+        errors.TraineeRevokedError,
+        errors.MarkingNotReady,
+    ),
+)
+async def allow_rejoin(
+    circuit_id: uuid.UUID,
+    body: schemas.ReasonedOverride,
+    workspace: OrgStaffRunning,
+    session: Session,
+    principal: CurrentPrincipal,
+    clock: ClockDep,
+    settings: SettingsDep,
+    agents: Agents,
+) -> schemas.DispatchResult:
+    """Let a candidate whose connection dropped back into their station, once, on the same clock."""
+    return await attendance.allow_rejoin(
+        session,
+        workspace.org_id,
+        circuit_id,
+        agents=agents,
+        settings=settings,
+        actor=overrides.Actor.for_user(principal.user_id, body.reason),
+        principal=principal,
+        now=clock.now(),
+    )

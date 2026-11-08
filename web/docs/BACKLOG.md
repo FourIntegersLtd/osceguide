@@ -152,7 +152,7 @@ per version, Microsoft Entra SSO, and a gated staging-to-production promotion.
 | D8 | Deleting a practice set that has been sat is refused (`set_has_attempts`); legacy orphaned the recordings | Keep. Self-service deletion would be its own audited action |
 | D9 | Deleting a non-empty group or in-use cohort is refused | Keep. Residual hole: a cohort that only scheduled sittings is deletable and detaches them |
 | D10 | A re-sent invitation spends the previous unused link | Confirm supersede; keeping the old link live is a one-line change |
-| — | Live marking: a rubric a supervisor fills **during** a consultation, independent of machine scoring (`LiveMarkingSidebar` marks finished stations only) | Out of scope until wanted; it is a redesign against `marking_layout` |
+| — | Live marking: a rubric a supervisor fills **during** a consultation, independent of machine scoring (a live exam now ticks the active station in `LiveMarkPanel`; a finished station is marked from Station progress) | Out of scope until wanted; it is a redesign against `marking_layout` |
 | — | Preferences: AI-training consent, colleague-waiting email, onboarding replay | Decide which are worth storing |
 | — | Push notifications. `web-push` is not a dependency, and legacy's service worker never sent one | Decide whether wanted at all |
 | — | Consumer performance extras: RAG by domain, category volume, SCA trends | No data source exists for them; decide what to record first. `exam_date`/`exam_time` are now stored (A4) and read on `UserRead` |

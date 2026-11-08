@@ -199,6 +199,16 @@ async def erase_recipients(session: AsyncSession, emails: list[str]) -> None:
     )
 
 
+RESULT_TEMPLATES = ("candidate_result_released", "candidate_result_revised", "candidate_appeal_declined")
+
+
+async def erase_result_mail(session: AsyncSession, email: str, *, org_slug: str) -> None:
+    """A candidate's data is deleted by one organisation: only that organisation's result mail goes."""
+    await repository.erase_org_result_mail(
+        session, email, org_slug=org_slug, templates=RESULT_TEMPLATES, placeholder=ERASED_RECIPIENT
+    )
+
+
 async def list_undelivered(session: AsyncSession, *, limit: int) -> list[OutboundMessage]:
     """What the worker gave up on, for the console: newest first."""
     return await repository.failed_messages(session, limit=limit)
@@ -325,16 +335,43 @@ def _email_changed_notice(escaped_fields: dict[str, str]) -> str:
     )
 
 
-def _result_released(escaped_fields: dict[str, str]) -> str:
-    """The body telling a candidate their sitting's outcome is ready to read."""
-    link = _app_url(
+def _trainee_result_link(escaped_fields: dict[str, str]) -> str:
+    """Where a candidate reads one sitting's result."""
+    return _app_url(
         f"/app/{escaped_fields.get('org_slug', '')}/trainee/results/{escaped_fields.get('sitting_id', '')}"
     )
+
+
+def _result_released(escaped_fields: dict[str, str]) -> str:
+    """The body telling a candidate their sitting's outcome is ready to read."""
+    link = _trainee_result_link(escaped_fields)
     institution = escaped_fields.get("org_name") or "Your institution"
     return _page(
         "Your result is available",
         f"<p>{institution} has released the outcome for this sitting.</p>"
         f'<p><a href="{link}">Read your result</a></p>',
+    )
+
+
+def _result_revised(escaped_fields: dict[str, str]) -> str:
+    """The body telling a candidate their review finished and their result changed or was confirmed."""
+    link = _trainee_result_link(escaped_fields)
+    institution = escaped_fields.get("org_name") or "Your institution"
+    return _page(
+        "Your result has been reviewed",
+        f"<p>{institution} has finished reviewing your result.</p>"
+        f'<p><a href="{link}">Read your updated result</a></p>',
+    )
+
+
+def _appeal_declined(escaped_fields: dict[str, str]) -> str:
+    """The body telling a candidate their review request was answered without a change."""
+    link = _trainee_result_link(escaped_fields)
+    institution = escaped_fields.get("org_name") or "Your institution"
+    return _page(
+        "Your review request",
+        f"<p>{institution} has answered your request to review your result. Your result is unchanged.</p>"
+        f'<p><a href="{link}">Read the reply</a></p>',
     )
 
 
@@ -345,14 +382,47 @@ def _trainee_sitting_link(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _sitting_word(escaped_fields: dict[str, str]) -> str:
+    """What the organisation calls the event: an employer's candidate sits an assessment."""
+    return "assessment" if escaped_fields.get("hire") else "sitting"
+
+
+def _tech_check_link(escaped_fields: dict[str, str]) -> str:
+    """The candidate's own setup-check page. Sign-in is what identifies them: the address carries nothing."""
+    link = _app_url(f"/app/{escaped_fields.get('org_slug', '')}/trainee/tech-check")
+    return (
+        f'<p><a href="{link}">Test your setup</a> (microphone, browser and connection) before you start.</p>'
+    )
+
+
+def _sitting_links(escaped_fields: dict[str, str], word: str) -> str:
+    """The open-it link and the setup-check link every candidate email carries."""
+    open_it = f'<p><a href="{_trainee_sitting_link(escaped_fields)}">Open the {word}</a></p>'
+    return open_it + _tech_check_link(escaped_fields)
+
+
 def _sitting_scheduled(escaped_fields: dict[str, str]) -> str:
     """The body telling a trainee they have been placed on a dated sitting."""
     when = _in_words(escaped_fields.get("scheduled_at", ""))
+    word = _sitting_word(escaped_fields)
     return _page(
-        "You are scheduled for a sitting",
-        f"<p>{escaped_fields.get('org_name') or 'Your institution'} has scheduled you for "
-        f"{escaped_fields.get('sitting_name', 'a sitting')} on {when}.</p>"
-        f'<p><a href="{_trainee_sitting_link(escaped_fields)}">Open the sitting</a></p>',
+        f"Your {word} has been scheduled",
+        f"<p>{escaped_fields.get('org_name') or 'Your organisation'} has scheduled you for "
+        f"{escaped_fields.get('sitting_name') or 'your ' + word} on {when}.</p>"
+        f"{_sitting_links(escaped_fields, word)}",
+    )
+
+
+def _sitting_reminder(escaped_fields: dict[str, str]) -> str:
+    """The body reminding a candidate, a day or an hour ahead, with a link to check their setup."""
+    when = _in_words(escaped_fields.get("scheduled_at", ""))
+    word = _sitting_word(escaped_fields)
+    lead = "is tomorrow" if escaped_fields.get("kind") == "day_before" else "starts in about an hour"
+    return _page(
+        f"Your {word} {lead}",
+        f"<p>{escaped_fields.get('sitting_name', 'Your ' + word)} with "
+        f"{escaped_fields.get('org_name') or 'your organisation'} starts {when}.</p>"
+        f"{_sitting_links(escaped_fields, word)}",
     )
 
 
@@ -601,6 +671,7 @@ _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "entitlement_expiring": _entitlement_expiring,
     "invitation": _invitation,
     "sitting_scheduled": _sitting_scheduled,
+    "sitting_reminder": _sitting_reminder,
     "exam_day_reminder": _exam_day_reminder,
     "review_assigned": _review_assigned,
     "invitation_reminder": _invitation_reminder,
@@ -608,6 +679,8 @@ _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "practice_access_invitation": _practice_access_invitation,
     "practice_access_granted": _practice_access_granted,
     "candidate_result_released": _result_released,
+    "candidate_result_revised": _result_revised,
+    "candidate_appeal_declined": _appeal_declined,
     "peer_practice_abuse_report": _abuse_report,
     "peer_practice_no_show_report": _no_show_report,
     "partner_spend_alert": _partner_spend_alert,

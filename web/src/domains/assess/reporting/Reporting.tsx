@@ -7,6 +7,7 @@ import { card, row } from "@/domains/assess/ui";
 import { useSurface } from "@/capabilities";
 import { useAsync } from "@/foundation/hooks";
 import { useAssessWords } from "@/capabilities/assess-words";
+import { aOrAn } from "@/capabilities/assess-words/vocabulary";
 import { assessorsTile, HIRE_REPORTING, readOrgReporting, reportingLine, reportTiles, STATION_TABLE_HEADS, stationCells } from "@/domains/assess/reporting/api";
 import { boardBtn, boardPadWide } from "@/foundation/ui/boardKit";
 
@@ -21,7 +22,7 @@ export function Reporting({ orgSlug }: { orgSlug: string }) {
         <div className={t.assessEyebrow}>Insight</div>
         <h1 className={t.assessTitle}>Reporting</h1>
         <p className={cn(t.assessDesc, "m-0")}>
-          {w.hiring ? HIRE_REPORTING.description : "Each exam across all of its sittings. The pass rate counts decisions released to candidates."}
+          {w.hiring ? HIRE_REPORTING.description : `Each exam across all of its ${w.sittings}. The pass rate counts decisions released to candidates.`}
         </p>
       </div>
       <AsyncBoundary state={state}>
@@ -29,7 +30,7 @@ export function Reporting({ orgSlug }: { orgSlug: string }) {
           data.programmes.length === 0 ? (
             <B2CEmptyState
               title={w.hiring ? HIRE_REPORTING.emptyTitle : "No exams yet"}
-              description={w.hiring ? HIRE_REPORTING.emptyBody : "Set up an exam and hold a sitting to see figures here."}
+              description={w.hiring ? HIRE_REPORTING.emptyBody : `Set up an exam and hold ${aOrAn(w.sitting)} to see figures here.`}
               action={
                 w.hiring ? (
                   <Link href={hrefFor("/results")} className={boardBtn("primary")}>

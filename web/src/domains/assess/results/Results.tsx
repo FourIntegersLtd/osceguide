@@ -6,16 +6,17 @@ import { AsyncBoundary, b2bTokens as t } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
-import { downloadSittingResults, readSittingReport } from "@/domains/assess/results/api";
+import { downloadSittingResults, downloadSittingShortlist, readSittingReport } from "@/domains/assess/results/api";
 import type { CandidateReport, SittingReport } from "@/domains/assess/results/api";
 import { decidable, hireResultsSubtitle, nextUndecided, releasedSummary, sheetSignature, showsHiringDecision, signOffGate, trainingNotice } from "@/domains/assess/results/hireDecisions";
 import { CandidateDetail, CandidateRow } from "@/domains/assess/results/CandidateCard";
 import { ReleaseAll } from "@/domains/assess/results/ReleaseAll";
 import { SignOffSheet } from "@/domains/assess/results/SignOffSheet";
+import { CandidateRanking } from "@/domains/assess/results/CandidateRanking";
 import { CohortRanking } from "@/domains/assess/results/CohortRanking";
 import { countsFromReport, sittingNext, sittingSteps, type SittingStepsInput } from "@/domains/assess/sittingSteps";
 import { can, useSession } from "@/foundation/session";
-import { hiringTally, releasable } from "@/domains/assess/results/support";
+import { hiringTally, releasable, signOffLeft } from "@/domains/assess/results/support";
 import { boardCard, boardHeadRow, boardPad, boardTile , boardBtn, boardAlert } from "@/foundation/ui/boardKit";
 import { boardTile6, boardTileNumber } from "@/domains/assess/results/resultsChrome";
 import { boardRailStep } from "@/domains/assess/chrome";
@@ -79,6 +80,11 @@ function Report({
   const candidates = report.candidates ?? [];
   // Only someone who may release is offered the list to release from; everyone else reads the steps.
   const waiting = progress.can.signOff && !progress.training ? candidates.filter(releasable) : [];
+  const { total, left } = signOffLeft(candidates);
+  const signOffNote =
+    !hire && progress.can.signOff && !progress.training && left > 0
+      ? `Sign off needs a decision for all ${total} ${w.trainees}. ${left} ${left === 1 ? "is" : "are"} left.`
+      : null;
   const tally = hiringTally(candidates);
   // The same people nextUndecided can reach: a candidate with no trainee row cannot be decided.
   const decidableCandidates = decidable(candidates);
@@ -90,11 +96,11 @@ function Report({
   const [openId, setOpenId] = useState<string | null>(null);
   const opened = candidates.find((candidate) => candidate.user_id === openId) ?? null;
 
-  const downloadCsv = useCallback(async () => {
+  const downloadCsv = useCallback(async (download: typeof downloadSittingResults = downloadSittingResults) => {
     setDownloading(true);
     setDownloadError(null);
     try {
-      const file = await downloadSittingResults(orgSlug, sittingId);
+      const file = await download(orgSlug, sittingId);
       saveBlob(file.blob, file.filename);
     } catch (cause) {
       setDownloadError(errorMessage(cause));
@@ -128,6 +134,11 @@ function Report({
             <button type="button" className={boardBtn()} disabled={downloading} onClick={() => downloadCsv()}>
               Download CSV
             </button>
+            {progress.training ? null : (
+              <button type="button" className={boardBtn()} disabled={downloading} onClick={() => downloadCsv(downloadSittingShortlist)}>
+                Download shortlist
+              </button>
+            )}
           </div>
         ) : null}
       </div>
@@ -162,6 +173,7 @@ function Report({
               ))}
             </div>
             <div className="text-assess-label">{sittingNext(progress).line}</div>
+            {signOffNote ? <div className={t.assessMeta}>{signOffNote}</div> : null}
             {waiting.length > 0 ? (
               <ReleaseAll
                 orgSlug={orgSlug}
@@ -173,7 +185,13 @@ function Report({
             ) : null}
           </div>
 
-          {report.sitting.mode === "exam" ? <CohortRanking orgSlug={orgSlug} sittingId={sittingId} /> : null}
+          {hire && report.sitting.mode === "exam" ? (
+            <CandidateRanking candidates={candidates} openId={openId} onOpen={(id) => {
+                setOpenId(id);
+                requestAnimationFrame(() => document.getElementById("candidate-detail")?.scrollIntoView({ block: "start" }));
+              }} />
+          ) : null}
+          {report.sitting.mode === "exam" ? <CohortRanking orgSlug={orgSlug} sittingId={sittingId} numbered={!hire} /> : null}
 
           <section aria-label="Candidates" className={`${boardCard} overflow-hidden`}>
             <div className={boardHeadRow}>
@@ -209,6 +227,7 @@ function Report({
             />
           ) : null}
           {opened ? (
+            <div id="candidate-detail" tabIndex={-1} className="scroll-mt-4 outline-none">
             <CandidateDetail
               key={opened.user_id}
               orgSlug={orgSlug}
@@ -222,6 +241,7 @@ function Report({
               hasNext={hire && nextUndecided(candidates, opened.user_id) !== null}
               onChanged={onChanged}
             />
+            </div>
           ) : null}
         </>
       )}

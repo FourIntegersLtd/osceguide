@@ -385,7 +385,7 @@
 <div><div class="k">Who uses it</div><div class="v">Doctors practising alone, schools, employers</div></div>
 <div><div class="k">What it runs on</div><div class="v">One shared engine for every user</div></div>
 <div><div class="k">Refusals described</div><div class="v">All 285 the product can give</div></div>
-<div><div class="k">Checked against</div><div class="v">Checked against commit 4b7a7da1, 5 Nov 2026</div></div>
+<div><div class="k">Checked against</div><div class="v">Checked against commit b81212c2, 5 Nov 2026</div></div>
 </div>
 </header>
 
@@ -959,6 +959,24 @@
 <div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
 <li data-code="circuit_not_started"><b>Acting on a circuit that has not been started.</b> You read: <span class="says">"The circuit has not been started yet."</span></li>
 <li data-code="circuit_not_live"><b>Joining a circuit that is not running</b>, because it has not begun or is over. You read: <span class="says">"The circuit is not running, so nothing can be sat on it now."</span></li>
+<li data-code="candidate_marked_absent"><b>A candidate the supervisor recorded as absent trying to join</b>. You read: <span class="says">"You have been marked absent from this session."</span></li>
+<li data-code="candidate_already_sat"><b>Marking absent someone who has already started a station</b>. You read: <span class="says">"This person has already started a station, so they cannot be marked absent."</span></li>
+<li data-code="candidate_still_connected"><b>Allowing a re-join while the candidate is still connected</b>. You read: <span class="says">"The candidate is still connected, so there is nothing to re-join."</span></li>
+<li data-code="rejoin_already_used"><b>A second re-join on the same station</b>. You read: <span class="says">"A re-join has already been allowed for this station."</span></li>
+<li data-code="template_name_taken"><b>Saving a template under a name another template already uses.</b> You read: <span class="says">"You have a template with that name already."</span></li>
+<li data-code="template_not_found"><b>Starting from a template that has since been deleted.</b> You read: <span class="says">"That template no longer exists."</span></li>
+<li data-code="join_not_open"><b>Starting a staggered rotation before its own start time (less ten minutes).</b> You read: <span class="says">"This rotation has not opened yet."</span></li>
+<li data-code="not_your_station"><b>An assessor trying to listen in on a station assigned to somebody else.</b> You read: <span class="says">"That station is assigned to another assessor."</span></li>
+<li data-code="appeal_already_open"><b>Asking for a second look at a result that is already being reviewed.</b> You read: <span class="says">"A review of this result has already been asked for."</span></li>
+<li data-code="appeal_closed"><b>Adding steps to an appeal that is resolved or declined.</b> You read: <span class="says">"This appeal is closed and takes no more steps."</span></li>
+<li data-code="appeal_not_assigned"><b>Recording an appeal outcome before a second marker was chosen.</b> You read: <span class="says">"Choose a second marker before recording the outcome."</span></li>
+<li data-code="appeal_not_found"><b>Opening an appeal that does not exist in this organisation.</b> You read: <span class="says">"That appeal was not found."</span></li>
+<li data-code="appeal_open"><b>Deleting a candidate's data while a review of their result is open.</b> You read: <span class="says">"This candidate's data is held while a review is open."</span></li>
+<li data-code="appeal_stale"><b>Recording an appeal outcome after the result has moved on.</b> You read: <span class="says">"The result changed since the appeal was made, so reload it."</span></li>
+<li data-code="assignee_not_admin"><b>Naming a second marker who may not record result outcomes here.</b> You read: <span class="says">"That person cannot record a result outcome in this organisation."</span></li>
+<li data-code="confirmation_mismatch"><b>Deleting a candidate's data with a confirmation that does not match.</b> You read: <span class="says">"The confirmation does not match, so nothing was deleted."</span></li>
+<li data-code="not_assigned_marker"><b>Recording an appeal outcome as someone other than the assigned second marker.</b> You read: <span class="says">"Only the assigned second marker can record this outcome."</span></li>
+<li data-code="second_marker_must_differ"><b>Choosing the person who signed off the result as its second marker.</b> You read: <span class="says">"The second marker must be someone other than who signed off the result."</span></li>
 <li data-code="circuit_paused"><b>Moving on while the clock is paused.</b> You read: <span class="says">"The circuit is paused. Resume it first."</span></li>
 <li data-code="circuit_not_paused"><b>Resuming a clock that is running.</b> You read: <span class="says">"The circuit is not paused."</span></li>
 <li data-code="circuit_already_ended"><b>Acting on a circuit that has finished.</b> You read: <span class="says">"The circuit has already ended."</span></li>
@@ -1026,12 +1044,14 @@
 <p>Hiring outcomes are for employers and are optional (chapter 5). A school simply leaves them out.</p>
 <div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
 <li data-code="reviews_pending"><b>Signing off while a review is still a draft.</b> You read: <span class="says">"A review of this candidate's stations is still a draft. Complete it, or ask its author to withdraw it, then sign off."</span></li>
+<li data-code="decisions_incomplete"><b>Signing off the whole sheet while some candidates still have no decision.</b> You read: <span class="says">"Every candidate needs a decision before the results can be signed off"</span></li>
 <li data-code="not_signable"><b>Signing off with no outcome or no reason.</b> You read: <span class="says">"This decision cannot be signed off yet. Choose an outcome and write the reason first."</span></li>
 <li data-code="evidence_changed"><b>A mark changed after sign-off.</b> You read: <span class="says">"The marking changed after this was signed off. Review it and sign it off again before releasing."</span></li>
 <li data-code="outcome_not_releasable"><b>Releasing an inconclusive or withheld outcome.</b> You read: <span class="says">"A withheld or inconclusive outcome cannot be released."</span></li>
 <li data-code="invalid_workflow"><b>A step out of order</b>, such as releasing before sign-off. You read: <span class="says">"This decision is not in the right stage for that. It must be signed off, and not yet released."</span></li>
 <li data-code="decision_revised"><b>Someone else changed the decision while you had it open.</b> You read: <span class="says">"Somebody else changed this decision. Reload it and check it before saving again."</span></li>
 <li data-code="incompatible_outcomes"><b>An exam outcome and hiring outcome that cannot both be true.</b> You read: <span class="says">"That outcome and the hiring outcome do not go together. Change one of them."</span></li>
+<li data-code="hire_reason_required"><b>Recording a hire with no reason.</b> You read: <span class="says">"Give a reason before recording a hire."</span> In an employer workspace: <span class="says">"Say why you are hiring this candidate before saving."</span></li>
 <li data-code="recruitment_outside_exam"><b>A hiring outcome on a training session.</b> You read: <span class="says">"A hiring outcome can only be recorded on an exam sitting."</span></li>
 <li data-code="decision_outside_exam"><b>A decision on a training session</b>, which stops at marking. You read: <span class="says">"Decisions are recorded for exam-mode sittings only."</span></li>
 <li data-code="candidate_did_not_sit"><b>A decision for someone who sat no station.</b> You read: <span class="says">"This candidate did not sit any station on this sitting."</span></li>

@@ -27,6 +27,8 @@ class OrganizationRead(BaseModel):
     # Candidate seats the contract covers; null until platform staff set it.
     candidate_seats: int | None = None
     require_staff_mfa: bool = False
+    # Days after an attempt ends that its transcript is kept; null keeps it until a staff deletion.
+    recording_retention_days: int | None = None
     contact_name: str | None = None
     contact_email: str | None = None
     # The organisation this one sits under (a trust above its hospitals), or
@@ -56,6 +58,12 @@ class UpdateOrgDetails(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     contact_name: str | None = Field(default=None, max_length=200)
     contact_email: EmailStr | None = None
+
+
+class RetentionPolicy(BaseModel):
+    """How long candidates' transcripts are kept after an attempt ends. Null keeps them."""
+
+    recording_retention_days: int | None = Field(default=None, ge=30, le=3650)
 
 
 class StaffMfaPolicy(BaseModel):

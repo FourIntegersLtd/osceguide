@@ -47,7 +47,7 @@ import {
   TraineePage,
   TraineeRow,
 } from "@/domains/assess/trainee/traineeBoard";
-import { whenWords } from "@/domains/assess/trainee/support";
+import { markedAbsentCopy, whenWords } from "@/domains/assess/trainee/support";
 
 /**
  * One sitting, as the candidate sitting it sees it.
@@ -101,6 +101,7 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
 /** Ask for the microphone before the room opens, so a blocked browser is found now and not at the door. */
 function MicCheck() {
   const mic = useMicPreflight();
+  const { hrefFor } = useSurface();
   const ok = mic.status === "ready";
   return (
     <div className={boardPad}>
@@ -114,17 +115,20 @@ function MicCheck() {
               ? "No microphone was found. Connect one, then try again."
               : "We check it before you join. Allow it in the address bar, then try again."}
       </div>
-      {ok ? null : (
-        <Button
-          themeType="b2b"
-          variant="secondary"
-          size="sm"
-          className="self-start"
-          onClick={() => void mic.request()}
-        >
-          Test microphone
-        </Button>
-      )}
+      <div className="flex flex-wrap items-center gap-3">
+        {ok ? null : (
+          <Button
+            themeType="b2b"
+            variant="secondary"
+            size="sm"
+            className="self-start"
+            onClick={() => void mic.request()}
+          >
+            Test microphone
+          </Button>
+        )}
+        <TextLink href={hrefFor("/trainee/tech-check")}>Test your setup</TextLink>
+      </div>
     </div>
   );
 }
@@ -163,12 +167,12 @@ function Circuit({ sitting }: { sitting: MySitting }) {
       </div>
       <TraineeHead
         eyebrow={
-          sitting.scheduled_for
-            ? whenWords(sitting.scheduled_for) || modeLabel(sitting, w)
+          sitting.starts_at ?? sitting.scheduled_for
+            ? whenWords((sitting.starts_at ?? sitting.scheduled_for) as string) || modeLabel(sitting, w)
             : modeLabel(sitting, w)
         }
         title={sitting.name}
-        desc={`${exam ? "Formal exam" : "Practice circuit"} · ${plural(total, "station")}`}
+        desc={`${exam ? "Formal exam" : `Practice ${w.circuit}`} · ${plural(total, "station")}`}
         acts={
           <>
             {sitting.live ? (
@@ -181,10 +185,22 @@ function Circuit({ sitting }: { sitting: MySitting }) {
         }
       />
 
-      {sitting.can_join || over ? null : (
+      {sitting.marked_absent ? (
+        <Alert tone="warning" title="You were marked absent">
+          {markedAbsentCopy(w)}
+        </Alert>
+      ) : null}
+
+      {sitting.waiting_for_rejoin ? (
+        <Alert tone="info" title="Waiting to be let back in">
+          {`Your connection dropped. Your ${w.supervisor} can let you back in once. The station clock keeps running, so stay on this page.`}
+        </Alert>
+      ) : null}
+
+      {sitting.can_join || over || sitting.marked_absent || sitting.waiting_for_rejoin ? null : (
         <Alert
           tone="info"
-          title={exam ? "Before you start" : "How a practice circuit works"}
+          title={exam ? "Before you start" : `How a practice ${w.circuit} works`}
         >
           {exam
             ? "Your station opens when your supervisor starts it. Go in straight away: the patient joins when reading time ends, and you need to be in the room by then."

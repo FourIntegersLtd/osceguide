@@ -3,6 +3,9 @@ import { test } from "node:test";
 import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/capabilities/assess-words/vocabulary";
 import {
   EMPTY_DRAFT,
+  SCHEDULE_STEPS,
+  STEP_HELP,
+  scheduleWords,
   candidateStanding,
   circuitPlan,
   circuitTiming,
@@ -13,11 +16,12 @@ import {
   furthestStep,
   nextBreakPosition,
   peopleFormula,
-  stationAssessorIds,
   reviewFormula,
   stationNote,
   sittingLine,
   scheduledInstant,
+  startOffsetFor,
+  stationAssessorsFor,
   stepBlock,
   stepUnlocked,
   timingSummary,
@@ -30,20 +34,20 @@ const draft = (patch: Partial<ScheduleDraft>): ScheduleDraft => ({ ...EMPTY_DRAF
 const words = INSTITUTION_WORDS;
 
 test("steps unlock in order, stopping at the first unanswered one", () => {
-  assert.equal(furthestStep(EMPTY_DRAFT, INSTITUTION_WORDS), "basics");
-  assert.equal(stepUnlocked("stations", EMPTY_DRAFT, INSTITUTION_WORDS), false);
+  assert.equal(furthestStep(EMPTY_DRAFT), "basics");
+  assert.equal(stepUnlocked("stations", EMPTY_DRAFT), false);
   const basics = draft({ name: "Summer finals", programmeId: "p1" });
-  assert.equal(furthestStep(basics, INSTITUTION_WORDS), "stations");
+  assert.equal(furthestStep(basics), "stations");
   const withStations = { ...basics, stations: stations(2) };
-  assert.equal(furthestStep(withStations, INSTITUTION_WORDS), "people");
+  assert.equal(furthestStep(withStations), "people");
   const full = { ...withStations, candidateIds: ["u1", "u2"] };
-  assert.equal(furthestStep(full, INSTITUTION_WORDS), "review");
-  assert.equal(stepUnlocked("review", full, INSTITUTION_WORDS), true);
+  assert.equal(furthestStep(full), "review");
+  assert.equal(stepUnlocked("review", full), true);
 });
 
 test("a training sitting needs as many trainees as stations", () => {
   const training = draft({ mode: "training", stations: stations(6), candidateIds: Array(7).fill("u") });
-  assert.equal(stepBlock("people", training, INSTITUTION_WORDS), "The number of trainees must match the number of stations.");
+  assert.equal(stepBlock("people", training), "The number of trainees must match the number of stations.");
   assert.deepEqual(peopleFormula(training, words), {
     formula: "7 trainees for 6 stations.",
     help: "In training, each trainee starts at a different station, so these must match.",
@@ -53,7 +57,7 @@ test("a training sitting needs as many trainees as stations", () => {
 
 test("a formal exam gives each candidate their own circuit", () => {
   const exam = draft({ mode: "exam", stations: stations(6), candidateIds: ["a", "b", "c", "d", "e", "f", "g"] });
-  assert.equal(stepBlock("people", exam, INSTITUTION_WORDS), null);
+  assert.equal(stepBlock("people", exam), null);
   assert.equal(peopleFormula(exam, words).formula, "7 candidates picked. Each gets their own circuit.");
   assert.deepEqual(circuitPlan(exam), { kind: "bulk" });
   assert.deepEqual(circuitPlan({ ...exam, perCandidate: true }).kind, "each");
@@ -61,13 +65,13 @@ test("a formal exam gives each candidate their own circuit", () => {
 });
 
 test("timing bounds are 1 to 30, 1 to 180 and 1 to 60", () => {
-  assert.equal(stepBlock("timing", draft({ readingMinutes: 31 }), INSTITUTION_WORDS), "Reading time is 1 to 30 minutes.");
-  assert.equal(stepBlock("timing", draft({ consultationMinutes: 181 }), INSTITUTION_WORDS), "Consultation is 1 to 180 minutes.");
+  assert.equal(stepBlock("timing", draft({ readingMinutes: 31 })), "Reading time is 1 to 30 minutes.");
+  assert.equal(stepBlock("timing", draft({ consultationMinutes: 181 })), "Consultation is 1 to 180 minutes.");
   assert.equal(
-    stepBlock("timing", draft({ breaks: [{ after: 2, minutes: 61 }] }), INSTITUTION_WORDS),
+    stepBlock("timing", draft({ breaks: [{ after: 2, minutes: 61 }] })),
     "Each break is 1 to 60 minutes.",
   );
-  assert.equal(stepBlock("timing", draft({ breaks: [{ after: 2, minutes: 5 }] }), INSTITUTION_WORDS), null);
+  assert.equal(stepBlock("timing", draft({ breaks: [{ after: 2, minutes: 5 }] })), null);
 });
 
 test("the end time adds every station and break to the start", () => {
@@ -101,8 +105,8 @@ test("the date and start time make one instant, or none without a date", () => {
 test("a formal exam takes at most 200 candidates, and the step says how many to deselect", () => {
   const many = Array.from({ length: 201 }, (_, i) => `u${i}`);
   const exam = draft({ mode: "exam", stations: stations(2), candidateIds: many });
-  assert.match(stepBlock("people", exam, INSTITUTION_WORDS) ?? "", /at most 200 candidates.*Deselect 1\./);
-  assert.equal(stepBlock("people", { ...exam, candidateIds: many.slice(0, 200) }, INSTITUTION_WORDS), null);
+  assert.match(stepBlock("people", exam) ?? "", /at most 200 candidates.*Deselect 1\./);
+  assert.equal(stepBlock("people", { ...exam, candidateIds: many.slice(0, 200) }), null);
 });
 
 test("the stored timing keeps only real gaps and non-default lengths, so review and circuit agree", () => {
@@ -192,24 +196,45 @@ test("candidateStanding: an invited account nobody has used is not 'signed in'",
   assert.equal(candidateStanding({ ...row, user_id: "u1" }), "signed_in");
 });
 
-test("a hire workspace reads assessment and candidate in the step blocks; the institution keeps its own lines", () => {
-  assert.equal(stepBlock("basics", draft({ name: "" }), EMPLOYER_WORDS), "Give the assessment a name.");
-  assert.equal(stepBlock("basics", draft({ name: "" }), INSTITUTION_WORDS), "Give the sitting a name.");
-  const tooMany = draft({ mode: "exam", stations: stations(13) });
-  assert.equal(stepBlock("stations", tooMany, INSTITUTION_WORDS), "An exam circuit takes at most 12 stations.");
-  assert.equal(stepBlock("stations", tooMany, EMPLOYER_WORDS), "A formal exam can have at most 12 stations. Remove some to continue.");
+test("hire step copy uses hire words and never reads wrong", () => {
+  const all = [...SCHEDULE_STEPS.flatMap((s) => [s.label, s.title, s.desc]), ...Object.values(STEP_HELP).flatMap((h) => [h.title, h.body])];
+  for (const text of all) {
+    const hire = scheduleWords(text, EMPLOYER_WORDS);
+    assert.doesNotMatch(hire, /\b(sitting|supervisors?)\b/i, hire);
+    assert.equal(scheduleWords(text, INSTITUTION_WORDS), text);
+  }
+  assert.equal(scheduleWords("Who is sitting it?", EMPLOYER_WORDS), "Who is being assessed?");
 });
 
-test("hire says its own words for the shared rotation, institution text is unchanged", () => {
-  const training = draft({ mode: "training", stations: stations(6), candidateIds: ["a", "b", "c", "d", "e", "f"] });
-  assert.deepEqual(reviewFormula(training, "", EMPLOYER_WORDS), {
-    formula: `6 ${EMPLOYER_WORDS.trainees} × 6 stations → 1 ${EMPLOYER_WORDS.circuit}`,
-    help: `${EMPLOYER_WORDS.Trainees} move round the stations together, each starting at a different one.`,
+test("the hire review step reads rotation and assessor, never circuit or supervisor", () => {
+  const exam = draft({ mode: "exam", stations: stations(6), candidateIds: ["a", "b", "c"] });
+  const training = draft({ mode: "training", stations: stations(3), candidateIds: ["a", "b", "c"] });
+  const lines = [
+    reviewFormula(exam, "Dr Patel", EMPLOYER_WORDS),
+    reviewFormula(exam, "", EMPLOYER_WORDS),
+    reviewFormula({ ...exam, perCandidate: true }, "", EMPLOYER_WORDS),
+    reviewFormula(training, "", EMPLOYER_WORDS),
+  ].flatMap((r) => [r.formula, r.help]);
+  for (const line of lines) assert.doesNotMatch(line, /\b(circuits?|supervisors?|sittings?)\b/i, line);
+  assert.equal(reviewFormula(exam, "Dr Patel", EMPLOYER_WORDS).help, "Each candidate gets their own rotation, supervised by Dr Patel.");
+  assert.equal(reviewFormula({ ...exam, perCandidate: true }, "", EMPLOYER_WORDS).help, "Each candidate gets their own rotation, with an assessor each.");
+});
+
+test("a stagger turns a formal exam into one circuit per candidate, each starting later", () => {
+  const exam = draft({ mode: "exam", candidateIds: ["a", "b", "c"], staggerMinutes: 10, stations: stations(2) });
+  assert.deepEqual(circuitPlan(exam), { kind: "each", candidateIds: ["a", "b", "c"] });
+  assert.deepEqual([0, 1, 2].map((at) => startOffsetFor(exam, at)), [0, 10, 20]);
+  assert.equal(circuitPlan({ ...exam, staggerMinutes: 0 }).kind, "bulk");
+  assert.equal(startOffsetFor({ mode: "training", staggerMinutes: 10 }, 3), 0);
+  assert.equal(startOffsetFor({ mode: "exam", staggerMinutes: 60 }, 20), 480);
+});
+
+test("only picked assessors for stations still on the draft are sent, and only for a formal exam", () => {
+  const exam = draft({
+    mode: "exam",
+    stations: stations(2),
+    stationAssessors: { v0: "", v1: "u1", gone: "u2" },
   });
-});
-
-test("only an employer sends station assessors, with a null for an open station", () => {
-  const draft = { stations: [{ version_id: "v1" }, { version_id: "v2" }, { version_id: "v3" }], stationAssessors: { v1: "u1", v3: "u2" } } as unknown as Parameters<typeof stationAssessorIds>[0];
-  assert.deepEqual(stationAssessorIds(draft, EMPLOYER_WORDS), ["u1", null, "u2"]);
-  assert.equal(stationAssessorIds(draft, INSTITUTION_WORDS), undefined);
+  assert.deepEqual(stationAssessorsFor(exam), { v1: "u1" });
+  assert.deepEqual(stationAssessorsFor({ ...exam, mode: "training" }), {});
 });

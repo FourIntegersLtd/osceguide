@@ -65,6 +65,13 @@ export const RECRUITMENT_LABEL: Record<RecruitmentOutcome, string> = {
   withdrawn: "Withdrawn",
 };
 
+/** Hired is good news, reserve is a hold, the rest is neutral: the same tones as an assessment outcome. */
+export function recruitmentTone(value: string): ReturnType<typeof outcomeTone> {
+  if (value === "hired") return "success";
+  if (value === "reserve") return "warning";
+  return "neutral";
+}
+
 /** The words for a stored recruitment outcome; an unknown value is shown as it came. */
 export function recruitmentLabel(value: string): string {
   const known = RECRUITMENT_OUTCOMES.find((outcome) => outcome === value);
@@ -153,6 +160,8 @@ export function cohortSubtitle(candidate: CohortCandidate): string {
  * somebody presses the button, rather than after.
  * --------------------------------------------------------------------- */
 
+export const REASON_BLOCKER = "Write down the reason, so anyone can see why this was decided later.";
+
 export function signOffBlockers(input: {
   outcome: string | null;
   rationale: string | null;
@@ -160,7 +169,7 @@ export function signOffBlockers(input: {
   const blockers: string[] = [];
   if (!input.outcome) blockers.push("An outcome has to be chosen.");
   if (!(input.rationale ?? "").trim()) {
-    blockers.push("Write down the reason, so anyone can see why this was decided later.");
+    blockers.push(REASON_BLOCKER);
   }
   return blockers;
 }
@@ -419,6 +428,22 @@ export function attentionItems(
     });
   }
   return items;
+}
+
+/**
+ * Candidates who sat and still need an outcome before the sitting can be signed off.
+ * Someone who never sat needs none (`candidate_did_not_sit`).
+ */
+export function signOffLeft(
+  candidates: {
+    decision: { assessment_outcome: string | null } | null;
+    stations?: { attempt_id: string | null; slot_status: string }[];
+  }[],
+): { total: number; left: number } {
+  const sat = candidates.filter((candidate) =>
+    (candidate.stations ?? []).some((station) => station.attempt_id !== null || station.slot_status === "completed"),
+  );
+  return { total: sat.length, left: sat.filter((candidate) => !candidate.decision?.assessment_outcome).length };
 }
 
 /** The hire decisions tiles: how many are hired, on the reserve list, not hired, and still to decide (withdrawn is none of these). */

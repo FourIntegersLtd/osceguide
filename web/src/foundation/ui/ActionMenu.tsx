@@ -14,8 +14,6 @@ export type ActionMenuItem = {
   disabled?: boolean;
   /** Small muted text under the label; when the item is disabled it is also read out as the reason. */
   hint?: string;
-  /** A heading shown above the first item of each run of items that share it (the employer's grouped menu). */
-  group?: string;
   onSelect?: () => void;
   /** Renders the item as a link (next/link) instead of a button. */
   href?: string;
@@ -68,9 +66,6 @@ export function ActionMenu({ items, label = "More actions" }: { items: readonly 
           const className = cn(ITEM, TONES[item.tone ?? "default"]);
           return (
             <li key={item.label} role="none" className={n === firstDanger && n > 0 ? "mt-1 border-t border-osce-border-light pt-1" : undefined}>
-              {item.group && item.group !== ordered[n - 1]?.group ? (
-                <span className="block px-3 pb-0.5 pt-2 text-assess-meta font-medium text-osce-ink-500">{item.group}</span>
-              ) : null}
               {item.href && !item.disabled ? (
                 <Link role="menuitem" href={item.href} aria-describedby={describedBy} className={className} onClick={() => { close(); item.onSelect?.(); }}>
                   {body}

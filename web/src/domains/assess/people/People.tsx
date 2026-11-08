@@ -142,7 +142,6 @@ export function People({ orgSlug, initialTab }: { orgSlug: string; initialTab: P
                     cohorts={data.cohorts}
                     groups={data.groups}
                     canManage={canManage}
-                    total={trainees.total}
                     onAddPeople={() => openAdd("trainees")}
                     onChanged={reloadAfter("trainees", "groups")}
                   />

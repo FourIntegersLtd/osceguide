@@ -73,6 +73,8 @@ async def test_a_candidate_joins_the_room_with_no_patient_attached(
     granted = tokens.issued[-1]
     assert granted["agent_name"] is None
     assert granted["can_publish"] is True
+    # An exam candidate speaks; they never share a screen or a camera the web does not publish.
+    assert granted["can_publish_sources"] == ["microphone"]
 
 
 async def test_a_candidates_identity_is_the_one_the_patient_waits_for(

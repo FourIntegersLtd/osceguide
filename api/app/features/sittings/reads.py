@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from app.features.sittings import domain, domain_run
@@ -134,11 +135,17 @@ def slot_read(slot: Slot, circuit: Circuit) -> SlotRead:
         room_name=slot.room_name,
         started_at=slot.started_at,
         ended_at=slot.ended_at,
-        assessor_user_id=slot.assessor_user_id,
         phase=slot_phase(circuit, slot),
         phase_started_at=circuit.phase_started_at if circuit.active_slot_id == slot.id else None,
         phase_ends_at=circuit.phase_ends_at if circuit.active_slot_id == slot.id else None,
     )
+
+
+def assessor_map(circuit: Circuit) -> dict[uuid.UUID, uuid.UUID]:
+    """The circuit's per-station assessors, with ids as UUIDs."""
+    return {
+        uuid.UUID(station): uuid.UUID(person) for station, person in (circuit.station_assessors or {}).items()
+    }
 
 
 def circuit_read(circuit: Circuit, slots: list[Slot]) -> CircuitRead:
@@ -150,6 +157,8 @@ def circuit_read(circuit: Circuit, slots: list[Slot]) -> CircuitRead:
         name=circuit.name,
         supervisor_user_id=circuit.supervisor_user_id,
         timing=timing_read(circuit.timing),
+        start_offset_minutes=circuit.start_offset_minutes,
+        station_assessors=assessor_map(circuit),
         active_slot_id=circuit.active_slot_id,
         room_name=circuit.room_name,
         started_at=circuit.started_at,

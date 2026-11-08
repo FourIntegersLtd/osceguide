@@ -1,8 +1,7 @@
 "use client";
 
-import { say } from "@/domains/assess/roster/rosterWords";
-import { useAssessWords } from "@/capabilities/assess-words";
 import { useState } from "react";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { hasCode } from "@/foundation/platform-client";
 import { errorMessage } from "@/foundation/hooks";
 import { PeopleDialog as Dialog, hint } from "@/domains/assess/ui";
@@ -84,8 +83,8 @@ function RenameForm({
   return (
     <Dialog
       open
-      title={say(w, "Rename year group")}
-      lead="Everyone in this intake stays in it. Only the name changes."
+      title={`Rename ${w.yearGroup}`}
+      lead={`Everyone in this ${w.yearGroup} stays in it. Only the name changes.`}
       error={error}
       busy={busy}
       commitLabel="Save"
@@ -183,7 +182,7 @@ function DeleteForm({
          an administrator learns which intake is still holding people. */
       setError(
         hasCode(cause, "cohort_in_use")
-          ? `${errorMessage(cause)} Move them onto another intake from their row on the ${w.Trainees} tab first.`
+          ? `${errorMessage(cause)} Move them onto another ${w.yearGroup} from their row on the ${w.Trainees} tab first.`
           : errorMessage(cause),
       );
     } finally {
@@ -197,11 +196,11 @@ function DeleteForm({
     <Dialog
       open
       tone="danger"
-      title={say(w, "Delete year group")}
+      title={`Delete ${w.yearGroup}`}
       lead={lead}
       error={error}
       busy={busy}
-      commitLabel={say(w, "Delete year group")}
+      commitLabel={`Delete ${w.yearGroup}`}
       busyLabel="Deleting…"
       onClose={onClose}
       onCommit={() => void commit()}

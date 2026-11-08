@@ -51,15 +51,17 @@ import {
   scheduleReviewLabels,
   scheduleSteps,
   scheduleSubmitLabel,
-  stepHelp,
+  STEP_HELP,
+  scheduleWords,
   candidateNames,
   peopleFormula,
-  modeOptions,
+  MODE_OPTIONS,
   reviewFormula,
   scheduledInstant,
   sittingLine,
   stationNote,
   stepBlock,
+  stationAssessorsFor,
   stepUnlocked,
   timingSummary,
   type ScheduleDraft,
@@ -68,9 +70,13 @@ import {
   type TraineeRow,
 } from "@/domains/assess/scheduleSitting";
 import { circuitLeads } from "@/domains/assess/support";
+import { assessorTally, tallyText } from "@/domains/assess/rotations";
 import { NEW_EXAM_PATH } from "@/domains/assess/dashboard/setupSteps";
 import { useAssessWords } from "@/capabilities/assess-words";
+import { aOrAn } from "@/capabilities/assess-words/vocabulary";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
+import { SaveAsTemplate, TemplatePicker } from "@/domains/assess/SittingTemplates";
+import { fromTemplateConfig, toTemplateConfig } from "@/domains/assess/templateConfig";
 import {
   circuitsMade,
   createSittingCircuits,
@@ -87,6 +93,33 @@ import {
  */
 /** The board's button: 44px tall, 9px corners, 18px sides. */
 const BOARD_BUTTON = "!h-11 min-h-11 rounded-board px-[18px]";
+
+/** Who has how many rotations, for the review. */
+function rotationLine(candidateIds: string[], byCandidate: Record<string, string>, leads: { value: string; label: string }[]): string {
+  return tallyText(assessorTally(candidateIds, byCandidate, Object.fromEntries(leads.map((l) => [l.value, l.label])))) || "Nobody yet";
+}
+
+/** Hire review rows for what only a hire workspace sets: staggered starts and station assessors. */
+function hireRows(
+  draft: ScheduleDraft,
+  leadLabel: (id: string) => string,
+  w: ReturnType<typeof useAssessWords>,
+): [string, string][] {
+  const rows: [string, string][] = [];
+  if (draft.staggerMinutes > 0 && draft.candidateIds.length > 1) {
+    rows.push([`${w.Circuits} start`, `${draft.staggerMinutes} minutes apart`]);
+  }
+  const picked = stationAssessorsFor(draft);
+  if (Object.keys(picked).length > 0) {
+    rows.push([
+      `${w.Supervisors} by station`,
+      draft.stations
+        .map((station, at) => `${at + 1}: ${leadLabel(picked[station.version_id] ?? "") || "default"}`)
+        .join(" · "),
+    ]);
+  }
+  return rows;
+}
 
 export function NewSitting({ orgSlug }: { orgSlug: string }) {
   const context = useAsync(
@@ -163,6 +196,8 @@ function Wizard({
   leads: { value: string; label: string }[];
 }) {
   const w = useAssessWords();
+  const steps = scheduleSteps(w);
+  const reviewLabels = scheduleReviewLabels(w);
   const router = useRouter();
   const { hrefFor } = useSurface();
   const { session } = useSession();
@@ -186,6 +221,7 @@ function Wizard({
   const [reached, setReached] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templatesKey, setTemplatesKey] = useState(0);
 
   const patch = useCallback(
     (change: Partial<ScheduleDraft>) =>
@@ -201,10 +237,12 @@ function Wizard({
     }),
     [orgSlug, programme],
   );
-  const people = peopleFormula(draft, w);
-  const steps = scheduleSteps(w);
+  const people = peopleFormula(draft, {
+    trainee: w.trainee,
+    trainees: w.trainees,
+  });
   const index = steps.findIndex((item) => item.id === step);
-  const block = stepBlock(step, draft, w);
+  const block = stepBlock(step, draft);
   const names = useMemo(() => candidateNames(trainees), [trainees]);
 
   if (ready.length === 0) {
@@ -217,7 +255,7 @@ function Wizard({
           {drafts.length > 0
             ? `${drafts.join(", ")} ${drafts.length === 1 ? "is" : "are"} still a draft. Finish setting it up, then come back here.`
             : w.hiring
-              ? `You need an exam with a published marking scheme before you can schedule a ${w.sitting}. Set one up, then come back.`
+              ? `You need an exam with a published marking scheme before you can schedule ${aOrAn(w.sitting)}. Set one up, then come back.`
               : `Every ${w.sitting} belongs to an exam with a published marking scheme. Set one up, then come back here.`}
         </p>
         <ButtonLink
@@ -258,7 +296,7 @@ function Wizard({
       return;
     }
     try {
-      await createSittingCircuits(orgSlug, sittingId, draft, 0, w);
+      await createSittingCircuits(orgSlug, sittingId, draft, 0);
     } catch (cause) {
       // The sitting exists: land on it with the error and a "Try again" that makes the circuits.
       savePending(sittingId, {
@@ -271,7 +309,7 @@ function Wizard({
   };
 
   const kindLabel =
-    modeOptions(w).find((option) => option.value === draft.mode)?.title ?? "";
+    MODE_OPTIONS.find((option) => option.value === draft.mode)?.title ?? "";
   const year =
     cohorts.find((cohort) => cohort.id === draft.cohortId)?.name ?? "None";
   const leadLabel = (id: string) =>
@@ -283,7 +321,6 @@ function Wizard({
       : leadLabel(draft.supervisorId),
     w,
   );
-  const reviewLabels = scheduleReviewLabels(w);
   const current = steps[index];
   const last = index === steps.length - 1;
   const setStations = (
@@ -304,10 +341,10 @@ function Wizard({
           {scheduleIntro(w)}
         </span>
       </div>
-      <div className="w-full">
-        <nav aria-label="Steps" className="flex flex-wrap gap-1.5 px-6 pt-6">
+      <div className="mx-auto w-full max-w-[1072px]">
+        <nav aria-label="Steps" className="flex flex-wrap gap-1.5 px-4 pt-6">
           {steps.map((item, at) => {
-            const open = stepUnlocked(item.id, draft, w);
+            const open = stepUnlocked(item.id, draft);
             const done = at < reached && at !== index;
             return (
               <button
@@ -343,7 +380,7 @@ function Wizard({
             );
           })}
         </nav>
-        <div className="flex flex-wrap items-start gap-6 px-6 pb-16 pt-8">
+        <div className="flex flex-wrap items-start gap-6 px-4 pb-16 pt-8">
           <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-6">
             {error ? <Alert tone="danger">{error}</Alert> : null}
             <header className="flex flex-col">
@@ -360,6 +397,13 @@ function Wizard({
 
             {step === "basics" ? (
               <div className={cn(t.assessCard, "p-6", t.assessFormStack)}>
+                <TemplatePicker
+                  orgSlug={orgSlug}
+                  reloadKey={templatesKey}
+                  onApply={(config) =>
+                    setDraft((now) => ({ ...now, ...fromTemplateConfig(config, ready, now) }))
+                  }
+                />
                 <Field label="Name" htmlFor="sitting-name">
                   <input
                     id="sitting-name"
@@ -400,10 +444,10 @@ function Wizard({
                 />
                 <OptionCards
                   label="Kind"
-                  options={modeOptions(w).map((option) => ({
+                  options={MODE_OPTIONS.map((option) => ({
                     key: option.value,
-                    title: option.title,
-                    body: option.body,
+                    title: scheduleWords(option.title, w),
+                    body: scheduleWords(option.body, w),
                     selected: draft.mode === option.value,
                     onSelect: () => patch({ mode: option.value }),
                   }))}
@@ -497,10 +541,16 @@ function Wizard({
                     [
                       reviewLabels.supervisor,
                       draft.perCandidate && draft.mode === "exam"
-                        ? "One for each candidate"
+                        ? rotationLine(draft.candidateIds, draft.supervisorByCandidate, leads)
                         : leadLabel(draft.supervisorId),
                     ],
+                    ...(w.hiring && draft.mode === "exam" ? hireRows(draft, leadLabel, w) : []),
                   ]}
+                />
+                <SaveAsTemplate
+                  orgSlug={orgSlug}
+                  config={toTemplateConfig(draft)}
+                  onSaved={() => setTemplatesKey((now) => now + 1)}
                 />
                 <p className={t.assessMeta}>
                   If the {w.sitting} is made but its circuits fail, you land on
@@ -514,7 +564,7 @@ function Wizard({
               <p className={t.assessMeta}>{block}</p>
             ) : null}
 
-            <div className={cn(t.assessFooter, "justify-start")}>
+            <div className={t.assessFooter}>
               {index === 0 ? (
                 <Link
                   href={hrefFor("/sittings")}
@@ -562,11 +612,11 @@ function Wizard({
           </div>
           <aside
             aria-label="Help"
-            className={cn(t.assessCard, "h-fit flex-[1_1_302px] p-6")}
+            className={cn(t.assessCard, "h-fit flex-[1_1_302px] p-5")}
           >
             <p className={t.assessEyebrow}>Help</p>
-            <p className="mt-2 font-medium text-ink">{stepHelp(step, w).title}</p>
-            <p className={cn(t.assessMeta, "mt-1")}>{stepHelp(step, w).body}</p>
+            <p className="mt-2 font-medium text-ink">{scheduleWords(STEP_HELP[step].title, w)}</p>
+            <p className={cn(t.assessMeta, "mt-1")}>{scheduleWords(STEP_HELP[step].body, w)}</p>
           </aside>
         </div>
       </div>

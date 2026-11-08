@@ -78,6 +78,10 @@ class Circuit(Base, UUIDPrimaryKey, Timestamps, Revisioned):
     # A closed shape with a handful of fields, kept as JSON because the break
     # list is variable-length and read as a unit.
     timing: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Minutes after the sitting's start time that this circuit's rotation begins (staggered starts).
+    start_offset_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    # {station_version_id: user_id}: who assesses a station when it is not the circuit's own supervisor.
+    station_assessors: Mapped[dict[str, str] | None] = mapped_column(JSONB)
     active_slot_id: Mapped[uuid.UUID | None] = mapped_column()
     room_name: Mapped[str | None] = mapped_column(String(200))
     agent_dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -186,9 +190,6 @@ class Slot(Base, UUIDPrimaryKey, Timestamps):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     exam_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # Who assesses this station on the day (hire board, "Who assesses?"). Display only: the
-    # circuit's lead still runs it and a reviewer is still named by the review workflow.
-    assessor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
 class CircuitIntervention(Base, UUIDPrimaryKey):
@@ -279,3 +280,21 @@ class SlotPeerMark(Base, UUIDPrimaryKey, Timestamps):
     item: Mapped[str] = mapped_column(String(160), nullable=False)
     rating: Mapped[str | None] = mapped_column(String(16))
     comment: Mapped[str | None] = mapped_column(Text)
+
+
+class SittingTemplate(Base, UUIDPrimaryKey, Timestamps):
+    """A named setup an organisation keeps to start new schedules from.
+
+    `config` is the closed shape in `schemas.TemplateConfig` (programme, mode, stations in
+    order, timing, assessor style). It holds no people: a template never carries candidates.
+    """
+
+    __tablename__ = "sitting_templates"
+    __table_args__ = (Index("uq_sitting_templates_org_name", "org_id", text("lower(name)"), unique=True),)
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

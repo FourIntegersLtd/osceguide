@@ -21,7 +21,7 @@ import {
   recruitmentLabel,
   type AssessmentOutcome,
 } from "@/domains/assess/results/support";
-import { boardLabel, boardBtn, boardAlert } from "@/foundation/ui/boardKit";
+import { boardInput, boardLabel, boardBtn, boardAlert } from "@/foundation/ui/boardKit";
 
 /** The employer's call on an exam-mode (hire) sitting, as pills. Only the team sees it; the candidate's own view never does. */
 export function RecruitmentField({
@@ -34,23 +34,26 @@ export function RecruitmentField({
   onChange: (value: string) => void;
 }) {
   return (
-    <fieldset className="m-0 min-w-0 border-0 p-0" disabled={disabled}>
-      <legend className={`${boardLabel} mb-2 p-0`}>2. Hiring decision</legend>
-      <div className="grid grid-cols-2 gap-3 min-[901px]:grid-cols-4">
+    <div>
+      <label htmlFor="recruitment-outcome" className={`${boardLabel} mb-2`}>
+        2. Hiring decision
+      </label>
+      <select
+        id="recruitment-outcome"
+        className={boardInput}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">Not recorded</option>
         {RECRUITMENT_PILLS.map((outcome) => (
-          <button
-            key={outcome}
-            type="button"
-            aria-pressed={value === outcome}
-            onClick={() => onChange(value === outcome ? "" : outcome)}
-            className={`${boardPill(value === outcome)} disabled:opacity-60`}
-          >
+          <option key={outcome} value={outcome}>
             {RECRUITMENT_LABEL[outcome]}
-          </button>
+          </option>
         ))}
-      </div>
+      </select>
       <div className={`mt-2 ${t.assessMeta}`}>Only your team sees this. Candidates never do.</div>
-    </fieldset>
+    </div>
   );
 }
 

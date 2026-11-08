@@ -347,3 +347,16 @@ async def policy_versions_for(
     for attempt_id, version in (await session.execute(stmt)).all():
         versions_by_attempt.setdefault(attempt_id, []).append(version)
     return versions_by_attempt
+
+
+async def erase_transcripts_for_attempts(session: AsyncSession, attempt_ids: Sequence[uuid.UUID]) -> None:
+    """Delete only what a person said, for retention and an institution's deletion request.
+
+    The marks (`AssessmentResult`) stay: the result ledger and the sitting report are built from
+    them. `erase_content_for_attempts` is the account-erasure version that takes the marks too.
+    """
+    if not attempt_ids:
+        return
+    # The record first, then the rows, for the reason given there.
+    await session.execute(delete(Transcript).where(Transcript.attempt_id.in_(attempt_ids)))
+    await session.execute(delete(TranscriptMessage).where(TranscriptMessage.attempt_id.in_(attempt_ids)))

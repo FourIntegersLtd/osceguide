@@ -7,7 +7,7 @@
  */
 
 import { plural } from "@/foundation/format";
-import type { AssessWords } from "@/capabilities/assess-words";
+import { aOrAn, type AssessWords } from "@/capabilities/assess-words/vocabulary";
 import type { CircuitTiming, SittingMode } from "@/domains/assess/api";
 import { displayName } from "@/domains/assess/roster/support";
 import {
@@ -107,7 +107,7 @@ export const SCHEDULE_STEPS: {
 ];
 
 /** The words in the Help panel beside each step. */
-const STEP_HELP: Record<
+export const STEP_HELP: Record<
   ScheduleStepId,
   { title: string; body: string }
 > = {
@@ -137,21 +137,33 @@ const STEP_HELP: Record<
   },
 };
 
-/** The help panel beside a step, in the workspace's words. */
-export function stepHelp(step: ScheduleStepId, w: AssessWords): { title: string; body: string } {
-  if (!w.hiring) return STEP_HELP[step];
-  const hire: Partial<Record<ScheduleStepId, string>> = {
-    stations: `A ${w.circuit} is the run of stations one candidate goes through, in order. Every candidate goes round in the order shown here. A formal exam can have up to 12 stations. Only published stations of the chosen exam can be used.`,
-    people: "People with no account yet cannot be scheduled. Someone who was invited but has not accepted yet can still be picked, but must accept the invitation before the exam day. You can resend invitations, or give a temporary password, from the People page.",
-    timing: `Breaks sit between stations and can each be a different length. These timings apply to everyone taking this ${w.sitting}.`,
-    supervisor: `Reviews each station, makes decisions and presses "Send feedback" to finish. ${w.Supervisors} are the examiners.`,
-    review: `A formal exam makes one ${w.circuit} for each candidate. Training makes one shared ${w.circuit}, with ${w.trainees} moving round the stations together.`,
-  };
-  return { ...STEP_HELP[step], body: hire[step] ?? STEP_HELP[step].body };
+/** Copy where swapping words would read wrong ("sitting" as a verb, a button that keeps its name). */
+const HIRE_COPY: Record<string, string> = {
+  "Who is sitting it?": "Who is being assessed?",
+  'Reviews each station, makes decisions and presses "Publish circuit feedback" to finalise. Supervisors are the examiners.':
+    'Reviews each station, makes decisions and presses "Publish circuit feedback" to finalise. Assessors are the examiners.',
+};
+
+/** Say a step's words in this workspace's vocabulary: a hire workspace reads "assessment", "assessor", "rotation". */
+export function scheduleWords(text: string, w: AssessWords): string {
+  if (!w.hiring) return text;
+  const fixed = HIRE_COPY[text];
+  if (fixed) return fixed;
+  const cap = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+  return text
+    .replace(/\bsittings\b/g, w.sittings)
+    .replace(/\bsitting\b/g, w.sitting)
+    .replace(/\bSupervisors\b/g, w.Supervisors)
+    .replace(/\bSupervisor\b/g, w.Supervisor)
+    .replace(/\bsupervisors\b/g, w.supervisors)
+    .replace(/\bsupervisor\b/g, w.supervisor)
+    .replace(/\bcircuits\b/g, w.circuits)
+    .replace(/\bcircuit\b/g, w.circuit)
+    .replace(/\bCircuit\b/g, cap(w.circuit));
 }
 
 /** The two kinds of sitting, as the first step offers them. */
-const MODE_OPTIONS: {
+export const MODE_OPTIONS: {
   value: SittingMode;
   title: string;
   body: string;
@@ -168,18 +180,8 @@ const MODE_OPTIONS: {
   },
 ];
 
-/** The kinds of sitting in the workspace's words. */
-export function modeOptions(w: AssessWords): typeof MODE_OPTIONS {
-  if (!w.hiring) return MODE_OPTIONS;
-  return MODE_OPTIONS.map((option) =>
-    option.value === "exam"
-      ? { ...option, body: "Each candidate does the stations on their own. They only see their result after you release it." }
-      : option,
-  );
-}
-
 /** The two ways to name supervisors on a formal exam. */
-const SUPERVISOR_OPTIONS: {
+export const SUPERVISOR_OPTIONS: {
   each: boolean;
   title: string;
   body: string;
@@ -201,8 +203,37 @@ export function supervisorOptions(w: AssessWords): typeof SUPERVISOR_OPTIONS {
   if (!w.hiring) return SUPERVISOR_OPTIONS;
   return [
     { each: false, title: `One ${w.supervisor} for every ${w.circuit}`, body: "Simplest for a small group." },
-    { each: true, title: `An ${w.supervisor} for each ${w.trainee}`, body: "Share the reviewing across your team." },
+    { each: true, title: `${aOrAn(w.supervisor).replace(/^./, (c) => c.toUpperCase())} per ${w.trainee}`, body: "Share the reviewing across your team." },
   ];
+}
+
+const HIRE_STEP_COPY: Partial<Record<ScheduleStepId, { label: string; title: string; desc: string }>> = {
+  basics: { label: "Exam and name", title: "Which exam, and when?", desc: "Pick the exam, give the assessment a name and set the date and when the first rotation starts." },
+  people: { label: "Candidates", title: "Who is sitting it?", desc: "Pick an intake, pick candidates one by one, or paste their emails." },
+  timing: { label: "Rotations", title: "Rotations", desc: "A rotation is one candidate going through every station in turn. We build them from your choices; change the times or breaks if you need to." },
+  supervisor: { label: "Assessors", title: "Who assesses?", desc: "The assessor checks the marks and signs off the result afterwards. Choose one for every rotation, or one for each candidate." },
+  review: { label: "Check and schedule", title: "Check and schedule", desc: "Check it over. Candidates and assessors get an email with the time." },
+};
+
+/** The wizard's steps in the workspace's words; the institution's are SCHEDULE_STEPS unchanged. */
+export function scheduleSteps(w: AssessWords): typeof SCHEDULE_STEPS {
+  if (!w.hiring) return SCHEDULE_STEPS;
+  return SCHEDULE_STEPS.map((step) => ({ ...step, ...HIRE_STEP_COPY[step.id] }));
+}
+
+export function scheduleIntro(w: AssessWords): string {
+  return w.hiring
+    ? "Nothing is created until you press Schedule on the last step."
+    : "Steps unlock in order. Nothing is created until the last step.";
+}
+
+export function scheduleSubmitLabel(w: AssessWords): string {
+  return w.hiring ? "Schedule" : `Create ${w.sitting}`;
+}
+
+/** The review rows whose names differ between the arms. */
+export function scheduleReviewLabels(w: AssessWords): { year: string; supervisor: string } {
+  return { year: w.YearGroup, supervisor: w.hiring ? w.Supervisors : w.Supervisor };
 }
 
 /** How many stations are picked, and in training what that must match. */
@@ -243,25 +274,23 @@ export function reviewFormula(
   const stations = plural(draft.stations.length, "station");
   if (draft.mode === "exam") {
     const by = draft.perCandidate
-      ? ", with a supervisor each"
+      ? `, with ${aOrAn(words.supervisor)} each`
       : supervisor
         ? `, supervised by ${supervisor}`
         : "";
     return {
-      formula: `${plural(people, "candidate")} × ${stations} → ${plural(people, "circuit")}`,
-      help: `Each candidate gets their own circuit${by}.`,
+      formula: scheduleWords(`${plural(people, "candidate")} × ${stations} → ${plural(people, "circuit")}`, words),
+      help: scheduleWords(`Each candidate gets their own circuit${by}.`, words),
     };
   }
   return {
-    formula: `${plural(people, words.trainee, words.trainees)} × ${stations} → 1 ${words.circuit}`,
-    help: words.hiring
-      ? `${words.Trainees} move round the stations together, each starting at a different one.`
-      : "Trainees rotate together round one circuit.",
+    formula: scheduleWords(`${plural(people, words.trainee, words.trainees)} × ${stations} → 1 circuit`, words),
+    help: scheduleWords("Trainees rotate together round one circuit.", words),
   };
 }
 
 export const CONSULTATION_BOUNDS = { min: 1, max: 180 } as const;
-const DEFAULT_START_TIME = "09:00";
+export const DEFAULT_START_TIME = "09:00";
 
 /** One break between two stations: it follows station `after`. */
 export interface DraftBreak {
@@ -290,9 +319,14 @@ export interface ScheduleDraft {
   /** Formal exam only: a supervisor for each candidate's circuit instead of one for all. */
   perCandidate: boolean;
   supervisorByCandidate: Record<string, string>;
-  /** An employer's station -> assessor (user id) by station version; a station missing here has none yet. */
+  /** Formal exam in a hire workspace: minutes between one candidate's start and the next; 0 starts them together. */
+  staggerMinutes: number;
+  /** Station version id to the assessor of that station; a station left out is the lead's. */
   stationAssessors: Record<string, string>;
 }
+
+/** Minutes between two rotations' starts (a candidate's own offset is capped at 480 by the api). */
+export const STAGGER_BOUNDS = { min: 0, max: 60 };
 
 export const EMPTY_DRAFT: ScheduleDraft = {
   name: "",
@@ -310,6 +344,7 @@ export const EMPTY_DRAFT: ScheduleDraft = {
   supervisorId: "",
   perCandidate: false,
   supervisorByCandidate: {},
+  staggerMinutes: 0,
   stationAssessors: {},
 };
 
@@ -347,19 +382,16 @@ export function examTimings(exam: {
 export function stepBlock(
   step: ScheduleStepId,
   draft: ScheduleDraft,
-  w: AssessWords,
 ): string | null {
   switch (step) {
     case "basics":
-      if (draft.name.trim().length === 0) return `Give the ${w.sitting} a name.`;
+      if (draft.name.trim().length === 0) return "Give the sitting a name.";
       if (!draft.programmeId) return "Pick an exam that is ready to schedule.";
       return null;
     case "stations":
       if (draft.stations.length === 0) return "Add at least one station.";
       if (draft.mode === "exam" && draft.stations.length > MAX_EXAM_STATIONS) {
-        return w.hiring
-          ? `A formal exam can have at most ${MAX_EXAM_STATIONS} stations. Remove some to continue.`
-          : `An exam circuit takes at most ${MAX_EXAM_STATIONS} stations.`;
+        return `An exam circuit takes at most ${MAX_EXAM_STATIONS} stations.`;
       }
       return null;
     case "people":
@@ -374,7 +406,7 @@ export function stepBlock(
         draft.mode === "training" &&
         draft.candidateIds.length !== draft.stations.length
       ) {
-        return `The number of ${w.trainees} must match the number of stations.`;
+        return "The number of trainees must match the number of stations.";
       }
       return null;
     case "timing":
@@ -395,39 +427,10 @@ export function stepBlock(
   }
 }
 
-const HIRE_STEP_COPY: Partial<Record<ScheduleStepId, { label: string; title: string; desc: string }>> = {
-  basics: { label: "Exam and name", title: "Which exam, and when?", desc: "Pick the exam, give the assessment a name and set the date and when the first rotation starts." },
-  people: { label: "Candidates", title: "Who is sitting it?", desc: "Pick an intake, pick candidates one by one, or paste their emails." },
-  timing: { label: "Rotations", title: "Rotations", desc: "A rotation is one candidate going through every station in turn. We build them from your choices; change the times or breaks if you need to." },
-  supervisor: { label: "Assessors", title: "Who assesses?", desc: "The assessor checks the marks and signs off the result afterwards. Choose one for every rotation, or one for each candidate." },
-  review: { label: "Check and schedule", title: "Check and schedule", desc: "Check it over. Candidates and assessors get an email with the time." },
-};
-
-/** The wizard's steps in the workspace's words; the institution's are SCHEDULE_STEPS unchanged. */
-export function scheduleSteps(w: AssessWords): typeof SCHEDULE_STEPS {
-  if (!w.hiring) return SCHEDULE_STEPS;
-  return SCHEDULE_STEPS.map((step) => ({ ...step, ...HIRE_STEP_COPY[step.id] }));
-}
-
-export function scheduleIntro(w: AssessWords): string {
-  return w.hiring
-    ? "Nothing is created until you press Schedule on the last step."
-    : "Steps unlock in order. Nothing is created until the last step.";
-}
-
-export function scheduleSubmitLabel(w: AssessWords): string {
-  return w.hiring ? "Schedule" : `Create ${w.sitting}`;
-}
-
-/** The review rows whose names differ between the arms. */
-export function scheduleReviewLabels(w: AssessWords): { year: string; supervisor: string } {
-  return { year: w.YearGroup, supervisor: w.hiring ? w.Supervisors : w.Supervisor };
-}
-
 /** The furthest step that may be open: the first one whose answers are not enough yet. */
-export function furthestStep(draft: ScheduleDraft, w: AssessWords): ScheduleStepId {
+export function furthestStep(draft: ScheduleDraft): ScheduleStepId {
   for (const step of SCHEDULE_STEPS) {
-    if (step.id !== "review" && stepBlock(step.id, draft, w) !== null)
+    if (step.id !== "review" && stepBlock(step.id, draft) !== null)
       return step.id;
   }
   return "review";
@@ -436,10 +439,9 @@ export function furthestStep(draft: ScheduleDraft, w: AssessWords): ScheduleStep
 export function stepUnlocked(
   step: ScheduleStepId,
   draft: ScheduleDraft,
-  w: AssessWords,
 ): boolean {
   const order = SCHEDULE_STEPS.map((item) => item.id);
-  return order.indexOf(step) <= order.indexOf(furthestStep(draft, w));
+  return order.indexOf(step) <= order.indexOf(furthestStep(draft));
 }
 
 /**
@@ -450,12 +452,12 @@ export function stepUnlocked(
  */
 export function peopleFormula(
   draft: Pick<ScheduleDraft, "mode" | "candidateIds" | "stations">,
-  words: AssessWords,
+  words: { trainee: string; trainees: string },
 ): { formula: string; help: string | null; ok: boolean } {
   const people = draft.candidateIds.length;
   if (draft.mode === "exam") {
     return {
-      formula: `${people} candidates picked. Each gets their own ${words.circuit}.`,
+      formula: `${people} candidates picked. Each gets their own circuit.`,
       help: null,
       ok: people > 0,
     };
@@ -463,7 +465,7 @@ export function peopleFormula(
   const ok = people === draft.stations.length;
   return {
     formula: `${people} ${people === 1 ? words.trainee : words.trainees} for ${plural(draft.stations.length, "station")}.`,
-    help: `In training, each ${words.trainee} starts at a different station, so these must match.`,
+    help: "In training, each trainee starts at a different station, so these must match.",
     ok,
   };
 }
@@ -608,19 +610,24 @@ export type CircuitPlan =
 
 export function circuitPlan(draft: ScheduleDraft): CircuitPlan {
   if (draft.mode === "training") return { kind: "training" };
-  if (draft.perCandidate && draft.candidateIds.length > 1)
+  if ((draft.perCandidate || draft.staggerMinutes > 0) && draft.candidateIds.length > 1)
     return { kind: "each", candidateIds: draft.candidateIds };
   return { kind: "bulk" };
 }
 
-/**
- * The assessor of each station, in station order, for the api; undefined for an institution (its
- * request is unchanged). An employer sends the whole list, nulls included, so a cleared station clears.
- */
-export function stationAssessorIds(
-  draft: Pick<ScheduleDraft, "stations" | "stationAssessors">,
-  w: AssessWords,
-): (string | null)[] | undefined {
-  if (!w.hiring) return undefined;
-  return draft.stations.map((station) => draft.stationAssessors[station.version_id] || null);
+/** Minutes after the sitting's start that the nth candidate (0-based) begins. */
+export function startOffsetFor(draft: Pick<ScheduleDraft, "mode" | "staggerMinutes">, index: number): number {
+  if (draft.mode !== "exam") return 0;
+  return Math.min(480, Math.max(0, Math.round(draft.staggerMinutes)) * index);
+}
+
+/** The per-station assessors to send: only stations still on the draft, only where somebody was picked. */
+export function stationAssessorsFor(
+  draft: Pick<ScheduleDraft, "mode" | "stations" | "stationAssessors">,
+): Record<string, string> {
+  if (draft.mode !== "exam") return {};
+  const onDraft = new Set(draft.stations.map((station) => station.version_id));
+  return Object.fromEntries(
+    Object.entries(draft.stationAssessors).filter(([station, person]) => person && onDraft.has(station)),
+  );
 }

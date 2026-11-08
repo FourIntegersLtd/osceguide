@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { B2CPageHeader, b2bTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
-import { useAssessWords } from "@/capabilities/assess-words";
-import { programmesCopy } from "@/domains/assess/programmes/support";
 import { ProgrammesSection } from "@/capabilities/authoring";
 import { PlatformExams } from "@/domains/assess/programmes/PlatformExams";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { programmesCopy } from "@/domains/assess/programmes/support";
 
 /**
  * The organisation's programmes: one per exam it runs sittings against.
@@ -18,11 +18,11 @@ import { PlatformExams } from "@/domains/assess/programmes/PlatformExams";
  * yet, so it is not shown here.
  */
 export function Programmes({ orgSlug }: { orgSlug: string }) {
+  const copy = programmesCopy(useAssessWords());
   const [adopted, setAdopted] = useState(0);
   const { hrefFor } = useSurface();
-  const copy = programmesCopy(useAssessWords());
   return (
-    <div className="flex flex-col gap-6" data-testid="programmes-page">
+    <div className="flex max-w-[1080px] flex-col gap-6" data-testid="programmes-page">
       <B2CPageHeader
         board
         action={<span aria-hidden />}

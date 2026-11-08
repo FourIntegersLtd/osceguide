@@ -17,8 +17,8 @@ function nav({ can, href }: NavContext): NavItem[] {
   if (!can("run_circuits")) {
     return [{ key: "myTraining", label: "My assessments", href: href("/trainee"), icon: LuGraduationCap }];
   }
-  // Staff never get My training or practice sessions: the menu is what they run, by job. Team and
-  // Programmes are tabs of Candidates and Exams; `/team` and `/programmes` still resolve.
+  // Staff never get My training or practice sessions: the menu is what they run, by job. Programmes is a
+  // tab of Exams; `/programmes` still resolves. Assessors (the team) has its own entry for a lead assessor.
   const staff: NavItem[] = [
     { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
     { key: "sittings", label: "Assessments", href: href("/sittings"), icon: LuBriefcase, section: "run" },
@@ -32,29 +32,28 @@ function nav({ can, href }: NavContext): NavItem[] {
   return staff;
 }
 
-/** The consumer practice screens: an employer account does not include them. */
-const PRACTICE_SCREENS: readonly ScreenName[] = [
+/**
+ * What an employer answers: Assess's pages without the consumer practice ones. A candidate on an
+ * assessment is never offered self practice or practice sessions, so those routes render "Not on
+ * this account" (HireRefused) rather than a screen built for a learner.
+ */
+const CONSUMER_ONLY: readonly ScreenName[] = [
   "myPractice",
-  "practiceStation",
   "mocks",
   "mockDetail",
   "mockStation",
   "mockComplete",
   "mockList",
   "mockUpdate",
+  "practiceStation",
 ];
+export const HIRE_SCREEN_NAMES: readonly ScreenName[] = ASSESS_SCREEN_NAMES.filter((name) => !CONSUMER_ONLY.includes(name));
 
 export const hireSurface: SurfaceManifest = {
   id: "hire",
   label: "Hiring",
   workspaceKinds: ["employer"],
   nav,
-  screenNames: ASSESS_SCREEN_NAMES.filter((name) => !PRACTICE_SCREENS.includes(name)),
+  screenNames: HIRE_SCREEN_NAMES,
   screensFrom: "assess",
-  refusal: {
-    screens: PRACTICE_SCREENS,
-    title: "This is not part of your employer's account",
-    body: (orgName, staff) =>
-      `Practice stations and mock exams are not included with ${orgName}.${staff ? "" : " Your assessments are on your home page."}`,
-  },
 };

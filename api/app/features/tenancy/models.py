@@ -30,7 +30,7 @@ class Organization(Base, UUIDPrimaryKey, Timestamps):
     )
     contract_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     contract_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # How many candidates the contract covers (an employer's "Plan" line); platform staff set it, null is not set.
+    # Candidates the contract covers (an employer's "Plan" line); platform staff set it, null is unset.
     candidate_seats: Mapped[int | None] = mapped_column(Integer)
     suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     suspended_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
@@ -41,6 +41,9 @@ class Organization(Base, UUIDPrimaryKey, Timestamps):
     # with a second factor. Takes effect at the next password sign-in; a
     # refresh chain already issued keeps working.
     require_staff_mfa: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    # How long candidates' transcripts are kept after an attempt, in days; null keeps them. Enforced by the
+    # transcript job (`attempts.service_retention`), so a change applies at its next run.
+    recording_retention_days: Mapped[int | None] = mapped_column(Integer)
 
 
 class Membership(Base, UUIDPrimaryKey, Timestamps):

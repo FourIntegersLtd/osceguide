@@ -100,8 +100,9 @@ def next_step(
 
     index = position.slot_index
 
-    if position.phase is RunPhase.READING:
+    if position.phase is RunPhase.READING and index not in done:
         return Simulation(slot_index=index)
+    # A station skipped while it was being read (a candidate marked absent) is passed over like a sat one.
 
     # Stations already sat are passed over, so a redone earlier one hands back to the first still owed (R-12).
     upcoming = _next_open(index, slot_count, done)

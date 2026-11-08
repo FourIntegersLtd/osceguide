@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { PlatformError } from "@/foundation/platform-client";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
 import {
   pickFrame,
@@ -10,6 +11,7 @@ import {
   markable,
   slotProgress,
   summariseCircuit,
+  listenFailureCopy,
 } from "@/domains/assess/sessions/support";
 
 function slot(over: Partial<ConsoleSlot> & { id: string; slot_index: number }): ConsoleSlot {
@@ -202,4 +204,9 @@ test("summariseCircuit: all marked is ready to publish only when the review is r
   assert.equal(summariseCircuit(data, { state: "draft" }).readyToPublish, true);
   assert.equal(summariseCircuit(data, { state: "published" }).readyToPublish, false);
   assert.equal(summariseCircuit(data, null).readyToPublish, false);
+});
+
+test("listening in: a refusal is said in words, by its code", () => {
+  assert.equal(listenFailureCopy(new PlatformError(409, { code: "circuit_not_live", message: "raw" })), "There is nothing to listen to: the circuit is not running.");
+  assert.equal(listenFailureCopy(new PlatformError(503, { code: "voice_unavailable", message: "raw" })), "The voice service is not available right now. Try again in a minute.");
 });

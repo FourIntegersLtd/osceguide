@@ -49,7 +49,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-82 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
+84 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -271,6 +271,8 @@ token that never existed, so the leaked chain stays alive.
 `expires_at timestamptz not null`, `used_at timestamptz null`,
 `organization_id` → `organizations.id` SET NULL, null: the organisation that sent an invitation (the
 invitation page names it); null for a plain reset link.
+`membership_role varchar(32) null`: the role an invitation grants, so the invitation page can name it and a
+re-issued link keeps it; null for a plain reset link.
 
 ### `user_mfa`
 
@@ -328,15 +330,16 @@ they are regenerated. Only the argon2 hash is stored. No `created_at` or
 | Field | Type | Notes |
 |---|---|---|
 | `contact_name` / `contact_email` | `varchar(200)` / `varchar(320) null` | who to write to about the account; the organisation's own admin keeps them (B-33) |
-| `candidate_seats` | `int null` | seats the contract allows; staff-set only, shown on the hire Plan line (no enforcement) |
 | `slug` | `citext not null unique` | the URL identifier and nothing else — every FK everywhere points at `id`, which is the mistake b2b made the other way round |
 | `name` | `varchar(200) not null` | |
 | `org_type` | `varchar(32) not null default 'institution'` | |
 | `status` | `varchar(32) not null default 'trial'` | `ACTIVE_ORG_STATUSES = {trial, active}`; suspension writes `suspended` |
 | `parent_org_id` | `uuid null` → `organizations.id` SET NULL | self-reference, for partner hierarchies |
 | `contract_starts_at` / `contract_ends_at` | `timestamptz null` | |
+| `candidate_seats` | `integer null` | Candidates the contract covers (an employer's Plan line); null until platform staff set it. |
 | `suspended_at` | `timestamptz null` | |
 | `suspended_by` | `uuid null` → `users.id` SET NULL | |
+| `recording_retention_days` | `int null` | days after an attempt ends that its transcript is kept; null keeps it until a staff deletion. Enforced by the retention sweep that runs on the `compact_transcripts` schedule. Set by the organisation's admin, audited as `org.retention_changed` |
 | `require_staff_mfa` | `bool not null default false` | when set, a membership whose role is outside `END_USER_ROLES` must use a second factor. Same precedent as `organization_sso.sso_only`: the organisation states a sign-in rule. Takes effect at the next password sign-in; existing refresh chains continue |
 
 ### `memberships`
@@ -760,6 +763,7 @@ recording.
 | `status` | `varchar(32) not null default 'created'` | |
 | `started_at` / `completed_at` | `timestamptz null` | |
 | `failed_reason` | `varchar(200) null` | |
+| `content_erased_at` | `timestamptz null` | when retention or a staff deletion removed this attempt's transcript. The attempt and its marks stay; the retention sweep skips attempts where it is set |
 | `legacy_ref` | `varchar(200) null` | where this row came from in Firestore or b2b, e.g. `b2c:transcript:abc123`; dropped with the `migration` package once every tenant is across |
 
 The four references are `RESTRICT`, not `CASCADE` or `SET NULL`: an attempt is a
@@ -857,7 +861,7 @@ What the engine scored, kept immutably.
 UNIQUE `(attempt_id, policy_version)`: re-running the same policy stores nothing new,
 and scoring under a different one sits beside the old result rather than replacing it.
 
-## results — 3 tables
+## results — 4 tables
 
 Ported from b2b's `sql/017`, including the part that matters most: revisions and
 events are append-only, **enforced by a trigger** rather than by convention. A
@@ -922,6 +926,31 @@ is not lost because a mail provider was briefly down.
 | `delivered_at` | `timestamptz null` | |
 | `last_error` | `text null` | |
 
+### `result_appeals`
+
+**Growth:** per-attempt.
+A candidate's request to have a released result looked at again, and how it ended. A decided row is
+kept (the outcome is a new `candidate_result_revisions` row it points at); only the free text is
+scrubbed to `[erased]` when the institution deletes the candidate's data.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` CASCADE | |
+| `sitting_id` | `uuid not null` → `sittings.id` CASCADE | |
+| `trainee_id` | `uuid not null` → `trainees.id` RESTRICT | |
+| `revision` | `int not null` | the released revision under review |
+| `outcome_revision` | `int null` | the revision a resolved appeal appended |
+| `status` | `varchar(16) not null default 'open'` | `open` \| `in_review` \| `resolved` \| `declined`; CHECK. `in_review` requires `assigned_to` |
+| `reason` | `text not null` | the candidate's words, up to 2000 characters |
+| `requested_by` | `uuid not null` → `users.id` | the candidate, or the administrator acting for them |
+| `on_behalf` | `bool not null default false` | |
+| `assigned_to`, `decided_by` | `uuid null` → `users.id` SET NULL | the second marker, who may not be the result's signer or releaser |
+| `assigned_at`, `decided_at` | `timestamptz null` | |
+| `decision_note` | `text null` | why a request was declined |
+
+Partial UNIQUE `uq_result_appeals_active` on `(sitting_id, trainee_id)` where `status IN ('open', 'in_review')`: one
+live appeal per candidate and sitting. Index `ix_result_appeals_org_status` `(org_id, status)` for the queue.
+
 ## reviews — 3 tables
 
 b2b keeps all three of these in one wide table discriminated by a `feedback_kind`
@@ -948,6 +977,15 @@ A rubric filled in against one slot, by staff or by a peer observer.
 
 UNIQUE `(slot_id, submitted_by)` — one review per person per slot; submitting twice
 edits the first.
+
+### `sitting_templates`
+
+**Growth:** per-org.
+A named setup an organisation keeps to start new schedules from. Holds no people.
+
+`org_id` → `organizations.id` CASCADE, `name varchar(120) not null` (UNIQUE per org on
+`lower(name)`), `config jsonb not null` (programme, mode, stations in order, timing, assessor
+style: `schemas.TemplateConfig`), `created_by` → `users.id` SET NULL.
 
 ### `gp_lead_reviews`
 
@@ -1021,6 +1059,8 @@ A scheduled event an organisation holds.
 | `voice_fault_at` | `timestamptz null` | when the voice service last refused to bring the patient in (R-16); cleared by the step that succeeds |
 | `open_floor` | `boolean not null default false` | training rooms: every participant may speak (the end-of-session conversation) |
 | `room_closed_at` | `timestamptz null` | training rooms: when the supervisor closed the room that stayed open after End |
+| `start_offset_minutes` | `int not null default 0` | staggered starts: how long after the sitting's start this rotation begins; join opens 10 minutes before |
+| `station_assessors` | `jsonb not null default {}` | station version id → the user who marks that station; empty means the circuit's supervisor |
 
 **The examination clock is here, not on the slot.** A break belongs to no slot —
 it is the circuit resting between stations — and that is the one thing a per-slot
@@ -1129,7 +1169,6 @@ address a slot directly; every user-facing route still resolves `org_id` from th
 | `org_id` | `uuid not null` → `organizations.id` CASCADE | indexed with `status` |
 | `slot_index` | `int not null` | |
 | `trainee_id` | `uuid not null` → `users.id` CASCADE | indexed |
-| `assessor_user_id` | `uuid null` → `users.id` SET NULL | hire: who assesses this station; display only |
 | `station_version_id` | `uuid not null` → `station_versions.id` RESTRICT | |
 | `status` | `varchar(32) not null default 'scheduled'` | `scheduled` → `reading` → `in_consultation` → `completed`, or `skipped`. CHECK `ck_slots_status` |
 | `room_name` | `varchar(200) null` | |

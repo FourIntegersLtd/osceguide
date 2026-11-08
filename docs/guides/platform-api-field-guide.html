@@ -734,12 +734,13 @@ const SCHEMA = [
        ["token_hash", "varchar(64) not null unique", ""],
        ["used_at", "timestamptz null", ""]],
       r:[["Why", "Every token is kept, spent or not, because that is the only way reuse can be told from forgery. Overwriting a single <em>current_token_hash</em> on rotation loses the evidence: a replayed token is simply not found, which is indistinguishable from a token that never existed, so the leaked chain stays alive."]]},
-     {t:"password_reset_tokens", b:"Growth: unbounded. Retention: GAP: used and expired tokens are never deleted; one row per reset request. <em>user_id</em> → <em>users.id</em> CASCADE, <em>token_hash varchar(64) not null unique</em>, <em>expires_at timestamptz not null</em>, <em>used_at timestamptz null</em>, <em>organization_id</em> → <em>organizations.id</em> SET NULL, null: the organisation that sent an invitation (the invitation page names it); null for a plain reset link.", f:[
+     {t:"password_reset_tokens", b:"Growth: unbounded. Retention: GAP: used and expired tokens are never deleted; one row per reset request. <em>user_id</em> → <em>users.id</em> CASCADE, <em>token_hash varchar(64) not null unique</em>, <em>expires_at timestamptz not null</em>, <em>used_at timestamptz null</em>, <em>organization_id</em> → <em>organizations.id</em> SET NULL, null: the organisation that sent an invitation (the invitation page names it); null for a plain reset link. <em>membership_role varchar(32) null</em>: the role an invitation grants, so the invitation page can name it and a re-issued link keeps it; null for a plain reset link.", f:[
        ["user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
        ["token_hash", "varchar(64) not null unique", ""],
        ["expires_at", "timestamptz not null", ""],
        ["used_at", "timestamptz null", ""],
-       ["organization_id", "uuid null → organizations.id ON DELETE SET NULL", ""]]},
+       ["organization_id", "uuid null → organizations.id ON DELETE SET NULL", ""],
+       ["membership_role", "varchar(32) null", ""]]},
      {t:"user_mfa", b:"Growth: per-user. One authenticator for one account. <em>user_id</em> is the primary key, so there is no second secret. <em>confirmed_at</em> stays null until a code from that secret has been accepted; until then the row is an enrolment in progress, not a second factor. <em>last_used_step</em> is the TOTP counter of the last accepted code, and a later code at that step or earlier is refused as a replay. The secret is Fernet ciphertext under <em>MFA_SECRET_KEY</em>, never the shared secret itself. No <em>updated_at</em>.", flags:["no updated_at"], f:[
        ["user_id", "uuid not null → users.id CASCADE", "primary key"],
        ["secret_ciphertext", "text not null", "Fernet token, not the TOTP secret"],
@@ -765,8 +766,10 @@ const SCHEMA = [
        ["parent_org_id", "uuid null → organizations.id SET NULL", "self-reference, for partner hierarchies"],
        ["contract_starts_at", "timestamptz null", ""],
        ["contract_ends_at", "timestamptz null", ""],
+       ["candidate_seats", "integer null", "Candidates the contract covers (an employer's Plan line); null until platform staff set it."],
        ["suspended_at", "timestamptz null", ""],
        ["suspended_by", "uuid null → users.id SET NULL", ""],
+       ["recording_retention_days", "int null", "days after an attempt ends that its transcript is kept; null keeps it until a staff deletion. Enforced by the retention sweep that runs on the <em>compact_transcripts</em> schedule. Set by the organisation's admin, audited as <em>org.retention_changed</em>"],
        ["require_staff_mfa", "bool not null default false", "when set, a membership whose role is outside <em>END_USER_ROLES</em> must use a second factor. Same precedent as <em>organization_sso.sso_only</em>: the organisation states a sign-in rule. Takes effect at the next password sign-in; existing refresh chains continue"]]},
      {t:"memberships", b:"Growth: per-org. A person's role in an organisation. A user may hold several, in several orgs.", f:[
        ["org_id", "uuid not null → organizations.id CASCADE", ""],
@@ -982,6 +985,7 @@ const SCHEMA = [
        ["started_at", "timestamptz null", ""],
        ["completed_at", "timestamptz null", ""],
        ["failed_reason", "varchar(200) null", ""],
+       ["content_erased_at", "timestamptz null", "when retention or a staff deletion removed this attempt's transcript. The attempt and its marks stay; the retention sweep skips attempts where it is set"],
        ["legacy_ref", "varchar(200) null", "where this row came from in Firestore or b2b, e.g. <em>b2c:transcript:abc123</em>; dropped with the <em>migration</em> package once every tenant is across"]],
       r:[["Why", "The four references are <em>RESTRICT</em>, not <em>CASCADE</em> or <em>SET NULL</em>: an attempt is a recording of something that happened to a person, and deleting the slot it belonged to must not quietly take the transcript with it. <em>SET NULL</em> is not available either, because the CHECK below requires an <em>exam_slot</em> attempt to name its slot."],
          ["Why", "Constraints: - CHECK <em>ck_attempts_kind_matches_reference</em> — exactly one optional reference matches the kind. Written as a CHECK rather than left to the service, because six code paths create attempts and only one needs to be wrong for a slot to end up with two live attempts. - CHECK <em>ck_attempts_status</em> — <em>created</em>, <em>running</em>, <em>interaction_complete</em>, <em>evaluated</em>, <em>failed</em>. The vocabulary lives in the database as well as in <em>domain.Status</em>, because <em>set_status</em> took a bare string and a typo wrote a status nothing would ever match, stalling the attempt in it. - Partial UNIQUE <em>uq_attempts_live_slot</em> on <em>slot_id</em> WHERE <em>slot_id IS NOT NULL AND status &lt;&gt; 'failed'</em> — a slot has at most one attempt that has not failed; a re-dispatch fails the old one first. - Partial UNIQUE <em>uq_attempts_legacy_ref</em> WHERE <em>legacy_ref IS NOT NULL</em> — a second import run updates nothing rather than duplicating history. - Partial UNIQUE <em>uq_attempts_one_unstarted</em> <em>NULLS NOT DISTINCT</em> on <em>(user_id, kind, exam_id, org_id, station_version_id, set_entry_id)</em> WHERE the attempt is <em>created</em>, never started, not frozen, has no room, has a station version and is a <em>practice</em>/<em>set_station</em>/<em>self_practice</em> — a double start makes one row. The migration fails older duplicates with <em>failed_reason='duplicate_start'</em>. Partial indexes <em>ix_attempts_set_entry_id</em>, <em>ix_attempts_peer_session_id</em>, <em>ix_attempts_source_attempt_id</em> (foreign keys, WHERE not null). - Exam-day indexes (migration <em>3e5b8d1f7a42</em>): <em>ix_payments_user_id</em>, <em>ix_refresh_chains_user_id</em>, <em>ix_entitlements_user_id</em>, <em>ix_circuits_sitting_id</em>, <em>ix_circuit_trainees_trainee_id</em>, <em>ix_slots_org_circuit</em>, <em>ix_candidate_result_revisions_org_released</em>, <em>ix_stations_library</em> <em>(exam_id, created_at, id)</em> for the published library page, <em>ix_station_versions_station_published</em>. The same migration sets the database's <em>statement_timeout</em> (15s) and <em>idle_in_transaction_session_timeout</em> (60s)."],
@@ -1054,7 +1058,23 @@ const SCHEMA = [
        ["attempts", "int not null default 0", ""],
        ["available_at", "timestamptz not null default now()", "partial index WHERE <em>status = 'pending'</em>"],
        ["delivered_at", "timestamptz null", ""],
-       ["last_error", "text null", ""]]}
+       ["last_error", "text null", ""]]},
+     {t:"result_appeals", b:"Growth: per-attempt. A candidate's request to have a released result looked at again, and how it ended. A decided row is kept (the outcome is a new <em>candidate_result_revisions</em> row it points at); only the free text is scrubbed to <em>[erased]</em> when the institution deletes the candidate's data.", f:[
+       ["org_id", "uuid not null → organizations.id CASCADE", ""],
+       ["sitting_id", "uuid not null → sittings.id CASCADE", ""],
+       ["trainee_id", "uuid not null → trainees.id RESTRICT", ""],
+       ["revision", "int not null", "the released revision under review"],
+       ["outcome_revision", "int null", "the revision a resolved appeal appended"],
+       ["status", "varchar(16) not null default 'open'", "<em>open</em> | <em>in_review</em> | <em>resolved</em> | <em>declined</em>; CHECK. <em>in_review</em> requires <em>assigned_to</em>"],
+       ["reason", "text not null", "the candidate's words, up to 2000 characters"],
+       ["requested_by", "uuid not null → users.id", "the candidate, or the administrator acting for them"],
+       ["on_behalf", "bool not null default false", ""],
+       ["assigned_to", "uuid null → users.id SET NULL", "the second marker, who may not be the result's signer or releaser"],
+       ["decided_by", "uuid null → users.id SET NULL", "the second marker, who may not be the result's signer or releaser"],
+       ["assigned_at", "timestamptz null", ""],
+       ["decided_at", "timestamptz null", ""],
+       ["decision_note", "text null", "why a request was declined"]],
+      r:[["Why", "Partial UNIQUE <em>uq_result_appeals_active</em> on <em>(sitting_id, trainee_id)</em> where <em>status IN ('open', 'in_review')</em>: one live appeal per candidate and sitting. Index <em>ix_result_appeals_org_status</em> <em>(org_id, status)</em> for the queue."]]}
    ]},
    {s:"reviews", n:"b2b keeps all three of these in one wide table discriminated by a <em>feedback_kind</em> column, with no foreign keys at all. Three tables here, each with real keys, because they have different owners, lifecycles and uniqueness.", tables:[
      {t:"slot_reviews", b:"Growth: per-attempt. A rubric filled in against one slot, by staff or by a peer observer.", f:[
@@ -1067,6 +1087,11 @@ const SCHEMA = [
        ["notes", "text null", ""],
        ["completed_at", "timestamptz null", ""]],
       r:[["unique", "<em>(slot_id, submitted_by)</em> — one review per person per slot; submitting twice edits the first."]]},
+     {t:"sitting_templates", b:"Growth: per-org. A named setup an organisation keeps to start new schedules from. Holds no people. <em>org_id</em> → <em>organizations.id</em> CASCADE, <em>name varchar(120) not null</em> (UNIQUE per org on <em>lower(name)</em>), <em>config jsonb not null</em> (programme, mode, stations in order, timing, assessor style: <em>schemas.TemplateConfig</em>), <em>created_by</em> → <em>users.id</em> SET NULL.", f:[
+       ["org_id", "uuid not null → organizations.id ON DELETE CASCADE", ""],
+       ["name", "varchar(120) not null", ""],
+       ["config", "jsonb not null", ""],
+       ["created_by", "uuid null → users.id ON DELETE SET NULL", ""]]},
      {t:"gp_lead_reviews", b:"Growth: per-attempt. A revisioned second opinion on a slot. One per slot, edited in place, with a revision counter because two reviewers can hold the same screen open (<em>ReviewConflict</em>). <em>slot_id</em> → <em>slots.id</em> CASCADE (UNIQUE), <em>org_id</em> → <em>organizations.id</em> CASCADE, <em>revision int not null default 1</em>, <em>status varchar(16) not null default 'draft'</em>, <em>overall_rag varchar(1) null</em>, <em>field_values jsonb not null default {}</em>, <em>notes text null</em>, <em>reviewed_by</em> → <em>users.id</em> SET NULL, <em>completed_at timestamptz null</em>.", f:[
        ["slot_id", "uuid not null → slots.id ON DELETE CASCADE", ""],
        ["org_id", "uuid not null → organizations.id ON DELETE CASCADE", ""],
@@ -1123,7 +1148,9 @@ const SCHEMA = [
        ["auto_advance", "boolean not null default true", "off means a human decides every move"],
        ["voice_fault_at", "timestamptz null", "when the voice service last refused to bring the patient in (R-16); cleared by the step that succeeds"],
        ["open_floor", "boolean not null default false", "training rooms: every participant may speak (the end-of-session conversation)"],
-       ["room_closed_at", "timestamptz null", "training rooms: when the supervisor closed the room that stayed open after End"]],
+       ["room_closed_at", "timestamptz null", "training rooms: when the supervisor closed the room that stayed open after End"],
+       ["start_offset_minutes", "int not null default 0", "staggered starts: how long after the sitting's start this rotation begins; join opens 10 minutes before"],
+       ["station_assessors", "jsonb not null default {}", "station version id → the user who marks that station; empty means the circuit's supervisor"]],
       r:[["Why", "The examination clock is here, not on the slot. A break belongs to no slot — it is the circuit resting between stations — and that is the one thing a per-slot clock could not express, which is why breaks were stored and counted down by nobody. A pause has the same shape: stopping the clock must rewrite one deadline, and with the clock on two rows it rewrote two."],
          ["Why", "<em>phase_seq</em> is how a human beats the clock. Every transition is a job scheduled for the moment the phase ends, carrying the sequence it was scheduled against; any override bumps the sequence, so the job it raced arrives holding a number that no longer matches and does nothing. That is the whole concurrency design — no lease, no claim table, one integer."]]},
      {t:"circuit_interventions", b:"Growth: per-org. What a human did to a running examination, and why. Append-only, and no <em>updated_at</em>: an intervention is a fact about a moment, not a row anybody edits. When a candidate says their station went wrong, the question is what was done to it and by whom, and before this the answer was nowhere.", flags:["append-only", "no updated_at"], f:[
@@ -1745,6 +1772,9 @@ const API = [
    ["GET","/api/v1/me/receipts-full","BEARER","This person's receipts, rendered, newest first, a page at a time, so a screen needs one call and not one per receipt"]
   ]},
   {n:"Performance and achievements", rows:[
+   ["GET","/api/v1/me/slots/{slot_id}/peer-marks","BEARER","What fellow trainees marked on the caller's published turn, named by marker, examiner notes never included"],
+   ["GET","/api/v1/me/circuits/{circuit_id}/scheme","BEARER","The marking scheme of a training circuit, without examiner notes, for the trainee watching"],
+   ["PUT","/api/v1/me/circuits/{circuit_id}/slots/{slot_id}/peer-marks","BEARER","A watching trainee saves their marks for another's turn; refused for the active trainee and for exam circuits"],
    ["GET","/api/v1/me/achievements","BEARER","This person's practice record: stations touched, and the streak it adds up to"],
    ["GET","/api/v1/me/performance","BEARER","How this person is doing at one exam: per domain, overall, over time"]
   ]},
@@ -1926,6 +1956,23 @@ const API = [
    ["PUT","/api/v1/orgs/{org_slug}/sittings/{sitting_id}","ORG_ADMIN","Correct a sitting that has already been scheduled"],
    ["POST","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/cancel","ORG_ADMIN","Refused with sitting_locked once any circuit has started: end those circuits instead"],
    ["POST","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/decisions/release","INST_ADMIN","Release Many"],
+   ["POST","/api/v1/me/results/{sitting_id}/appeal","BEARER","A candidate appeals a released result, with the reason"],
+   ["GET","/api/v1/me/results/{sitting_id}/appeal","BEARER","The candidate's own appeal and where it stands"],
+   ["GET","/api/v1/orgs/{org_slug}/appeals","INST_ADMIN","Appeals for the school, to triage"],
+   ["POST","/api/v1/orgs/{org_slug}/appeals/{appeal_id}/assign","INST_ADMIN","Give an appeal to a reviewer"],
+   ["POST","/api/v1/orgs/{org_slug}/appeals/{appeal_id}/decline","INST_ADMIN","Close an appeal without changing the result, with a reason"],
+   ["POST","/api/v1/orgs/{org_slug}/appeals/{appeal_id}/resolve","INST_ADMIN","Close an appeal with the outcome of the re-look"],
+   ["POST","/api/v1/orgs/{org_slug}/candidates/{trainee_id}/erase-data","ORG_ADMIN","Erase one candidate's data held for the school"],
+   ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/allow-rejoin","ORG_STAFF","Let a candidate who dropped out come back into the live room"],
+   ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/mark-absent","ORG_STAFF","Record a candidate as absent from the circuit"],
+   ["PATCH","/api/v1/orgs/{org_slug}/retention","ORG_ADMIN","Change how long the school keeps recordings and transcripts"],
+   ["GET","/api/v1/orgs/{org_slug}/sitting-templates","ORG_READER","Saved sitting set-ups"],
+   ["POST","/api/v1/orgs/{org_slug}/sitting-templates","ORG_ADMIN","Save a sitting set-up to reuse"],
+   ["PUT","/api/v1/orgs/{org_slug}/sitting-templates/{template_id}","ORG_ADMIN","Change a saved sitting set-up"],
+   ["DELETE","/api/v1/orgs/{org_slug}/sitting-templates/{template_id}","ORG_ADMIN","Delete a saved sitting set-up"],
+   ["POST","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/appeals","INST_ADMIN","Record an appeal on a candidate's behalf"],
+   ["POST","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/decisions/sign-off","INST_ADMIN","Sign off the whole sheet; decisions_incomplete while any candidate has no decision"],
+   ["GET","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/shortlist.csv","ORG_ADMIN","The shortlist of candidates as a CSV"],
    ["GET","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/readout","ORG_ADMIN","The document a course lead downloads after an examination: the cohort ranked, what it adds up to, and what it recommends"],
    ["GET","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/report.csv","ORG_ADMIN","Read Sitting Report Csv"],
    ["POST","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/circuits/bulk","ORG_ADMIN","Build several circuits at once"],
@@ -1962,6 +2009,11 @@ const API = [
    ["PATCH","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/auto-advance","ORG_STAFF","Hand the circuit back to a human, or return it to the clock"]
   ]},
   {n:"Read models and live screens", rows:[
+   ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/floor","ORG_STAFF","Give the floor to one trainee in a training room"],
+   ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/participants/{identity}/mic","ORG_STAFF","Allow or mute one person's microphone"],
+   ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/room/close","ORG_STAFF","Close a training room after it has ended"],
+   ["GET","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/scheme","ORG_STAFF","The marking scheme for the live marking panel"],
+   ["GET","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/slots/{slot_id}/peer-marks","ORG_STAFF","Every watching trainee's marks for one turn, labelled by marker"],
    ["GET","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console","ORG_READER","One request for the screen an examination is run from."],
    ["GET","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console/stream","BEARER","The console, pushed."],
    ["GET","/api/v1/orgs/{org_slug}/dashboard","ORG_READER","The institutional home screen: counts, setup state and recent sittings."],

@@ -1,17 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { circuitCopy } from "@/domains/assess/sessions/hireConsole";
 import { ActionMenu, Alert, Button } from "@/foundation/ui";
-import { useAssessWords } from "@/capabilities/assess-words";
-import type { AssessWords } from "@/capabilities/assess-words/vocabulary";
-import { HIRE_CONSOLE, HIRE_JUMP_DIALOG, hireAutoAdvance, hireRedoDialog, jumpChoices } from "@/domains/assess/sessions/hireConsole";
 import { assessMeta } from "@/foundation/ui/b2bTokens";
 import { overrides, runControls, setAutoAdvance } from "@/domains/assess/sessions/api";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
+import { HIRE_CONSOLE, HIRE_JUMP_DIALOG, hireAutoAdvance, hireRedoDialog, jumpChoices } from "@/domains/assess/sessions/hireConsole";
 import { orderedSlots, stationLabel } from "@/domains/assess/sessions/support";
 import { primaryTurnAction } from "@/domains/assess/sessions/turns";
 import { OverrideDialog, type OverrideInput, type OverrideRequest } from "@/domains/assess/sessions/OverrideDialog";
+import type { AssessWords } from "@/capabilities/assess-words/vocabulary";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * The controls a supervisor runs an examination from.
@@ -59,18 +58,23 @@ export function SupervisorControls({
   // Shown under a disabled menu item, and read out as its reason.
   const waitHint = working ? (reconnecting ? `Reconnecting to the ${w.circuit}` : "Another action is running") : undefined;
 
-  const RESEND = {
-    label: "Resend the patient",
-    group: hire ? HIRE_CONSOLE.groups.patient : undefined,
-    disabled: working,
-    hint: waitHint,
-    onSelect: () => openRequest(resendRequest(orgSlug, circuitId)),
-  };
-
   // Redo acts on the station running now; Jump offers every other one.
-  const slots = orderedSlots(data);
-  const activeSlot = slots.find((slot) => slot.id === circuit.active_slot_id);
+  const activeSlot = orderedSlots(data).find((slot) => slot.id === circuit.active_slot_id);
   const otherSlots = jumpChoices(data);
+  const redoJump = [
+    {
+      label: HIRE_CONSOLE.redo,
+      disabled: working || !activeSlot,
+      hint: waitHint ?? (activeSlot ? undefined : HIRE_CONSOLE.noStationRunning),
+      onSelect: () => activeSlot && openRequest(redoRequest(orgSlug, circuitId, activeSlot)),
+    },
+    {
+      label: HIRE_CONSOLE.jump,
+      disabled: working || otherSlots.length === 0,
+      hint: waitHint ?? (otherSlots.length === 0 ? HIRE_CONSOLE.noOtherStation : undefined),
+      onSelect: () => openRequest(jumpRequest(orgSlug, circuitId, otherSlots)),
+    },
+  ];
 
   async function copyObserverLink() {
     try {
@@ -79,6 +83,20 @@ export function SupervisorControls({
       // Clipboard refused: the address bar still holds the link.
     }
   }
+
+  // Anyone who has not sat can be marked absent, before or during the run.
+  const slots = data.slots ?? [];
+  const hasSat = new Set(
+    slots.filter((slot) => slot.status !== "scheduled" && slot.status !== "reading").map((slot) => slot.trainee.user_id),
+  );
+  const absentItems = [...new Map(slots.map((slot) => [slot.trainee.user_id, slot])).values()]
+    .filter((slot) => !hasSat.has(slot.trainee.user_id))
+    .map((slot) => ({
+      label: `Mark ${slot.trainee.name ?? w.trainee} absent`,
+      disabled: working,
+      hint: waitHint,
+      onSelect: () => openRequest(absentRequest(orgSlug, circuitId, slot.trainee.user_id, slot.trainee.name ?? w.trainee, w)),
+    }));
 
   async function commit(input: OverrideInput) {
     if (!request) return;
@@ -106,12 +124,13 @@ export function SupervisorControls({
 
       {started ? null : (
         <p className={assessMeta}>
-          Pausing, adding time or skipping asks for a reason. It is saved with the circuit.
+          Pausing, adding time or skipping asks for a reason. {`It is saved with the ${w.circuit}.`}
         </p>
       )}
 
       <div className="flex flex-wrap items-center gap-2.5">
         {!started ? (
+          <>
           <Button
             themeType="b2b"
             variant="commit"
@@ -119,8 +138,10 @@ export function SupervisorControls({
             disabled={working}
             onClick={() => run("start", () => runControls.start(orgSlug, circuitId))}
           >
-            {hire ? HIRE_CONSOLE.start : "Start circuit"}
+            {hire ? HIRE_CONSOLE.start : `Start ${w.circuit}`}
           </Button>
+          <ActionMenu label={`More ${w.circuit} controls`} items={absentItems} />
+          </>
         ) : (
           <>
             <Button
@@ -130,7 +151,7 @@ export function SupervisorControls({
               disabled={working}
               onClick={() =>
                 training && turn.kind === "end"
-                  ? openRequest(endRequest(orgSlug, circuitId, hire, w))
+                  ? openRequest(endRequest(orgSlug, circuitId, w, hire))
                   : run("advance", () => runControls.advance(orgSlug, circuitId))
               }
             >
@@ -149,36 +170,18 @@ export function SupervisorControls({
             </Button>
 
             <ActionMenu
-              label={hire ? HIRE_CONSOLE.menu : "More circuit controls"}
+              label={hire ? HIRE_CONSOLE.menu : `More ${w.circuit} controls`}
               items={[
-                ...(hire ? [RESEND] : []),
-                { label: hire ? HIRE_CONSOLE.addTime : "Add time", group: hire ? HIRE_CONSOLE.groups.time : undefined, disabled: working, hint: waitHint, onSelect: () => openRequest(extendRequest(orgSlug, circuitId, hire)) },
-                { label: hire ? HIRE_CONSOLE.restartClock : "Restart the timer", group: hire ? HIRE_CONSOLE.groups.time : undefined, disabled: working, hint: waitHint, onSelect: () => openRequest(resetRequest(orgSlug, circuitId)) },
-                ...(hire ? [] : [RESEND]),
-                ...(hire
-                  ? [
-                      {
-                        label: HIRE_CONSOLE.redo,
-                        group: HIRE_CONSOLE.groups.redo,
-                        disabled: working || !activeSlot,
-                        hint: waitHint ?? (activeSlot ? undefined : HIRE_CONSOLE.noStationRunning),
-                        onSelect: () => activeSlot && openRequest(redoRequest(orgSlug, circuitId, activeSlot)),
-                      },
-                      {
-                        label: HIRE_CONSOLE.jump,
-                        group: HIRE_CONSOLE.groups.jump,
-                        disabled: working || otherSlots.length === 0,
-                        hint: waitHint ?? (otherSlots.length === 0 ? HIRE_CONSOLE.noOtherStation : undefined),
-                        onSelect: () => openRequest(jumpRequest(orgSlug, circuitId, otherSlots)),
-                      },
-                    ]
-                  : []),
-                ...(hire
-                  ? [{ label: HIRE_CONSOLE.observerLink, group: HIRE_CONSOLE.groups.watch, onSelect: () => void copyObserverLink() }]
-                  : []),
+                { label: hire ? HIRE_CONSOLE.addTime : "Add time", disabled: working, hint: waitHint, onSelect: () => openRequest(extendRequest(orgSlug, circuitId, hire)) },
+                { label: hire ? HIRE_CONSOLE.restartClock : "Restart the timer", disabled: working, hint: waitHint, onSelect: () => openRequest(resetRequest(orgSlug, circuitId)) },
+                { label: "Resend the patient", disabled: working, hint: waitHint, onSelect: () => openRequest(resendRequest(orgSlug, circuitId)) },
+                { label: "Allow one re-join", disabled: working, hint: waitHint, onSelect: () => openRequest(rejoinRequest(orgSlug, circuitId, w)) },
+                ...(hire ? redoJump : []),
+                ...absentItems,
+                ...(hire ? [{ label: HIRE_CONSOLE.observerLink, onSelect: () => void copyObserverLink() }] : []),
                 ...(training && turn.kind === "end"
                   ? []
-                  : [{ label: hire ? HIRE_CONSOLE.end : "End circuit", group: hire ? HIRE_CONSOLE.groups.stop : undefined, tone: "danger" as const, disabled: working, hint: waitHint, onSelect: () => openRequest(endRequest(orgSlug, circuitId, hire, w)) }]),
+                  : [{ label: hire ? HIRE_CONSOLE.end : `End ${w.circuit}`, tone: "danger" as const, disabled: working, hint: waitHint, onSelect: () => openRequest(endRequest(orgSlug, circuitId, w, hire)) }]),
               ]}
             />
           </>
@@ -198,7 +201,7 @@ export function SupervisorControls({
             }
             className="mt-0.5 h-[18px] w-[18px]"
           />
-          {hire ? hireAutoAdvance(circuit.auto_advance) : `Move on by itself when time is up. If off, you press ${training ? "the button above to bring in the next trainee" : "Next station"}.`}
+          {hire ? hireAutoAdvance(circuit.auto_advance) : <>Move on by itself when time is up. If off, you press {training ? `the button above to bring in the next ${w.trainee}` : "Next station"}.</>}
         </label>
       ) : null}
 
@@ -216,7 +219,7 @@ export function SupervisorControls({
 function pauseRequest(slug: string, circuitId: string, w: AssessWords): OverrideRequest {
   return {
     name: "pause",
-    title: circuitCopy("Pause", w),
+    title: `Pause the ${w.circuit}`,
     lead: "The clock stops for everybody. The patient stays in the room.",
     commitLabel: "Pause",
     run: ({ reason }) => overrides.pause(slug, circuitId, reason),
@@ -226,7 +229,7 @@ function pauseRequest(slug: string, circuitId: string, w: AssessWords): Override
 function resumeRequest(slug: string, circuitId: string, w: AssessWords): OverrideRequest {
   return {
     name: "resume",
-    title: circuitCopy("Resume", w),
+    title: `Resume the ${w.circuit}`,
     lead: "The clock starts again where it stopped.",
     commitLabel: "Resume",
     run: ({ reason }) => overrides.resume(slug, circuitId, reason),
@@ -264,14 +267,37 @@ function resendRequest(slug: string, circuitId: string): OverrideRequest {
   };
 }
 
-function endRequest(slug: string, circuitId: string, hire: boolean, w: AssessWords): OverrideRequest {
+function endRequest(slug: string, circuitId: string, w: AssessWords, hire: boolean): OverrideRequest {
   return {
     name: "end",
-    title: hire ? HIRE_CONSOLE.endTitle : circuitCopy("End", w),
+    title: hire ? HIRE_CONSOLE.endTitle : `End the ${w.circuit}`,
     lead: "Any station nobody has taken is marked as skipped. You cannot undo this. End it only when everyone has finished.",
-    commitLabel: hire ? HIRE_CONSOLE.endTitle : circuitCopy("End", w),
+    commitLabel: hire ? HIRE_CONSOLE.endTitle : `End the ${w.circuit}`,
     tone: "danger",
     run: ({ reason }) => runControls.end(slug, circuitId, reason),
+  };
+}
+
+function rejoinRequest(slug: string, circuitId: string, w: AssessWords): OverrideRequest {
+  return {
+    name: "rejoin",
+    title: "Allow one re-join",
+    lead: `Lets the ${w.trainee} whose connection dropped back into this station, once. The clock does not stop or restart; use Add time if they need it.`,
+    commitLabel: "Allow re-join",
+    reasonRequired: true,
+    run: ({ reason }) => overrides.allowRejoin(slug, circuitId, reason ?? ""),
+  };
+}
+
+function absentRequest(slug: string, circuitId: string, traineeId: string, name: string, w: AssessWords): OverrideRequest {
+  return {
+    name: "absent",
+    title: `Mark ${name} absent`,
+    lead: `${name} has not joined. Their stations are skipped and they cannot join this ${w.circuit} afterwards.`,
+    commitLabel: "Mark absent",
+    tone: "danger",
+    reasonRequired: true,
+    run: ({ reason }) => overrides.markAbsent(slug, circuitId, traineeId, reason ?? ""),
   };
 }
 

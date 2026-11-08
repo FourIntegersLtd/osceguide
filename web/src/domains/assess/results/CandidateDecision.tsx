@@ -21,15 +21,19 @@ import {
   outcomeChoice,
   releasable,
   releaseRefusal,
+  REASON_BLOCKER,
   signOffBlockers,
   suggestedOutcome,
   workflowLabel,
 } from "@/domains/assess/results/support";
 import { assessFormStack } from "@/foundation/ui/b2bTokens";
+import { decisionBlockers } from "@/domains/assess/results/ranking";
 import { resultOverrideHelper, saveNextLabel } from "@/domains/assess/results/hireDecisions";
 import { candidateProgress } from "@/domains/assess/results/candidateProgress";
 import { OutcomePicker, RecruitmentField, ReleasedDecision, ReopenButton, ResultPdfButton, ResultPreviewButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
 import { boardRailStep } from "@/domains/assess/chrome";
+import { can, useSession } from "@/foundation/session";
+import { AskForReviewOnBehalf } from "@/domains/assess/results/AskForReviewOnBehalf";
 
 /**
  * One candidate's outcome: draft, signed off, released.
@@ -149,6 +153,7 @@ function Form({
   onChanged: () => void;
 }) {
   const w = useAssessWords();
+  const { session } = useSession();
   const [outcome, setOutcome] = useState(outcomeChoice(decision?.assessment_outcome));
   const [recruitment, setRecruitment] = useState(decision?.recruitment_outcome ?? "");
   const [rationale, setRationale] = useState(decision?.rationale ?? "");
@@ -173,7 +178,11 @@ function Form({
   const released = state === "released";
   const signedOff = state === "signed_off";
   const canRelease = releasable({ decision });
+  // A hire is never recorded without its reason, even as a draft.
+  const hireBlockers = exam ? decisionBlockers({ recruitment, rationale }) : [];
+  // The hire line under the reason box says it already: do not repeat it in the sign-off bar.
   const blockers = signOffBlockers({ outcome: outcome || null, rationale });
+  const shownBlockers = hireBlockers.length === 0 ? blockers : blockers.filter((blocker) => blocker !== REASON_BLOCKER);
 
   const run = useCallback(async (label: string, action: () => Promise<unknown>, said: string): Promise<boolean> => {
     setBusy(label);
@@ -213,6 +222,9 @@ function Form({
         <ReleasedDecision decision={decision} />
         {preview}
         {hire ? <ResultPdfButton orgSlug={orgSlug} sittingId={sittingId} traineeId={traineeId} /> : null}
+        {can(session, "sign_off_results") ? (
+          <AskForReviewOnBehalf orgSlug={orgSlug} sittingId={sittingId} traineeId={traineeId} />
+        ) : null}
       </div>
     );
   }
@@ -240,7 +252,7 @@ function Form({
 
         <div>
           <label htmlFor="decision-rationale" className={`${boardLabel} mb-2`}>
-            Rationale
+            {recruitment === "hired" ? "Rationale (required for a hire)" : "Rationale"}
           </label>
           <textarea
             id="decision-rationale"
@@ -252,6 +264,11 @@ function Form({
             placeholder="Why this outcome, in the words you would use to a candidate or an appeal panel."
             className={`${boardInput} min-h-24 py-2.5`}
           />
+          {hireBlockers.map((blocker) => (
+            <div key={blocker} role="alert" className={`mt-2 ${boardAlert("warn")}`}>
+              {blocker}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -259,10 +276,10 @@ function Form({
         <div className={t.assessMeta}>Every station marked · a rationale written</div>
       ) : null}
 
-      {!signedOff && blockers.length > 0 ? (
+      {!signedOff && shownBlockers.length > 0 ? (
         <div role="alert" className={boardAlert("warn")}>
           <b className="block font-semibold">{w.hiring ? "Before you sign off: mark every station and write the reason for your decision." : "Before this can be signed off"}</b>
-          {blockers.map((blocker) => (
+          {shownBlockers.map((blocker) => (
             <div key={blocker}>{blocker}</div>
           ))}
         </div>
@@ -275,7 +292,7 @@ function Form({
             <button
               type="button"
               className={boardBtn(onNext ? "primary" : undefined)}
-              disabled={busy !== null}
+              disabled={busy !== null || hireBlockers.length > 0}
               onClick={async () => {
                 const saved = await run("save", () => saveDecision(orgSlug, sittingId, traineeId, draft), "Draft saved.");
                 if (saved && onNext && hasNext) onNext();

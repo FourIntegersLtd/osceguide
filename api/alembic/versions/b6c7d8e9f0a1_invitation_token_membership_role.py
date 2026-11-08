@@ -4,8 +4,8 @@ A person holding several seats in one organisation was shown the oldest on the a
 may not be the seat the invitation was for. Null for a plain reset, a practice-access link and any
 token issued before this column; the lookup then keeps the oldest-seat rule.
 
-Revision ID: f4a5b6c7d8e9
-Revises: e3f4a5b6c7d8
+Revision ID: b6c7d8e9f0a1
+Revises: f4a5b6c7d8e9
 Create Date: 2026-11-08
 """
 
@@ -14,8 +14,8 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "f4a5b6c7d8e9"
-down_revision = "e3f4a5b6c7d8"
+revision = "b6c7d8e9f0a1"
+down_revision = "f4a5b6c7d8e9"
 branch_labels = None
 depends_on = None
 

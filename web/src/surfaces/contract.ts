@@ -52,6 +52,7 @@ export type ScreenName =
   | "announcements"
   | "myTraining"
   | "mySitting"
+  | "techCheck"
   | "myResult"
   | "myReview"
   | "myPractice"

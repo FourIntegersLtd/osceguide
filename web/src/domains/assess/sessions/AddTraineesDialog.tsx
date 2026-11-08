@@ -1,7 +1,7 @@
 "use client";
 
-import { useAssessWords, type AssessWords } from "@/capabilities/assess-words";
 import { useMemo, useState } from "react";
+import type { AssessWords } from "@/capabilities/assess-words/vocabulary";
 import { useAsync } from "@/foundation/hooks";
 import { AsyncBoundary } from "@/foundation/ui";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
@@ -13,6 +13,7 @@ import { assessHelper } from "@/foundation/ui/b2bTokens";
 import { appendTrainees } from "@/domains/assess/sessions/api";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
 import { boardInput, boardLabel } from "@/foundation/ui/boardKit";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * Somebody who arrived late.
@@ -98,8 +99,8 @@ export function AddTraineesDialog({
   return (
     <PeopleDialog
       open
-      title={`Add somebody to this ${w.circuit}`}
-      lead={`They are given a station at the end of the ${w.circuit}, in the room that is already open.`}
+      title="Add somebody to this circuit"
+      lead="They are given a station at the end of the circuit, in the room that is already open."
       error={refusal ?? failure}
       busy={busy !== null || offline}
       commitLabel={picked.size > 1 ? `Add ${picked.size} people` : "Add them"}
@@ -111,7 +112,7 @@ export function AddTraineesDialog({
       <AsyncBoundary state={roster}>
         {() =>
           candidates.length === 0 ? (
-            <p className={assessHelper}>{`Everybody on your roster is already on this ${w.circuit}.`}</p>
+            <p className={assessHelper}>Everybody on your roster is already on this circuit.</p>
           ) : (
             <div className="flex max-h-64 flex-col overflow-y-auto">
               {candidates.map(({ trainee, refusal: notYet }) => (
@@ -154,7 +155,7 @@ export function AddTraineesDialog({
             }}
             className={boardInput}
           >
-            <option value="">{`The station this ${w.circuit} is running`}</option>
+            <option value="">The station this circuit is running</option>
             {stations.map((choice) => (
               <option key={choice.versionId} value={choice.versionId}>
                 {choice.label}
@@ -163,8 +164,8 @@ export function AddTraineesDialog({
           </select>
           <div className={`${assessHelper} mt-1.5`}>
             {picked.size > 1
-              ? `Everyone you add takes the station chosen here, after everyone else on the ${w.circuit}. To spread them across different stations, rebuild the ${w.circuit}.`
-              : `They take their turn after everyone already on the ${w.circuit}.`}
+              ? "Everyone you add takes the station chosen here, after everyone else on the circuit. To spread them across different stations, rebuild the circuit."
+              : "They take their turn after everyone already on the circuit."}
           </div>
         </div>
 
@@ -198,13 +199,12 @@ function stationChoices(slots: ConsoleSlot[]): { versionId: string; label: strin
  * more use to a supervisor than a paraphrase.
  */
 function refusalFor(cause: unknown, w: AssessWords): string {
-  const circuit = w.circuit;
   const message = cause instanceof Error ? cause.message : String(cause);
   if (hasCode(cause, "trainee_already_on_circuit")) {
-    return `Already on this ${circuit}, so nothing was added. ${message}`;
+    return `Already on this ${w.circuit}, so nothing was added. ${message}`;
   }
   if (hasCode(cause, "station_not_on_circuit")) {
-    return `That station is not on this ${circuit}. Pick one from the list, or leave it to the station being run. ${message}`;
+    return `That station is not on this ${w.circuit}. Pick one from the list, or leave it to the station being run. ${message}`;
   }
   if (hasCode(cause, "not_permitted_in_mode")) {
     return "An examination cannot take a late arrival: it is one candidate through every station.";

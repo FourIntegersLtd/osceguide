@@ -45,6 +45,8 @@ class CircuitRef:
     agent_dispatched_at: datetime | None
     started_at: datetime | None
     ended_at: datetime | None
+    start_offset_minutes: int = 0
+    station_assessors: dict[uuid.UUID, uuid.UUID] = field(default_factory=dict)
     # The examination clock, which is the circuit's (D-6).
     phase: str | None = None
     phase_started_at: datetime | None = None
@@ -76,8 +78,6 @@ class SlotRef:
     started_at: datetime | None
     ended_at: datetime | None
     exam_completed_at: datetime | None
-    # Who the schedule names to assess this station; display only.
-    assessor_user_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, Badge, Button, Spinner, b2bTokens, cn } from "@/foundation/ui";
+import { Alert, Badge, Spinner, b2bTokens, cn } from "@/foundation/ui";
 import { boardBtn, boardCard, boardChip } from "@/foundation/ui/boardKit";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
@@ -12,7 +12,8 @@ import { useAssessWords } from "@/capabilities/assess-words";
 import { BoardRow, BoardSection, RowChevron, RowText } from "@/domains/assess/dashboard/BoardParts";
 import { LiveNow } from "@/domains/assess/dashboard/LiveNow";
 import { readSupervisorCircuits, type LiveCircuit, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
-import { hireRail, hireRailNext } from "@/domains/assess/dashboard/setupSteps";
+import { HireSetup } from "@/domains/assess/dashboard/HireSetup";
+import { hireSetupComplete, hireSetupSteps } from "@/domains/assess/dashboard/hireSteps";
 import { attentionFromResults, circuitStatus, comingUp, laterToday, longWhen, notJoinedItem, recordingMissing, runningLine, type AttentionItem } from "@/domains/assess/dashboard/support";
 import { readResultsIndex } from "@/domains/assess/results/api";
 import { useStationsToReview } from "@/domains/assess/results/StationsToReview";
@@ -74,51 +75,8 @@ function PageHead({ eyebrow, title, description }: { eyebrow: string; title: str
  */
 export function HireHome({ data, orgSlug, admin }: { data: Data; orgSlug: string; admin: boolean }) {
   const w = useAssessWords();
-  const rail = hireRail(data.setup, w);
-  if (admin && hireRailNext(rail)) return <NewAccount name={data.name} steps={rail} />;
+  if (admin && !hireSetupComplete(hireSetupSteps(data.setup, w))) return <HireSetup orgName={data.name} setup={data.setup} />;
   return admin ? <AdminDay data={data} orgSlug={orgSlug} /> : <AssessorDay data={data} orgSlug={orgSlug} />;
-}
-
-function NewAccount({ name, steps }: { name: string; steps: ReturnType<typeof hireRail> }) {
-  const w = useAssessWords();
-  const { hrefFor } = useSurface();
-  const next = hireRailNext(steps);
-  return (
-    <div className={b2bTokens.assessPage}>
-      <PageHead eyebrow={name} title={w.Home} description={`Four steps to your first ${w.sitting}. Come back to any of them.`} />
-      <ol aria-label="Steps" className={cn(boardCard, "flex flex-col")}>
-        {steps.map((step, index) => (
-          <li key={step.id} aria-current={step === next ? "step" : undefined} className="flex flex-wrap items-center gap-3 border-t border-osce-border-light px-5 py-4 first:border-t-0">
-            <span aria-hidden className={step.done ? b2bTokens.assessDotDone : step === next ? b2bTokens.assessDotCurrent : b2bTokens.assessDotIdle}>
-              {step.done ? "✓" : index + 1}
-            </span>
-            <span className="flex-1 font-medium">{step.label}</span>
-            {step.optional ? <span className={b2bTokens.assessMeta}>Optional</span> : null}
-            {step.done ? <span className={boardChip("ok")}>Done</span> : null}
-          </li>
-        ))}
-      </ol>
-      {next ? (
-        <div className="flex flex-col items-start gap-1.5">
-          {next.blocked ? (
-            <Button themeType="b2b" variant="commit" disabled aria-describedby="rail-blocked">
-              {next.cta}
-            </Button>
-          ) : (
-            <Link href={hrefFor(next.href)} className={boardBtn("primary")}>
-              {next.cta}
-            </Link>
-          )}
-          {next.blocked ? (
-            <p id="rail-blocked" className={b2bTokens.assessMeta}>
-              {`${next.blocked} `}
-              <Link href={hrefFor(steps[0]?.href ?? "/")} className={b2bTokens.b2bLink}>{`Set up an ${w.exam}`}</Link>
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 function AdminDay({ data, orgSlug }: { data: Data; orgSlug: string }) {

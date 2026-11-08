@@ -42,7 +42,7 @@ export function nextUndecided<T extends Decidable>(candidates: T[], currentId: s
 }
 
 export function saveNextLabel(hasNext: boolean): string {
-  return hasNext ? "Save and next candidate" : "Save decision";
+  return hasNext ? "Save draft and next candidate" : "Save draft";
 }
 
 /** "14 Oct": the day an assessment was held, in the reader's own time zone. */

@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import Text, cast, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
@@ -62,7 +62,13 @@ async def circuits_for_supervisor(
     stmt = (
         select(Circuit, Sitting)
         .join(Sitting, Sitting.id == Circuit.sitting_id)
-        .where(Circuit.org_id == org_id, Circuit.supervisor_user_id == supervisor_user_id)
+        .where(
+            Circuit.org_id == org_id,
+            or_(
+                Circuit.supervisor_user_id == supervisor_user_id,
+                cast(Circuit.station_assessors, Text).contains(str(supervisor_user_id)),
+            ),
+        )
         .order_by(Circuit.created_at.desc())
     )
     return [(circuit, sitting) for circuit, sitting in (await session.execute(stmt)).all()]
@@ -275,19 +281,25 @@ async def count_sitting_circuits(session: AsyncSession, org_id: uuid.UUID, sitti
 async def circuit_supervisor_for_slot(
     session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
 ) -> uuid.UUID | None:
-    """The user named as supervisor of the circuit a slot belongs to.
+    """The user who assesses a slot: the station's own assessor, else the circuit's supervisor.
 
     Answers nothing on its own: the caller must already hold a role that may
     run a circuit in `org_id`, and being named here is what makes *this*
     attempt readable to them.
     """
     stmt = (
-        select(Circuit.supervisor_user_id)
+        select(
+            func.coalesce(
+                Circuit.station_assessors[cast(Slot.station_version_id, Text)].astext,
+                cast(Circuit.supervisor_user_id, Text),
+            )
+        )
         .join(Slot, Slot.circuit_id == Circuit.id)
         .where(Slot.org_id == org_id, Slot.id == slot_id)
         .limit(1)
     )
-    return (await session.execute(stmt)).scalar_one_or_none()
+    named = (await session.execute(stmt)).scalar_one_or_none()
+    return uuid.UUID(named) if named else None
 
 
 async def circuit_station_ids(

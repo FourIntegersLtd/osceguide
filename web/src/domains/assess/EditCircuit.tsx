@@ -23,7 +23,6 @@ import {
   type CircuitDraft,
   type PickedStation,
 } from "@/domains/assess/CircuitBuilder";
-import { circuitEditBlock, circuitSaveLabel } from "@/domains/assess/circuitEditCopy";
 import { editLockNotice } from "@/domains/assess/sessions/support";
 import {
   DEFAULT_BREAK_MINUTES,
@@ -31,6 +30,7 @@ import {
   DEFAULT_SIMULATION_MINUTES,
 } from "@/domains/assess/timing";
 import { useAssessWords } from "@/capabilities/assess-words";
+import { circuitEditBlock, circuitSaveLabel } from "@/domains/assess/circuitEditCopy";
 
 /**
  * Change a circuit that has already been built.
@@ -134,12 +134,10 @@ export function EditCircuit({
                       </Alert>
                       <section className="rounded-panel bg-canvas p-5">
                         <h2 className="text-osce-subheading font-semibold text-b2b-headline">
-                          While the circuit is locked
+                          {`While the ${w.circuit} is locked`}
                         </h2>
                         <p className="mt-1 text-osce-body text-b2b-mid">
-                          Nothing on this form can be saved while the circuit is
-                          locked. While it is running, change its timings from
-                          the live circuit screen.
+                          {`Nothing on this form can be saved while the ${w.circuit} is locked. While it is running, change its timings from the live ${w.circuit} screen.`}
                         </p>
                       </section>
                     </>
@@ -243,11 +241,12 @@ function StaleCircuitNotice({ onReload }: { onReload: () => void }) {
   return (
     <Alert tone="warning" title={`This ${w.circuit} changed while you were editing`}>
       <p>
-        {`Nothing was saved because someone else changed this ${w.circuit} first.`} Reload the page to see the latest version, then make your change again. Anything you typed here will be lost.
+        Nothing was saved. Reload to see its current state; your changes on this
+        form will be lost.
       </p>
       <div className="mt-2">
         <Button themeType="b2b" variant="secondary" onClick={onReload}>
-          Reload the circuit
+          {`Reload the ${w.circuit}`}
         </Button>
       </div>
     </Alert>

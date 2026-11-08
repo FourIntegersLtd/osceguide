@@ -89,7 +89,7 @@ export function TurnStrip({
                 {isNow && circuit.agent_dispatched ? " · Patient is live" : ""}
               </span>
               <div className="flex min-w-[7.5rem] justify-end">
-                {canJump && !isNow && slotProgress(row.slot) !== "completed" ? (
+                {canJump && !isNow && row.state !== "done" ? (
                   <Button
                     themeType="b2b"
                     variant="ghost"

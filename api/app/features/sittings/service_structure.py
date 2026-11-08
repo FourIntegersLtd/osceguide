@@ -161,8 +161,9 @@ async def rebuild_circuit(
     name: str | None = None,
     supervisor_user_id: uuid.UUID | None = None,
     timing: TimingIn | None = None,
+    start_offset_minutes: int | None = None,
+    station_assessors: dict[uuid.UUID, uuid.UUID] | None = None,
     revision: int | None = None,
-    station_assessor_ids: list[uuid.UUID | None] | None = None,
 ) -> CircuitRead:
     """Change who is on a circuit and which stations they sit (C3).
 
@@ -191,13 +192,6 @@ async def rebuild_circuit(
 
     await roster.ensure_rosterable(session, org_id, trainee_ids)
     await ensure_lead_may_run(session, org_id, supervisor_user_id)
-    assessors = await service.station_assessors(
-        session,
-        org_id,
-        station_version_ids,
-        station_assessor_ids,
-        keep=[(slot.station_version_id, slot.assessor_user_id) for slot in slots],
-    )
     mode = domain.Mode(sitting.mode)
     try:
         planned = domain.build_slots(
@@ -221,6 +215,21 @@ async def rebuild_circuit(
                 station_count=len(station_version_ids),
             )
         )
+    if start_offset_minutes is not None:
+        values["start_offset_minutes"] = start_offset_minutes
+    # Sent whole (an empty map clears them); left out, the circuit keeps those it still runs.
+    kept = (
+        station_assessors
+        if station_assessors is not None
+        else {
+            uuid.UUID(station): uuid.UUID(person)
+            for station, person in (circuit.station_assessors or {}).items()
+            if uuid.UUID(station) in station_version_ids
+        }
+    )
+    values["station_assessors"] = (
+        await service.resolve_station_assessors(session, org_id, station_version_ids, kept) or None
+    )
     if values:
         await repository.update_circuit(session, org_id, circuit_id, **values)
     await repository.bump_circuit_revision(session, org_id, circuit_id)
@@ -239,7 +248,6 @@ async def rebuild_circuit(
             for slot in planned
         ],
         room_name=circuit.room_name,
-        assessors=assessors,
     )
     await service_notify.trainees_scheduled(session, org_id, sitting, trainee_ids)
     await service_notify.reviewer_assigned(session, org_id, sitting, circuit)
