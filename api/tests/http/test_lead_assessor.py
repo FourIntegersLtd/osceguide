@@ -10,12 +10,24 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
+from app.features.voice.service import get_room_agents, get_voice_tokens
 from tests.http.test_reviews_routes import a_slot
 from tests.http.test_station_assessors import two_station_circuit
 from tests.support.catalog import create_exam
+from tests.support.fakes import FakeRoomAgents, FakeVoiceTokens
 from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db
+
+
+@pytest.fixture(autouse=True)
+def voice(client: AsyncClient) -> FakeVoiceTokens:
+    """Starting a circuit dials LiveKit; fake it so the file never depends on a developer's .env."""
+    fake = FakeVoiceTokens()
+    app = client._transport.app  # type: ignore[attr-defined]
+    app.dependency_overrides[get_voice_tokens] = lambda: fake
+    app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()
+    return fake
 
 
 async def _org(client: AsyncClient, make_actor, *, slug: str, org_type: str):  # type: ignore[no-untyped-def]

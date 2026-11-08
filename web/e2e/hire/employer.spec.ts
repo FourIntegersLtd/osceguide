@@ -55,7 +55,7 @@ test("HIRE-3 an admin reaches the decisions page with Hired tiles and hiring dec
   await page.getByRole("button", { name: /^Open / }).first().click();
   await expect(page.getByText("2. Hiring decision")).toBeVisible();
   await expect(page.getByText("Only your team sees this. Candidates never do.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Reserve list" })).toBeVisible();
+  await expect(page.locator("#recruitment-outcome")).toContainText("Reserve list");
 });
 
 // HIRE-4: the employer's candidate reads My assessments, the assessment and a released result in employer words,
