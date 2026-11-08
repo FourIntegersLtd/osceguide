@@ -41,8 +41,12 @@ const nextConfig: NextConfig = {
   // The e2e run builds in its own folder, so it can run beside the developer's own `npm run dev`.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   trailingSlash: false,
+  // Vercel's build container was killed for memory after the compile (SIGKILL, 2026-11-08). `tsc` already
+  // gates every merge in `npm run ci` and promote needs CI web green, so the build skips its own type pass.
+  typescript: { ignoreBuildErrors: true },
   experimental: {
     externalDir: true,
+    webpackMemoryOptimizations: true,
     // The /api/v1 rewrite gives up after 30 s by default, and drafting a slide deck takes longer:
     // the API finished, but the browser got a 500 and nothing was saved.
     proxyTimeout: 300_000,
