@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { examDateFieldLabel, examinerTipsLabel } from "@/capabilities/authoring/lib/authoringCopy";
 import type { ReactNode } from "react";
 import { Checkbox, getInputClassName, Textarea, FoldSection, b2bTokens } from "@/foundation/ui";
 import { BoardCheckbox, BoardTextarea } from "@/foundation/ui/BoardFields";
@@ -14,8 +16,8 @@ const SESSION_MODES: { mode: SessionMode; label: string }[] = [
   { mode: "practice_as_patient", label: "Practise as the patient" },
 ];
 const HELP_MODES: { mode: HelpMode; label: string }[] = [
-  { mode: "navigate", label: "Find screens" },
-  { mode: "knowledge_base", label: "Answer from the knowledge base" },
+  { mode: "navigate", label: "Show me where things are" },
+  { mode: "knowledge_base", label: "Answer questions from our guides" },
 ];
 type PromptField =
   "station_prompt_text" | "summary_prompt_text" | "blog_prompt_text";
@@ -26,15 +28,15 @@ const PROMPTS: {
 }[] = [
   {
     field: "station_prompt_text",
-    label: "Station writing prompt",
+    label: "Instructions for writing stations",
     keyOf: "station_prompt",
   },
   {
     field: "summary_prompt_text",
-    label: "Condition summary prompt",
+    label: "Instructions for condition summaries",
     keyOf: "summary_prompt",
   },
-  { field: "blog_prompt_text", label: "Blog prompt", keyOf: "blog_prompt" },
+  { field: "blog_prompt_text", label: "Instructions for blog posts", keyOf: "blog_prompt" },
 ];
 
 /** Adds or removes one value of a multi-choice setting, keeping the list's order. */
@@ -68,6 +70,7 @@ export function ExamSettingsFields({
   /** The ExamSettings board's open card: bare fields stacked under the summary, no gaps (the board's `.in`). */
   board?: boolean;
 }) {
+  const w = useAssessWords();
   const generation: Partial<NonNullable<ExamSettings["generation"]>> =
     value.generation ?? {};
   const setPrompt = (field: PromptField, text: string) =>
@@ -81,7 +84,7 @@ export function ExamSettingsFields({
   const fields = (
       <div className={board ? "flex flex-col leading-[1.6]" : "space-y-4"}>
         {lead}
-        <Field board={board} label="Date label">
+        <Field board={board} label={examDateFieldLabel(w)}>
           <input
             value={value.date_label ?? ""}
             maxLength={40}
@@ -104,7 +107,7 @@ export function ExamSettingsFields({
         />
         <CheckboxGroup
           board={board}
-          label="Help dock"
+          label="Help panel"
           options={HELP_MODES.map(({ mode, label }) => ({
             label,
             checked: (value.help_modes ?? []).includes(mode),
@@ -117,7 +120,7 @@ export function ExamSettingsFields({
           label="Other"
           options={[
             {
-              label: "Show examiner tips while marking",
+              label: examinerTipsLabel(w),
               checked: value.show_tips_while_marking ?? false,
               onChange: (on: boolean) =>
                 onChange({ show_tips_while_marking: on }),

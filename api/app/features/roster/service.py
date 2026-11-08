@@ -32,6 +32,7 @@ from app.features.roster.schemas import (
 from app.features.sittings import service_reads as sittings
 from app.features.tenancy import service as tenancy
 from app.features.tenancy import service_audit as tenancy_audit
+from app.features.tenancy import service_memberships
 from app.features.tenancy.service_audit import Connector
 
 
@@ -83,6 +84,7 @@ async def add_trainee(
             temporary_password=temporary_password,
             now=now,
             organization_id=org_id,
+            role=tenancy.TRAINEE_ROLE,
         )
         how = seating_note(relayed=relayed)
     await tenancy_audit.record_for_owner(
@@ -159,7 +161,7 @@ async def set_access(
     trainee = await _require_trainee(session, org_id, trainee_id)
     await repository.set_trainee_access(session, org_id, trainee_id, revoked_at=now if revoked else None)
     if revoked:
-        await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
+        await service_memberships.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
     elif trainee.user_id is not None:
         await tenancy.grant_trainee_membership(session, org_id, trainee.user_id)
     await tenancy_audit.record_for_owner(

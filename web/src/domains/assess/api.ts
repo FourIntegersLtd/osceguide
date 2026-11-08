@@ -22,14 +22,16 @@ export function readSsoStatus(
   return platformRequest<SsoStatus>(`${org(slug)}/sso-status`, { signal });
 }
 
-/** An organisation's own admin renames it; the web address and contract are staff's (B-33). */
-export function renameOrganization(
+export type OrganizationChanges = components["schemas"]["UpdateOrgDetails"];
+
+/** An organisation's own admin changes its name and contact; the web address and contract are staff's (B-33). */
+export function updateOrganization(
   slug: string,
-  name: string,
+  changes: OrganizationChanges,
 ): Promise<Organization> {
   return platformRequest<Organization>(org(slug), {
     method: "PATCH",
-    body: { name },
+    body: changes,
   });
 }
 
@@ -299,6 +301,8 @@ export interface CircuitShape {
   /** `user` ids, not roster ids: a slot names a user. */
   traineeIds: string[];
   supervisorUserId: string | null;
+  /** An employer's assessor for each station, in station order; left out, nothing about assessors is sent. */
+  stationAssessorIds?: (string | null)[];
   timing: CircuitTiming;
 }
 
@@ -369,6 +373,7 @@ export function createCircuit(
         station_version_ids: input.stationVersionIds,
         trainee_ids: input.traineeIds,
         supervisor_user_id: input.supervisorUserId,
+        station_assessor_ids: input.stationAssessorIds,
         timing: timingBody(input.timing),
       },
     },
@@ -424,6 +429,7 @@ export function rebuildCircuit(
         station_version_ids: input.stationVersionIds,
         trainee_ids: input.traineeIds,
         supervisor_user_id: input.supervisorUserId,
+        station_assessor_ids: input.stationAssessorIds,
         timing: timingBody(input.timing),
       },
     },
@@ -532,8 +538,11 @@ export function saveReview(
   slotId: string,
   input: {
     fieldValues: Record<string, unknown>;
-    notes: string | null;
+    /** Left out by a live tick, which must not overwrite notes typed elsewhere. */
+    notes?: string | null;
     status: "draft" | "completed";
+    /** A live tick: merge these ratings into the draft and keep the rest as it is. */
+    partial?: boolean;
   },
 ): Promise<SlotReview> {
   return platformRequest<SlotReview>(
@@ -544,6 +553,7 @@ export function saveReview(
         field_values: input.fieldValues,
         notes: input.notes,
         status: input.status,
+        partial: input.partial,
       },
     },
   );

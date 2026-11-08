@@ -1,6 +1,6 @@
 "use client";
 
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import Link from "next/link";
 import { useState } from "react";
 import { AsyncBoundary, b2bTokens as t } from "@/foundation/ui";
@@ -15,8 +15,9 @@ import {
   resultsDate,
   type ResultsTab,
 } from "@/domains/assess/results/support";
+import { HIRE_RESULTS, whereItIs } from "@/domains/assess/results/resultsWhere";
 import { useStationsToReview } from "@/domains/assess/results/StationsToReview";
-import { boardCard, boardHeadRow, boardPad, boardRow, boardTab, boardTabs, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { boardBtn, boardChip, boardCard, boardHeadRow, boardPad, boardRow, boardTab, boardTabs, boardButtonSmall } from "@/foundation/ui/boardKit";
 
 const TABS: [ResultsTab, string][] = [
   ["needs_decision", "Needs a decision"],
@@ -41,7 +42,7 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
         <div>
           <div className={t.assessEyebrow}>Run</div>
           <h1 className={t.assessTitle}>Results</h1>
-          <p className={t.assessDesc}>{`Each ${w.sitting} with how far its decisions have got.`}</p>
+          <p className={t.assessDesc}>{w.hiring ? HIRE_RESULTS.description : `Each ${w.sitting} with how far its decisions have got.`}</p>
         </div>
       </div>
       {items.length > 0 ? (
@@ -76,10 +77,22 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
       <AsyncBoundary
         state={state}
         isEmpty={(data) => (data.rows ?? []).length === 0}
-        empty={{
-          title: "No results yet.",
-          description: `Results appear here once ${w.sitting === "sitting" ? "a sitting" : "an assessment"} has ${w.trainees}.`,
-        }}
+        empty={
+          w.hiring
+            ? {
+                title: HIRE_RESULTS.emptyTitle,
+                description: HIRE_RESULTS.emptyBody,
+                action: (
+                  <Link href={hrefFor("/sittings")} className={boardBtn("primary")}>
+                    {HIRE_RESULTS.emptyLink}
+                  </Link>
+                ),
+              }
+            : {
+                title: "No results yet.",
+                description: `Results appear here once ${w.sitting === "sitting" ? "a sitting" : "an assessment"} has ${w.trainees}.`,
+              }
+        }
       >
         {(data) => {
           const rows = filterResultsRows(data.rows ?? [], tab);
@@ -98,17 +111,28 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
               ) : (
                 <div className={`${boardCard} overflow-hidden`}>
                   <div className={boardHeadRow}>
-                    <span className="flex-[1_1_200px]">{w.Sitting}</span>
-                    <span className="w-20">Date</span>
-                    <span className="w-[100px]">Kind</span>
-                    <span className="w-[70px]">Candidates</span>
-                    <span className="w-20">Not decided</span>
-                    <span className="w-[50px]">Draft</span>
-                    <span className="w-20">Signed off</span>
-                    <span className="w-[70px]">Released</span>
+                    {w.hiring ? (
+                      <>
+                        <span className="flex-[1_1_200px]">{w.Sitting}</span>
+                        <span className="w-[70px]">{w.Trainees}</span>
+                        <span className="w-[120px]">{HIRE_RESULTS.whereHeading}</span>
+                      </>
+                    ) : null}
+                    {w.hiring ? null : <span className="flex-[1_1_200px]">{w.Sitting}</span>}
+                    {w.hiring ? null : (
+                      <>
+                        <span className="w-20">Date</span>
+                        <span className="w-[100px]">Kind</span>
+                        <span className="w-[70px]">Candidates</span>
+                        <span className="w-20">Not decided</span>
+                        <span className="w-[50px]">Draft</span>
+                        <span className="w-20">Signed off</span>
+                        <span className="w-[70px]">Released</span>
+                      </>
+                    )}
                   </div>
                   {rows.map((row) => (
-                    <ResultsRow key={row.sitting_id} row={row} href={hrefFor(`/sittings/${row.sitting_id}/results`)} />
+                    <ResultsRow key={row.sitting_id} row={row} href={hrefFor(`/sittings/${row.sitting_id}/results`)} hiring={w.hiring} />
                   ))}
                 </div>
               )}
@@ -120,10 +144,25 @@ export function ResultsIndex({ orgSlug }: { orgSlug: string }) {
   );
 }
 
-function ResultsRow({ row, href }: { row: ResultsIndexRow; href: string }) {
+function ResultsRow({ row, href, hiring }: { row: ResultsIndexRow; href: string; hiring: boolean }) {
   // A training sitting records no decisions, so its decision columns read as dashes.
   const decides = row.mode === "exam";
   const num = (value: number) => (decides ? value : "-");
+  if (hiring) {
+    const where = whereItIs(row);
+    return (
+      <Link href={href} className={`${boardRow} hover:bg-osce-surface-inset`}>
+        <span className="flex-[1_1_200px]">
+          <span className="block font-medium">{row.name}</span>
+          <span className={t.assessMeta}>{`${resultsDate(row.scheduled_for)} · ${decides ? "Formal exam" : "Training"}`}</span>
+        </span>
+        <span className="w-[70px]">{row.candidates}</span>
+        <span className="w-[120px]">
+          <span className={boardChip(where.tone)}>{where.label}</span>
+        </span>
+      </Link>
+    );
+  }
   return (
     <Link href={href} className={`${boardRow} hover:bg-osce-surface-inset`}>
       <span className="flex-[1_1_200px] font-medium">{row.name}</span>

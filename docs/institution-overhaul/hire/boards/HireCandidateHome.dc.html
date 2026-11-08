@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My assessments</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Candidate</div></div></div>
+<a class="nav on" href="HireCandidateHome.dc.html">My assessments</a><a class="nav" href="HireCandidateResult.dc.html">Results</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="4"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><div class="eyebrow">Acme Health Trust</div><h1>My assessments</h1><p class="desc">Your assessments with Acme Health Trust, and what to do next.</p></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="hero"><div><div class="eyebrow">Thursday 20 November, 09:00</div><h2>Band 6 nurse assessment</h2><div class="meta">5 stations, about an hour. Read your brief before the day.</div></div><a class="btn pri" href="HireCandidateAssessment.dc.html">Read your brief</a></div>
+<div class="al info">Use Chrome or Edge on a laptop with a microphone. You will talk to a simulated patient.</div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="hero live"><div><div class="eyebrow">Now</div><h2>Your assessor is ready</h2><div class="meta">Station 1 of 5 · Deteriorating patient. Join when you are ready; the clock starts when the patient speaks.</div></div><a class="btn pri" href="HireCandidateRoom.dc.html">Join station 1</a></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="hero"><div><div class="eyebrow">Released today</div><h2>Your result is ready</h2><div class="meta">Band 6 nurse assessment, 14 Oct.</div></div><a class="btn pri" href="HireCandidateResult.dc.html">See your result</a></div>
+</sc-if>
+<sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="empty"><h2>No assessments yet</h2>When Acme Health Trust schedules you, the date and your brief appear here and you get an email.</div></div>
+</sc-if>
+<div class="card"><div class="th"><span class="f">Past assessments</span><span style="width:160px"></span></div>
+<a class="row" href="HireCandidateResult.dc.html"><span class="f">Band 6 nurse assessment<div class="meta">14 Oct</div></span><span style="width:160px"><span class="chip ok">Result released</span></span></a></div>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>/me/sittings</code></div>
+<div class="call"><span class="m">SSE</span><code>/me/sittings/stream</code></div>
+<div class="call"><span class="m">POST</span><code>/me/circuits/{id}/join-token</code></div>
+<div class="meta">"Your assessor is ready" arrives on the stream; never polled. No practice, mocks or "Keep practising" on hire.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>circuit_not_live</code><code>circuit_paused</code><code>attempt_not_joinable</code><code>voice_unavailable</code><code>trainee_revoked</code></div>
+<div class="note">Route <code>/app/[w]/trainee</code> · candidate · owner institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Coming up', 'Join now', 'Result ready', 'Nothing yet'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2, s3: t === 3 };
+  }
+}
+</script>
+</body>
+</html>

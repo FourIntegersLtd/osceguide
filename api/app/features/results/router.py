@@ -128,6 +128,35 @@ async def release_many(
     )
 
 
+# Sign off every decided candidate of a sitting at once; refused while any candidate is undecided.
+@router.post(
+    "/orgs/{org_slug}/sittings/{sitting_id}/decisions/sign-off",
+    response_model=schemas.BulkSignOffResult,
+    responses=error_responses(
+        Forbidden,
+        errors.SittingNotFound,
+        errors.DecisionsIncompleteError,
+        errors.NotSignableError,
+        errors.InvalidWorkflowError,
+        errors.EvidenceChangedError,
+        errors.ReviewsPendingError,
+    ),
+)
+async def sign_off_all(
+    sitting_id: uuid.UUID,
+    workspace: OrgInstitutionAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.BulkSignOffResult:
+    return await service.sign_off_all(
+        session,
+        workspace.org_id,
+        sitting_id=sitting_id,
+        actor_id=workspace.principal.user_id,
+        now=clock.now(),
+    )
+
+
 @router.post(
     "/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision/release",
     response_model=schemas.DecisionRead,

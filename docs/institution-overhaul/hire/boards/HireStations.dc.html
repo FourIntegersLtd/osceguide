@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stations</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav on" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="4"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><a class="meta" href="HireExams.dc.html">Exams</a><h1>Stations</h1><p class="desc">The scenarios candidates work through. Each has a patient, a brief and the marking it uses.</p></div><div class="acts"><button class="btn" onClick="{{go2}}">Import a document</button><button class="btn pri" onClick="{{go1}}">New station</button></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="card"><div class="th"><span class="f">Station</span><span style="width:140px">Status</span></div>
+<a class="row" href="HireStationBuilder.dc.html"><span class="f"><b style="font-weight:500">Deteriorating patient (NEWS2)</b><div class="meta">Version 2 · used by Band 6 nurse OSCE</div></span><span style="width:140px"><span class="chip ok">Published</span></span></a>
+<a class="row" href="HireStationBuilder.dc.html"><span class="f"><b style="font-weight:500">Medicines round and a drug error</b><div class="meta">Version 1</div></span><span style="width:140px"><span class="chip ok">Published</span></span></a>
+<a class="row" href="HireStationBuilder.dc.html"><span class="f"><b style="font-weight:500">Discharge planning with a carer</b><div class="meta">Draft</div></span><span style="width:140px"><span class="chip warn">Draft</span></span></a></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>New station</h2>
+<div><label for="t">What is it about?</label><input class="input" id="t" value="Deteriorating patient on a surgical ward, Band 6"></div>
+<div><label>How do you want to start?</label><div class="acts"><button class="pill on">Draft it for me</button><button class="pill">Blank</button><button class="pill">From a layout</button></div><div class="hint">We write a first draft you then edit. Nothing is published until you press Publish.</div></div>
+<div><a class="btn pri" href="HireStationBuilder.dc.html">Create draft</a></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>Import a document</h2><div class="meta">Upload a Word or PDF station you already use. We turn it into a draft station.</div>
+<div class="card"><div class="empty">Drop a file here, or <button class="btn sm">Choose a file</button></div></div>
+<div class="al info"><b>Reading Band6_stations.docx</b>This takes about a minute. You can leave this page; the draft appears in your list.</div></div>
+</sc-if>
+<sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="empty"><h2>No stations yet</h2>Write one, import one you already use, or start from an exam of ours.<button class="btn pri" onClick="{{go1}}">New station</button></div></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/stations</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/stations</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/stations/autogenerate-draft</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/station-imports</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/station-imports</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/station-imports/{import_id}</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/station-imports/{import_id}/station</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/station-templates</code></div>
+<h2>Refusals it shows</h2><div class="codes"><code>invalid_import_file</code><code>import_not_ready</code><code>station_import_not_found</code><code>generation_unavailable</code><code>generation_empty</code><code>template_not_published</code></div>
+<div class="note">Routes <code>/app/[w]/authoring/stations</code>, <code>/new</code>, <code>/import</code> · admin · import progress arrives on the existing event stream, never polled · owner content-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['List', 'New', 'Import', 'Empty'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2, s3: t === 3, go1: () => this.setState({ t: 1 }), go2: () => this.setState({ t: 2 }) };
+  }
+}
+</script>
+</body>
+</html>

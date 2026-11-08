@@ -3,11 +3,11 @@ import { zodErrorFirstMessage } from "./zodErrors";
 export const b2bOrgSlugSchema = z
   .string()
   .trim()
-  .min(1, "Institution slug is required.")
+  .min(1, "Enter your organisation's web address name.")
   .max(80)
   .regex(
     /^[a-z0-9]+(-[a-z0-9]+)*$/,
-    "Use lowercase letters, numbers, and single hyphens only.",
+    "Use only lowercase letters, numbers and single hyphens, for example north-hospital.",
   );
 export const b2bSignupFormSchema = z.object({
   name: z.string().trim().max(200).optional(),

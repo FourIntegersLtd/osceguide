@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { briefHelp, briefLabel } from "@/capabilities/authoring/lib/authoringCopy";
 import { useState } from "react";
 import { Alert, Textarea, Panel } from "@/foundation/ui";
 import { boardBtn, boardInput, boardPad } from "@/foundation/ui/boardKit";
@@ -36,6 +38,8 @@ export function BriefEditor({
   board?: boolean;
 }) {
   const scope = useAuthoringScope();
+  const words = useAssessWords();
+  const label = briefLabel(words);
   const [brief, setBrief] = useState(initial);
   const [saved, setSaved] = useState(false);
   const action = useAction();
@@ -43,12 +47,12 @@ export function BriefEditor({
   if (board) {
     return (
       <div className={boardPad}>
-        <h2 className="m-0 text-assess-desc font-semibold text-ink">Reading brief</h2>
+        <h2 className="m-0 text-assess-desc font-semibold text-ink">{label}</h2>
         <p className={`m-0 ${boardMeta}`}>
-          What the candidate reads before the station starts. Saving this does not cut a new version.
+          {briefHelp(words)}
         </p>
         <Textarea
-          aria-label="Reading brief"
+          aria-label={label}
           value={brief}
           rows={8}
           className={`${boardInput} py-2.5`}
@@ -77,7 +81,7 @@ export function BriefEditor({
   }
   return (
     <Panel
-      title="Reading brief"
+      title={label}
       description="What the candidate reads before the station starts. Saving this does not cut a new version."
     >
       <Textarea

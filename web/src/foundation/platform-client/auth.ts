@@ -30,6 +30,7 @@ import type { components } from "@/foundation/platform-client/schema";
  */
 
 type AuthResult = components["schemas"]["AuthResult"];
+type WorkspaceToken = components["schemas"]["WorkspaceToken"];
 type MfaEnrolmentStart = components["schemas"]["MfaEnrolmentStart"];
 type MfaEnrolmentConfirmed = components["schemas"]["MfaEnrolmentConfirmed"];
 
@@ -100,7 +101,7 @@ function forgetLocally(): void {
 }
 
 async function remember(
-  result: Pick<AuthResult, "access_token" | "refresh_token" | "expires_in">,
+  result: Pick<AuthResult, "access_token" | "expires_in"> & { refresh_token?: string },
 ): Promise<void> {
   const response = await fetch(SESSION_ENDPOINT, {
     method: "POST",
@@ -472,10 +473,10 @@ export async function logout(): Promise<void> {
  * absence: somebody in a cohort still has their own entitlements and their own
  * attempts. Without it, joining an institution was a one-way door.
  */
-export async function switchWorkspace(orgSlug: string | null): Promise<AuthResult> {
-  let result: AuthResult;
+export async function switchWorkspace(orgSlug: string | null): Promise<WorkspaceToken> {
+  let result: WorkspaceToken;
   try {
-    result = await platformRequest<AuthResult>("/api/v1/auth/switch-workspace", {
+    result = await platformRequest<WorkspaceToken>("/api/v1/auth/switch-workspace", {
       method: "POST",
       body: { org_slug: orgSlug },
     });
@@ -487,7 +488,8 @@ export async function switchWorkspace(orgSlug: string | null): Promise<AuthResul
     throw error;
   }
   // The new token *is* the switch; keeping the old one would leave every later
-  // request claiming the workspace the person just left.
+  // request claiming the workspace the person just left. A switch carries no
+  // refresh token: the chain the cookie holds carries on.
   await remember(result);
   return result;
 }
@@ -535,17 +537,20 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
 }
 
 /**
- * The organisation that sent an invitation, for the accept page's greeting.
+ * Who sent an invitation, for the accept page's greeting: the organisation's name, its kind
+ * (`employer`, `institution`, ...) and the role being offered.
  *
  * Null for every refusal alike (and for a failed lookup): the page then keeps its plain wording,
- * and says nothing about why. Route not in the generated types until `openapi.json` is regenerated.
+ * and says nothing about why.
  */
-export async function invitationOrganisation(token: string): Promise<string | null> {
+export type InvitationRead = { organisationName: string; orgType: string | null; role: string | null };
+
+export async function readInvitation(token: string): Promise<InvitationRead | null> {
   try {
-    const found = await platformRequest<{ organisation_name: string }>(
+    const found = await platformRequest<components["schemas"]["InvitationLookup"]>(
       `/api/v1/auth/invitation/${encodeURIComponent(token)}`,
     );
-    return found.organisation_name;
+    return { organisationName: found.organisation_name, orgType: found.org_type, role: found.role };
   } catch {
     return null;
   }

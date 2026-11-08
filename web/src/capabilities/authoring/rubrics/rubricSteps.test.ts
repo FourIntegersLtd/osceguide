@@ -15,7 +15,7 @@ describe("rubricSteps", () => {
   });
   it("problems come first, then instructions, then saving", () => {
     assert.equal(rubricSteps({ ...clean, problems: 2 })[1]?.note, "2 problems");
-    assert.deepEqual(rubricNextAction({ ...clean, problems: 1, dirty: true }), { id: "fix", line: "Fix 1 problem to publish." });
+    assert.deepEqual(rubricNextAction({ ...clean, problems: 1, dirty: true }), { id: "fix", line: "Fix 1 problem below to publish." });
     assert.equal(rubricNextAction({ ...clean, promptMissing: true }).id, "instructions");
     assert.equal(rubricSteps({ ...clean, dirty: true })[0]?.state, "attention");
     assert.equal(rubricNextAction({ ...clean, dirty: true }).id, "save");

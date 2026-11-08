@@ -229,7 +229,7 @@ export const b2bAuthCanvas =
  * the specification, so these are their literal values; see DESIGN.md. Sizes come from the
  * `text-assess-*` scale in tailwind.config.ts.
  */
-export const assessPage = "flex w-full max-w-assess-page flex-col gap-6";
+export const assessPage = "flex w-full flex-col gap-6";
 export const assessEyebrow = "text-assess-eyebrow font-normal uppercase text-osce-ink-500";
 export const assessTitle = "my-1.5 text-assess-h1 font-semibold text-osce-ink-900";
 export const assessDesc = "text-assess-desc text-osce-ink-500";

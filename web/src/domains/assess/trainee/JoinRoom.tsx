@@ -11,7 +11,9 @@ import {
 } from "@/foundation/livekit";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import { joinCircuit, type MySitting } from "@/domains/assess/trainee/api";
-import { joinFailureCopy, phaseLabel } from "@/domains/assess/trainee/support";
+import { isExam, joinFailureCopy, phaseLabel } from "@/domains/assess/trainee/support";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { RoomGrid } from "@/domains/assess/room/RoomGrid";
 
 /**
  * A candidate in the room, and the way in.
@@ -28,10 +30,14 @@ import { joinFailureCopy, phaseLabel } from "@/domains/assess/trainee/support";
 export function JoinRoom({
   sitting,
   onLeft,
+  label,
 }: {
   sitting: MySitting;
   onLeft?: () => void;
+  /** The button's words when the screen names the station ("Join station 2"); a re-join keeps "Re-join". */
+  label?: string;
 }) {
+  const w = useAssessWords();
   const [grant, setGrant] = useState<RoomGrant | null>(null);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,11 +59,11 @@ export function JoinRoom({
       if (mic.status !== "ready") await mic.request().catch(() => undefined);
       setGrant(await joinCircuit(sitting.circuit_id));
     } catch (cause) {
-      setError(joinFailureCopy(cause));
+      setError(joinFailureCopy(cause, w));
     } finally {
       setJoining(false);
     }
-  }, [mic, sitting.circuit_id]);
+  }, [mic, sitting.circuit_id, w]);
 
   /**
    * Join as soon as the backend allows it, during reading — do not wait for the
@@ -85,6 +91,33 @@ export function JoinRoom({
     if (!sitting.can_join) attempted.current = false;
   }, [sitting.can_join]);
 
+  const leave = () => {
+    setLeftCircuit(sitting.circuit_id);
+    setGrant(null);
+    onLeft?.();
+  };
+
+  // A practice circuit is a group video room; the microphone opens only when it is this person's turn.
+  if (grant && !isExam(sitting)) {
+    return (
+      <VoiceRoom
+        grant={grant}
+        audio={false}
+        onError={(cause) => {
+          setGrant(null);
+          setError(joinFailureCopy(cause, w));
+          attempted.current = false;
+        }}
+        onDisconnected={(unexpected) => {
+          setGrant(null);
+          if (unexpected) attempted.current = false;
+        }}
+      >
+        <RoomGrid controls={{ onLeave: leave }} />
+      </VoiceRoom>
+    );
+  }
+
   if (grant) {
     return (
       <VoiceRoom
@@ -92,7 +125,7 @@ export function JoinRoom({
         onError={(cause) => {
           // A room that will not connect is said, not swallowed: leave it so Join is offered again.
           setGrant(null);
-          setError(joinFailureCopy(cause));
+          setError(joinFailureCopy(cause, w));
           attempted.current = false;
         }}
         onDisconnected={(unexpected) => {
@@ -113,11 +146,7 @@ export function JoinRoom({
           <Button
             themeType="b2b"
             variant="danger"
-            onClick={() => {
-              setLeftCircuit(sitting.circuit_id);
-              setGrant(null);
-              onLeft?.();
-            }}
+            onClick={leave}
           >
             <LuLogOut className="h-4 w-4" aria-hidden />
             Leave the room
@@ -152,7 +181,7 @@ export function JoinRoom({
             ) : (
               <LuDoorOpen className="h-4 w-4" aria-hidden />
             )}
-            {left ? "Re-join" : "Join"}
+            {left ? "Re-join" : (label ?? "Join")}
           </Button>
         ) : null}
       </div>

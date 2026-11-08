@@ -8,7 +8,7 @@ The one data step first: duplicate unstarted attempts for the same start are fai
 `duplicate_start` (the newest is kept), so the unique index can be built.
 
 The timeouts apply to NEW connections only. `pg_dump` sets its own `statement_timeout=0`. A long
-job calls `core.jobs.allow_long_statement`; alembic sets `statement_timeout = 0` itself.
+request awaiting a model call calls `core.jobs.allow_long_idle`; alembic sets `statement_timeout = 0` itself.
 
 Revision ID: 3e5b8d1f7a42
 Revises: f6a7b8c9d0e1

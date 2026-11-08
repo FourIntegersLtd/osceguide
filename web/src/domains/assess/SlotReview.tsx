@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useSurface } from "@/capabilities";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { useMeEvents } from "@/foundation/hooks";
 import { AsyncBoundary, Spinner, b2bTokens } from "@/foundation/ui";
 import { boardChip, boardInput, boardLabel, boardPad, boardBtn, boardAlert } from "@/foundation/ui/boardKit";
@@ -19,10 +20,10 @@ import { MarkingPanel } from "@/domains/assess/results/MarkingPanel";
 import { can, useSession } from "@/foundation/session";
 import { GpLeadReview, SlotReviewers, readSittingReport, readSlotReviews } from "@/domains/assess/results";
 import { candidateSteps, slotContext } from "@/domains/assess/results/candidateNeighbours";
-import { markingState, openForm, slotNextLine, slotReviewSteps } from "@/domains/assess/results/slotReviewSteps";
+import { markingState, openForm, slotNextLine, slotReviewSteps, submitHint, disagreementCopy } from "@/domains/assess/results/slotReviewSteps";
 import type { SlotReviews } from "@/domains/assess/results";
 import { ReviewFields } from "@/domains/assess/results/ReviewFields";
-import { fieldValuesFor, initialRatings } from "@/domains/assess/results/reviewForm";
+import { fieldValuesFor, disagreements, initialRatings, unratedRequired } from "@/domains/assess/results/reviewForm";
 import { boardRailStep } from "@/domains/assess/chrome";
 
 /**
@@ -77,6 +78,7 @@ export function SlotReview({
   );
 
   const { hrefFor } = useSurface();
+  const w = useAssessWords();
   // The sitting's report names the circuit and candidate and gives the neighbours to step to; it is a convenience, so a failure says so beside the form.
   const report = useAsync(
     (signal) => (sittingId ? readSittingReport(orgSlug, sittingId, signal) : Promise.resolve(null)),
@@ -98,16 +100,20 @@ export function SlotReview({
         <div>
           {context ? <div className={b2bTokens.assessEyebrow}>{context.eyebrow}</div> : null}
           <h1 className={b2bTokens.assessTitle}>Mark this station</h1>
-          <p className={b2bTokens.assessDesc}>The automatic marking, your marks and the admin&apos;s review.</p>
+          <p className={b2bTokens.assessDesc}>
+            {w.hiring
+              ? "Check the AI's first mark against the transcript, then give your rating."
+              : "The automatic marking, your marks and the admin's review."}
+          </p>
         </div>
         {sittingId && steps ? <CandidateStepper steps={steps} sittingId={sittingId} /> : null}
         {report.error ? <p className="text-assess-meta text-osce-ink-500">Could not load the other candidates.</p> : null}
       </div>
       {state.data?.hidden ? (
         <div className={boardPad}>
-          <h2 className="text-base font-semibold leading-[1.2]">Not your circuit</h2>
+          <h2 className="text-base font-semibold leading-[1.2]">Not your {w.circuit}</h2>
           <div role="alert" className={boardAlert("warn")}>
-            You are not named on this station&apos;s circuit, so its marking is hidden from you.
+            You are not named on this station&apos;s {w.circuit}, so its marking is hidden from you.
           </div>
         </div>
       ) : null}
@@ -145,8 +151,9 @@ function Editor({
   initial: { id: string; field_values: Record<string, unknown>; notes: string | null; status: string } | null;
   onSaved: () => void;
 }) {
+  const w = useAssessWords();
   const { session } = useSession();
-  const isAdmin = can(session, "sign_off_results");
+  const isAdmin = can(session, "lead_review");
   const open = openForm(isAdmin);
   // The admin's review status is read by its own form; the steps only follow it.
   const [adminStatus, setAdminStatus] = useState<string | null>(null);
@@ -205,7 +212,15 @@ function Editor({
     marking,
     mine: initial?.status === "completed" ? "completed" : initial ? "draft" : "none",
     admin: !isAdmin ? null : adminStatus === "completed" ? "completed" : adminStatus ? "draft" : "none",
-  });
+  }, w);
+  // The viewer's own marks against each other submitted review; an admin, whose review decides, sees the first two reviewers compared.
+  const completedOthers = (reviews.items ?? []).filter((item) => item.id !== initial?.id && item.status === "completed");
+  const clashes = isAdmin
+    ? completedOthers[0]
+      ? disagreements(form, completedOthers[0].field_values as Record<string, RatingValue>, completedOthers.slice(1)).map((c) => ({ ...c, you: completedOthers[0]?.reviewer_name || "Another reviewer" }))
+      : []
+    : disagreements(form, ratings, completedOthers).map((c) => ({ ...c, you: "You" }));
+  const hint = submitHint(unratedRequired(form, ratings).length, w);
 
   const persist = useCallback(
     async (status: "draft" | "completed") => {
@@ -251,8 +266,17 @@ function Editor({
             </div>
           ))}
         </div>
-        <div className="text-assess-label">{slotNextLine(open, steps)}</div>
+        <div className="text-assess-label">{slotNextLine(open, steps, w)}</div>
       </div>
+      {clashes.map((clash) => {
+        const copy = disagreementCopy(clash, clash.you, w);
+        return (
+          <div key={clash.name} role="alert" className={boardAlert("warn")}>
+            <b className="block">{copy.title}</b>
+            {copy.body}
+          </div>
+        );
+      })}
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-6">
           {/* One form per page: an admin writes the review that counts, anyone else their own marks. */}
@@ -262,7 +286,7 @@ function Editor({
                 <h2 className="text-base font-semibold leading-normal">Your marks</h2>
                 <span className={boardChip(submitted ? "ok" : "neutral")}>{submitted ? "Submitted" : "Draft"}</span>
               </div>
-              {error && <div role="alert" className={boardAlert("bad")}>{assessErrorMessage(error)}</div>}
+              {error && <div role="alert" className={boardAlert("bad")}>{assessErrorMessage(error, w)}</div>}
               {saved && !error && <div role="status" className={boardAlert("ok")}>{saved}</div>}
 
               <ReviewFields
@@ -271,6 +295,7 @@ function Editor({
                 onRate={(path, value) => setRatings((current) => ({ ...current, [path]: value }))}
                 payload={payload}
                 disabled={mineReadOnly}
+                flagLeadDecides={w.hiring}
               />
 
               <label className="block">
@@ -295,9 +320,10 @@ function Editor({
                   <button type="button" className={boardBtn()} onClick={() => persist("draft")} disabled={busy !== null}>
                     {busy === "draft" ? <Spinner className="text-current" /> : "Save draft"}
                   </button>
-                  <button type="button" className={boardBtn("primary")} onClick={() => persist("completed")} disabled={busy !== null}>
-                    {busy === "completed" ? <Spinner className="text-current" /> : "Submit review"}
+                  <button type="button" className={boardBtn("primary")} onClick={() => persist("completed")} disabled={busy !== null || hint !== null}>
+                    {busy === "completed" ? <Spinner className="text-current" /> : w.hiring ? "Submit my mark" : "Submit review"}
                   </button>
+                  {hint ? <div className="w-full text-right text-assess-meta text-osce-ink-500">{hint}</div> : null}
                 </div>
               )}
             </div>
@@ -322,7 +348,7 @@ function Editor({
           {/* The marking is the machine's reading of the consultation; this is
             the consultation. A marker is asked to agree or disagree with the
             first, which is not a judgement they can make from a score alone. */}
-          <AttemptTranscript attemptId={attemptId} cardClassName={reviewCard} />
+          <AttemptTranscript attemptId={attemptId} cardClassName={reviewCard} loadLabel={w.hiring ? "Open the full transcript" : undefined} />
           <div className={reviewCard}>
             <h2 className="text-base font-semibold leading-normal">What the reviewers agreed</h2>
             <SlotReviewers reviews={reviews} />

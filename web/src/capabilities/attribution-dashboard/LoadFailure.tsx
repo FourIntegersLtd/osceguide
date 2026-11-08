@@ -12,17 +12,20 @@ export function LoadFailure({
   title,
   error,
   onRetry,
-  note = "Nothing here is zero; it just hasn't loaded.",
+  note = "Nothing here is zero; it just has not loaded.",
+  showDetail = true,
 }: {
   title: string;
   error: Error;
   onRetry: () => void;
   note?: string;
+  /** Staff see the server's sentence; customers see only the plain note. */
+  showDetail?: boolean;
 }) {
   return (
     <Alert tone="danger" title={title}>
       <p>
-        {error.message} {note}
+        {showDetail ? `${error.message} ` : ""}{note}
       </p>
       <div className="mt-3">
         <Button variant="secondary" size="sm" onClick={onRetry}>

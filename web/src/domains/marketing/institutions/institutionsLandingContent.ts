@@ -1,4 +1,3 @@
-import { SUPPORT_EMAIL } from "@/foundation/support";
 import type { IconType } from "react-icons";
 import {
   HiOutlineChartBar,
@@ -9,9 +8,6 @@ import {
   HiOutlineUserGroup,
   HiOutlineVideoCamera,
 } from "react-icons/hi2";
-
-export const DEMO_MAILTO =
-  `mailto:${SUPPORT_EMAIL}?subject=OSCE%20Guide%20Institutions%20Demo`;
 
 export const INSTITUTIONS_NAV = [
   { href: "#for", label: "Who it's for" },

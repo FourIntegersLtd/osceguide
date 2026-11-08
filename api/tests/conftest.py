@@ -466,6 +466,17 @@ def voice_tokens(client: AsyncClient):  # type: ignore[no-untyped-def]
     return fake
 
 
+@pytest.fixture
+def agents(client: AsyncClient):  # type: ignore[no-untyped-def]
+    """A room-agents fake (patients, mic permissions) in place of LiveKit; files may override it."""
+    from app.features.voice.service import get_room_agents
+    from tests.support.fakes import FakeRoomAgents
+
+    fake = FakeRoomAgents()
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: fake  # type: ignore[attr-defined]
+    return fake
+
+
 @pytest.fixture(autouse=True)
 def _fresh_local_rate_windows() -> Iterator[None]:
     """Sign-in counts per process when Redis is off; one test's attempts must not count in the next.

@@ -12,6 +12,7 @@ export const ROLE_LABELS: Record<string, string> = {
   institution_admin: "Admin",
   partner_admin: "Admin",
   supervisor: "Supervisor",
+  gp_lead: "GP lead",
   trainee: "Trainee",
   practice_user: "Practice user",
 };
@@ -23,6 +24,7 @@ export const ROLE_DESCRIPTIONS: Record<string, string> = {
   institution_admin: "Runs exams and the team; can sign off and release results.",
   partner_admin: "Runs a practice partner's learners and attribution; cannot sign off or release results.",
   supervisor: "Runs circuits and marks the candidates on them.",
+  gp_lead: "Runs circuits and settles disagreements between two examiners on a station.",
 };
 
 /** A role as words. An unknown role is shown as it came, or as `fallback`. */
@@ -37,7 +39,8 @@ export function isAdminRole(role: string | null | undefined): boolean {
   return ADMIN_ROLES.has((role ?? "").toLowerCase());
 }
 
-/** The backend's assigned-staff role, read only to display (who can lead a circuit), never to gate. */
+/** The backend's assigned-staff roles, read only to display (who can lead a circuit), never to gate. */
 export function isSupervisorRole(role: string | null | undefined): boolean {
-  return (role ?? "").toLowerCase() === "supervisor";
+  const held = (role ?? "").toLowerCase();
+  return held === "supervisor" || held === "gp_lead";
 }

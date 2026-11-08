@@ -1,5 +1,7 @@
 "use client";
 
+import { LuBan } from "react-icons/lu";
+import { RowAction, RowActions } from "@/foundation/ui";
 import { useState } from "react";
 import { AsyncBoundary, b2bTokens as t, cn } from "@/foundation/ui";
 import { card, Chip, Note, row } from "@/domains/assess/ui";
@@ -37,11 +39,11 @@ export function ScimTokens({ orgSlug }: { orgSlug: string }) {
   }
 
   return (
-    <SettingsCard title="Provisioning" lead="Let your identity provider add and remove people here. Give each connector its own token.">
+    <SettingsCard title="Automatic user sync" lead="For IT teams. Lets your organisation's sign-in system add and remove staff here automatically. Create one key for each system you connect.">
       {failure ? <Note tone="bad" role="alert">{failure}</Note> : null}
       {issued ? (
         <Note tone="warn">
-          Copy this token now; it cannot be shown again. <code className="break-all">{issued.token}</code>{" "}
+          Copy this key now; it cannot be shown again. <code className="break-all">{issued.token}</code>{" "}
           <button type="button" className={boardButtonSmall} onClick={() => setIssued(null)}>
             Dismiss
           </button>
@@ -59,20 +61,20 @@ export function ScimTokens({ orgSlug }: { orgSlug: string }) {
         }}
       >
         <input
-          aria-label="Connector name"
+          aria-label="Name of the system"
           className={cn(boardInput, "min-w-0 flex-[1_1_240px]")}
-          placeholder="Connector name"
+          placeholder="Name of the system"
           value={label}
           onChange={(event) => setLabel(event.target.value)}
         />
         <button type="submit" className={boardBtn("primary")} disabled={busy || !label.trim()}>
-          Create token
+          Create key
         </button>
       </form>
       <AsyncBoundary state={tokens}>
         {(items) =>
           items.length === 0 ? (
-            <p className={cn(t.assessMeta, "m-0")}>No tokens yet.</p>
+            <p className={cn(t.assessMeta, "m-0")}>No keys yet.</p>
           ) : (
             <div className={card}>
               {items.map((token, index) => (
@@ -84,11 +86,13 @@ export function ScimTokens({ orgSlug }: { orgSlug: string }) {
                     </div>
                   </span>
                   {token.revoked_at ? (
-                    <Chip>Revoked</Chip>
+                    <Chip>Turned off</Chip>
                   ) : (
-                    <button type="button" className={boardButtonSmall} disabled={busy} onClick={() => void act(() => revokeScimToken(orgSlug, token.id))}>
-                      Revoke
-                    </button>
+                    <RowActions>
+                      <RowAction label="Revoke" disabled={busy} onClick={() => void act(() => revokeScimToken(orgSlug, token.id))}>
+                        <LuBan className="h-4 w-4" aria-hidden />
+                      </RowAction>
+                    </RowActions>
                   )}
                 </div>
               ))}

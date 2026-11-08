@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { examChipLabel, examDeleteBlocked } from "@/capabilities/authoring/lib/authoringCopy";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -172,6 +174,7 @@ function ExamDetailBody({
   reload,
 }: View & { reload: () => void }) {
   const scope = useAuthoringScope();
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const router = useRouter();
   const canAuthor = useCanAuthor();
@@ -200,14 +203,14 @@ function ExamDetailBody({
   }
 
   return (
-    <div className="flex max-w-[1080px] flex-col gap-6" data-testid="exam-detail-page">
+    <div className="flex flex-col gap-6" data-testid="exam-detail-page">
       <B2CPageHeader
         board="tight"
         className="!mb-0"
         eyebrow={
           <span className="flex items-center gap-2.5 font-sans normal-case tracking-normal">
             <span className="text-assess-eyebrow font-normal uppercase tracking-[0.06em] text-ink-subtle">{exam.code}</span>
-            <BoardChip tone={chip === "Ready to schedule" ? "ok" : "warn"}>{chip}</BoardChip>
+            <BoardChip tone={chip === "Ready to schedule" ? "ok" : "warn"}>{examChipLabel(chip, w)}</BoardChip>
           </span>
         }
         title={exam.name}
@@ -216,13 +219,13 @@ function ExamDetailBody({
           scheme
             ? `Marking scheme v${scheme.version.version}`
             : "No marking scheme",
-          plural(sittings.length, "sitting", "sittings"),
+          plural(sittings.length, w.sitting, w.sittings),
         ].join(" · ")}
         back={{ href: examsListPath(hrefFor), label: "Exams" }}
         action={
           programme?.status === "active" ? (
             <ButtonLink href={hrefFor("/sittings/new")} variant="primary">
-              Schedule a sitting
+              {w.scheduleSitting}
             </ButtonLink>
           ) : null
         }
@@ -235,7 +238,7 @@ function ExamDetailBody({
           <p className="text-assess-desc font-medium !leading-[normal] text-ink">Available for scheduling</p>
           <p className={boardMeta}>
             {exam.status === "published"
-              ? toggleHelp(on)
+              ? toggleHelp(on, w)
               : "Finish setting the exam up and publish it, then switch this on."}
           </p>
           {exam.status === "draft" && canAuthor ? (
@@ -297,7 +300,7 @@ function ExamDetailBody({
 
           <div className={boardCardClipped}>
             <div className={cardHead}>
-              <h2 className={cardTitle}>Sittings</h2>
+              <h2 className={cardTitle}>{w.Sittings}</h2>
               <Link
                 href={
                   programme
@@ -306,11 +309,11 @@ function ExamDetailBody({
                 }
                 className="text-assess-label text-osce-accent"
               >
-                All sittings
+                All {w.sittings}
               </Link>
             </div>
             {sittings.length === 0 ? (
-              <p className={`${boardRow} ${boardMeta}`}>No sittings scheduled for this exam yet.</p>
+              <p className={`${boardRow} ${boardMeta}`}>No {w.sittings} scheduled for this exam yet.</p>
             ) : (
               sittings.slice(0, 2).map((sitting) => (
                 <Link
@@ -389,7 +392,7 @@ function ExamDetailBody({
               </button>
               {inUse ? (
                 <p className={boardMeta}>
-                  Can&apos;t delete: this exam has sittings and recordings. Retire it instead, and its records stay.
+                  {examDeleteBlocked(w)}
                 </p>
               ) : null}
             </div>

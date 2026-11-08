@@ -1,8 +1,8 @@
 "use client";
 
-import { AsyncBoundary, Badge, Button, Spinner } from "@/foundation/ui";
+import { LuCheck, LuStethoscope } from "react-icons/lu";
+import { AsyncBoundary, Button, Spinner } from "@/foundation/ui";
 import { StationFilters } from "@/capabilities/stations/StationFilters";
-import { StationIdentity } from "@/capabilities/stations/LibraryBrowse";
 import type { StationLibraryScope } from "@/capabilities/stations/api";
 import { useStationLibrary } from "@/capabilities/stations/useStationLibrary";
 import type { LibraryStation } from "@/capabilities/stations/api";
@@ -37,8 +37,8 @@ export function StationPicker({
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <StationFilters library={library} />
+    <div className="flex min-h-0 flex-col gap-3">
+      <StationFilters library={library} maxWidthClass="max-w-none" />
 
       <AsyncBoundary
         state={state}
@@ -52,26 +52,27 @@ export function StationPicker({
       >
         {(rows) => (
           <>
-            <ul className="divide-y divide-border rounded-panel border border-border bg-surface">
+            <ul className="m-0 max-h-[min(22rem,50dvh)] list-none divide-y divide-border overflow-y-auto rounded-panel border border-border bg-surface p-0">
               {rows.map((station) => {
                 const added = selectedVersionIds?.has(station.version_id) ?? false;
                 return (
-                  <li
-                    key={station.version_id}
-                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                  >
-                    <StationIdentity station={station} />
-                    <div className="flex items-center gap-3">
-                      <Badge tone="accent">{station.exam_code.toUpperCase()}</Badge>
-                      <button
-                        type="button"
-                        onClick={() => onPick(station)}
-                        disabled={added}
-                        className="rounded-control border border-border-strong px-3 py-1 text-sm font-medium text-ink hover:bg-surface-raised disabled:cursor-not-allowed disabled:text-ink-subtle"
-                      >
-                        {added ? "Added" : pickLabel}
-                      </button>
+                  <li key={station.version_id} className="flex items-center gap-3 px-4 py-2.5">
+                    <LuStethoscope className="h-4 w-4 shrink-0 text-ink-subtle" aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <p className="m-0 truncate text-sm font-medium text-ink" title={station.title}>
+                        {station.title}
+                      </p>
+                      {station.version > 1 ? <p className="m-0 text-xs text-ink-subtle">Version {station.version}</p> : null}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => onPick(station)}
+                      disabled={added}
+                      className="inline-flex min-h-9 w-24 shrink-0 items-center justify-center gap-1.5 rounded-control border border-border-strong px-3 text-sm font-medium text-ink hover:bg-surface-raised disabled:cursor-not-allowed disabled:text-ink-subtle"
+                    >
+                      {added ? <LuCheck className="h-4 w-4" aria-hidden /> : null}
+                      {added ? "Added" : pickLabel}
+                    </button>
                   </li>
                 );
               })}

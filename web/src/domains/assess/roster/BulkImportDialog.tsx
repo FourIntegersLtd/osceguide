@@ -1,5 +1,6 @@
 "use client";
 
+import { say } from "@/domains/assess/roster/rosterWords";
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { HiOutlineArrowUpTray } from "react-icons/hi2";
@@ -21,7 +22,7 @@ import {
   ImportInstructions,
   ImportOutcome,
 } from "@/domains/assess/roster/ImportParts";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * The spreadsheet import.
@@ -226,14 +227,14 @@ export function BulkImportDialog({
           ) : null}
           {unknownCohorts.length > 0 ? (
             <div className="mt-1 text-osce-caption text-b2b-warning-text/90">
-              <p>No year group here is called {unknownCohorts.join(", ")}.</p>
+              <p>{say(w, "No year group here is called")} {unknownCohorts.join(", ")}.</p>
               <Checkbox
-                label={`Create ${unknownCohorts.length === 1 ? "that year group" : "those year groups"} when importing`}
+                label={say(w, `Create ${unknownCohorts.length === 1 ? "that year group" : "those year groups"} when importing`)}
                 checked={createMissing}
                 onChange={() => setCreateMissing((on) => !on)}
               />
               {createMissing ? null : (
-                <p>Otherwise those people are added with no year group.</p>
+                <p>{say(w, "Otherwise those people are added with no year group.")}</p>
               )}
             </div>
           ) : null}
@@ -242,7 +243,7 @@ export function BulkImportDialog({
 
       {result ? <ImportOutcome
           result={result}
-          describe={skipReason}
+          describe={(code) => say(w, skipReason(code))}
           leftOut={(parsed?.skippedLines.length ?? 0) + (parsed?.invalidLines.length ?? 0)}
         /> : null}
     </Dialog>

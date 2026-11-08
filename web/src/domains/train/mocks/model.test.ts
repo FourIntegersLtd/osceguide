@@ -300,7 +300,7 @@ describe("describeCreateSetFailure", () => {
 
   it("falls back to the server's message, then a generic sentence", () => {
     assert.equal(describeCreateSetFailure(refusal(500, "internal_error")), "server wording");
-    assert.equal(describeCreateSetFailure(undefined), "We could not create this session. Please try again.");
+    assert.equal(describeCreateSetFailure(undefined), "We could not create this session. Check your connection, then try again. If it keeps happening, contact support.");
   });
 });
 

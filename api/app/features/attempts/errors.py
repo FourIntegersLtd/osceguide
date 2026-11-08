@@ -64,14 +64,14 @@ class AttemptNotFound(NotFound):
     """No attempt with that id, or it belongs to another organisation."""
 
     code = "attempt_not_found"
-    default_message = "No such attempt"
+    default_message = "We couldn't find that attempt"
 
 
 class AttemptNotReady(Conflict):
     """The worker or the review asked for a definition that has not been rendered yet."""
 
     code = "attempt_not_ready"
-    default_message = "This attempt has no rendered definition yet"
+    default_message = "This attempt isn't ready yet. Try again in a moment."
 
 
 class MarkingNotReady(Conflict):
@@ -81,7 +81,7 @@ class MarkingNotReady(Conflict):
     """
 
     code = "marking_not_ready"
-    default_message = "This station cannot be marked yet: its rubric is not published"
+    default_message = "This station can't be marked yet because its marking scheme is not published."
 
 
 class AttemptMismatch(Conflict):
@@ -92,7 +92,7 @@ class AttemptMismatch(Conflict):
     """
 
     code = "attempt_mismatch"
-    default_message = "That payload belongs to a different attempt"
+    default_message = "That doesn't belong to this attempt."
 
 
 class AttemptNotFinished(Conflict):
@@ -118,7 +118,7 @@ class InvalidAttemptState(Conflict):
     """The lifecycle refused the requested move; see `domain.transition`."""
 
     code = "invalid_attempt_state"
-    default_message = "The attempt is not in a state that allows this"
+    default_message = "You can't do that at this stage of the attempt."
 
 
 class AttemptInProgress(Conflict):
@@ -134,7 +134,7 @@ class UnknownExamError(NotFound):
     """Mirrors `catalog.errors.UnknownExamError`; the code is the shared contract."""
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"
 
 
 class UserNotFound(NotFound):
@@ -142,7 +142,7 @@ class UserNotFound(NotFound):
     the console switches on it."""
 
     code = "user_not_found"
-    default_message = "No such account"
+    default_message = "We couldn't find that account"
 
 
 class SetEntryAttemptLimitReached(Conflict):

@@ -37,7 +37,7 @@ class OrgNotFound(NotFound):
     """
 
     code = "org_not_found"
-    default_message = "No such organisation"
+    default_message = "We couldn't find that organisation"
 
 
 class OrgSuspended(Forbidden):
@@ -267,6 +267,11 @@ OrgStaff = Annotated[Workspace, Depends(require_org(policy("may_run_circuit")))]
 # refuses it again.
 OrgStaffRunning = Annotated[Workspace, Depends(require_org(policy("may_run_circuit"), allow_suspended=True))]
 OrgAdmin = Annotated[Workspace, Depends(require_org(policy("is_org_admin"), allow_platform_admin=False))]
+# The lead review of a station: an institution administrator, or a hire organisation's lead
+# assessor (who signs nothing off). A rung of its own between staff and admin.
+OrgLeadReviewer = Annotated[
+    Workspace, Depends(require_org(policy("may_lead_review"), allow_platform_admin=False))
+]
 OrgInstitutionAdmin = Annotated[
     Workspace, Depends(require_org(policy("is_institution_admin"), allow_platform_admin=False))
 ]

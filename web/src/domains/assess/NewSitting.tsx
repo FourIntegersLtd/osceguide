@@ -47,11 +47,14 @@ import {
 import {
   EMPTY_DRAFT,
   examTimings,
-  SCHEDULE_STEPS,
-  STEP_HELP,
+  scheduleIntro,
+  scheduleReviewLabels,
+  scheduleSteps,
+  scheduleSubmitLabel,
+  stepHelp,
   candidateNames,
   peopleFormula,
-  MODE_OPTIONS,
+  modeOptions,
   reviewFormula,
   scheduledInstant,
   sittingLine,
@@ -66,7 +69,7 @@ import {
 } from "@/domains/assess/scheduleSitting";
 import { circuitLeads } from "@/domains/assess/support";
 import { NEW_EXAM_PATH } from "@/domains/assess/dashboard/setupSteps";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import {
   circuitsMade,
@@ -198,12 +201,10 @@ function Wizard({
     }),
     [orgSlug, programme],
   );
-  const people = peopleFormula(draft, {
-    trainee: w.trainee,
-    trainees: w.trainees,
-  });
-  const index = SCHEDULE_STEPS.findIndex((item) => item.id === step);
-  const block = stepBlock(step, draft);
+  const people = peopleFormula(draft, w);
+  const steps = scheduleSteps(w);
+  const index = steps.findIndex((item) => item.id === step);
+  const block = stepBlock(step, draft, w);
   const names = useMemo(() => candidateNames(trainees), [trainees]);
 
   if (ready.length === 0) {
@@ -215,7 +216,9 @@ function Wizard({
         <p>
           {drafts.length > 0
             ? `${drafts.join(", ")} ${drafts.length === 1 ? "is" : "are"} still a draft. Finish setting it up, then come back here.`
-            : `Every ${w.sitting} belongs to an exam with a published marking scheme. Set one up, then come back here.`}
+            : w.hiring
+              ? `You need an exam with a published marking scheme before you can schedule a ${w.sitting}. Set one up, then come back.`
+              : `Every ${w.sitting} belongs to an exam with a published marking scheme. Set one up, then come back here.`}
         </p>
         <ButtonLink
           href={hrefFor(NEW_EXAM_PATH)}
@@ -230,7 +233,7 @@ function Wizard({
   }
 
   const go = (to: number) => {
-    const target = SCHEDULE_STEPS[to];
+    const target = steps[to];
     if (!target) return;
     setStep(target.id);
     setReached((current) => Math.max(current, to));
@@ -250,25 +253,25 @@ function Wizard({
       });
       sittingId = sitting.id;
     } catch (cause) {
-      setError(assessErrorMessage(cause));
+      setError(assessErrorMessage(cause, w));
       setBusy(false);
       return;
     }
     try {
-      await createSittingCircuits(orgSlug, sittingId, draft, 0);
+      await createSittingCircuits(orgSlug, sittingId, draft, 0, w);
     } catch (cause) {
       // The sitting exists: land on it with the error and a "Try again" that makes the circuits.
       savePending(sittingId, {
         draft,
         created: circuitsMade(cause),
-        message: assessErrorMessage(cause),
+        message: assessErrorMessage(cause, w),
       });
     }
     router.push(hrefFor(`/sittings/${sittingId}`));
   };
 
   const kindLabel =
-    MODE_OPTIONS.find((option) => option.value === draft.mode)?.title ?? "";
+    modeOptions(w).find((option) => option.value === draft.mode)?.title ?? "";
   const year =
     cohorts.find((cohort) => cohort.id === draft.cohortId)?.name ?? "None";
   const leadLabel = (id: string) =>
@@ -278,13 +281,11 @@ function Wizard({
     leadLabel(draft.supervisorId) === "Unassigned"
       ? ""
       : leadLabel(draft.supervisorId),
-    {
-      trainee: w.trainee,
-      trainees: w.trainees,
-    },
+    w,
   );
-  const current = SCHEDULE_STEPS[index];
-  const last = index === SCHEDULE_STEPS.length - 1;
+  const reviewLabels = scheduleReviewLabels(w);
+  const current = steps[index];
+  const last = index === steps.length - 1;
   const setStations = (
     update: (current: ScheduleDraft["stations"]) => ScheduleDraft["stations"],
   ) => setDraft((now) => ({ ...now, stations: update(now.stations) }));
@@ -300,13 +301,13 @@ function Wizard({
         </Link>
         <h1 className="text-assess-label font-semibold">{w.scheduleSitting}</h1>
         <span className={t.assessMeta}>
-          Steps unlock in order. Nothing is created until the last step.
+          {scheduleIntro(w)}
         </span>
       </div>
-      <div className="mx-auto w-full max-w-[1072px]">
-        <nav aria-label="Steps" className="flex flex-wrap gap-1.5 px-4 pt-6">
-          {SCHEDULE_STEPS.map((item, at) => {
-            const open = stepUnlocked(item.id, draft);
+      <div className="w-full">
+        <nav aria-label="Steps" className="flex flex-wrap gap-1.5 px-6 pt-6">
+          {steps.map((item, at) => {
+            const open = stepUnlocked(item.id, draft, w);
             const done = at < reached && at !== index;
             return (
               <button
@@ -342,12 +343,12 @@ function Wizard({
             );
           })}
         </nav>
-        <div className="flex flex-wrap items-start gap-6 px-4 pb-16 pt-8">
+        <div className="flex flex-wrap items-start gap-6 px-6 pb-16 pt-8">
           <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-6">
             {error ? <Alert tone="danger">{error}</Alert> : null}
             <header className="flex flex-col">
               <p className={t.assessEyebrow}>
-                Step {index + 1} of {SCHEDULE_STEPS.length}
+                Step {index + 1} of {steps.length}
               </p>
               <h2 className={t.assessTitle}>{current?.title}</h2>
               <p className={t.assessDesc}>
@@ -399,7 +400,7 @@ function Wizard({
                 />
                 <OptionCards
                   label="Kind"
-                  options={MODE_OPTIONS.map((option) => ({
+                  options={modeOptions(w).map((option) => ({
                     key: option.value,
                     title: option.title,
                     body: option.body,
@@ -422,7 +423,7 @@ function Wizard({
                     />
                   </Field>
                   <FieldSelect
-                    label="Year group"
+                    label={w.YearGroup}
                     id="sitting-year"
                     value={draft.cohortId}
                     onChange={(value) => patch({ cohortId: value })}
@@ -491,10 +492,10 @@ function Wizard({
                     [w.Sitting, sittingLine(draft)],
                     ["Exam", programme?.exam_name ?? ""],
                     ["Kind", kindLabel],
-                    ["Year group", year],
+                    [reviewLabels.year, year],
                     ["Timing", timingSummary(draft)],
                     [
-                      "Supervisor",
+                      reviewLabels.supervisor,
                       draft.perCandidate && draft.mode === "exam"
                         ? "One for each candidate"
                         : leadLabel(draft.supervisorId),
@@ -513,7 +514,7 @@ function Wizard({
               <p className={t.assessMeta}>{block}</p>
             ) : null}
 
-            <div className={t.assessFooter}>
+            <div className={cn(t.assessFooter, "justify-start")}>
               {index === 0 ? (
                 <Link
                   href={hrefFor("/sittings")}
@@ -543,7 +544,7 @@ function Wizard({
                   {busy ? (
                     <Spinner label="Creating" className="text-current" />
                   ) : (
-                    `Create ${w.sitting}`
+                    scheduleSubmitLabel(w)
                   )}
                 </Button>
               ) : (
@@ -561,11 +562,11 @@ function Wizard({
           </div>
           <aside
             aria-label="Help"
-            className={cn(t.assessCard, "h-fit flex-[1_1_302px] p-5")}
+            className={cn(t.assessCard, "h-fit flex-[1_1_302px] p-6")}
           >
             <p className={t.assessEyebrow}>Help</p>
-            <p className="mt-2 font-medium text-ink">{STEP_HELP[step].title}</p>
-            <p className={cn(t.assessMeta, "mt-1")}>{STEP_HELP[step].body}</p>
+            <p className="mt-2 font-medium text-ink">{stepHelp(step, w).title}</p>
+            <p className={cn(t.assessMeta, "mt-1")}>{stepHelp(step, w).body}</p>
           </aside>
         </div>
       </div>

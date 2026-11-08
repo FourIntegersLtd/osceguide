@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Candidates</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav on" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="3"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><div class="eyebrow">Acme Health Trust</div><h1>Candidates</h1><p class="desc">The people you are assessing. Group them by intake to schedule them together.</p></div><div class="acts"><button class="btn pri" onClick="{{open}}">Add candidates</button></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="acts"><input class="input" style="max-width:320px" placeholder="Search by name or email" aria-label="Search candidates"><button class="pill on">All 36</button><button class="pill">November intake 12</button><button class="pill">Invited, not joined 5</button></div>
+<div class="card"><div class="th"><span class="f">Candidate</span><span style="width:180px">Intake</span><span style="width:140px">Status</span></div>
+<div class="row"><div class="av">PS</div><span class="f">Priya Shah<div class="meta">priya.shah@mail.com</div></span><span style="width:180px">November intake</span><span style="width:140px"><span class="chip ok">Joined</span></span></div>
+<div class="row"><div class="av">TR</div><span class="f">Tom Reid<div class="meta">tom.reid@mail.com</div></span><span style="width:180px">November intake</span><span style="width:140px"><span class="chip warn">Invited</span></span></div>
+<div class="row"><div class="av">AM</div><span class="f">Ama Mensah<div class="meta">ama.m@mail.com</div></span><span style="width:180px">October intake</span><span style="width:140px"><span class="chip ok">Joined</span></span></div></div>
+<div class="meta">Select candidates to move them to an intake, resend invitations or remove their access.</div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="empty"><h2>No candidates yet</h2>Paste their emails or upload a spreadsheet. They are invited when you schedule an assessment.<button class="btn pri" onClick="{{open}}">Add candidates</button></div></div>
+</sc-if>
+<sc-if value="{{dlg}}" hint-placeholder-val="{{false}}">
+<div class="ov"><div class="dlg" role="dialog" aria-label="Add candidates"><h2>Add candidates</h2>
+<div><label for="em">Emails, one per line</label><textarea class="input" id="em">priya.shah@mail.com
+tom.reid@mail.com</textarea><div class="hint">Or <button class="btn sm ghost">upload a spreadsheet</button> with name and email columns.</div></div>
+<div><label for="ck">Intake</label><input class="input" id="ck" value="November intake"></div>
+<div class="al warn">tom.reid@mail.com is already a candidate. We will skip it.</div>
+<div class="acts"><button class="btn" onClick="{{close}}">Cancel</button><button class="btn pri" onClick="{{close}}">Add 1 candidate</button></div></div></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/trainees</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/trainees</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/trainees/bulk</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/trainees/bulk/cohort</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/trainees/bulk/resend-invitation</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/trainees/bulk/revoke</code></div>
+<div class="call"><span class="m">PATCH</span><code>{o}/trainees/{id}</code></div>
+<div class="call"><span class="m">DELETE</span><code>{o}/trainees/{id}</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/trainees/{id}/access</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/trainees/{id}/anonymise</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/trainees/{id}/resend-invitation</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/cohorts</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/trainee-groups[/{id}/members]</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/entitlements</code></div>
+<div class="meta">The api says trainee and cohort; the screen says candidate and intake.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>trainee_exists</code><code>trainee_revoked</code><code>trainee_in_use</code><code>too_many_trainees</code><code>cohort_exists</code><code>cohort_in_use</code><code>invitation_not_pending</code><code>invalid_email</code></div>
+<div class="note">Route <code>/app/[w]/trainees</code> · admin · fixes the institution copy on this page today · owner institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0, d: false }; }
+  renderVals() {
+    const t = this.state.t, L = ['List', 'Empty'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, dlg: this.state.d, open: () => this.setState({ d: true }), close: () => this.setState({ d: false }) };
+  }
+}
+</script>
+</body>
+</html>

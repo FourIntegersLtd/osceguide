@@ -5,6 +5,7 @@ import { useId, type ReactNode } from "react";
 import { Input, b2bTokens as t, cn } from "@/foundation/ui";
 import type { Programme, SittingMode } from "@/domains/assess/api";
 import type { Cohort } from "@/domains/assess/roster/api";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * The two fields every sitting form has.
@@ -34,6 +35,7 @@ export function ModeField({
   disabled?: boolean;
   hint?: string;
 }) {
+  const w = useAssessWords();
   return (
     <fieldset className="flex flex-col gap-1.5" disabled={disabled}>
       <legend className="text-sm font-medium text-ink">Mode</legend>
@@ -41,7 +43,7 @@ export function ModeField({
         {(
           [
             ["exam", "Exam", "Marked, signed off and released"],
-            ["training", "Training", "Feedback straight to the trainee"],
+            ["training", w.training, `Feedback straight to the ${w.trainee}`],
           ] as const
         ).map(([option, label, blurb]) => (
           <button
@@ -66,8 +68,8 @@ export function ModeField({
       <p className="text-sm text-ink-muted">
         {hint ??
           (value === "exam"
-            ? "One candidate takes every station, up to twelve. You cannot add trainees once it has started."
-            : "Each trainee is paired with one station, and they rotate.")}
+            ? `One candidate takes every station, up to twelve. You cannot add ${w.trainees} once it has started.`
+            : `Each ${w.trainee} is paired with one station, and they rotate.`)}
       </p>
     </fieldset>
   );
@@ -92,11 +94,12 @@ export function ProgrammeField({
   programmes: ProgrammeChoice[];
   disabled?: boolean;
 }) {
+  const w = useAssessWords();
   const selected = programmes.find((programme) => programme.id === value);
   return (
     <div className="flex flex-col gap-1.5">
       <FieldSelect
-        label="Programme"
+        label={w.hiring ? w.Exam : "Programme"}
         value={value}
         onChange={onChange}
         disabled={disabled}

@@ -229,6 +229,7 @@ async def create_slots(
     *,
     planned: list[tuple[int, uuid.UUID, uuid.UUID]],
     room_name: str | None = None,
+    assessors: list[uuid.UUID | None] | None = None,
 ) -> list[Slot]:
     """Build slots, optionally already in a room.
 
@@ -244,6 +245,7 @@ async def create_slots(
             trainee_id=trainee_id,
             station_version_id=station_version_id,
             room_name=room_name,
+            assessor_user_id=assessors[index] if assessors else None,
         )
         for index, trainee_id, station_version_id in planned
     ]

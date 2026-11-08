@@ -1,9 +1,11 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { stationExamHint } from "@/capabilities/authoring/lib/authoringCopy";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button, Select, SelectableCard, cn } from "@/foundation/ui";
+import { B2CPageHeader, Button, Select, SelectableCard, cn } from "@/foundation/ui";
 import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 import { useSurface } from "@/capabilities";
 import { ImportStationDialog } from "@/capabilities/authoring/imports/ImportStationDialog";
@@ -13,7 +15,7 @@ import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templ
 import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/wizardFooter";
 import { stationLibraryPath, stationNewPath, stationsListPath } from "@/capabilities/authoring/stations/paths";
 import {
-  STATION_START_WAYS,
+  stationStartWays,
   stationStartHref,
   type StationStartWay,
 } from "@/capabilities/authoring/stations/stationStart";
@@ -22,6 +24,7 @@ import { boardBtn } from "@/foundation/ui/boardKit";
 /** "New station": the exam it is for, then how to start. The form opens on that choice. */
 export function NewStationChooser() {
   const router = useRouter();
+  const words = useAssessWords();
   const { hrefFor } = useSurface();
   const listHref = stationsListPath(hrefFor);
   const catalog = useAuthoringExamCatalog();
@@ -29,7 +32,8 @@ export function NewStationChooser() {
   const [examCode, setExamCode] = useState(useSearchParams().get("exam") ?? "");
   const [way, setWay] = useState<StationStartWay>("layout");
   const [importing, setImporting] = useState(false);
-  const current = STATION_START_WAYS.find((w) => w.id === way) ?? STATION_START_WAYS[0]!;
+  const ways = stationStartWays(words);
+  const current = ways.find((w) => w.id === way) ?? ways[0]!;
 
   function go() {
     if (way === "import") setImporting(true);
@@ -39,16 +43,21 @@ export function NewStationChooser() {
 
   const chrome = useAuthoringChrome();
   if (!chrome.b2c) {
-    /* The board's sheet: a 720px card with header, body and footer. */
+    /* An ordinary page: the header, the fields on the page canvas, the actions underneath. */
     return (
-      <div className="-mx-3 flex max-w-[752px] flex-col px-4 py-12 md:mx-auto md:w-full" data-testid="new-station-sheet">
-        <div className="overflow-hidden rounded-board-xl bg-osce-surface shadow-board-sheet">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-osce-border-light px-6 py-5">
-            <h1 className="m-0 text-assess-hero font-semibold !leading-[normal] text-ink">New station</h1>
-            <Link href={listHref} className={boardBtn()}>Cancel</Link>
-          </div>
-          <div className="flex flex-col gap-[18px] p-6">
-            <div>
+      <div className="flex flex-col gap-6 pb-8" data-testid="new-station-sheet">
+        <div className="flex flex-col gap-6">
+          <B2CPageHeader
+            board
+            action={<span aria-hidden />}
+            className="!mb-0 [&_h1]:-mt-1"
+            wideSubtitle
+            eyebrow="Exams › Stations"
+            title="New station"
+            back={{ href: listHref, label: "Stations" }}
+          />
+          <div className="flex flex-col gap-[18px]">
+            <div className="max-w-xl">
               <label htmlFor="new-station-exam" className="mb-1.5 block text-assess-label font-medium text-ink">For exam</label>
               <Select
                 id="new-station-exam"
@@ -62,14 +71,14 @@ export function NewStationChooser() {
                 ))}
               </Select>
               <div className="mt-1.5 text-assess-meta text-ink-subtle">
-                Only exams that are ready show here. A station can only go into sittings of its own exam.
+                {stationExamHint(words)}
               </div>
               {catalog.error ? <LoadError message={catalog.error} onRetry={catalog.reload} /> : null}
             </div>
             <div>
               <div className="mb-2 text-assess-label font-medium text-ink">How do you want to start?</div>
               <div role="radiogroup" aria-label="How do you want to start?" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {STATION_START_WAYS.map((w) => (
+                {ways.map((w) => (
                   <button
                     key={w.id}
                     type="button"
@@ -92,9 +101,10 @@ export function NewStationChooser() {
               <div className="text-assess-meta text-ink-subtle">{current.next}</div>
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-osce-border-light px-6 py-4">
-            {examCode === "" ? <p className="mr-auto m-0 text-assess-meta text-ink-subtle">Choose an exam to continue.</p> : null}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link href={listHref} className={boardBtn()}>Cancel</Link>
             <button type="button" className={boardBtn("primary")} disabled={examCode === ""} onClick={go}>{current.cta}</button>
+            {examCode === "" ? <p className="m-0 text-assess-meta text-ink-subtle">Choose an exam to continue.</p> : null}
           </div>
         </div>
         <ImportStationDialog open={importing} onClose={() => setImporting(false)} initialExamCode={examCode} />
@@ -127,7 +137,7 @@ export function NewStationChooser() {
             ))}
           </Select>
           <p className="mt-2 text-osce-caption text-ink-muted">
-            Only exams that are ready show here. A station can only go into sittings of its own exam.
+            {stationExamHint(words)}
           </p>
           {catalog.error ? <LoadError message={catalog.error} onRetry={catalog.reload} /> : null}
         </div>
@@ -135,7 +145,7 @@ export function NewStationChooser() {
         <div>
           <p className="text-osce-body font-semibold text-ink">How do you want to start?</p>
           <div role="radiogroup" aria-label="How do you want to start?" className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {STATION_START_WAYS.map((w) => (
+            {ways.map((w) => (
               <SelectableCard key={w.id} selected={w.id === way} onSelect={() => setWay(w.id)}>
                 <span className="text-osce-body font-medium text-ink">{w.title}</span>
                 <span className="text-osce-caption text-ink-muted">{w.body}</span>

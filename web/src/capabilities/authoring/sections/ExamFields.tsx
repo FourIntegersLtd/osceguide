@@ -128,15 +128,11 @@ export function ExamFields({
   return (
     <>
       <div className={board ? "flex flex-wrap gap-4" : "grid grid-cols-1 gap-4 sm:grid-cols-2"}>
-        <FieldCell board={board} label="Code">
-          <input
-            value={value.code}
-            disabled={codeDisabled}
-            onChange={(e) => set({ code: e.target.value })}
-            className={input}
-            placeholder="e.g. finals"
-          />
-        </FieldCell>
+        {codeDisabled ? (
+          <FieldCell board={board} label="Code">
+            <input value={value.code} disabled className={input} />
+          </FieldCell>
+        ) : null}
         <FieldCell board={board} label="Name">
           <input
             value={value.name}
@@ -210,7 +206,7 @@ export function ExamFields({
         <Checkbox
           checked={value.partnerPilot}
           onChange={(e) => set({ partnerPilot: e.target.checked })}
-          label="Partner pilot"
+          label="Early-access partner exam"
           className="items-center"
         />
       ) : (

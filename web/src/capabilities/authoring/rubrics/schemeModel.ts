@@ -6,6 +6,8 @@
  * reads them and compares them with the backend's constants.
  */
 
+import { INSTITUTION_WORDS, type AssessWords } from "@/capabilities/assess-words/vocabulary";
+import { formalToneLabel } from "@/capabilities/authoring/lib/authoringCopy";
 import { getAt, isJsonObject, parsePath, pathText, setAt, type JsonPath } from "@/capabilities/authoring/rubrics/jsonPath";
 
 export type FeedbackKind = "strengths" | "improvements" | "actions" | "quotes" | "summary" | "flags" | "reason" | "note";
@@ -46,16 +48,32 @@ export const SCALE_PRESETS: readonly [ScalePreset, ScalePreset, ScalePreset, Sca
 
 export const FEEDBACK_KIND_WORDS: Record<FeedbackKind, string> = { strengths: "What went well", improvements: "What to improve", actions: "Next steps", quotes: "Quotes from the transcript", summary: "Summary", flags: "Safety concerns", reason: "Why this rating", note: "Note" };
 export const FEEDBACK_SHAPE_WORDS: Record<FeedbackShape, string> = { line: "One line", paragraph: "A paragraph", list: "A list" };
-export const SCORE_WORDS: Record<ScoreKind, string> = { labels: "Count of ratings", sum: "Total of points", mean: "Average", percent: "Percentage" };
+/** Percentage first: an author cannot know how many marks a domain holds, but can say "60%". */
+export const SCORE_WORDS: Record<ScoreKind, string> = { percent: "Percentage of the marks (recommended)", sum: "Total points", mean: "Average rating", labels: "Count of ratings" };
+/** The pass line a new "score" rule starts at, and the most a percentage can be. */
+const DEFAULT_PASS_PERCENT = 60;
+export const clampPercent = (n: number): number => (Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0);
+/** The most one competency can earn on a scale: a plain figure to start an average from. */
+function topOfScale(scale: Scale | undefined): number {
+  if (!scale) return 1;
+  return isNumberScale(scale) ? scale.to : Math.max(1, ...scale.levels.map((l) => l.points));
+}
+/** A starting pass line for a way of counting, so a switch never leaves a figure that means something else. */
+export function defaultPassLine(kind: ScoreKind, scale: Scale | undefined): number {
+  if (kind === "percent") return DEFAULT_PASS_PERCENT;
+  if (kind === "mean") return Math.round(topOfScale(scale) * (DEFAULT_PASS_PERCENT / 100) * 10) / 10;
+  return 1;
+}
 export const SHOW_WORDS: Record<ShowKey, { label: string; hint: string }> = {
-  overall: { label: "Overall result and band", hint: "The total, outcome and band." },
+  overall: { label: "Overall result", hint: "The total score and whether the candidate passed or failed." },
   domainScores: { label: "Score per domain", hint: "The figure each domain gets." },
   wentWell: { label: "What went well", hint: "The What went well feedback." },
   workOn: { label: "What to work on", hint: "The What to improve and Next steps feedback." },
   quotes: { label: "Transcript quotes", hint: "The Quotes from the transcript feedback." },
 };
-export const TONE_WORDS = [
-  { value: null, label: "As written", hint: "The marking instructions decide." },
+export const toneWords = (w: AssessWords = INSTITUTION_WORDS) => TONE_WORDS.map((t) => (t.value === "formal" ? { ...t, label: formalToneLabel(w) } : t));
+const TONE_WORDS = [
+  { value: null, label: "Follow the marking instructions", hint: "The AI uses the wording in your marking instructions." },
   { value: "supportive", label: "Supportive and direct", hint: "Warm, plain and specific." },
   { value: "formal", label: "Formal examiner", hint: "Impersonal, as a mark scheme." },
   { value: "brief", label: "Brief", hint: "Short sentences, no padding." },
@@ -84,10 +102,10 @@ export function parseSchemeJson(text: string): { scheme: Scheme } | { error: str
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
-  } catch (cause) {
-    return { error: `This is not valid JSON: ${cause instanceof Error ? cause.message : String(cause)}` };
+  } catch {
+    return { error: "The text has a typing mistake and cannot be read. Fix it, or press Discard changes." };
   }
-  if (!isJsonObject(parsed) || parsed.schemaVersion !== 3) return { error: "The scheme must say schemaVersion 3." };
+  if (!isJsonObject(parsed) || parsed.schemaVersion !== 3) return { error: "This text is not a marking scheme this builder can open. Discard your edits, or paste a scheme copied from this builder." };
   return { scheme: readScheme(parsed) };
 }
 export const levelWord = (level: Level): string => level.label ?? String(level.value);
@@ -119,13 +137,16 @@ export function blank(): Scheme {
 /** One sentence per pass rule, worded exactly as the marker applies it. */
 export function ruleSentence(which: "domain" | "overall", part: PassPart | undefined, scale: Scale | undefined, domainHasRule = true): string {
   const rule = part?.rule;
-  if (!rule) return which === "domain" ? "Domains have no pass line." : "The station has no pass line.";
+  if (!rule) return which === "domain" ? "Domains have no pass mark, so any score counts." : "The station has no pass mark, so there is no pass or fail.";
   const subject = which === "domain" ? "Pass a domain when" : "Pass the station when";
   const every = which === "overall" && part?.everyDomainPasses === true && domainHasRule;
   let sentence: string;
   if (rule.type === "score") {
     const kind = part?.score;
-    sentence = `${subject} its ${kind ? SCORE_NOUN[kind] : "score"} is at least ${rule.atLeast}${kind === "percent" ? "%" : ""}`;
+    sentence =
+      kind === "percent"
+        ? `${subject} it scores at least ${rule.atLeast}% of the marks available`
+        : `${subject} its ${kind ? SCORE_NOUN[kind] : "score"} is at least ${rule.atLeast}`;
   } else {
     const level = isNumberScale(scale) ? undefined : scale?.levels.find((l) => l.value === rule.value);
     const word = level ? levelWord(level) : rule.value === undefined ? "at the level you pick" : String(rule.value);

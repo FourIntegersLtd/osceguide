@@ -116,6 +116,11 @@ export interface SurfaceManifest {
    * check it, rather than it being a promise in a comment.
    */
   screensFrom?: Surface;
+  /**
+   * Screens this arm leaves out on purpose and answers with a refusal page (no api call)
+   * instead of a 404, because a person can land on them by URL or bookmark.
+   */
+  refusal?: { screens: readonly ScreenName[]; title: string; body: (orgName: string, staff: boolean) => string };
 }
 
 /**

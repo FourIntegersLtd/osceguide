@@ -165,6 +165,7 @@ async def add_circuit(
         station_version_ids=body.station_version_ids,
         supervisor_user_id=body.supervisor_user_id,
         timing=body.timing,
+        station_assessor_ids=body.station_assessor_ids,
     )
 
 
@@ -227,6 +228,7 @@ async def rebuild_circuit(
         supervisor_user_id=body.supervisor_user_id,
         timing=body.timing,
         revision=body.revision,
+        station_assessor_ids=body.station_assessor_ids,
     )
 
 

@@ -1,5 +1,9 @@
 "use client";
 
+import { say } from "@/domains/assess/roster/rosterWords";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { LuPencil, LuTrash2 } from "react-icons/lu";
+import { ActionMenu } from "@/foundation/ui";
 import { useCallback, useState } from "react";
 import { b2bTokens as t, cn } from "@/foundation/ui";
 import { Fold, Note, card, h2, row } from "@/domains/assess/ui";
@@ -9,7 +13,7 @@ import {
   DeleteCohortDialog,
   RenameCohortDialog,
 } from "@/domains/assess/roster/CohortEditDialogs";
-import { boardBtn, boardPadWide, boardInput, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { boardBtn, boardPadWide, boardInput } from "@/foundation/ui/boardKit";
 
 type Pending =
   | { kind: "rename"; cohort: Cohort }
@@ -41,6 +45,7 @@ export function CohortsPanel({
   canManage: boolean;
   onChanged: () => void;
 }) {
+  const w = useAssessWords();
   const [name, setName] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [busy, setBusy] = useState(false);
@@ -71,16 +76,16 @@ export function CohortsPanel({
 
   return (
     <div className={boardPadWide}>
-      <h2 className={h2}>Year groups</h2>
+      <h2 className={h2}>{say(w, "Year groups")}</h2>
       <p className={cn(t.assessMeta, "m-0")}>
-        An intake, such as a start date. Each trainee can be in one year group, chosen when they are added.
+        {say(w, "An intake, such as a start date. Each trainee can be in one year group, chosen when they are added.")}
       </p>
       {error ? <Note tone="bad">{error}</Note> : null}
 
       {cohorts.length === 0 ? (
-        <p className={cn(t.assessMeta, "m-0")}>No year groups yet. Create one below, or leave people without.</p>
+        <p className={cn(t.assessMeta, "m-0")}>{say(w, "No year groups yet. Create one below, or leave people without.")}</p>
       ) : (
-        <ul className={card} aria-label="Year groups">
+        <ul className={card} aria-label={say(w, "Year groups")}>
           {cohorts.map((cohort, index) => (
             <li key={cohort.id} className={cn(row, "gap-2", index === 0 && "border-t-0")}>
               <span className="flex-1">
@@ -88,14 +93,13 @@ export function CohortsPanel({
                 <div className={t.assessMeta}>{cohort.academic_year ?? cohort.status}</div>
               </span>
               {canManage ? (
-                <>
-                  <button type="button" className={boardButtonSmall} onClick={() => open({ kind: "rename", cohort })}>
-                    Rename
-                  </button>
-                  <button type="button" className={boardButtonSmall} onClick={() => open({ kind: "delete", cohort })}>
-                    Delete
-                  </button>
-                </>
+                <ActionMenu
+                  label={`Actions for ${cohort.name}`}
+                  items={[
+                    { label: "Rename", icon: <LuPencil className="h-4 w-4" />, onSelect: () => open({ kind: "rename", cohort }) },
+                    { label: "Delete", icon: <LuTrash2 className="h-4 w-4" />, tone: "danger", onSelect: () => open({ kind: "delete", cohort }) },
+                  ]}
+                />
               ) : null}
             </li>
           ))}
@@ -103,9 +107,9 @@ export function CohortsPanel({
       )}
 
       {canManage ? (
-        <Fold title="Create a year group">
+        <Fold title={say(w, "Create a year group")}>
           <input
-            aria-label="Year group name"
+            aria-label={say(w, "Year group name")}
             value={name}
             onChange={(event) => setName(event.target.value)}
             className={boardInput}
@@ -121,7 +125,7 @@ export function CohortsPanel({
             autoComplete="off"
           />
           <button type="button" className={cn(boardBtn("primary", true), "self-start")} disabled={busy || name.trim() === ""} onClick={() => create()}>
-            {busy ? "Working…" : "Create year group"}
+            {busy ? "Working…" : say(w, "Create year group")}
           </button>
         </Fold>
       ) : null}

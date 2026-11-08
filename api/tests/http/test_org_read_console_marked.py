@@ -51,6 +51,7 @@ async def test_an_automatically_marked_station_is_marked_though_nobody_reviewed_
 
     assert (before["marked"], before["has_review"], before["draft_reviews"]) == (False, False, 0)
     assert (after["marked"], after["has_review"], after["draft_reviews"]) == (True, False, 0)
+    assert (before["ai_marked"], after["ai_marked"]) == (False, True)
 
 
 async def test_drafts_are_counted_and_do_not_make_a_station_marked(
@@ -67,6 +68,7 @@ async def test_drafts_are_counted_and_do_not_make_a_station_marked(
     slot = await _console_slot(client, admin, db_session, slot_id)
 
     assert (slot["marked"], slot["has_review"], slot["draft_reviews"]) == (False, True, 2)
+    assert slot["ai_marked"] is False, "a person's draft is not the engine's mark"
 
 
 async def test_a_completed_review_makes_the_station_marked_and_leaves_no_draft(
@@ -83,3 +85,4 @@ async def test_a_completed_review_makes_the_station_marked_and_leaves_no_draft(
     slot = await _console_slot(client, admin, db_session, slot_id)
 
     assert (slot["marked"], slot["has_review"], slot["draft_reviews"]) == (True, True, 0)
+    assert slot["ai_marked"] is False

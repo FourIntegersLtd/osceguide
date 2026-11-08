@@ -10,7 +10,7 @@ export function describeSsoStatus(status: SsoStatus): {
     return { badge: "Not connected", tone: "neutral", detail: "People sign in with an email and password." };
   }
   if (!status.enabled) {
-    return { badge: "Switched off", tone: "warning", detail: "It is set up but switched off, so passwords are used." };
+    return { badge: "Switched off", tone: "warning", detail: "Single sign-on is set up but switched off, so everyone signs in with a password." };
   }
   const label = status.sign_in_label ?? "single sign-on";
   return {

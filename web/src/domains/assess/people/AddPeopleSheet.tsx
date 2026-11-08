@@ -8,7 +8,7 @@ import { AddTraineePanel } from "@/domains/assess/roster/AddTraineePanel";
 import { BulkInviteDialog } from "@/domains/assess/team/BulkInviteDialog";
 import { InvitePanel } from "@/domains/assess/team/InvitePanel";
 import type { Cohort } from "@/domains/assess/roster/api";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { h2 } from "@/domains/assess/ui";
 
 export type AddKind = "trainees" | "staff";
@@ -45,8 +45,8 @@ export function AddPeopleSheet({
   const modes: { key: Mode; label: string }[] = [
     { key: "trainee", label: `${w.Trainee}: one person` },
     { key: "trainee-sheet", label: `${w.Trainees}: spreadsheet` },
-    { key: "staff", label: "Staff: invite" },
-    { key: "staff-sheet", label: "Staff: spreadsheet" },
+    { key: "staff", label: w.hiring ? `${w.Supervisors}: invite` : "Staff: invite" },
+    { key: "staff-sheet", label: w.hiring ? `${w.Supervisors}: spreadsheet` : "Staff: spreadsheet" },
   ];
   const sheet = mode === "trainee-sheet" || mode === "staff-sheet";
   const back = mode === "trainee-sheet" ? "trainee" : "staff";
@@ -54,7 +54,7 @@ export function AddPeopleSheet({
   return (
     <div
       data-testid="addpeople-page"
-      className="flex min-w-0 max-w-assess-page flex-col gap-6"
+      className="flex min-w-0 flex-col gap-6"
     >
       <div>
         <button
@@ -62,7 +62,7 @@ export function AddPeopleSheet({
           className="text-assess-label text-osce-accent hover:text-osce-accent-hover"
           onClick={onClose}
         >
-          ‹ People
+          ‹ {w.People}
         </button>
       </div>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -70,8 +70,9 @@ export function AddPeopleSheet({
           <div className={t.assessEyebrow}>Organise</div>
           <h1 className={t.assessTitle}>{w.addPeople}</h1>
           <p className={t.assessDesc}>
-            Add the {w.trainees} who will sit your exams or training sessions,
-            or invite staff to run and mark them.
+            {w.hiring
+              ? `Add the ${w.trainees} you are assessing, or invite ${w.supervisors} to run and mark.`
+              : `Add the ${w.trainees} who will sit your exams or training sessions, or invite staff to run and mark them.`}
           </p>
         </div>
         {/* The board's (empty) actions slot: it wraps under the text on a narrow screen, as drawn. */}
@@ -113,12 +114,12 @@ export function AddPeopleSheet({
       {sheet ? (
         <div className={boardPadWide}>
           <h2 className={h2}>
-            {mode === "trainee-sheet" ? `Add ${w.trainees} from a spreadsheet` : "Add staff from a spreadsheet"}
+            {mode === "trainee-sheet" ? `Add ${w.trainees} from a spreadsheet` : w.hiring ? `Add ${w.supervisors} from a spreadsheet` : "Add staff from a spreadsheet"}
           </h2>
           <p className={cn(t.assessMeta, "m-0")}>
             {mode === "trainee-sheet"
               ? `One spreadsheet of ${w.trainees}, saved as .csv. The first row must name the columns.`
-              : "One spreadsheet of supervisors and admins, saved as .csv. The first row must name the columns."}
+              : `One spreadsheet of ${w.supervisors} and admins, saved as .csv. The first row must name the columns.`}
           </p>
           <button
             type="button"

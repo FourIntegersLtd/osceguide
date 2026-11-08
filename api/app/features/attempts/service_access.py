@@ -87,6 +87,7 @@ def _runs_circuits_in(memberships: Sequence[Membership], *, org_id: uuid.UUID) -
 
 
 def _administers(memberships: Sequence[Membership], *, org_id: uuid.UUID) -> bool:
-    """Whether this caller is an institution administrator of that organisation."""
-    is_admin = policy("is_institution_admin")
+    """Whether this caller reads any slot's transcript there: an institution administrator, or a
+    lead assessor, who settles every station's marks."""
+    is_admin = policy("may_lead_review")
     return any(membership.org_id == org_id and is_admin(membership.role) for membership in memberships)

@@ -12,11 +12,11 @@ class InboxMessageNotFound(NotFound):
     """No such message, or one that is not yours to see."""
 
     code = "inbox_message_not_found"
-    default_message = "No such message"
+    default_message = "We couldn't find that message"
 
 
 class AnnouncementNotFound(NotFound):
     """No such announcement."""
 
     code = "announcement_not_found"
-    default_message = "No such announcement"
+    default_message = "We couldn't find that announcement"

@@ -20,7 +20,7 @@ class OrgSlugTaken(Conflict):
     """Refuses to provision an organisation whose slug is already taken."""
 
     code = "org_slug_taken"
-    default_message = "That slug is already in use"
+    default_message = "That web address name is already in use. Choose another."
 
 
 class ContractDatesOutOfOrder(InvalidInput):
@@ -34,7 +34,7 @@ class ContractEndInPast(InvalidInput):
     """A renewal that ends before now would lapse again at the next hourly sweep."""
 
     code = "contract_end_in_past"
-    default_message = "A renewal must end in the future"
+    default_message = "The new end date must be in the future."
 
 
 class NotAMember(Forbidden):
@@ -55,7 +55,7 @@ class MembershipNotFound(NotFound):
     """No membership with that id exists at this organisation."""
 
     code = "membership_not_found"
-    default_message = "No such membership"
+    default_message = "We couldn't find that membership"
 
 
 class PlatformAdminExists(Conflict):

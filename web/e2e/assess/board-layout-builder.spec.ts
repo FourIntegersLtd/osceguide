@@ -71,3 +71,50 @@ test("LayoutBuilder not found state keeps the board's words", async ({ browser }
   await openPage(app, `/app/${world.org.slug}/authoring/station-templates/${world.draftId}/versions/99`);
   await expect(app.getByText("Template not found. It may have been removed.")).toBeVisible();
 });
+
+test("LayoutBuilder title is edited on the section, settings open in a dialog without it, and Preview groups sections by audience", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: VIEWPORTS[0] });
+  await signedInAs(context, world.org.account);
+  const app = await context.newPage();
+  await openPage(app, `/app/${world.org.slug}/authoring/station-templates/${world.draftId}/versions/3`);
+  await app.getByRole("tab", { name: "Build" }).waitFor();
+
+  await app.getByLabel("Section title").fill("Opening brief");
+  await app.getByRole("button", { name: "Section settings" }).click();
+  const dialog = app.getByRole("dialog", { name: "Section settings" });
+  await expect(dialog.getByRole("radiogroup", { name: "Written for" })).toBeVisible();
+  await expect(dialog.getByLabel("Title")).toHaveCount(0);
+  await expect(dialog.getByLabel("Description")).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Done" }).click();
+  await expect(dialog).toBeHidden();
+
+  await app.getByRole("tab", { name: "Preview" }).click();
+  const candidate = app.getByRole("region", { name: "Candidate" });
+  await expect(candidate.getByRole("heading", { name: "Candidate" })).toBeVisible();
+  await expect(candidate.getByText("Opening brief").first()).toBeVisible();
+  await expect(app.getByRole("region", { name: "Patient" }).getByText("Patient script").first()).toBeVisible();
+});
+
+test("LayoutBuilder published version is read only on Build, while Preview and section navigation still work", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: VIEWPORTS[0] });
+  await signedInAs(context, world.org.account);
+  const app = await context.newPage();
+  await openPage(app, `/app/${world.org.slug}/authoring/station-templates/${world.publishedId}/versions/2`);
+  await app.getByRole("tab", { name: "Build" }).waitFor();
+
+  await expect(app.getByRole("tab", { name: "Preview" })).toBeEnabled();
+  await expect(app.getByLabel("Section title")).toBeDisabled();
+  await expect(app.getByRole("button", { name: "Add section" })).toBeDisabled();
+  const second = app.getByRole("complementary", { name: "Sections" }).getByRole("tab").nth(1);
+  await second.click();
+  await expect(second).toHaveAttribute("aria-selected", "true");
+  // Undo is frozen with the fields: the key does nothing on a published version.
+  await app.keyboard.press("Control+z");
+  await expect(app.getByLabel("Section title")).toBeDisabled();
+  await app.getByRole("button", { name: "Next section" }).click();
+  await expect(app.getByRole("complementary", { name: "Sections" }).getByRole("tab").nth(2)).toHaveAttribute("aria-selected", "true");
+
+  await app.getByRole("tab", { name: "Preview" }).click();
+  await expect(app.getByRole("region", { name: "Candidate" })).toBeVisible();
+  await expect(app.getByRole("region", { name: "Patient" })).toBeVisible();
+});

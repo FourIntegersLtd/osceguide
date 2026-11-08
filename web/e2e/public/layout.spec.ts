@@ -19,21 +19,22 @@ for (const path of PUBLIC_MARKETING_PATHS) {
   });
 }
 
-test("the landing headline is exactly two lines at every width", async ({ page }) => {
-  for (const width of [320, 375, 414, 768, 1280]) {
+test("the landing has one headline and no horizontal scroll at every width", async ({ page }) => {
+  for (const width of [320, 390, 768, 1280]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/");
-    const lines = page.locator("h1 > span[aria-hidden]");
-    await expect(lines).toHaveCount(2);
-    const heights = await lines.evaluateAll((els) =>
-      els.map((el) => {
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        return { text: range.getBoundingClientRect().width, box: el.getBoundingClientRect().width, tall: el.getBoundingClientRect().height };
-      }),
-    );
-    for (const line of heights) expect(line.text, `a headline line overflows at ${width}px`).toBeLessThanOrEqual(line.box);
-    const h1 = await page.locator("h1").evaluate((el) => el.getBoundingClientRect().height);
-    expect(h1, `the headline is not two lines at ${width}px`).toBeLessThanOrEqual(heights[0]!.tall * 2 + 2);
+    await expect(page.locator("h1")).toHaveCount(1);
+    await expect(page.locator("h1")).toContainText("Practise your exam cases out loud with an AI patient.");
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, `the page scrolls sideways at ${width}px`).toBeLessThanOrEqual(0);
   }
+});
+
+test("the landing proof line is hidden when the statistics call fails", async ({ page }) => {
+  await page.route("**/site/statistics", (route) => route.abort());
+  await page.goto("/");
+  await expect(page.locator("h1")).toHaveCount(1);
+  await page.waitForTimeout(1500);
+  await expect(page.getByText("cases marked so far")).toHaveCount(0);
+  await expect(page.locator("section.bg-site-navy")).toHaveCount(1);
 });

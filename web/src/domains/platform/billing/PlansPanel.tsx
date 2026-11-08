@@ -14,6 +14,7 @@ import {
 import Table from "@/foundation/table/Table";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { listExams } from "@/capabilities/stations";
+import { hasCode } from "@/foundation/platform-client";
 import { validationFields } from "@/foundation/platform-client/errors";
 import {
   createPlatformPlan,
@@ -21,6 +22,7 @@ import {
   updatePlatformPlan,
   type PlatformPlan,
 } from "@/domains/platform/support/api";
+import { planCode, retryOnConflict } from "@/domains/platform/support/generated";
 import { FREE_TRIAL_STATIONS } from "@/foundation/config/copyNumbers";
 
 const pounds = (pence: number) => `£${(pence / 100).toFixed(2)}`;
@@ -272,7 +274,6 @@ function NewPlanModal({
   // The public catalogue: only a published platform exam can be sold.
   const exams = useAsync((signal) => listExams(signal), []);
   const [examCode, setExamCode] = useState("");
-  const [code, setCode] = useState("");
   const [price, setPrice] = useState("");
   const [days, setDays] = useState("30");
   const [stationLimit, setStationLimit] = useState("");
@@ -285,7 +286,6 @@ function NewPlanModal({
     (/^[0-9]+$/.test(stationLimit) && Number(stationLimit) >= 1 && Number(stationLimit) <= 10000);
   const valid =
     examCode !== "" &&
-    /^[a-z0-9][a-z0-9_]{1,22}$/.test(code) &&
     amountPence >= 100 &&
     Number(days) >= 1 &&
     validStationLimit;
@@ -296,13 +296,17 @@ function NewPlanModal({
     setError(null);
     try {
       onCreated(
-        await createPlatformPlan({
-          exam_code: examCode,
-          code,
-          amount_pence: amountPence,
-          duration_days: Number(days),
-          station_limit: stationLimit === "" ? null : Number(stationLimit),
-        }),
+        await retryOnConflict(
+          () =>
+            createPlatformPlan({
+              exam_code: examCode,
+              code: planCode(examCode, Number(days)),
+              amount_pence: amountPence,
+              duration_days: Number(days),
+              station_limit: stationLimit === "" ? null : Number(stationLimit),
+            }),
+          (cause) => hasCode(cause, "plan_code_taken"),
+        ),
       );
     } catch (cause) {
       setError(errorMessage(cause));
@@ -323,13 +327,7 @@ function NewPlanModal({
         <Select
           label="Exam"
           value={examCode}
-          onChange={(event) => {
-            setExamCode(event.target.value);
-            if (!code)
-              setCode(
-                `${event.target.value}_${Math.round(Number(days) / 30) || 1}m`,
-              );
-          }}
+          onChange={(event) => setExamCode(event.target.value)}
           disabled={busy}
         >
           <option value="">Choose a published exam</option>
@@ -363,15 +361,6 @@ function NewPlanModal({
           value={days}
           onChange={(event) => setDays(event.target.value)}
           disabled={busy}
-        />
-        <Input
-          label="Plan code"
-          required
-          value={code}
-          onChange={(event) => setCode(event.target.value.toLowerCase())}
-          disabled={busy}
-          hint="A short internal name using lowercase letters, numbers and underscores, such as sca_one_month. It cannot be reused."
-          autoComplete="off"
         />
         <Input
           label="Stations this plan unlocks"

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test, { describe, it } from "node:test";
+import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/capabilities/assess-words/vocabulary";
 import type { CandidateReport, SittingReadout } from "@/domains/assess/results/api";
 import {
   releaseRefusal,
@@ -18,6 +19,7 @@ import {
   formatScore,
   outcomeLabel,
   workflowLabel,
+  hiringTally,
 } from "@/domains/assess/results/support";
 
 function candidate(over: Partial<CandidateReport> = {}): CandidateReport {
@@ -140,7 +142,7 @@ function readout(over: Partial<SittingReadout> = {}): SittingReadout {
 }
 
 test("the read-out is the markdown document the retiring screen handed over", () => {
-  const document = readoutAsMarkdown(readout());
+  const document = readoutAsMarkdown(readout(), INSTITUTION_WORDS);
 
   assert.match(document, /^# Autumn sitting: examination read-out\n/);
   assert.ok(document.includes("## Cohort"), document);
@@ -158,12 +160,13 @@ test("the read-out is the markdown document the retiring screen handed over", ()
 test("a pipe in somebody's name cannot shift every column after it", () => {
   // Names come from people, and an unescaped pipe ends the cell early — which
   // in a document somebody files away is a silently wrong table, not a crash.
-  assert.ok(readoutAsMarkdown(readout()).includes("Rowan \\| Pipe"));
+  assert.ok(readoutAsMarkdown(readout(), INSTITUTION_WORDS).includes("Rowan \\| Pipe"));
 });
 
 test("an examination nobody sat still renders a document", () => {
-  const document = readoutAsMarkdown(readout({ candidates: [] }));
+  const document = readoutAsMarkdown(readout({ candidates: [] }), INSTITUTION_WORDS);
   assert.ok(document.includes("Nobody was rostered onto this examination."), document);
+  assert.ok(readoutAsMarkdown(readout({ candidates: [] }), EMPLOYER_WORDS).includes("No candidates were added to this exam."));
   assert.ok(!document.includes("| Rank |"), document);
 });
 
@@ -244,4 +247,12 @@ test("a stored outcome becomes a pick only when this screen knows it", () => {
   assert.equal(outcomeChoice("pass"), "pass");
   assert.equal(outcomeChoice("borderline-ish"), "");
   assert.equal(outcomeChoice(null), "");
+});
+
+describe("hiringTally", () => {
+  it("counts hired, reserve list, not hired and still to decide", () => {
+    const row = (recruitment_outcome?: string) => ({ decision: recruitment_outcome === undefined ? null : { recruitment_outcome } });
+    const tally = hiringTally([row("hired"), row("hired"), row("reserve"), row("not_hired"), row("pending"), row(), row("withdrawn")]);
+    assert.deepEqual(tally, { hired: 2, reserve: 1, notHired: 1, stillToDecide: 2 });
+  });
 });

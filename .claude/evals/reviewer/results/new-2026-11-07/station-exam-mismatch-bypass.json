@@ -1,0 +1,6 @@
+{
+  "id": "station-exam-mismatch-bypass",
+  "kind": "bug",
+  "caught": true,
+  "why": "The review's main finding is that `start_attempt` never compares the station's exam with the exam resolved from the client's `exam_code`, so a learner entitled to one exam can start an attempt on another exam's station with the attempt recorded under the claimed exam, which is the reported defect."
+}

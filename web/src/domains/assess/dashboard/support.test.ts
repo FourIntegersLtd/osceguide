@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ResultsIndexRow } from "@/domains/assess/results/api";
-import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
+import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/capabilities/assess-words/vocabulary";
 import type { LiveCircuit, OrgSetup } from "@/domains/assess/dashboard/api";
 import { assistantPieces, assistantSteps, firstOpenStep, setupComplete, setupTiles, showsSkip, stepBlock } from "@/domains/assess/dashboard/setupSteps";
 import {
@@ -20,6 +20,8 @@ import {
   dateTile,
   sittingTally,
   notJoinedItem,
+  homeFocus,
+  weekDays,
 } from "@/domains/assess/dashboard/support";
 
 function setup(over: Partial<OrgSetup> = {}): OrgSetup {
@@ -121,6 +123,10 @@ test("needs-your-attention lists outcomes to write and results to release, oldes
       ["2 ready", "Release results for Year 4 mock", "/sittings/new/results"],
     ],
   );
+  assert.equal(items[0]?.body, "Write the outcome and reason for each person, then sign off.");
+  assert.equal(items[1]?.body, "Signed off. Trainees see nothing until you release.");
+  const hire = attentionFromResults([row({ sitting_id: "new", name: "Year 4 mock", signed_off: 2 })], EMPLOYER_WORDS);
+  assert.deepEqual([hire[0]?.title, hire[0]?.body], ["Share results with Year 4 mock", `Approved. ${EMPLOYER_WORDS.Trainees} see nothing until you share them.`]);
 });
 
 test("a scheduled or training sitting has no decisions waiting", () => {
@@ -259,6 +265,7 @@ test("trainees who have not joined are one attention row that opens People", () 
     href: "/people",
     tone: "neutral",
   });
+  assert.equal(notJoinedItem(4, EMPLOYER_WORDS)?.body, "They cannot be scheduled until they set a password. Resend the invite.");
   assert.equal(notJoinedItem(1, INSTITUTION_WORDS)?.title, "A trainee who has not accepted their invitation");
 });
 
@@ -290,4 +297,31 @@ test("setup assistant: the four stat tiles and four pieces, each a route", () =>
       ["Sitting", "/sittings"],
     ],
   );
+});
+
+const PATHS = { schedule: "/sittings/new", newExam: "/authoring/exams/new" };
+const base = { running: null, stationsToReview: 0, firstReviewPath: null, attention: [], next: null, canSchedule: true, readyToRun: true };
+
+test("homeFocus puts a running circuit first, then review, then the empty states", () => {
+  const w = INSTITUTION_WORDS;
+  const running = { circuitId: "c1", sittingName: "December finals", line: "Station 2 of 6" };
+  assert.deepEqual(homeFocus({ ...base, running, stationsToReview: 3, firstReviewPath: "/r" }, w, PATHS).action, { label: "Open console", href: "/circuits/c1" });
+  const review = homeFocus({ ...base, stationsToReview: 3, firstReviewPath: "/r" }, w, PATHS);
+  assert.equal(review.title, "3 stations to review");
+  assert.equal(review.action?.label, "Review 3 stations");
+  assert.equal(homeFocus(base, w, PATHS).action?.label, w.scheduleSitting);
+  assert.equal(homeFocus({ ...base, readyToRun: false }, w, PATHS).kind, "setup");
+  const clear = homeFocus({ ...base, canSchedule: false }, w, PATHS);
+  assert.equal(clear.kind, "clear");
+  assert.equal(clear.action, null);
+});
+
+test("weekDays lists seven days from today with the sittings dated on each", () => {
+  const now = new Date(2026, 10, 6, 18, 0);
+  const days = weekDays(now, [{ id: "s1", scheduled_for: new Date(2026, 10, 8, 9, 0).toISOString() } as never, { id: "s2", scheduled_for: null } as never]);
+  assert.equal(days.length, 7);
+  assert.equal(days[0]?.today, true);
+  assert.equal(days[0]?.day, "6");
+  assert.deepEqual(days[2]?.sittings.map((s) => s.id), ["s1"]);
+  assert.equal(days.flatMap((d) => d.sittings).length, 1);
 });

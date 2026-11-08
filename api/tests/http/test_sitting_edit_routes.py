@@ -369,3 +369,30 @@ async def test_a_trainee_cannot_edit_a_sitting_they_are_sitting(
     )
 
     assert edited.status_code == 403, edited.text
+
+
+async def test_an_org_station_never_waits_on_platform_approval(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,  # type: ignore[no-untyped-def]
+) -> None:
+    """`approved` gates the platform library only: an org's published station is listed, picked and run."""
+    _, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin)
+    version_id = await published_station(client, admin, "kings", "Chest pain")
+
+    listed = await client.get("/api/v1/orgs/kings/stations", headers=bearer(admin))
+    assert listed.status_code == 200, listed.text
+    rows = listed.json()["items"] if isinstance(listed.json(), dict) else listed.json()
+    assert [(row["status"], row["approved"]) for row in rows] == [("published", False)]
+
+    circuit = await client.post(
+        f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
+        json={
+            "name": "Room 1",
+            "trainee_ids": [str(await a_trainee(db_session, "unapproved@example.com"))],
+            "station_version_ids": [version_id],
+        },
+        headers=bearer(admin),
+    )
+    assert circuit.status_code == 201, circuit.text

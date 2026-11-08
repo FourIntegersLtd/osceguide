@@ -1,5 +1,6 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
 import type { ReactNode } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -31,12 +32,13 @@ export function CanvasBlock({
   insertAbove?: ReactNode;
   onSelect: () => void;
 }) {
+  const w = useAssessWords();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: blockDragId(section.id, block.id),
   });
 
   const meta = formsMetaForStationBlockType(block.type);
-  const role = kind === "station" ? roleMeta(blockRole(block, section)) : null;
+  const role = kind === "station" ? roleMeta(blockRole(block, section), w) : null;
   const caption = [meta.formsLabel, role?.label, block.required ? "Required" : null].filter(Boolean).join(" · ");
 
   return (

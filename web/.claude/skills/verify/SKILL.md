@@ -118,3 +118,6 @@ it is the evidence. Delete your throwaway scripts in it.
 - `features/README.md` — the feature map; start there.
 - `scripts/smoke.mjs` (repo) — API-only contract walk; complements, not
   replaces, a browser run.
+
+## Trap: replaced public images look unchanged
+`next dev` keeps optimised copies in `.next/dev/cache/images` (and `.next/cache/images`). After replacing a file under `public/` while the dev server runs, delete those folders and reload, or the old picture keeps rendering.

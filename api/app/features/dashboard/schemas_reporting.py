@@ -22,5 +22,21 @@ class ProgrammeReportRow(BaseModel):
     pass_rate: float | None
 
 
+class StationReportRow(BaseModel):
+    """One station across every released result that sat it."""
+
+    station_title: str
+    # Released candidate-stations the station was rated for.
+    assessed: int
+    # Percent of those that passed by the rubric's rule; null when the rubric sets no pass rule.
+    pass_rate: float | None
+    # The rated domain with the lowest mean score across them; null when nothing is rated.
+    weakest_competency: str | None
+
+
 class OrgReporting(BaseModel):
     programmes: list[ProgrammeReportRow]
+    # Weakest pass rate first, from released results only.
+    stations: list[StationReportRow] = []
+    # Different staff who have completed a review of a station, across all time.
+    assessors_marking: int = 0

@@ -8,7 +8,7 @@ import { BoardRow, BoardSection, RowText } from "@/domains/assess/dashboard/Boar
 import { useSurface } from "@/capabilities";
 import type { SupervisorCircuitRow } from "@/domains/assess/dashboard/api";
 import { circuitsBySitting, longWhen, modeLabel, shortDate } from "@/domains/assess/dashboard/support";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * What a supervisor is here to do: the circuits they are named on.

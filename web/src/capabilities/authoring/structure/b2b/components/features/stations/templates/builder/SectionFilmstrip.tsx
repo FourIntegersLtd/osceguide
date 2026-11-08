@@ -1,5 +1,6 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -25,6 +26,7 @@ function OutlineItem({
   active: boolean;
   onFocus: () => void;
 }) {
+  const w = useAssessWords();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: sectionDragId(section.id),
   });
@@ -33,7 +35,7 @@ function OutlineItem({
   const fieldCount = section.blocks.length;
   const caption =
     kind === "station"
-      ? audienceMeta(sectionAudience(section)).label
+      ? audienceMeta(sectionAudience(section), w).label
       : fieldCount === 1
         ? "1 field"
         : `${fieldCount} fields`;
@@ -90,12 +92,15 @@ export function SectionOutline({
   activeSectionId,
   onFocusSection,
   onAddSection,
+  readOnly = false,
 }: {
   kind: TemplateKind;
   sections: StationSection[];
   activeSectionId: string | null;
   onFocusSection: (sectionId: string) => void;
   onAddSection: () => void;
+  /** A published version: sections can be visited but not added. */
+  readOnly?: boolean;
 }) {
   return (
     <aside className={`${boardPad} !gap-1.5`} aria-label="Sections">
@@ -117,7 +122,7 @@ export function SectionOutline({
           </SortableContext>
         )}
       </div>
-      <button type="button" className={boardButtonSmall} onClick={onAddSection}>
+      <button type="button" className={boardButtonSmall} disabled={readOnly} onClick={onAddSection}>
         <span aria-hidden>+ </span>
         Add section
       </button>
@@ -131,12 +136,15 @@ export function SectionChipStrip({
   activeSectionId,
   onFocusSection,
   onAddSection,
+  readOnly = false,
 }: {
   kind: TemplateKind;
   sections: StationSection[];
   activeSectionId: string | null;
   onFocusSection: (sectionId: string) => void;
   onAddSection: () => void;
+  /** A published version: sections can be visited but not added. */
+  readOnly?: boolean;
 }) {
   return (
     <div className={`${boardPad} !gap-2 lg:hidden`} role="tablist" aria-label="Sections">
@@ -155,7 +163,7 @@ export function SectionChipStrip({
             </span>
           </button>
         ))}
-        <button type="button" className={boardButtonSmall} onClick={onAddSection}>
+        <button type="button" className={boardButtonSmall} disabled={readOnly} onClick={onAddSection}>
           <span aria-hidden>+ </span>
           Section
         </button>

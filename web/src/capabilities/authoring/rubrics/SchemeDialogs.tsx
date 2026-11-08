@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { publishVersionLead } from "@/capabilities/authoring/lib/authoringCopy";
 import { ConfirmModal, LeaveConfirmModal } from "@/foundation/ui";
 import type { RubricVersion } from "@/capabilities/authoring/api";
 import type { OlderPublished } from "@/capabilities/authoring/rubrics/versionRows";
@@ -36,6 +38,7 @@ export function SchemeDialogs({
   onStay: () => void;
   onLeave: () => void;
 }) {
+  const w = useAssessWords();
   return (
     <>
       <ConfirmModal
@@ -43,7 +46,7 @@ export function SchemeDialogs({
         onCancel={onPublishCancel}
         onConfirm={onPublish}
         title={`Publish version ${version.version}?`}
-        message={`Once published it cannot be changed. Sittings already marked keep the version they used.${older ? ` ${older.names} ${older.single ? "keeps" : "keep"} marking with version ${older.version} until you point ${older.single ? "it" : "them"} at version ${version.version}.` : ""}`}
+        message={`${publishVersionLead(w)}${older ? ` ${older.names} ${older.single ? "keeps" : "keep"} marking with version ${older.version} until you point ${older.single ? "it" : "them"} at version ${version.version}.` : ""}`}
         confirmText={`Publish version ${version.version}`}
       />
       <ConfirmModal

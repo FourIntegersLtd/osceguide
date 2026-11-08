@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav on" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="head"><div><div class="eyebrow">Acme Health Trust</div><h1>Settings</h1><p class="desc">Your organisation, how people sign in, and your invoices.</p></div></div>
+<div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="3"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="card pad"><div><label for="on">Organisation name</label><input class="input" id="on" value="Acme Health Trust"></div>
+<div><label for="ct">Contact email</label><input class="input" id="ct" value="recruitment@acme.nhs.uk"></div>
+<div class="row"><span class="f">Plan</span><span>Employer · 120 candidate seats, 58 used</span></div>
+<div><button class="btn pri">Save changes</button></div></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>Single sign-on</h2><div class="row"><span class="f">Microsoft Entra ID · acme.nhs.uk</span><span class="chip ok">Connected</span></div><div class="meta">Staff at acme.nhs.uk sign in with their work account. Candidates still sign in with email.</div></div>
+<div class="card pad"><h2>Two-step sign-in</h2><div class="acts"><button class="pill">Optional</button><button class="pill on">Required for administrators and assessors</button></div><div class="hint">Anyone without it set up is asked to add it the next time they sign in.</div><div><button class="btn pri">Save</button></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="th"><span class="f">Invoice</span><span style="width:120px">Amount</span><span style="width:120px">Status</span></div>
+<div class="row"><span class="f">INV-2026-0141 · November</span><span style="width:120px">£1,200.00</span><span style="width:120px"><span class="chip ok">Paid</span></span><button class="btn sm">PDF</button></div>
+<div class="row"><span class="f">INV-2026-0122 · October</span><span style="width:120px">£1,200.00</span><span style="width:120px"><span class="chip ok">Paid</span></span><button class="btn sm">PDF</button></div></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}</code></div>
+<div class="call"><span class="m">PATCH</span><code>{o}</code></div>
+<div class="call"><span class="m">PATCH</span><code>{o}/mfa-policy</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/sso-status</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/entitlements</code></div>
+<div class="meta">Invoices and receipts come from the billing routes the institution settings already use.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>sso_not_configured</code><code>sso_only_password_members</code><code>mfa_required_by_policy</code><code>invoice_not_found</code><code>receipt_not_found</code><code>stale_revision</code></div>
+<div class="note">Route <code>/app/[w]/settings</code> · admin · SSO and MFA belong to access-owner; the page to institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Organisation', 'SSO and two-step sign-in', 'Invoices'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2 };
+  }
+}
+</script>
+</body>
+</html>

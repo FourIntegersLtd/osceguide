@@ -171,3 +171,47 @@ async def test_closing_a_room_still_surfaces_a_real_failure(monkeypatch: pytest.
     _install(monkeypatch, _Room(participants=["agent-AJ_1"], delete_error=BROKEN))
     with pytest.raises(Exception, match="unauthenticated"):
         await adapter.LiveKitRoomAgents().close_room("attempt_abc")
+
+
+class _MicRoom(_Room):
+    """A room that also records permission updates and mutes, for the training room's microphones."""
+
+    def __init__(self, participants: list[str]) -> None:
+        super().__init__(participants=participants)
+        self.updated: dict[str, list[int]] = {}
+
+    async def list_participants(self, _request: object) -> object:
+        return SimpleNamespace(
+            participants=[SimpleNamespace(identity=i, permission=None, tracks=[]) for i in self._participants]
+        )
+
+    async def update_participant(self, request: object) -> None:
+        self.updated[request.identity] = list(request.permission.can_publish_sources)
+
+
+async def test_a_mic_rule_reaches_people_and_never_the_patient(monkeypatch: pytest.MonkeyPatch) -> None:
+    room = _MicRoom(["agent-patient-1", "trainee-1", "trainee-2", "observer-9"])
+    _install(monkeypatch, room)
+
+    await adapter.LiveKitRoomAgents().set_mic_permissions("circuit_abc", lambda who: who != "trainee-2")
+
+    # TrackSource.CAMERA == 1, MICROPHONE == 2
+    assert room.updated == {"trainee-1": [1, 2], "trainee-2": [1], "observer-9": [1, 2]}
+    get_settings.cache_clear()
+
+
+async def test_one_person_leaving_mid_sweep_does_not_stop_the_rest(monkeypatch: pytest.MonkeyPatch) -> None:
+    room = _MicRoom(["trainee-1", "trainee-2", "observer-9"])
+
+    async def update(request: object) -> None:
+        if request.identity == "trainee-1":
+            raise Exception("ServerError('not_found', 'participant does not exist')")
+        room.updated[request.identity] = list(request.permission.can_publish_sources)
+
+    room.update_participant = update  # type: ignore[method-assign]
+    _install(monkeypatch, room)
+
+    await adapter.LiveKitRoomAgents().set_mic_permissions("circuit_abc", lambda who: True)
+
+    assert room.updated == {"trainee-2": [1, 2], "observer-9": [1, 2]}
+    get_settings.cache_clear()

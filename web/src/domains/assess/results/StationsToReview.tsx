@@ -9,7 +9,7 @@ import { readSupervisorCircuits } from "@/domains/assess/dashboard/api";
 import { draftsWaitingLine, stillToReviewLine } from "@/domains/assess/dashboard/support";
 import { readCircuitReview, readConsole } from "@/domains/assess/sessions/api";
 import { slotReviewPath, summariseCircuit, type UnmarkedStation } from "@/domains/assess/sessions/support";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /** Ended circuits to look through: the newest few, so one home screen never reads the whole history. */
 const CIRCUITS_LOOKED_AT = 10;
@@ -88,11 +88,16 @@ async function readReviewOrNull(orgSlug: string, circuitId: string, signal: Abor
   }
 }
 
-/** "Stations to review", grouped by circuit, with how much of each circuit is reviewed. Renders nothing when there is nothing to review or publish. */
+/** "Stations to review" for a supervisor's own home: fetches, then draws the list. */
 export function StationsToReview({ orgSlug }: { orgSlug: string }) {
+  const { circuits } = useStationsToReview(orgSlug);
+  return <StationsToReviewList circuits={circuits} />;
+}
+
+/** The circuits with work left, each a row with how much of it is reviewed. Renders nothing when there is nothing to review or publish. */
+export function StationsToReviewList({ circuits }: { circuits: readonly CircuitToReview[] }) {
   const { hrefFor } = useSurface();
   const w = useAssessWords();
-  const { circuits } = useStationsToReview(orgSlug);
   const rows = circuits.filter((circuit) => circuit.stations.length > 0 || circuit.readyToPublish);
   if (rows.length === 0) return null;
   return (
@@ -100,20 +105,28 @@ export function StationsToReview({ orgSlug }: { orgSlug: string }) {
       {rows.map((circuit, index) => {
         const first = circuit.stations[0];
         const done = first && circuit.candidates > 0 ? Math.round(((circuit.candidates - circuit.toReview) / circuit.candidates) * 100) : 100;
+        const title = `${circuit.sittingName} · ${circuit.circuitName}`;
         return (
           <BoardRow key={circuit.circuitId} href={hrefFor(first ? slotReviewPath(first) : `/circuits/${circuit.circuitId}`)} first={index === 0}>
             <RowText
-              title={`${circuit.sittingName} · ${circuit.circuitName}`}
+              title={title}
               meta={
                 first
                   ? circuit.drafts > 0
                     ? draftsWaitingLine(circuit.drafts)
                     : stillToReviewLine(circuit.toReview, circuit.candidates, w)
-                  : `Every review done. Publish circuit feedback to finalise and let ${w.trainees} read it.`
+                  : `Every review done. Send feedback so ${w.trainees} read it.`
               }
             />
-            <div aria-hidden className="h-1.5 w-[120px] shrink-0 overflow-hidden rounded-full bg-osce-navActive">
-              <div className="h-1.5 bg-osce-accent" style={{ width: `${done}%` }} />
+            <div
+              role="progressbar"
+              aria-label={`${title} reviewed`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={done}
+              className="h-2 w-[140px] shrink-0 overflow-hidden rounded-full bg-osce-navActive max-[900px]:w-full"
+            >
+              <div className="h-2 rounded-full bg-osce-accent" style={{ width: `${done}%` }} />
             </div>
             <span className={boardChip(first ? "warn" : "ok")}>
               {first ? (circuit.drafts > 0 ? `${circuit.drafts} ${circuit.drafts === 1 ? "draft" : "drafts"}` : `${circuit.stations.length} to review`) : "Ready to publish"}

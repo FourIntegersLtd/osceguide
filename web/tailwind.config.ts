@@ -463,8 +463,6 @@ const config: Config = {
         ],
       },
       maxWidth: {
-        /** The assess boards' page column. */
-        "assess-page": "1080px",
         /** Page + landing section cap. One width for every surface. */
         "osce-page": "1200px",
         /** Marketing copy and narrow prose columns. */
@@ -482,6 +480,7 @@ const config: Config = {
         "board-dialog": "0 20px 60px rgba(0,0,0,0.18)",
         "board-sheet": "0 24px 48px rgba(16,24,40,0.18)",
         "osce-modal": "0 24px 64px rgba(16,24,40,0.18)",
+        "home-lift": "0 1px 2px rgba(16,24,40,0.04), 0 12px 32px rgba(16,24,40,0.06)",
         "osce-segmented": "0 1px 2px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.04)",
       },
       borderRadius: {

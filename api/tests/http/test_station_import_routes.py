@@ -282,3 +282,39 @@ async def test_a_platform_admin_imports_into_the_platform_library(client: AsyncC
     # The platform's import is not an organisation's to read.
     probed = await client.get(f"{IMPORTS}/{uploaded.json()['id']}", headers=bearer(admin))
     assert probed.status_code == 404, probed.text
+
+
+async def test_both_import_jobs_lift_the_idle_timeout_before_the_model_call(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor, db_session
+) -> None:
+    from sqlalchemy import text
+
+    _, admin = await org_with_admin(client, make_actor)
+    seen: list[str] = []
+
+    def model(answer):  # type: ignore[no-untyped-def]
+        async def parse(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+            shown = await db_session.execute(text("show idle_in_transaction_session_timeout"))
+            seen.append(shown.scalar_one())
+            return answer, ""
+
+        return parse
+
+    uploaded = await upload_import(client, admin)
+    with patch(
+        "app.features.stations.station_import_drafting.parse_ai_structured", new=model(_DRAFTED_TEMPLATE)
+    ):
+        template_import = UUID(uploaded.json()["id"])
+        await service_imports.run_template_job(db_session, template_import, settings=get_settings())
+
+    version_id = await published_template_version(client, admin)
+    station_upload = await upload_import(
+        client, admin, filename="Station 4.docx", content=docx([DOCUMENT]), template_version_id=version_id
+    )
+    transcribed = TranscribedDocument(title="", blocks=[_answer("notes", text=COPIED)])
+    with patch("app.features.stations.station_import_drafting.parse_ai_structured", new=model(transcribed)):
+        await service_imports.run_station_job(
+            db_session, UUID(station_upload.json()["id"]), settings=get_settings()
+        )
+
+    assert seen == ["25min", "25min"]

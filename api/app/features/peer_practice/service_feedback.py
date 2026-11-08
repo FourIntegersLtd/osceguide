@@ -18,6 +18,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import publish_after_commit, user_topic
+from app.core.jobs import allow_long_idle
 from app.core.logging import get_logger
 from app.core.ports import Transcriber, TranscriptionFailed
 from app.core.settings import get_settings
@@ -64,6 +65,7 @@ async def build_feedback(
     await repository_sessions.set_recording_state(session, session_id, state="transcribing")
     exam_code = await catalog.exam_code_by_id(session, practice_session.exam_id) or ""
 
+    await allow_long_idle(session)
     try:
         audio_url = storage.readable_url(settings, practice_session.recording_key)
         raw = await (transcriber or _transcriber()).transcribe(audio_url=audio_url)

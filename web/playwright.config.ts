@@ -35,7 +35,7 @@ export default defineConfig({
   grep: STAGING ? /@staging/ : undefined,
   // The board-*.spec.ts files compare screens with design boards by pixel, for local use
   // (docs/institution-overhaul/verify/board-diff); the core journeys are what CI proves.
-  testIgnore: process.env.CI ? /board-.*\.spec\.ts$/ : undefined,
+  testIgnore: process.env.CI ? /(^|[\\/])board-[^\\/]*\.spec\.ts$/ : undefined,
   reporter: [["list"]],
   outputDir: "test-results",
   use: {

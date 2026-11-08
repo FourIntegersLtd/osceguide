@@ -115,6 +115,9 @@ async def refresh(
         memberships_for=memberships_for,
         settings=settings,
         now=clock.now(),
+        workspace=body.active_org_slug
+        if "active_org_slug" in body.model_fields_set
+        else service_sessions.DEFAULT_WORKSPACE,
     )
 
 
@@ -212,8 +215,9 @@ async def begin_password_reset(
 
 
 # Who sent an invitation, for the accept page to greet the person with. The token is the only
-# credential and only the organisation's name comes back; every other token gets the same refusal
-# `password-reset/confirm` gives, so this cannot tell a tester which guesses were real.
+# credential and only the organisation's name and type and the role on offer come back; every other
+# token gets the same refusal `password-reset/confirm` gives, so this cannot tell a tester which
+# guesses were real.
 @router.get(
     "/auth/invitation/{token}",
     response_model=schemas.InvitationLookup,
@@ -223,8 +227,7 @@ async def look_up_invitation(
     request: Request, token: str, session: SessionDep, clock: ClockDep
 ) -> schemas.InvitationLookup:
     await check(INVITATION_LOOKUP, caller_key(request))
-    name = await service_passwords.invitation_organisation_name(session, token=token, now=clock.now())
-    return schemas.InvitationLookup(organisation_name=name)
+    return await service_passwords.invitation_facts(session, token=token, now=clock.now())
 
 
 # Redeem a reset token for a new password. Ends every existing session, the

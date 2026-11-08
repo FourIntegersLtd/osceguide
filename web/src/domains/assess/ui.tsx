@@ -25,6 +25,8 @@ export function Note({ tone, children, role }: { tone: AlertTone; children: Reac
   );
 }
 
+/** The width of `PeopleDialog` and the other dialogs that match it; the class caps the panel below 768px. */
+export const PEOPLE_DIALOG_SIZE = { width: "35.5rem", panelClassName: "max-w-[35.5rem]" } as const;
 /** The board's `.card`. */
 export const card = boardCardClipped;
 /** The board's `.row`: a line inside a card. */
@@ -91,7 +93,7 @@ export function PeopleDialog({
     if (!busy) onClose();
   };
   return (
-    <Modal onClose={close} closeOnBack={!busy} labelledBy={titleId} hideCloseButton width="35.5rem" panelClassName="max-w-[35.5rem]" bodyClassName="p-6">
+    <Modal onClose={close} closeOnBack={!busy} labelledBy={titleId} hideCloseButton {...PEOPLE_DIALOG_SIZE} bodyClassName="p-6">
       <div className="flex flex-col gap-3.5">
         <h2 id={titleId} className={`m-0 text-assess-desc font-semibold ${FLAT_LEADING} text-osce-ink-900`}>{title}</h2>
         {lead ? <p className="m-0 text-assess-label leading-[1.5] text-osce-ink-500">{lead}</p> : null}

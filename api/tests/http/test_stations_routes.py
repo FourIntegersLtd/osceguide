@@ -804,6 +804,13 @@ async def test_a_supervisor_reads_every_audience_of_a_station(client: AsyncClien
         ("faculty", ["debrief"]),
     ]
 
+    # The console shows the supervisor only what the candidate reads.
+    candidate_only = await client.get(path, params={"audience": "candidate"}, headers=bearer(owner))
+    assert candidate_only.status_code == 200, candidate_only.text
+    assert [(s["audience"], [b["id"] for b in s["blocks"]]) for s in candidate_only.json()] == [
+        ("candidate", ["task"])
+    ]
+
     trainee = await client.get(path, headers=bearer(await member(make_actor, org_id, "kings", "trainee")))
     assert trainee.status_code == 403, trainee.text
 

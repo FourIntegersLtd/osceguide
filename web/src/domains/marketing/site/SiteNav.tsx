@@ -30,8 +30,8 @@ export function SiteNav({ variant = "site", exam, links: custom }: { variant?: "
   const ctas =
     variant === "landing" ? (
       <>
-        <SiteButtonLink href="/institutions" variant="line" size="sm">Institutions</SiteButtonLink>
-        <SiteButtonLink href={login} variant="brand" size="sm">Login</SiteButtonLink>
+        <SiteButtonLink href={login} variant="text" size="sm">Log in</SiteButtonLink>
+        <SiteButtonLink href={register} variant="brand" size="sm">Try a case free</SiteButtonLink>
       </>
     ) : (
       <>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Station builder</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav on" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="head"><div><a class="meta" href="HireStations.dc.html">Exams › Stations</a><h1>Deteriorating patient (NEWS2) <span class="chip warn" style="vertical-align:middle">Draft v3</span></h1><p class="desc">Write the brief, the patient and the assessor's notes. Publish when it reads right.</p></div><div class="acts"><button class="btn">Save draft</button><button class="btn pri" disabled>Publish</button></div></div>
+<div class="why" style="text-align:right;margin-top:-16px">Publish needs a candidate brief.</div>
+<div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="4"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="card pad"><div><label for="b">Candidate brief</label><textarea class="input" id="b" placeholder="What the candidate reads before they go in"></textarea><div class="hint">The candidate sees this in their assessment page before the station starts.</div></div>
+<div><label for="tm">Minutes</label><input class="input" id="tm" value="10" style="max-width:120px"></div></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><div><label for="p">Who the patient is</label><textarea class="input" id="p">Mr Daniel Hughes, 68, day 2 after a bowel resection. Breathing faster, new confusion.</textarea></div>
+<div><label>Photos</label><div class="acts"><span class="chip">obs_chart.png</span><button class="btn sm">Add a photo</button></div></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><div><label for="a">Assessor's notes</label><textarea class="input" id="a">Expect a NEWS2 of 7, an SBAR call to the doctor and a sepsis screen within 10 minutes.</textarea></div><div class="hint">Assessors see these on the marking page. Candidates never do.</div></div>
+</sc-if>
+<sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="row"><span class="f">Version 3</span><span class="chip warn">Draft</span></div><div class="row"><span class="f">Version 2 · Band 6 nurse OSCE uses it</span><span class="chip ok">Published</span></div><div class="row"><span class="f">Version 1</span><span class="chip">Archived</span></div></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">POST</span><code>{o}/stations/{id}/versions</code></div>
+<div class="call"><span class="m">PATCH</span><code>{o}/stations/{id}/versions/{v}</code></div>
+<div class="call"><span class="m">DELETE</span><code>{o}/stations/{id}/versions/{v}</code></div>
+<div class="call"><span class="m">PATCH</span><code>…/versions/{v}/brief</code></div>
+<div class="call"><span class="m">POST</span><code>…/versions/{v}/photos</code></div>
+<div class="call"><span class="m">POST</span><code>…/versions/{v}/photos/remove</code></div>
+<div class="call"><span class="m">POST</span><code>…/versions/{v}/publish</code></div>
+<div class="call"><span class="m">POST</span><code>…/versions/{v}/archive</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/station-versions/{version_id}/sections</code></div>
+<h2>Refusals it shows</h2><div class="codes"><code>not_editable</code><code>already_published</code><code>draft_exists</code><code>station_empty</code><code>invalid_photo</code><code>photo_storage_unavailable</code><code>not_deletable</code><code>version_not_found</code></div>
+<div class="note">Route <code>/app/[w]/authoring/stations/[id]</code> · admin · owner content-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Brief', 'Patient', 'Assessor notes', 'Versions'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2, s3: t === 3 };
+  }
+}
+</script>
+</body>
+</html>

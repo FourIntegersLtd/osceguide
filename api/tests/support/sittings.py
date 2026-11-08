@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import NamedTuple
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -126,3 +127,58 @@ async def org_by_slug(db_session: AsyncSession, slug: str):  # type: ignore[no-u
     org = await tenancy_repo.organization_by_slug(db_session, slug)
     assert org is not None, slug
     return org
+
+
+class StartedCircuit(NamedTuple):
+    admin: str
+    circuit_id: str
+    trainees: list[uuid.UUID]
+    slots: list[str]
+
+
+async def started_circuit(
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
+    db_session: AsyncSession,
+    *,
+    mode: str = "exam",
+    trainees: int = 1,
+    stations: int = 1,
+    sitting_name: str = "S",
+    circuit_name: str = "C",
+    station_title: str = "Station",
+) -> StartedCircuit:
+    """An org (`kings`), its owner, and a circuit that is already running.
+
+    `trainees` people are rostered in order, `stations` published stations are used, and the
+    first trainee has the turn. The one setup every live-circuit HTTP test starts from.
+    """
+    _, admin = await org_with_admin(client, make_actor)
+    programme = await add_programme(client, admin, org_slug="kings")
+    sitting = (
+        await client.post(
+            "/api/v1/orgs/kings/sittings",
+            json={"name": sitting_name, "programme_id": str(programme), "mode": mode},
+            headers=bearer(admin),
+        )
+    ).json()
+    versions = [
+        await published_station(client, admin, "kings", f"{station_title} {n}") for n in range(stations)
+    ]
+    people = [
+        await a_trainee(db_session, f"p{n}-{uuid.uuid4().hex[:8]}@example.com") for n in range(trainees)
+    ]
+    circuit = (
+        await client.post(
+            f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
+            json={
+                "name": circuit_name,
+                "trainee_ids": [str(t) for t in people],
+                "station_version_ids": versions,
+            },
+            headers=bearer(admin),
+        )
+    ).json()
+    started = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
+    assert started.status_code == 200, started.text
+    return StartedCircuit(admin, circuit["id"], people, [slot["id"] for slot in started.json()["slots"]])

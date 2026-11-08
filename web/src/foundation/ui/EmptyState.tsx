@@ -6,6 +6,7 @@ export function EmptyState({
   description,
   action,
   bare = false,
+  titleAs: Title = "p",
 }: {
   title: ReactNode;
   description?: ReactNode;
@@ -16,6 +17,8 @@ export function EmptyState({
    * in a box.
    */
   bare?: boolean;
+  /** `h1` when the empty state is the whole page, so the page still has its one heading. */
+  titleAs?: "p" | "h1";
 }) {
   return (
     <div
@@ -24,7 +27,7 @@ export function EmptyState({
         bare ? "" : "rounded-osce-lg border border-dashed border-border",
       )}
     >
-      <p className="text-osce-data font-semibold text-ink">{title}</p>
+      <Title className="text-osce-data font-semibold text-ink">{title}</Title>
       {description && (
         <p className="max-w-sm text-osce-meta text-ink-subtle">{description}</p>
       )}

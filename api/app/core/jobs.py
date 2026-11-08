@@ -85,14 +85,24 @@ def registered_task_names() -> set[str]:
     return {name for name in get_jobs_app().tasks if not name.startswith(("builtin:", "procrastinate."))}
 
 
-async def allow_long_statement(session: AsyncSession, seconds: int) -> None:
-    """Lift the database's `statement_timeout` to `seconds` for this transaction only.
+# How long a request may hold its transaction open across model calls (the database default is 1 min).
+# Postgres counts from the last statement, and a call can try two providers (station_ai allows 480s each)
+# or retry, so this covers the worst of them with room (25 min).
+MODEL_CALL_IDLE_SECONDS = 1500
 
-    For a job that legitimately runs long (the database default is 15s, set by the exam-day
-    migration). `set_config(..., true)` is transaction-local, so it needs no reset and is safe
-    behind PgBouncer's transaction mode. Lives here, not in `core/db.py`, which builds no queries.
+
+async def allow_long_idle(session: AsyncSession, seconds: int = MODEL_CALL_IDLE_SECONDS) -> None:
+    """Lift the database's `idle_in_transaction_session_timeout` to `seconds` for this transaction only.
+
+    For a request that holds its transaction open while it waits on something slow outside the
+    database, such as a model call (the database default is 1 min, set by the exam-day migration, and a
+    longer wait is dropped with a 500 on the closing commit). `set_config(..., true)` is
+    transaction-local, so it needs no reset and is safe behind PgBouncer's transaction mode. Lives here,
+    not in `core/db.py`, which builds no queries.
     """
-    await session.execute(text("select set_config('statement_timeout', :v, true)"), {"v": f"{seconds}s"})
+    await session.execute(
+        text("select set_config('idle_in_transaction_session_timeout', :v, true)"), {"v": f"{seconds}s"}
+    )
 
 
 async def defer_in_transaction(

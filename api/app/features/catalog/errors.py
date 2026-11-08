@@ -9,7 +9,7 @@ class UnknownExamError(NotFound):
     """No exam matches: missing, unpublished, retired, or the wrong owner."""
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"
 
 
 class ExamNotOwned(NotFound):
@@ -21,7 +21,7 @@ class ExamNotOwned(NotFound):
     """
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"
 
 
 class ProgrammeExists(Conflict):
@@ -43,7 +43,7 @@ class ProgrammeNotFound(NotFound):
     """No programme with that id in this organisation."""
 
     code = "programme_not_found"
-    default_message = "No such programme"
+    default_message = "We couldn't find that programme"
 
 
 class ExamCodeTaken(Conflict):
@@ -57,14 +57,14 @@ class InvalidExamCodeError(InvalidInput):
     """The code does not fit the pattern a URL or ref id can carry."""
 
     code = "invalid_exam_code"
-    default_message = "That is not a usable exam code"
+    default_message = "That exam code can't be used. Choose a different code."
 
 
 class ExamNotPublishable(Conflict):
     """The exam is retired, or it names no rubric to be marked against."""
 
     code = "exam_not_publishable"
-    default_message = "That exam cannot be published as it stands"
+    default_message = "That exam isn't ready to publish yet. Fix the problems listed and try again."
 
 
 class ExamInUse(Conflict):
@@ -90,14 +90,16 @@ class RubricVersionNotFound(NotFound):
     """
 
     code = "rubric_version_not_found"
-    default_message = "No such rubric version"
+    default_message = "We couldn't find that version of the marking scheme"
 
 
 class InvalidExamSettings(InvalidInput):
     """The exam's settings name a generation prompt or profile that does not exist."""
 
     code = "invalid_exam_settings"
-    default_message = "Those exam settings name a prompt that does not exist"
+    default_message = (
+        "These exam settings point to something that doesn't exist. Check the settings and try again."
+    )
 
 
 class ProgrammeNotActive(Conflict):

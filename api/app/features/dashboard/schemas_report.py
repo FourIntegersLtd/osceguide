@@ -49,6 +49,7 @@ class DecisionSummary(BaseModel):
     recruitment_outcome: str | None
     signed_off_at: datetime | None
     released_at: datetime | None
+    signed_off_by_name: str | None = None
 
 
 class CandidateReport(BaseModel):

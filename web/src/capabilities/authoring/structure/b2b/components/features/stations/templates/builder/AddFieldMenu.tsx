@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Fragment,
   useCallback,
   useEffect,
   useId,
@@ -247,7 +246,7 @@ export function AddFieldMenu({
   );
 }
 
-/** The board's open "+ Add field" fold: every field type by group, each one a button that adds it at the end of the section. */
+/** The board's open "+ Add field" fold: every field type as a tile, grouped, each adding itself at the end of the section. */
 export function AddFieldPanel({
   kind,
   onPick,
@@ -262,37 +261,44 @@ export function AddFieldPanel({
     items: formsOrderForKind(kind).filter((m) => m.group === group.id),
   })).filter((g) => g.items.length > 0);
   return (
-    <details className="border-t border-osce-border-light" open>
-      <summary className="box-content min-h-6 cursor-pointer px-5 py-3.5 text-assess-label font-medium text-ink">
-        <span aria-hidden>+ </span>
+    <details className="rounded-panel border border-dashed border-osce-border bg-osce-surface" open>
+      <summary className="box-content flex min-h-6 cursor-pointer items-center gap-1.5 px-5 py-3.5 text-assess-label font-medium text-ink">
+        <HiPlus aria-hidden className="h-4 w-4" />
         Add field
       </summary>
-      <div className="px-5 pb-4 text-assess-label leading-relaxed text-ink-muted">
-        <div className="grid grid-cols-1 gap-4 min-[901px]:grid-cols-2">
-          {groups.map((group) => (
-            <div key={group.id} role="group" aria-label={group.label}>
-              <p className="text-assess-eyebrow uppercase text-ink-subtle">{group.label}</p>
-              {group.items.map((meta, i) => (
-                <Fragment key={meta.type}>
-                  {i > 0 ? <span aria-hidden> · </span> : null}
+      <div className="flex flex-col gap-4 px-5 pb-4">
+        {groups.map((group) => (
+          <div key={group.id} role="group" aria-label={group.label}>
+            <p className="mb-2 text-assess-eyebrow uppercase text-ink-subtle">{group.label}</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {group.items.map((meta) => {
+                const Icon = meta.icon;
+                return (
                   <button
+                    key={meta.type}
                     type="button"
-                    title={meta.description}
                     onClick={() => onPick(meta.type)}
-                    className={`hover:text-ink hover:underline ${builderUi.focusRing}`}
+                    className={`flex items-center gap-2.5 rounded-osce-md border border-osce-border bg-osce-surface px-3 py-2 text-left hover:border-osce-accent hover:bg-osce-accent-muted ${builderUi.focusRing}`}
                   >
-                    {meta.formsLabel}
+                    <ToneBadge tone={GROUP_TONE[group.id]} size="sm">
+                      <Icon aria-hidden />
+                    </ToneBadge>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-assess-label font-medium text-ink">{meta.formsLabel}</span>
+                      <span className="block truncate text-assess-meta text-ink-subtle">{meta.description}</span>
+                    </span>
                   </button>
-                </Fragment>
-              ))}
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
         <button
           type="button"
           onClick={onOpenFieldTypesInfo}
-          className={`mt-3 text-assess-meta font-medium text-ink-subtle hover:text-ink ${builderUi.focusRing}`}
+          className={`inline-flex items-center gap-1.5 self-start text-assess-meta font-medium text-ink-subtle hover:text-ink ${builderUi.focusRing}`}
         >
+          <HiOutlineInformationCircle aria-hidden className="h-4 w-4" />
           Field type guide
         </button>
       </div>

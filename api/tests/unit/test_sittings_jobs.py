@@ -32,7 +32,11 @@ def no_silent_patients(monkeypatch: pytest.MonkeyPatch) -> None:
     async def silent(session: object, **_: object) -> list[SimpleNamespace]:
         return []
 
+    async def none_forgotten(session: object, **_: object) -> list[SimpleNamespace]:
+        return []
+
     monkeypatch.setattr(repository_run, "silent_patient_circuits", silent)
+    monkeypatch.setattr(repository_run, "forgotten_training_rooms", none_forgotten)
 
 
 def a_circuit() -> SimpleNamespace:

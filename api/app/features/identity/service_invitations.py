@@ -36,6 +36,7 @@ async def invite_user(
     now: datetime,
     practice_exam_title: str | None = None,
     organization_id: uuid.UUID | None = None,
+    role: str | None = None,
 ) -> UserRef:
     """Create an account for `email` and queue the invitation, in one transaction.
 
@@ -43,7 +44,8 @@ async def invite_user(
     fresh link to a person who was asked and has not answered is `reissue_invitation`.
     `practice_exam_title` names the exam an organisation is giving them practice access to,
     which switches the email to the wording that says so; the link and token are the same.
-    `organization_id` is the organisation sending it, kept on the token for `/auth/invitation/{token}`.
+    `organization_id` is the organisation sending it, kept on the token for `/auth/invitation/{token}`,
+    and `role` the seat it is for (kept there too; None when the link seats nobody).
     """
     user = await repository.create_user(
         session, email=email, name=name, password_hash=None, must_change_password=True
@@ -55,6 +57,7 @@ async def invite_user(
         now=now,
         practice_exam_title=practice_exam_title,
         organization_id=organization_id,
+        role=role,
     )
     # The same hook registering runs: an invited person may already be on a
     # roster somewhere else, and those rows are waiting for this account.
@@ -97,6 +100,7 @@ async def seat_or_invite(
     temporary_password: str | None,
     now: datetime,
     organization_id: uuid.UUID | None = None,
+    role: str | None = None,
 ) -> UserRef:
     """Create the account for an address that has none: seated with the temporary password
     when one is given (no email), otherwise invited by email. The caller has already found
@@ -106,7 +110,13 @@ async def seat_or_invite(
             session, email=email, password=temporary_password, name=name
         )
     return await invite_user(
-        session, email=email, name=name, invited_to=invited_to, now=now, organization_id=organization_id
+        session,
+        email=email,
+        name=name,
+        invited_to=invited_to,
+        now=now,
+        organization_id=organization_id,
+        role=role,
     )
 
 
@@ -142,16 +152,18 @@ async def reissue_invitation(
     now: datetime,
     practice_exam_title: str | None = None,
     organization_id: uuid.UUID | None = None,
+    role: str | None = None,
 ) -> bool:
     """Send the choose-a-password link again, to an account that never used the first one.
 
     Only the token's hash is stored, so the first link cannot be repeated; this mints a
-    fresh one through the same path and spends the old one, so only one ever stays live.
+    fresh one through the same path and spends the old one from the same organisation, so only
+    one ever stays live there; another organisation's invitation to the same person is left alone.
 
     Returns False when there is nothing to re-send: the account already has a password, or
     the account is gone.
     """
-    user = await _user_awaiting_password(session, user_id, now=now)
+    user = await _user_awaiting_password(session, user_id, organization_id=organization_id, now=now)
     if user is None:
         return False
     await _queue_invitation(
@@ -161,8 +173,22 @@ async def reissue_invitation(
         now=now,
         practice_exam_title=practice_exam_title,
         organization_id=organization_id,
+        role=role,
     )
     return True
+
+
+async def spend_invitations(
+    session: AsyncSession, *, user_id: uuid.UUID, organization_id: uuid.UUID, at: datetime
+) -> None:
+    """Spend the invitation links this organisation sent this person.
+
+    Called when their last live seat there is revoked, so a link already emailed cannot
+    sign them in (`confirm_password_reset`) and `/auth/invitation/{token}` refuses it alike.
+    """
+    await repository.mark_unused_reset_tokens_used(
+        session, user_id=user_id, organization_id=organization_id, at=at
+    )
 
 
 async def _send_reminder(
@@ -173,9 +199,10 @@ async def _send_reminder(
     now: datetime,
     practice_exam_title: str | None,
     organization_id: uuid.UUID | None,
+    role: str | None,
 ) -> bool:
     """The five-day reminder: a fresh link under the reminder wording. False when nothing is due."""
-    user = await _user_awaiting_password(session, user_id, now=now)
+    user = await _user_awaiting_password(session, user_id, organization_id=organization_id, now=now)
     if user is None:
         return False
     await _queue_token_email(
@@ -186,12 +213,16 @@ async def _send_reminder(
         subject=f"Your invitation to {invited_to} is still waiting",
         payload={"invited_to": invited_to, "exam_title": practice_exam_title or ""},
         organization_id=organization_id,
+        role=role,
     )
     return True
 
 
-async def _user_awaiting_password(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> User | None:
-    """The account still waiting to choose a password, with its unused links spent; else None."""
+async def _user_awaiting_password(
+    session: AsyncSession, user_id: uuid.UUID, *, organization_id: uuid.UUID | None, now: datetime
+) -> User | None:
+    """The account still waiting to choose a password, with the unused links `organization_id`
+    sent it spent (not another organisation's); else None."""
     user = await repository.user_by_id(session, user_id)
     if user is None or user.password_hash is not None or user.legacy_password_hash is not None:
         return None
@@ -202,7 +233,9 @@ async def _user_awaiting_password(session: AsyncSession, user_id: uuid.UUID, *, 
     # second line; this stops the link ever being sent.
     if user.password_login_disabled:
         return None
-    await repository.mark_unused_reset_tokens_used(session, user_id=user.id, at=now)
+    await repository.mark_unused_reset_tokens_used(
+        session, user_id=user.id, organization_id=organization_id, at=now
+    )
     return user
 
 
@@ -214,6 +247,7 @@ async def _queue_invitation(
     now: datetime,
     practice_exam_title: str | None = None,
     organization_id: uuid.UUID | None = None,
+    role: str | None = None,
 ) -> None:
     """The token and the message, which is all an invitation is.
 
@@ -230,6 +264,7 @@ async def _queue_invitation(
             subject=f"You have been invited to {invited_to}",
             payload={"invited_to": invited_to},
             organization_id=organization_id,
+            role=role,
         )
         return
     await _queue_token_email(
@@ -240,6 +275,7 @@ async def _queue_invitation(
         subject=f"{invited_to} has given you practice access to {practice_exam_title}",
         payload={"invited_to": invited_to, "exam_title": practice_exam_title},
         organization_id=organization_id,
+        role=role,
     )
 
 
@@ -252,6 +288,7 @@ async def _queue_token_email(
     subject: str,
     payload: dict[str, str],
     organization_id: uuid.UUID | None = None,
+    role: str | None = None,
 ) -> None:
     """Mint the choose-a-password token and queue the email that carries it."""
     raw, token_hash = new_token()
@@ -261,6 +298,7 @@ async def _queue_token_email(
         token_hash=token_hash,
         expires_at=now + timedelta(days=INVITATION_TTL_DAYS),
         organization_id=organization_id,
+        membership_role=role,
     )
     await notifications.enqueue_email(
         session,
@@ -284,7 +322,7 @@ async def send_due_invitation_reminders(session: AsyncSession, *, now: datetime)
         session, window_start=now, window_end=now + reminder_window
     )
     reminded = 0
-    for user, token_hash, organization_id in waiting:
+    for user, token_hash, organization_id, role in waiting:
         original = await notifications.queued_under(session, f"invitation:{token_hash}")
         if original is None or original[0] not in _REMINDABLE_TEMPLATES:
             continue
@@ -296,6 +334,7 @@ async def send_due_invitation_reminders(session: AsyncSession, *, now: datetime)
             now=now,
             practice_exam_title=payload.get("exam_title"),
             organization_id=organization_id,
+            role=role,
         ):
             reminded += 1
     return reminded

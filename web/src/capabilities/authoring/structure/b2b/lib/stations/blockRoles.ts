@@ -12,6 +12,7 @@ import {
   HiOutlineUserGroup,
   HiOutlineClipboardDocumentCheck,
 } from "react-icons/hi2";
+import { INSTITUTION_WORDS, type AssessWords } from "@/capabilities/assess-words/vocabulary";
 import type {
   StationBlock,
   StationBlockRole,
@@ -33,7 +34,7 @@ export type AudienceMeta = {
 };
 
 /** The parts of a station, in the order they are read. */
-export const STATION_AUDIENCES: AudienceMeta[] = [
+const STATION_AUDIENCES: AudienceMeta[] = [
   {
     id: "patient",
     label: "Patient",
@@ -170,16 +171,40 @@ const AUDIENCE_BY_ID = Object.fromEntries(STATION_AUDIENCES.map((a) => [a.id, a]
   AudienceMeta
 >;
 
-export function roleMeta(role: StationBlockRole): RoleMeta {
-  return ROLE_BY_ID[role] ?? ROLE_BY_ID.hidden;
+/** A label or sentence in the workspace's words: examiner -> assessor for an employer, learner -> candidate. */
+function inWords(text: string, w: AssessWords): string {
+  const examined = text.replace(/Examiner/g, w.Examiner).replace(/examiner/g, w.examiner);
+  return w.hiring ? examined.replace(/learner/g, w.trainee) : examined;
 }
 
-export function audienceMeta(audience: StationSectionAudience): AudienceMeta {
-  return AUDIENCE_BY_ID[audience] ?? AUDIENCE_BY_ID.patient;
+function localised<T extends { label: string; description: string }>(meta: T, w: AssessWords): T {
+  return { ...meta, label: inWords(meta.label, w), description: inWords(meta.description, w) };
 }
 
-export function rolesForAudience(audience: StationSectionAudience): RoleMeta[] {
-  return STATION_BLOCK_ROLES.filter((r) => r.audience === audience);
+export function roleMeta(role: StationBlockRole, w: AssessWords = INSTITUTION_WORDS): RoleMeta {
+  return localised(ROLE_BY_ID[role] ?? ROLE_BY_ID.hidden, w);
+}
+
+/** An employer's chips say who sees a section: the candidate, or only the assessor. */
+const HIRE_AUDIENCE_LABEL: Partial<Record<StationSectionAudience, string>> = { candidate: "Candidate sees it", examiner: "Assessor only" };
+
+function audienceIn(meta: AudienceMeta, w: AssessWords): AudienceMeta {
+  const named = localised(meta, w);
+  const chip = w.hiring ? HIRE_AUDIENCE_LABEL[meta.id] : undefined;
+  return chip ? { ...named, label: chip } : named;
+}
+
+export function audienceMeta(audience: StationSectionAudience, w: AssessWords = INSTITUTION_WORDS): AudienceMeta {
+  return audienceIn(AUDIENCE_BY_ID[audience] ?? AUDIENCE_BY_ID.patient, w);
+}
+
+/** The parts of a station in reading order, named in the workspace's words. */
+export function stationAudiences(w: AssessWords = INSTITUTION_WORDS): AudienceMeta[] {
+  return STATION_AUDIENCES.map((a) => audienceIn(a, w));
+}
+
+export function rolesForAudience(audience: StationSectionAudience, w: AssessWords = INSTITUTION_WORDS): RoleMeta[] {
+  return STATION_BLOCK_ROLES.filter((r) => r.audience === audience).map((r) => localised(r, w));
 }
 
 /** Block ids the legacy presets and seeded templates used, so an old template gets the right roles. */
@@ -226,11 +251,6 @@ export function blockRole(block: StationBlock, section: StationSection): Station
   const audience = sectionAudience(section);
   if (audience === "patient") return LEGACY_ROLE_BY_ID[block.id] ?? "hidden";
   return audienceMeta(audience).defaultRole;
-}
-
-/** Whether the candidate reads this block before the station starts. */
-export function blockInCandidateBrief(block: StationBlock, section: StationSection): boolean {
-  return blockRole(block, section) === "candidate_brief";
 }
 
 /**

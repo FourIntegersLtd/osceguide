@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Register an employer</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="cols" style="padding:32px 40px;box-sizing:border-box">
+<div class="colm"><div class="narrow" style="margin:24px auto">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="3"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div><div class="eyebrow">OSCE Guide for employers</div><h1>Set up your employer account</h1><p class="desc">Tell us who you are. We set the account up and email you within one working day.</p></div>
+<div class="card pad">
+<div><label>What are you setting up?</label><div class="acts"><button class="pill">A school or deanery</button><button class="pill on">An employer</button></div><div class="hint">Employers assess candidates for a role. Your screens say Candidate and Assessment.</div></div>
+<div><label for="o">Organisation name</label><input class="input" id="o" value="Acme Health Trust"></div>
+<div class="fields"><div><label for="n">Your name</label><input class="input" id="n" value="Sam Okafor"></div><div><label for="e">Work email</label><input class="input" id="e" value="sam.okafor@acme.nhs.uk"></div></div>
+<div><label for="c">How many candidates a year?</label><input class="input" id="c" value="About 120"></div>
+<button class="btn pri" onClick="{{go1}}">Send request</button>
+</div>
+<div class="meta">Already have an account? <a href="HireAcceptInvite.dc.html">Sign in</a></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card pad" style="align-items:flex-start"><div class="chip ok">Request sent</div><h1>We will email you</h1><p class="desc">We have your request for Acme Health Trust. Look for an email to sam.okafor@acme.nhs.uk within one working day; it has a link to finish setting up.</p><a class="btn pri" href="HireHome.dc.html">See what your account looks like</a></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="al bad"><b>That did not send</b>Check your connection and press Send request again. Nothing was saved.</div>
+<button class="btn pri">Send request</button>
+</sc-if>
+</div></div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">POST</span><code>/api/v1/site/messages</code></div>
+<div class="meta">The request reaches staff in the console inbox. Staff create the org with <code>org_type: employer</code>; nothing is self-serve.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>invalid_message</code><code>invalid_input</code></div>
+<div class="note">Route <code>/register/organisation</code> · public · <code>NewOrganisation.tsx</code> · owner institution-owner</div></div>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Form', 'Sent', 'Failed'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2, go1: () => this.setState({ t: 1 }) };
+  }
+}
+</script>
+</body>
+</html>

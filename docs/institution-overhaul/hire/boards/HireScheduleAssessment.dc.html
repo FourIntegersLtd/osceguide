@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Schedule an assessment</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav on" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="head"><div><a class="meta" href="HireAssessments.dc.html">Assessments</a><h1>Schedule an assessment</h1><p class="desc">Nothing is created until you press Schedule on the last step.</p></div></div>
+<ol class="rail" aria-label="Steps"><sc-for list="{{rail}}" as="r" hint-placeholder-count="6"><li class="{{r.cls}}"><button onClick="{{r.pick}}" style="all:unset;cursor:pointer">{{r.label}}</button></li></sc-for></ol>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="card pad"><h2>Which exam?</h2>
+<div class="card"><div class="row"><span class="pill on">●</span><span class="f"><b style="font-weight:500">Band 6 nurse OSCE</b><div class="meta">5 stations · Formal exam · marks with Band 6 nurse scheme v3</div></span></div>
+<div class="row"><span class="pill">○</span><span class="f"><b style="font-weight:500">Band 5 nurse OSCE</b><div class="meta">4 stations · Formal exam</div></span></div>
+<div class="row"><span class="pill">○</span><span class="f"><b style="font-weight:500">New starters practice</b><div class="meta">3 stations · Training: feedback only, no hiring decision</div></span></div></div></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>When and what it is called</h2>
+<div><label for="nm">Name</label><input class="input" id="nm" value="Band 6 nurse, November intake"></div>
+<div class="g2"><div><label for="dt">Date</label><input class="input" id="dt" value="Thu 20 Nov"></div><div><label for="st">First rotation starts</label><input class="input" id="st" value="09:00"></div></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>Who is sitting it?</h2>
+<div class="acts"><button class="pill on">An intake</button><button class="pill">Pick candidates</button><button class="pill">Paste emails</button></div>
+<div><label for="ik">Intake</label><input class="input" id="ik" value="November intake · 12 candidates"></div>
+<div class="al warn">2 of these candidates have not joined yet. They get an invitation when you schedule.</div></div>
+</sc-if>
+<sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>Who assesses?</h2><div class="meta">Each station needs an assessor. One person can cover more than one station.</div>
+<div class="card"><div class="row"><span class="f">1 Deteriorating patient (NEWS2)</span><span>Dan Lowe</span></div><div class="row"><span class="f">2 Medicines round and a drug error</span><span>Dan Lowe</span></div><div class="row"><span class="f">3 Discharge planning with a carer</span><span class="chip warn">Choose</span></div><div class="row"><span class="f">4 Breaking difficult news</span><span>Sara Khan</span></div><div class="row"><span class="f">5 Handover (SBAR)</span><span>Sara Khan</span></div></div></div>
+<div class="why">Next needs an assessor on every station.</div>
+</sc-if>
+<sc-if value="{{s4}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>Rotations</h2><div class="meta">A rotation is one candidate going through every station in turn. We built 12 from your choices; change the order or times if you need to.</div>
+<div class="card"><div class="row"><span class="f">Priya Shah</span><span class="meta">09:00 to 09:55</span></div><div class="row"><span class="f">Tom Reid</span><span class="meta">09:00 to 09:55, starts at station 2</span></div><div class="row"><span class="f">10 more</span><span class="meta">until 12:40</span></div></div></div>
+</sc-if>
+<sc-if value="{{s5}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>Check and schedule</h2>
+<div class="row"><span class="f">Exam</span><span>Band 6 nurse OSCE · Formal exam</span></div>
+<div class="row"><span class="f">When</span><span>Thu 20 Nov, 09:00 to 12:40</span></div>
+<div class="row"><span class="f">Candidates</span><span>12 from November intake</span></div>
+<div class="row"><span class="f">Assessors</span><span>Dan Lowe, Sara Khan, Ama Boateng</span></div>
+<div class="al info">Candidates and assessors get an email with the time. Candidates see their brief on the day.</div></div>
+</sc-if>
+<div class="acts" style="justify-content:space-between"><button class="btn" onClick="{{back}}">Back</button><span class="meta">{{where}}</span><button class="btn pri" onClick="{{next}}">{{nextLabel}}</button></div>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/programmes</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/trainees</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/cohorts</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/trainee-groups</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/memberships</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/roster/resolve</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/sittings</code> <span class="new">last step</span></div>
+<div class="call"><span class="m">POST</span><code>{o}/sittings/{id}/circuits/bulk</code> <span class="new">last step</span></div>
+<div class="meta">Circuit is "Rotation" on hire (needs sign-off).</div>
+<h2>Refusals it shows</h2><div class="codes"><code>programme_required</code><code>exam_rubric_not_ready</code><code>not_permitted_in_mode</code><code>invalid_circuit</code><code>trainee_already_on_circuit</code><code>trainee_not_on_roster</code><code>trainee_revoked</code><code>too_many_trainees</code></div>
+<div class="note">Route <code>/app/[w]/sittings/new</code> · admin · owner institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['1 Exam', '2 When', '3 Candidates', '4 Assessors', '5 Rotations', '6 Check'];
+    const go = (k) => this.setState({ t: Math.max(0, Math.min(L.length - 1, k)) });
+    const o = { rail: L.map((label, k) => ({ label, cls: k < t ? 'st done' : k === t ? 'st now' : 'st', pick: () => go(k) })),
+      back: () => go(t - 1), next: () => go(t + 1), where: 'Step ' + (t + 1) + ' of 6', nextLabel: t === 5 ? 'Schedule' : 'Next' };
+    L.forEach((_, k) => { o['s' + k] = t === k; });
+    return o;
+  }
+}
+</script>
+</body>
+</html>

@@ -9,7 +9,7 @@ class PostNotFound(NotFound):
     """No slot exists with the given id."""
 
     code = "post_not_found"
-    default_message = "No such slot"
+    default_message = "We couldn't find that slot"
 
 
 class PostUnavailableError(Conflict):
@@ -53,7 +53,7 @@ class SessionNotFound(NotFound):
     """No booked session exists with the given id."""
 
     code = "peer_session_not_found"
-    default_message = "No such session"
+    default_message = "We couldn't find that session"
 
 
 class SessionNotOpen(Conflict):
@@ -86,7 +86,7 @@ class UnknownExamError(NotFound):
     """
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"
 
 
 # Re-exported, not redefined: offering or claiming a slot runs the same

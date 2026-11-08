@@ -1,3 +1,4 @@
+import type { AssessWords } from "@/capabilities/assess-words";
 import { sittingWhen } from "@/domains/assess/sittingWords";
 import { slotReviewPath, type UnmarkedStation } from "@/domains/assess/sessions/support";
 import type {
@@ -37,15 +38,23 @@ export const OUTCOME_LABEL: Record<AssessmentOutcome, string> = {
   withheld: "Withheld",
 };
 
-export const OUTCOME_HINT: Record<AssessmentOutcome, string> = {
+const OUTCOME_HINT: Record<AssessmentOutcome, string> = {
   pass: "Met the standard.",
   fail: "Did not meet the standard.",
   inconclusive: "Not enough was assessed to decide.",
   withheld: "Decided, but held back, for example during an appeal.",
 };
 
+/** The line under an outcome choice; an employer is told what too little means. */
+export function outcomeHint(outcome: AssessmentOutcome, w: AssessWords): string {
+  return w.hiring && outcome === "inconclusive" ? "This candidate sat too few stations for a pass or fail." : OUTCOME_HINT[outcome];
+}
+
 /** Whether the employer is taking the candidate on. Recorded only on an exam-mode sitting (hire). */
 export const RECRUITMENT_OUTCOMES = ["pending", "hired", "reserve", "not_hired", "withdrawn"] as const;
+/** The four hiring decisions a person can choose; "pending" is only what is stored before one is made. */
+export const RECRUITMENT_PILLS = ["hired", "reserve", "not_hired", "withdrawn"] as const;
+
 export type RecruitmentOutcome = (typeof RECRUITMENT_OUTCOMES)[number];
 
 export const RECRUITMENT_LABEL: Record<RecruitmentOutcome, string> = {
@@ -221,7 +230,7 @@ export function readoutFilename(readout: SittingReadout): string {
  * and a screen somebody reads can be guaranteed to say the same thing about the
  * same candidate — a second set of formatters is a second opinion.
  */
-export function readoutAsMarkdown(readout: SittingReadout): string {
+export function readoutAsMarkdown(readout: SittingReadout, w: AssessWords): string {
   const { sitting, summary } = readout;
   const candidates = readout.candidates ?? [];
   const stamp = (value: string) => new Date(value).toLocaleString("en-GB");
@@ -256,7 +265,7 @@ export function readoutAsMarkdown(readout: SittingReadout): string {
 
   lines.push("## Candidates", "");
   if (candidates.length === 0) {
-    lines.push("Nobody was rostered onto this examination.", "");
+    lines.push(w.hiring ? "No candidates were added to this exam." : "Nobody was rostered onto this examination.", "");
   } else {
     lines.push(
       "| Rank | Candidate | Assessment score | Stations | Completion | Review priority |",
@@ -410,4 +419,22 @@ export function attentionItems(
     });
   }
   return items;
+}
+
+/** The hire decisions tiles: how many are hired, on the reserve list, not hired, and still to decide (withdrawn is none of these). */
+export function hiringTally(candidates: readonly { decision?: { recruitment_outcome?: string | null } | null }[]): {
+  hired: number;
+  reserve: number;
+  notHired: number;
+  stillToDecide: number;
+} {
+  const tally = { hired: 0, reserve: 0, notHired: 0, stillToDecide: 0 };
+  for (const candidate of candidates) {
+    const outcome = candidate.decision?.recruitment_outcome;
+    if (outcome === "hired") tally.hired += 1;
+    else if (outcome === "reserve") tally.reserve += 1;
+    else if (outcome === "not_hired") tally.notHired += 1;
+    else if (!outcome || outcome === "pending") tally.stillToDecide += 1;
+  }
+  return tally;
 }

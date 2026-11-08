@@ -1,5 +1,7 @@
 "use client";
 
+import { say } from "@/domains/assess/roster/rosterWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { Alert } from "@/foundation/ui";
 import type { BulkTraineesResult } from "@/domains/assess/roster/api";
 import { importSummary } from "@/domains/assess/roster/csv";
@@ -11,6 +13,7 @@ import { importSummary } from "@/domains/assess/roster/csv";
  * dialog itself is the flow and nothing else.
  */
 export function ImportInstructions() {
+  const w = useAssessWords();
   return (
     <div className="space-y-3">
       <div className="rounded-panel border border-b2b-border bg-b2b-cream p-4">
@@ -28,7 +31,7 @@ export function ImportInstructions() {
           </li>
           <li>
             <span className="font-mono">cohort</span> or <span className="font-mono">group</span>:
-            a year group that already exists here (e.g. &quot;June 2026&quot;)
+            {say(w, "a year group that already exists here")} (e.g. &quot;June 2026&quot;)
           </li>
         </ul>
       </div>

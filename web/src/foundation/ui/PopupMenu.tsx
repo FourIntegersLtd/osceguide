@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useDismissOnOutside } from "@/foundation/hooks/useDismissOnOutside";
 import { menuFocusTarget } from "@/foundation/ui/popupMenuKeys";
+import { placePanel, type PanelPlace } from "@/foundation/ui/menuPlacement";
 import { cn } from "@/foundation/ui/cn";
 
 /**
@@ -14,16 +15,34 @@ export function PopupMenu({
   trigger,
   children,
   className,
+  fixed = false,
 }: {
   trigger: (state: { open: boolean; toggle: () => void }) => ReactNode;
   children: (close: () => void) => ReactNode;
   className?: string;
+  /** Position the panel with `position: fixed` from the trigger's rect, so a table or card with `overflow` cannot clip it. Closes on scroll and resize. */
+  fixed?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLUListElement>(null);
   const dismiss = useCallback(() => setOpen(false), []);
   useDismissOnOutside(root, open, dismiss);
+
+  const [place, setPlace] = useState<PanelPlace | null>(null);
+  useLayoutEffect(() => {
+    if (!open || !fixed || !root.current || !menu.current) return setPlace(null);
+    setPlace(placePanel(root.current.getBoundingClientRect(), menu.current.offsetHeight, window.innerWidth, window.innerHeight, menu.current.offsetWidth));
+  }, [open, fixed]);
+  useEffect(() => {
+    if (!open || !fixed) return;
+    window.addEventListener("scroll", dismiss, true);
+    window.addEventListener("resize", dismiss);
+    return () => {
+      window.removeEventListener("scroll", dismiss, true);
+      window.removeEventListener("resize", dismiss);
+    };
+  }, [open, fixed, dismiss]);
 
   const items = () => Array.from(menu.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
   const closeToTrigger = useCallback(() => {
@@ -50,7 +69,7 @@ export function PopupMenu({
     <div ref={root} className="relative">
       {trigger({ open, toggle })}
       {open ? (
-        <ul ref={menu} role="menu" tabIndex={-1} onKeyDown={onKeyDown} className={cn("absolute right-0 z-20 rounded-osce-md border border-osce-border bg-surface p-1 shadow-lg", className)}>
+        <ul ref={menu} role="menu" tabIndex={-1} onKeyDown={onKeyDown} style={fixed ? { position: "fixed", top: place?.top ?? 0, right: place?.right ?? 0, opacity: place ? 1 : 0 } : undefined} className={cn(fixed ? "z-50" : "absolute right-0 z-20", "rounded-osce-md border border-osce-border bg-surface p-1 shadow-lg", className)}>
           {children(closeToTrigger)}
         </ul>
       ) : null}

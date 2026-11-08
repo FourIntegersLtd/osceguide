@@ -99,6 +99,7 @@ export {
   listAllProgrammes,
   listProgrammes,
   countProgrammeSittings,
+  listAllSittings,
   addProgramme,
   updateProgramme,
 } from "@/capabilities/authoring/api/catalog";

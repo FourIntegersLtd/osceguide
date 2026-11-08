@@ -20,7 +20,7 @@ from app.core.audience import (
 )
 from app.core.errors import AppError, raise_mapped
 from app.core.events import publish_after_commit, user_topic
-from app.core.jobs import defer_in_transaction
+from app.core.jobs import allow_long_idle, defer_in_transaction
 from app.core.logging import get_logger
 from app.core.pagination import CursorParams, Page
 from app.features.catalog.service import resolve_exam
@@ -260,6 +260,7 @@ async def reply_as_assistant(session: AsyncSession, post_id: uuid.UUID, *, draft
     question = await repository.unanswered_public_question(session, post_id)
     if question is None:
         return False
+    await allow_long_idle(session)
     drafted = await draft(question.title or "", question.body)
     if drafted is None:
         log.info("assistant stayed quiet", post_id=str(post_id))

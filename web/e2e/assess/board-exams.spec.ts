@@ -132,12 +132,12 @@ for (const viewport of VIEWPORTS) {
 // EXCEPTIONS: step 2's "Use one of your marking schemes" lists the org's real schemes; step 3 draws the
 // timing fields as numbers with a "min" hint where the board shows "3 min"; the product's "Attempts per station"
 // control (the board lacks it) stays.
-/* Earlier runs leave an exam that already has a scheme version (not deletable), so each run takes a fresh code. */
-const NEW_EXAM_CODE = `PA${Math.random().toString(36).slice(2, 4).toUpperCase()}`;
+/* The app generates the code; earlier runs are found by the name this spec types. */
+const NEW_EXAM_NAME = "Paediatrics block";
 async function dropNewExam(): Promise<void> {
   const { call, orgPath } = await import("../support/api");
-  const list = await call<{ items: { id: string; code: string }[] }>(org.token, orgPath(org.slug, `/exams?status=all`));
-  for (const e of list.items.filter((x) => x.code === NEW_EXAM_CODE)) await call(org.token, orgPath(org.slug, `/exams/${e.id}`), { method: "DELETE" });
+  const list = await call<{ items: { id: string; name: string }[] }>(org.token, orgPath(org.slug, `/exams?status=all`));
+  for (const e of list.items.filter((x) => x.name === NEW_EXAM_NAME)) await call(org.token, orgPath(org.slug, `/exams/${e.id}`), { method: "DELETE" });
 }
 
 for (const viewport of VIEWPORTS) {
@@ -157,8 +157,7 @@ for (const viewport of VIEWPORTS) {
       const names = ["1-name", "2-marking-scheme", "3-timings", "4-publish"];
       for (let step = 0; step < 4; step++) {
         if (step === 0) {
-          await app.getByLabel("Exam name").fill("Paediatrics block");
-          await app.getByLabel("Short code").fill(NEW_EXAM_CODE);
+          await app.getByLabel("Exam name").fill(NEW_EXAM_NAME);
         }
         await board.locator(".st").nth(step).click();
         await board.evaluate(() => { document.querySelectorAll<HTMLElement>("details.fold, .fold").forEach((el) => { el.style.display = "none"; }); });
@@ -196,6 +195,8 @@ const DIALOGS = [
   { name: "add-programme", tab: 4, row: "", button: "New programme" },
 ] as const;
 
+const IN_MENU = new Set<string>(["Retire", "Delete", "Archive", "Archive live", "Delete draft"]);
+
 for (const viewport of VIEWPORTS) {
   for (const dialog of DIALOGS) {
     test(`Dialog ${dialog.name} matches the board, ${viewport.name}`, async ({ browser }) => {
@@ -206,7 +207,24 @@ for (const viewport of VIEWPORTS) {
       const boardRow = dialog.row ? board.locator(".row").filter({ hasText: dialog.row }).first() : board.locator(".page");
       await boardRow.getByRole("button", { name: dialog.button, exact: true }).first().click();
       const appScope = dialog.row ? app.locator("[data-row]").filter({ hasText: dialog.row }).first() : app.locator(APP_PAGE);
-      await appScope.getByRole("button", { name: dialog.button, exact: true }).first().click();
+      if (IN_MENU.has(dialog.button)) {
+        // The app keeps one inline action per row and puts the rest in its "⋯" menu; the board still draws buttons.
+        // The row can re-render as its data settles and close a menu opened too early: open it again until the item shows.
+        const item = app.getByRole("menuitem", { name: dialog.button, exact: true });
+        await expect(async () => {
+          if (!(await item.isVisible())) {
+            const trigger = appScope.getByRole("button", { name: /^Actions for / }).first();
+            await trigger.scrollIntoViewIfNeeded();
+            await trigger.click();
+          }
+          await expect(item).toBeVisible({ timeout: 2000 });
+        }).toPass({ timeout: 20_000 });
+        // A fixed menu closes on scroll and a click can scroll: press the focused item instead.
+        await item.focus();
+        await app.keyboard.press("Enter");
+      } else {
+        await appScope.getByRole("button", { name: dialog.button, exact: true }).first().click();
+      }
       await app.getByRole("dialog").waitFor();
       await board.mouse.move(0, 0);
       await app.mouse.move(0, 0);

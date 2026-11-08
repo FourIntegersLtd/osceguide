@@ -84,7 +84,15 @@ def operation_id(route: APIRoute) -> str:
 # tenancy's four predicates, then `PlatformAdmin`. A route on two takes the
 # higher. Published per operation as `x-capability` so the web can check that a
 # screen gates the button that calls it (`web/scripts/check-route-gates.mjs`).
-ROLE_LADDER = ("signed_in", "org_member", "org_staff", "org_admin", "institution_admin", "platform_admin")
+ROLE_LADDER = (
+    "signed_in",
+    "org_member",
+    "org_staff",
+    "lead_reviewer",
+    "org_admin",
+    "institution_admin",
+    "platform_admin",
+)
 CAPABILITY_KEY = "x-capability"
 # On an org rung: whether a platform admin who is not a member also passes. `require_org`
 # lets one in by default (support reads, running a circuit), never as `OrgAdmin`.
@@ -103,6 +111,7 @@ WORKER = "worker"
 _POLICY_ROLES = {
     "may_read_org": "org_member",
     "may_run_circuit": "org_staff",
+    "may_lead_review": "lead_reviewer",
     "is_org_admin": "org_admin",
     "is_institution_admin": "institution_admin",
 }

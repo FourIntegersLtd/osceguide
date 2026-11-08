@@ -1,12 +1,15 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { generateDraftHeading, generateDraftHelp } from "@/capabilities/authoring/lib/authoringCopy";
 import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { B2CPageHeader, FoldSection } from "@/foundation/ui";
+import { BoardTabBar, boardTabId } from "@/foundation/ui/BoardTabBar";
 import { BoardSelect, BoardTextarea } from "@/foundation/ui/BoardFields";
-import { boardAlert, boardBtn, boardInput, boardLabel, boardPad, boardTab, boardTabs } from "@/foundation/ui/boardKit";
+import { boardAlert, boardBtn, boardInput, boardLabel, boardPadWide } from "@/foundation/ui/boardKit";
 import { useSurface } from "@/capabilities";
 import { type Station } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
@@ -22,12 +25,15 @@ import { LoadError } from "@/capabilities/authoring/parts/LoadError";
 import { NewStationChooser } from "@/capabilities/authoring/stations/NewStationChooser";
 import { showsCreateForm } from "@/capabilities/authoring/stations/stationStart";
 
+import { assessFormStack } from "@/foundation/ui/b2bTokens";
+
 const label = `${boardLabel} !leading-[1.6]`;
-const boardHint = "mt-1.5 text-assess-meta leading-normal text-ink-subtle";
+const boardHint = "mt-2 text-assess-meta leading-normal text-ink-subtle";
 const cardTitle = "text-assess-hero font-semibold leading-snug text-ink";
 
 function CreateStationScreenForm() {
   const scope = useAuthoringScope();
+  const words = useAssessWords();
   // Drafting from a prompt with no template behind it is the catalogue's route;
   // an institution generates against a published template or writes by hand.
   const promptGeneration = supportsPromptGeneration(scope);
@@ -70,7 +76,7 @@ function CreateStationScreenForm() {
   ];
 
   return (
-    <div className="flex max-w-[1080px] flex-col gap-6 pb-8" data-testid="create-station-page">
+    <div className="flex flex-col gap-8 pb-10" data-testid="create-station-page">
       <B2CPageHeader
         board
         action={<span aria-hidden />}
@@ -82,26 +88,17 @@ function CreateStationScreenForm() {
         back={{ href: listHref, label: "Stations" }}
       />
 
-      <div className={boardTabs} role="tablist">
-        {tabs.map((t) => {
-          const active = (aiMode ? "ai" : "manual") === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => {
-                form.setMode(t.id);
-                form.setError(null);
-              }}
-              className={boardTab(active)}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
+      <BoardTabBar
+        label="How to start"
+        idPrefix="create-station-tab"
+        panelId="create-station-panel"
+        tabs={tabs}
+        value={aiMode ? "ai" : "manual"}
+        onChange={(id) => {
+          form.setMode(id);
+          form.setError(null);
+        }}
+      />
 
       {templates.error ? (
         <p role="alert" className={boardAlert("bad")}>{templates.error.message}</p>
@@ -123,7 +120,9 @@ function CreateStationScreenForm() {
 
       {form.error ? <p role="alert" className={boardAlert("bad")}>{form.error}</p> : null}
 
+      <div id="create-station-panel" role="tabpanel" aria-labelledby={boardTabId("create-station-tab", aiMode ? "ai" : "manual")}>
       <FoldSection board title="Station details">
+        <div className={assessFormStack}>
         <div>
           <label htmlFor="create-station-screen-station-title" className={label}>
             Station title
@@ -206,13 +205,15 @@ function CreateStationScreenForm() {
             </p>
           </div>
         ) : null}
+      </div>
       </FoldSection>
+      </div>
 
       {aiMode && (form.structure || (form.examCode && promptGeneration)) ? (
         <FoldSection
           board
-          title="Generate draft"
-          description="Paste a short prompt (a few lines). We’ll auto-fill the template fields below; you can edit anything afterward."
+          title={generateDraftHeading(words)}
+          description={generateDraftHelp(words)}
         >
           <div className="flex flex-col gap-3.5">
             <BoardTextarea
@@ -250,7 +251,7 @@ function CreateStationScreenForm() {
       ) : hasDraftContent(form.content) ? (
         <GeneratedDraft content={form.content} />
       ) : form.needsTemplateForLayout ? (
-        <div className={boardPad}>
+        <div className={boardPadWide}>
           <h2 className={cardTitle}>This exam needs a template</h2>
           <p className="m-0 text-assess-meta text-ink-subtle">
             A station needs a layout to write into, and this exam has none. Create one for this exam
@@ -262,7 +263,7 @@ function CreateStationScreenForm() {
           </Link>
         </div>
       ) : (
-        <div className={boardPad}>
+        <div className={boardPadWide}>
           <h2 className={cardTitle}>Choose a template or an exam</h2>
           <p className="m-0 text-assess-meta text-ink-subtle">
             The full station form appears here as soon as you pick a published template, or say which exam this station is for.
@@ -270,7 +271,7 @@ function CreateStationScreenForm() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex flex-wrap items-center gap-2.5 pt-2">
         <button type="button" className={boardBtn()} onClick={() => router.push(listHref)} disabled={form.saving}>
           Cancel
         </button>

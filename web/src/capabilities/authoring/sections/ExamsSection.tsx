@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { examChipLabel, examEmptyBody } from "@/capabilities/authoring/lib/authoringCopy";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,19 +19,23 @@ import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { ExamConfirm } from "@/capabilities/authoring/exams/ExamConfirms";
 import { examDetailPath, examNewPath, examSettingsPath } from "@/capabilities/authoring/exams/paths";
 import { saveExam } from "@/capabilities/authoring/exams/offer";
-import { toMinutes } from "@/capabilities/authoring/exams/newExam";
+import { createWithFreshCode, toMinutes } from "@/capabilities/authoring/exams/newExam";
+import { isPlatformError } from "@/foundation/platform-client/errors";
 import { programmeFor } from "@/capabilities/authoring/sections/examSteps";
+import { examKind, examMetaWithKind } from "@/capabilities/authoring/exams/examKind";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
   AuthoringRowActions,
 } from "@/capabilities/authoring/parts/AuthoringIconAction";
+import { AuthoringActionMenu } from "@/capabilities/authoring/parts/AuthoringActionMenu";
 import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRow";
 import { useAsync } from "@/foundation/hooks";
 import {
   createExam,
   listExams,
   listAllProgrammes,
+  listAllSittings,
   publishExam,
   type Exam,
   type Programme,
@@ -54,6 +60,7 @@ import { boardBtn } from "@/foundation/ui/boardKit";
  */
 export function ExamsSection() {
   const scope = useAuthoringScope();
+  const w = useAssessWords();
   const [draftsOnly, setDraftsOnly] = useState(false);
   const exams = useAsync(
     (signal) => listExams(scope, { status: draftsOnly ? "draft" : "all" }, signal),
@@ -67,6 +74,11 @@ export function ExamsSection() {
   const programmes = useAsync(
     async (signal) => (org ? listAllProgrammes(scope, signal) : []),
     [scope.base, org],
+  );
+  // An employer's row names the exam's kind, which only its assessments carry.
+  const sittings = useAsync(
+    async (signal) => (org && w.hiring ? await listAllSittings(scope, signal) : []),
+    [scope.base, org, w.hiring],
   );
   const action = useAction(exams.reload);
 
@@ -135,7 +147,7 @@ export function ExamsSection() {
           title: draftsOnly ? "No draft exams" : "No exams yet",
           description: draftsOnly
             ? "Everything here is published. Clear the filter to see the whole catalogue."
-            : "Create an exam, attach a marking scheme version, then publish it to run sittings against it.",
+            : examEmptyBody(w),
           sameForReaders: draftsOnly,
         }}
       >
@@ -147,7 +159,11 @@ export function ExamsSection() {
               key={exam.id}
               title={exam.name}
               onOpen={org ? () => router.push(examDetailPath(hrefFor, exam.id)) : undefined}
-              meta={`${exam.code} · ${toMinutes(exam.default_reading_seconds)} min reading · ${toMinutes(exam.default_simulation_seconds)} min station${exam.owner_kind === "platform" ? " · OSCE Guide" : ""}${exam.partner_pilot ? " · partner pilot" : ""}`}
+              meta={examMetaWithKind(
+                `${exam.code} · ${toMinutes(exam.default_reading_seconds)} min reading · ${toMinutes(exam.default_simulation_seconds)} min station${exam.owner_kind === "platform" ? " · OSCE Guide" : ""}${exam.partner_pilot ? " · partner pilot" : ""}`,
+                programmes.data && sittings.data ? examKind(exam.id, programmes.data, sittings.data) : null,
+                w,
+              )}
             >
               <StatusBadge status={exam.status} />
               {org && programmes.data ? <ExamChipBadge exam={exam} programmes={programmes.data} /> : null}
@@ -167,47 +183,34 @@ export function ExamsSection() {
                 >
                   <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
                 </AuthoringIconAction>
-                {/* A retired exam cannot be published again. */}
-                {exam.status === "draft" ? (
-                  <AuthoringIconAction
-                    variant={org ? "default" : "primary"}
-                    text="Publish"
-                    // The server refuses to publish an exam that names no rubric.
-                    label={exam.rubric_version_id ? "Publish" : "Choose a marking scheme version first"}
-                    busy={publishBusy}
-                    busyLabel="Publishing…"
-                    disabled={action.busy !== null || !exam.rubric_version_id}
-                    onClick={() =>
-                      void action.run(`publish:${exam.id}`, () => publishExam(scope, exam.id))
-                    }
-                  >
-                    <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
-                  </AuthoringIconAction>
-                ) : null}
-                {/* Only a published exam can be retired; a draft is simply not offered. */}
-                {exam.status === "published" && !locked ? (
-                  <AuthoringIconAction
-                    variant="warning"
-                    text="Retire"
-                    label="Retire"
-                    disabled={action.busy !== null}
-                    onClick={() => setRetiring(exam)}
-                  >
-                    <HiOutlineNoSymbol className="h-4 w-4" aria-hidden />
-                  </AuthoringIconAction>
-                ) : null}
-                {/* The platform catalogue has no delete: retire is its only exit. */}
-                {locked || scope.kind === "platform" ? null : (
-                  <AuthoringIconAction
-                    variant="danger"
-                    text="Delete"
-                    label="Delete"
-                    disabled={action.busy !== null}
-                    onClick={() => setDeleting(exam)}
-                  >
-                    <HiOutlineTrash className="h-4 w-4" aria-hidden />
-                  </AuthoringIconAction>
-                )}
+                <AuthoringActionMenu
+                  label={`Actions for ${exam.name}`}
+                  items={[
+                    // A retired exam cannot be published again; the server refuses one that names no rubric.
+                    exam.status === "draft" && {
+                      label: publishBusy ? "Publishing…" : "Publish",
+                      icon: <HiOutlineArrowUpTray className="h-4 w-4" />,
+                      disabled: action.busy !== null || !exam.rubric_version_id,
+                      hint: exam.rubric_version_id ? undefined : "Choose a marking scheme version first",
+                      onSelect: () => void action.run(`publish:${exam.id}`, () => publishExam(scope, exam.id)),
+                    },
+                    // Only a published exam can be retired; a draft is simply not offered.
+                    exam.status === "published" && !locked && {
+                      label: "Retire",
+                      icon: <HiOutlineNoSymbol className="h-4 w-4" />,
+                      disabled: action.busy !== null,
+                      onSelect: () => setRetiring(exam),
+                    },
+                    // The platform catalogue has no delete: retire is its only exit.
+                    !locked && scope.kind !== "platform" && {
+                      label: "Delete",
+                      icon: <HiOutlineTrash className="h-4 w-4" />,
+                      tone: "danger" as const,
+                      disabled: action.busy !== null,
+                      onSelect: () => setDeleting(exam),
+                    },
+                  ]}
+                />
               </AuthoringRowActions>
             </AuthoringListRow>
           );
@@ -217,25 +220,29 @@ export function ExamsSection() {
       <AuthoringDialog
         open={creating}
         title="Create exam"
-        lead="The code is unique within this organisation only, so two schools may both have a finals."
         error={action.error}
         busy={action.busy === "create"}
         busyLabel="Creating…"
         commitLabel="Create exam"
-        commitDisabled={form.code.trim() === "" || form.name.trim() === ""}
+        commitDisabled={form.name.trim() === ""}
         onClose={() => setCreating(false)}
         onCommit={() =>
           void action.run("create", async () => {
-            await createExam(scope, {
-              code: form.code.trim(),
-              name: form.name.trim(),
-              default_reading_seconds: Number(form.reading),
-              default_simulation_seconds: Number(form.simulation),
-              station_attempt_limit: Number(form.attempts),
-              partner_pilot: form.partnerPilot,
-              rubric_version_id: form.rubricVersionId || null,
-              settings: form.settings,
-            });
+            await createWithFreshCode(
+              form.name,
+              (cause) => isPlatformError(cause) && cause.status === 409,
+              (code) =>
+                createExam(scope, {
+                  code,
+                  name: form.name.trim(),
+                  default_reading_seconds: Number(form.reading),
+                  default_simulation_seconds: Number(form.simulation),
+                  station_attempt_limit: Number(form.attempts),
+                  partner_pilot: form.partnerPilot,
+                  rubric_version_id: form.rubricVersionId || null,
+                  settings: form.settings,
+                }),
+            );
             setCreating(false);
           })
         }
@@ -246,7 +253,7 @@ export function ExamsSection() {
       <AuthoringDialog
         open={editing !== null}
         title="Edit exam"
-        lead="Publishing is refused without a marking scheme version."
+        lead={w.hiring ? "Choose a marking scheme version for this exam, then publish." : "Publishing is refused without a marking scheme version."}
         busy={action.busy === "edit"}
         busyLabel="Saving…"
         commitLabel="Save"
@@ -297,8 +304,9 @@ export function ExamsSection() {
 }
 
 function ExamChipBadge({ exam, programmes }: { exam: Exam; programmes: Programme[] }) {
+  const w = useAssessWords();
   const chip = examChip(exam, programmeFor(programmes, exam));
   return (
-    <BoardChip tone={chip === "Ready to schedule" ? "info" : "warn"}>{chip}</BoardChip>
+    <BoardChip tone={chip === "Ready to schedule" ? "info" : "warn"}>{examChipLabel(chip, w)}</BoardChip>
   );
 }

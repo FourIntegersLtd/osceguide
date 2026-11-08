@@ -1,5 +1,7 @@
 "use client";
 
+import { say } from "@/domains/assess/roster/rosterWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { toggleInSet } from "@/domains/assess/support";
 import { useState } from "react";
 import { AsyncBoundary, b2bTokens as t, cn } from "@/foundation/ui";
@@ -33,6 +35,7 @@ export function GroupMembersDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const w = useAssessWords();
   const groupId = group?.id ?? null;
   const members = useAsync(
     async (signal) => (groupId ? readGroupMembers(orgSlug, groupId, signal) : null),
@@ -72,7 +75,7 @@ export function GroupMembersDialog({
   return (
     <PeopleDialog
       open
-      title={`People in ${group.label}`}
+      title={`${w.People} in ${group.label}`}
       lead="Tick everyone who belongs to this group. Saving replaces the current list."
       error={error}
       busy={busy}
@@ -85,7 +88,7 @@ export function GroupMembersDialog({
       <AsyncBoundary state={members}>
         {() =>
           trainees.length === 0 ? (
-            <Note tone="info">Nobody is on the roster yet, so there is nobody to put in a group.</Note>
+            <Note tone="info">{say(w, "Nobody is on the roster yet, so there is nobody to put in a group.")}</Note>
           ) : (
             <>
               <p className={cn(t.assessMeta, "m-0")}>

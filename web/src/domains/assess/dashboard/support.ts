@@ -1,7 +1,7 @@
-import type { LiveCircuit, OrgSittingRow } from "@/domains/assess/dashboard/api";
+import type { LiveCircuit, OrgSittingRow, SupervisorCircuitRow } from "@/domains/assess/dashboard/api";
 import type { ResultsIndexRow } from "@/domains/assess/results/api";
 import { undecided } from "@/domains/assess/results/support";
-import type { AssessWords } from "@/domains/assess/vocabulary";
+import type { AssessWords } from "@/capabilities/assess-words";
 
 /**
  * What the institution's home screen works out from what it is given.
@@ -48,7 +48,7 @@ export function notJoinedItem(count: number, w: AssessWords): AttentionItem | nu
       count === 1
         ? `A ${w.trainee} who has not accepted their invitation`
         : `${w.Trainees} who have not accepted their invitation`,
-    body: "They cannot be scheduled until they set a password. Resend in one step.",
+    body: w.hiring ? "They cannot be scheduled until they set a password. Resend the invite." : "They cannot be scheduled until they set a password. Resend in one step.",
     href: "/people",
     tone: "neutral",
   };
@@ -100,8 +100,8 @@ export function attentionFromResults(rows: readonly ResultsIndexRow[], w: Assess
       items.push({
         key: `${row.sitting_id}-release`,
         tag: `${row.signed_off} ready`,
-        title: `Release results for ${row.name}`,
-        body: `Signed off. ${w.Trainees} see nothing until you release.`,
+        title: w.hiring ? `Share results with ${row.name}` : `Release results for ${row.name}`,
+        body: w.hiring ? `Approved. ${w.Trainees} see nothing until you share them.` : `Signed off. ${w.Trainees} see nothing until you release.`,
         href: `/sittings/${row.sitting_id}/results`,
         tone: "ok",
       });
@@ -299,3 +299,91 @@ export function todayGreeting(name: string | null | undefined, now: Date): strin
   const who = (name ?? "").trim();
   return who && !who.includes("@") ? `${greeting}, ${who}` : greeting;
 }
+
+/** What the home hero asks of the administrator now: one thing, with at most one action (paths are surface-relative). */
+export type HomeFocus = {
+  kind: "running" | "review" | "attention" | "next" | "schedule" | "setup" | "clear";
+  title: string;
+  body: string;
+  action: { label: string; href: string } | null;
+};
+
+export type HomeFocusInput = {
+  running: { circuitId: string; sittingName: string; line: string } | null;
+  /** Stations the supervisor still has to review, and where the first one opens. */
+  stationsToReview: number;
+  firstReviewPath: string | null;
+  attention: readonly AttentionItem[];
+  next: OrgSittingRow | null;
+  canSchedule: boolean;
+  readyToRun: boolean;
+};
+
+/**
+ * The one thing to do now: a running circuit, then stations to review, then decisions waiting, then the next
+ * sitting, then scheduling one. Empty states are this sentence, not boxes of their own.
+ */
+export function homeFocus(input: HomeFocusInput, w: AssessWords, paths: { schedule: string; newExam: string }): HomeFocus {
+  const { running, stationsToReview, firstReviewPath, attention, next } = input;
+  if (running) {
+    return { kind: "running", title: `${running.sittingName} is live`, body: running.line, action: { label: "Open console", href: `/circuits/${running.circuitId}` } };
+  }
+  if (stationsToReview > 0 && firstReviewPath) {
+    const stations = stationsToReview === 1 ? "station" : "stations";
+    return {
+      kind: "review",
+      title: `${stationsToReview} ${stations} to review`,
+      body: "Check each AI mark. Your rating is the one that counts.",
+      action: { label: `Review ${stationsToReview} ${stations}`, href: firstReviewPath },
+    };
+  }
+  const first = attention[0];
+  if (first) {
+    const n = attention.length;
+    return { kind: "attention", title: `${n} ${n === 1 ? "thing needs" : "things need"} you`, body: first.title, action: { label: "See what needs you", href: first.href } };
+  }
+  if (next) {
+    return { kind: "next", title: `Next: ${next.name}`, body: longWhen(next.scheduled_for) ?? "No date set yet.", action: { label: `Open ${w.sitting}`, href: `/sittings/${next.id}` } };
+  }
+  if (input.canSchedule) {
+    return input.readyToRun
+      ? { kind: "schedule", title: `No ${w.sittings} are scheduled`, body: `Choose an ${w.exam}, a date and the people. The ${w.circuit} runs itself.`, action: { label: w.scheduleSitting, href: paths.schedule } }
+      : { kind: "setup", title: `Set up your first ${w.exam}`, body: `Nothing can be scheduled until an ${w.exam} is ready.`, action: { label: `Set up an ${w.exam}`, href: paths.newExam } };
+  }
+  return { kind: "clear", title: "You are all caught up", body: "Nothing is running and nothing needs you. An administrator can schedule the next one.", action: null };
+}
+
+export type WeekDay = { key: string; weekday: string; day: string; today: boolean; sittings: OrgSittingRow[] };
+
+const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+
+/** Seven days from today, each with the sittings dated on it: the home screen's "this week" strip. */
+export function weekDays(now: Date, sittings: readonly OrgSittingRow[]): WeekDay[] {
+  const byDay = new Map<string, OrgSittingRow[]>();
+  for (const sitting of sittings) {
+    if (!sitting.scheduled_for) continue;
+    const when = new Date(sitting.scheduled_for);
+    if (Number.isNaN(when.getTime())) continue;
+    byDay.set(dayKey(when), [...(byDay.get(dayKey(when)) ?? []), sitting]);
+  }
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    return {
+      key: dayKey(date),
+      weekday: date.toLocaleDateString("en-GB", { weekday: "short" }),
+      day: String(date.getDate()),
+      today: i === 0,
+      sittings: byDay.get(dayKey(date)) ?? [],
+    };
+  });
+}
+
+/** Today's rows after the first, in the order they run. */
+export function laterToday(rows: readonly SupervisorCircuitRow[], now: Date): SupervisorCircuitRow[] {
+  const day = now.toDateString();
+  return rows
+    .filter((row) => !row.ended && row.scheduled_for && new Date(row.scheduled_for).toDateString() === day)
+    .sort((a, b) => Number(b.in_progress) - Number(a.in_progress))
+    .slice(1);
+}
+

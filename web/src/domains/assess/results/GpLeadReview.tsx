@@ -9,6 +9,8 @@ import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { hasCode } from "@/foundation/platform-client";
 import type { RatingValue } from "@/capabilities/feedback/rubric";
 import { readGpLeadReview, saveGpLeadReview, type GpLeadReview as Review } from "@/domains/assess/results/api";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { leadReviewLabel } from "@/domains/assess/results/slotReviewSteps";
 import { ReviewFields } from "@/domains/assess/results/ReviewFields";
 import {
   fieldValuesFor,
@@ -97,6 +99,7 @@ function Editor({
   /** The review as first read, or null before anyone has saved one. */
   loaded: Review | null;
 }) {
+  const w = useAssessWords();
   // The latest stored review: what was read, then each save's answer. Its
   // revision is what the next save must carry.
   const [review, setReview] = useState<Review | null>(loaded);
@@ -137,7 +140,7 @@ function Editor({
         // A conflict is not a failure to retry: somebody else's words are in
         // there now, and saving over them is exactly what this prevents.
         setStale(hasCode(cause, "review_conflict"));
-        setFailure(assessErrorMessage(cause));
+        setFailure(assessErrorMessage(cause, w));
       } finally {
         setBusy(null);
       }
@@ -205,10 +208,11 @@ function Editor({
 
 /** The card's title row and its one-line purpose, drawn in every state of the form. */
 function LeadHeading({ status }: { status?: ReactNode }) {
+  const w = useAssessWords();
   return (
     <>
       <div className="flex flex-wrap justify-between gap-3">
-        <h2 className="text-base font-semibold leading-normal">Admin&apos;s review</h2>
+        <h2 className="text-base font-semibold leading-normal">{w.hiring ? leadReviewLabel(w) : "Admin's review"}</h2>
         {status}
       </div>
       <div className={b2bTokens.assessMeta}>One overall mark for the station. This is the mark that counts.</div>

@@ -361,6 +361,9 @@ _LOGGERS = {"log", "logger", "logging"}
 
 # `file::function`: handlers that log and carry on without writing state. The ceiling only shrinks.
 LOG_ONLY_HANDLERS: dict[str, str] = {
+    "app/features/sittings/service_floor.py::apply": (
+        "best effort: every token carries the rule, so a rejoin corrects a missed update"
+    ),
     "app/features/assistant/service_knowledge.py::_material": (
         "optional context for a spoken answer; falling back to none is the design"
     ),

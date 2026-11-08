@@ -1,6 +1,17 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import type { ReactNode } from "react";
 import { useDroppable } from "@dnd-kit/core";
+import {
+  HiOutlineArrowUturnLeft,
+  HiOutlineArrowUturnRight,
+  HiOutlineChevronLeft,
+  HiOutlineChevronRight,
+  HiOutlineCog6Tooth,
+} from "react-icons/hi2";
+import { AnchoredTooltip } from "@/foundation/ui";
+import { b2bIconTooltipChipBase } from "@/foundation/ui/b2bTokens";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import {
   AddFieldPanel,
@@ -11,11 +22,29 @@ import type { BuilderSelection } from "@/capabilities/authoring/structure/b2b/li
 import { blockDragId } from "@/capabilities/authoring/structure/b2b/lib/stations/structureBuilderOps";
 import type { TemplateKind } from "@/capabilities/authoring/structure/b2b/lib/stations/blockTypeLabels";
 import type { StationBlockType, StationSection } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
-import { boardBtn, boardCardClipped, boardInput, boardPad, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { boardBtn, boardCard, boardCardClipped, boardInput, boardPad, boardButtonSmall } from "@/foundation/ui/boardKit";
+
+/** A square icon button whose name shows in a tooltip on hover and focus. */
+function IconTool({ label, disabled, onClick, children }: { label: string; disabled?: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <AnchoredTooltip label={label} placement="bottom" chipClassName={b2bIconTooltipChipBase}>
+      <button
+        type="button"
+        aria-label={label}
+        disabled={disabled}
+        onClick={onClick}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-osce-md border border-osce-border bg-osce-surface text-ink hover:bg-surface-raised disabled:pointer-events-none disabled:opacity-40"
+      >
+        {children}
+      </button>
+    </AnchoredTooltip>
+  );
+}
 
 /** The board's section card: the section's name and description, its fields in a list, and the add-field fold. */
 export function SectionStage({
   kind,
+  readOnly = false,
   section,
   selection,
   dropTarget,
@@ -52,7 +81,10 @@ export function SectionStage({
   onAddSection: () => void;
   onAddField: (type: StationBlockType, sectionId: string, index?: number) => void;
   onOpenFieldTypesInfo: () => void;
+  /** A published version: the toolbar (section stepping, undo) stays live, the fields and details do not. */
+  readOnly?: boolean;
 }) {
+  const w = useAssessWords();
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: section ? `drop-section:${section.id}` : "drop-sections-end",
     disabled: !section,
@@ -64,7 +96,7 @@ export function SectionStage({
         <p className="text-assess-label font-medium text-ink">Empty layout</p>
         <p className="text-assess-meta text-ink-subtle">
           {kind === "station"
-            ? "A section is written for the patient, the candidate or the examiner. Add one, then add the fields it needs."
+            ? `A section is written for the patient, the candidate or the ${w.examiner}. Add one, then add the fields it needs.`
             : "Sections group related fields. Add one, then add the fields it needs one at a time."}
         </p>
         <button type="button" className={boardBtn("primary")} onClick={onAddSection}>
@@ -78,30 +110,34 @@ export function SectionStage({
   const field = (type: StationBlockType, index?: number) => onAddField(type, section.id, index);
 
   return (
-    <div className={`${boardPad} min-w-0`}>
+    <div className={`${boardPad} min-w-0 !border-osce-border !bg-surface-raised`}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <span className="min-w-0 truncate text-assess-eyebrow uppercase text-ink-subtle">
           {section.title || "Untitled section"}
         </span>
-        <span>
+        <div className="flex items-center gap-1.5">
           {sectionCount > 1 ? (
             <>
-              <button type="button" className={boardBtn("ghost", true)} disabled={sectionIndex <= 0} onClick={() => onStepSection(-1)}>
-                Previous section
-              </button>
-              <button type="button" className={boardBtn("ghost", true)} disabled={sectionIndex >= sectionCount - 1} onClick={() => onStepSection(1)}>
-                Next section
-              </button>
+              <IconTool label="Previous section" disabled={sectionIndex <= 0} onClick={() => onStepSection(-1)}>
+                <HiOutlineChevronLeft aria-hidden className="h-4 w-4" />
+              </IconTool>
+              <IconTool label="Next section" disabled={sectionIndex >= sectionCount - 1} onClick={() => onStepSection(1)}>
+                <HiOutlineChevronRight aria-hidden className="h-4 w-4" />
+              </IconTool>
+              <span aria-hidden className="mx-1 h-5 w-px bg-osce-border" />
             </>
           ) : null}
-          <button type="button" className={boardBtn("ghost", true)} disabled={!canUndo} onClick={onUndo}>
-            Undo
-          </button>
-          <button type="button" className={boardBtn("ghost", true)} disabled={!canRedo} onClick={onRedo}>
-            Redo
-          </button>
-        </span>
+          <IconTool label="Undo" disabled={!canUndo} onClick={onUndo}>
+            <HiOutlineArrowUturnLeft aria-hidden className="h-4 w-4" />
+          </IconTool>
+          <IconTool label="Redo" disabled={!canRedo} onClick={onRedo}>
+            <HiOutlineArrowUturnRight aria-hidden className="h-4 w-4" />
+          </IconTool>
+        </div>
       </div>
+      <fieldset disabled={readOnly} className="contents">
+      <div className={`${boardCard} flex flex-col gap-3 p-4`}>
+        <p className="text-assess-eyebrow uppercase text-ink-subtle">Section details</p>
       <input
         value={section.title}
         onChange={(e) => onSectionTitleChange(section.id, e.target.value)}
@@ -118,11 +154,14 @@ export function SectionStage({
       />
       <button
         type="button"
-        className={`${boardButtonSmall} self-start`}
+        className={`${boardButtonSmall} inline-flex items-center gap-1.5 self-start`}
         onClick={() => onOpenSectionSettings(section.id)}
       >
+        <HiOutlineCog6Tooth aria-hidden className="h-4 w-4" />
         Section settings
       </button>
+      </div>
+      <p className="-mb-1.5 text-assess-eyebrow uppercase text-ink-subtle">Fields</p>
 
       <section
         ref={setDropRef}
@@ -164,6 +203,7 @@ export function SectionStage({
         ) : null}
       </section>
       <AddFieldPanel kind={kind} onPick={(type) => field(type)} onOpenFieldTypesInfo={onOpenFieldTypesInfo} />
+      </fieldset>
     </div>
   );
 }

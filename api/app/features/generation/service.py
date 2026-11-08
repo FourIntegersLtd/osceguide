@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exam_settings import ExamSettings
+from app.core.jobs import allow_long_idle
 from app.core.llm import (
     OPENAI_STRONG,
     NoModelKey,
@@ -88,6 +89,7 @@ async def generate_station(
         settings=settings,
         system=system,
         user=f"Exam: {exam_code}\n\n{prompt}",
+        session=session,
     )
 
 
@@ -113,13 +115,17 @@ def _echoes(title: str, prompt: str) -> bool:
     return len(words) >= 3 and " ".join(_WORDS.findall(prompt.lower())).startswith(" ".join(words))
 
 
-async def _titled(draft: dict[str, Any], key: str, prompt: str, settings: Settings) -> dict[str, Any]:
+async def _titled(
+    draft: dict[str, Any], key: str, prompt: str, *, settings: Settings, session: AsyncSession | None
+) -> dict[str, Any]:
     """The draft with a real title under `key`: the model's own, or one asked for when it gave none,
     "Untitled", or the opening words of the request."""
     current = str(draft.get(key) or "").strip()
     if current and current != "Untitled" and not _echoes(current, prompt):
         return draft
-    reply = await _json_completion(settings=settings, system=_TITLE_SYSTEM, user=prompt[:6000])
+    reply = await _json_completion(
+        settings=settings, system=_TITLE_SYSTEM, user=prompt[:6000], session=session
+    )
     title = str(reply.get("title") or "").strip()
     return {**draft, key: title} if title and not _echoes(title, prompt) else draft
 
@@ -134,8 +140,9 @@ async def generate_summary(
         settings=settings,
         system=system,
         user=f"{_exam_line(exam_code)}{prompt}",
+        session=session,
     )
-    return await _titled(normalize_summary_response(raw), "title", prompt, settings)
+    return await _titled(normalize_summary_response(raw), "title", prompt, settings=settings, session=session)
 
 
 async def generate_blog(
@@ -148,33 +155,40 @@ async def generate_blog(
         settings=settings,
         system=system,
         user=f"{_exam_line(exam_code)}{prompt}",
+        session=session,
     )
-    return await _titled(normalize_blog_response(raw), "title", prompt, settings)
+    return await _titled(normalize_blog_response(raw), "title", prompt, settings=settings, session=session)
 
 
-async def generate_slide_deck(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
+async def generate_slide_deck(
+    *, prompt: str, exam_code: str | None, session: AsyncSession | None, settings: Settings
+) -> dict[str, Any]:
     """Drafts a slide deck, normalised to the platform's slide deck draft keys."""
     system = exam_prompts.slide_system_prompt() + _SLIDE_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
         user=f"{_exam_line(exam_code)}{prompt}",
+        session=session,
     )
     deck = normalize_slide_deck_response(raw)
     if not isinstance(deck.get("slides"), list) or not deck["slides"]:
         raise GenerationEmpty()
-    return await _titled(deck, "topic", prompt, settings)
+    return await _titled(deck, "topic", prompt, settings=settings, session=session)
 
 
-async def generate_podcast(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
+async def generate_podcast(
+    *, prompt: str, exam_code: str | None, session: AsyncSession | None, settings: Settings
+) -> dict[str, Any]:
     """Drafts a two-host podcast script from source material, normalised to the platform's `script` key."""
     system = exam_prompts.podcast_system_prompt(prompt) + _PODCAST_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
         user=f"{_exam_line(exam_code)}Source material:\n{prompt}",
+        session=session,
     )
-    return await _titled(normalize_podcast_response(raw), "title", prompt, settings)
+    return await _titled(normalize_podcast_response(raw), "title", prompt, settings=settings, session=session)
 
 
 # Room for a whole slide deck or script, with Claude's thinking counted in it.
@@ -182,14 +196,22 @@ _CLAUDE_MAX_TOKENS = 16_000
 _CLAUDE_SECONDS = 300
 
 
-async def _json_completion(*, settings: Settings, system: str, user: str) -> dict[str, Any]:
+async def _json_completion(
+    *, settings: Settings, system: str, user: str, session: AsyncSession | None
+) -> dict[str, Any]:
     """Calls the LLM with the given system and user messages and parses its reply as a JSON object.
+
+    Lifts the request `session`'s idle-in-transaction limit first, since the call can take a minute.
+    `session=None` (required, never defaulted) means the caller holds no transaction: nothing to lift.
 
     Refuses before calling out if no API key is configured, and refuses again if the model's
     reply is not itself a JSON object, so callers never have to guard against a malformed shape.
     Tries `claude-sonnet-5-5` first, falling back to `gpt-6.1-sol` when Claude fails, is cut off
     or does not answer with a JSON object.
     """
+
+    if session is not None:
+        await allow_long_idle(session)
 
     async def from_claude(api_key: str) -> dict[str, Any]:
         """Claude's reply as a JSON object."""

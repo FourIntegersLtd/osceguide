@@ -18,7 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.features.tenancy import repository, service_memberships
-from app.features.tenancy.errors import InvitationNotPending, MembershipExists, MembershipNotFound
+from app.features.tenancy.errors import (
+    InvitationNotPending,
+    MembershipExists,
+    MembershipNotFound,
+)
 from app.features.tenancy.schemas import (
     BulkMembershipInvitationResult,
     BulkMembershipRevokeResult,
@@ -119,13 +123,16 @@ async def resend_membership_invitations(
     """Resend the choose-a-password link to a selection of memberships, one
     `service_memberships.resend_invitation` call per row.
 
-    The single-row route only ever refuses with `invitation_not_pending` (the person
-    already has a password, or the account is otherwise not waiting on one) — there is
-    no rule today that refuses a revoked membership, so this batch does not invent a
-    `"revoked"` outcome for one; see the PR notes for that gap.
+    The single-row route refuses with `invitation_not_pending` (the person already has a
+    password, or the account is otherwise not waiting on one) and, under the same code, a
+    revoked membership, which this batch reports as `"revoked"`.
     """
     results: list[BulkMembershipInvitationResult] = []
     for membership_id in _dedupe_ids(membership_ids):
+        seat = await repository.membership_by_id(session, org_id, membership_id)
+        if seat is not None and seat.revoked_at is not None:
+            results.append(BulkMembershipInvitationResult(membership_id=membership_id, outcome="revoked"))
+            continue
         try:
             await service_memberships.resend_invitation(session, org_id, membership_id, now=now)
         except MembershipNotFound:

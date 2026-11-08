@@ -1,6 +1,5 @@
 "use client";
 
-import { getInputClassName } from "@/foundation/ui";
 import { AuthoringExamSelect } from "@/capabilities/authoring/parts/AuthoringExamSelect";
 
 /** The labelled exam picker for an item; empty is any exam. */
@@ -19,7 +18,6 @@ export function AuthoringExamField({
         onChange={onChange}
         allowEmpty
         emptyLabel="Any exam"
-        className={getInputClassName()}
       />
     </label>
   );

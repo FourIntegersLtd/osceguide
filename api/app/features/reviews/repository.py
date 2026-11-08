@@ -236,3 +236,18 @@ async def draft_counts_for_slots(
         .group_by(SlotReview.slot_id)
     )
     return {slot_id: count for slot_id, count in (await session.execute(stmt)).all()}
+
+
+async def completed_reviewer_ids(session: AsyncSession, org_id: uuid.UUID) -> set[uuid.UUID]:
+    """Staff who completed a slot review or a GP-lead review. A peer trainee's mark is not marking."""
+    slot = select(SlotReview.submitted_by).where(
+        SlotReview.org_id == org_id,
+        SlotReview.status == "completed",
+        SlotReview.observer_trainee_id.is_(None),
+    )
+    lead = select(GpLeadReview.reviewed_by).where(
+        GpLeadReview.org_id == org_id,
+        GpLeadReview.status == "completed",
+        GpLeadReview.reviewed_by.is_not(None),
+    )
+    return set((await session.execute(slot.union(lead))).scalars())

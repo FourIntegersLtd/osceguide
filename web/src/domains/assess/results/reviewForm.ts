@@ -220,3 +220,23 @@ export function machineSummaryLine(form: ReviewForm | null | undefined, payload:
     })
     .join(" · ");
 }
+
+/**
+ * Where two reviewers rated the same competency differently: the count per other reviewer, only
+ * those with at least one. A competency either has not rated is not a disagreement.
+ */
+export function disagreements(
+  form: ReviewForm | null | undefined,
+  mine: Record<string, RatingValue | undefined>,
+  others: readonly { status: string; reviewer_name?: string | null; field_values: Record<string, unknown> }[] | null | undefined,
+): { name: string; count: number }[] {
+  const paths = formDomains(form).flatMap((domain) => domain.fields.map((field) => field.path));
+  return (others ?? []).flatMap((item) => {
+    if (item.status !== "completed") return [];
+    const count = paths.filter((path) => {
+      const theirs = item.field_values[path];
+      return mine[path] !== undefined && theirs !== undefined && theirs !== null && theirs !== mine[path];
+    }).length;
+    return count > 0 ? [{ name: item.reviewer_name || "Another reviewer", count }] : [];
+  });
+}

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -30,6 +30,8 @@ class Organization(Base, UUIDPrimaryKey, Timestamps):
     )
     contract_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     contract_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # How many candidates the contract covers (an employer's "Plan" line); platform staff set it, null is not set.
+    candidate_seats: Mapped[int | None] = mapped_column(Integer)
     suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     suspended_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     # Who to write to about the organisation's account; the org admin keeps them (B-33).

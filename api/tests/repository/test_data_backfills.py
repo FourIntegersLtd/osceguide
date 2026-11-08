@@ -15,6 +15,7 @@ from types import ModuleType
 from typing import Any
 
 import pytest
+from httpx import AsyncClient
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -303,3 +304,30 @@ async def test_a_new_station_defaults_to_unapproved(db_session: AsyncSession) ->
     await db_session.flush()
 
     assert station.approved is False
+
+
+async def test_a_practice_circuit_that_ended_before_the_room_change_is_not_kept_open(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,  # type: ignore[no-untyped-def]
+) -> None:
+    """An ended circuit gets room_closed_at = ended_at (so it is not joinable); a running one stays open."""
+    from app.features.sittings.models import Circuit
+    from tests.support.sittings import started_circuit
+    from tests.support.tokens import bearer
+
+    ended = await started_circuit(client, make_actor, db_session, mode="training")
+    assert (
+        await client.post(f"/api/v1/orgs/kings/circuits/{ended.circuit_id}/end", headers=bearer(ended.admin))
+    ).status_code == 200
+    ended_id = uuid.UUID(ended.circuit_id)
+    await db_session.execute(update(Circuit).where(Circuit.id == ended_id).values(room_closed_at=None))
+
+    await db_session.execute(text(migration("d2e3f4a5b6c7").BACKFILL_SQL))
+
+    row = (
+        await db_session.execute(
+            select(Circuit.ended_at, Circuit.room_closed_at).where(Circuit.id == ended_id)
+        )
+    ).one()
+    assert row.ended_at is not None and row.room_closed_at == row.ended_at

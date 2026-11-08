@@ -91,10 +91,7 @@ export function StationTemplateEditScreen({
               aria-label="Template title"
             />
           </label>
-          {/* A disabled fieldset makes every control inside read only. */}
-          <fieldset disabled={!editable} className={`min-w-0 border-0 p-0${editable ? "" : " opacity-70"}`}>
-            <StructureBuilder value={structure} onChange={setStructure} allowCustomGenerationPrompt />
-          </fieldset>
+          <StructureBuilder key={version} value={structure} onChange={setStructure} allowCustomGenerationPrompt readOnly={!editable} />
           {error ? (
             <p role="alert" className={boardAlert("bad")}>
               {error}

@@ -26,16 +26,21 @@ from app.features.tenancy.errors import (
 from app.features.tenancy.schemas import MembershipRead
 
 
-def _guard_role_grant(actor: Principal, org_id: uuid.UUID, role: str) -> None:
+async def _guard_role_grant(session: AsyncSession, actor: Principal, org_id: uuid.UUID, role: str) -> None:
     """Refuse a role the granter is not entitled to write.
 
     `OrgAdmin` admits `partner_admin`, which must never examine, and `role` is a free string:
     without this a partner admin could seat itself or anyone as `institution_admin` or
     `owner`. An unknown role is a bad request; a known role above the granter's tier is
-    forbidden. A platform admin may write any known role.
+    forbidden. A platform admin may write any known role. A lead assessor is an employer's role:
+    on any other organisation it is refused like an unknown one, so institutions keep their roles.
     """
     if not domain.is_known_role(role):
         raise InvalidInput(f"Unknown role: {role!r}")
+    if domain.normalize_role(role) in domain.EMPLOYER_ONLY_ROLES:
+        org = await repository.organization_by_id(session, org_id)
+        if org is None or org.org_type != "employer":
+            raise InvalidInput(f"{role!r} can only be given in an employer organisation.")
     if actor.is_platform_admin:
         return
     membership = next((membership for membership in actor.memberships if membership.org_id == org_id), None)
@@ -114,7 +119,7 @@ async def add_membership(
     that email cannot be delivered) the new account gets that password instead and no
     email, and must change it at first sign-in. An address that already has an account is never touched by it.
     """
-    _guard_role_grant(actor, org_id, role)
+    await _guard_role_grant(session, actor, org_id, role)
     user = await identity.user_ref_by_email(session, email)
     invited = user is None
     relayed = invited and temporary_password is not None
@@ -132,6 +137,7 @@ async def add_membership(
             temporary_password=temporary_password,
             now=now,
             organization_id=org_id,
+            role=role,
         )
     user_id = user.id
     if await repository.membership_for_user_in_org(session, org_id, user_id, role=role) is not None:
@@ -157,7 +163,7 @@ async def change_membership_role(
     session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID, *, role: str, actor: Principal
 ) -> MembershipRead:
     """Change what role a membership holds, refusing a role the actor may not grant."""
-    _guard_role_grant(actor, org_id, role)
+    await _guard_role_grant(session, actor, org_id, role)
     membership = await _require_membership(session, org_id, membership_id)
     if not domain.is_org_admin(role):
         await _ensure_an_admin_remains(session, org_id, membership)
@@ -203,6 +209,8 @@ async def set_membership_revoked(
     if revoked:
         await _ensure_an_admin_remains(session, org_id, membership)
     await repository.set_membership_revoked(session, org_id, membership_id, at=now if revoked else None)
+    if revoked:
+        await _spend_invitations_if_unseated(session, org_id, membership.user_id, at=now)
     await repository.write_audit(
         session,
         org_id=org_id,
@@ -213,6 +221,30 @@ async def set_membership_revoked(
         target_id=str(membership_id),
     )
     return await _read_with_email(session, await _require_membership(session, org_id, membership_id))
+
+
+async def revoke_trainee_membership(
+    session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID | None, *, at: datetime
+) -> None:
+    """Revoke only the `trainee` membership; a staff role the same person holds stays."""
+    if user_id is None:
+        return
+    membership = await repository.membership_for_user_in_org(
+        session, org_id, user_id, role=domain.TRAINEE_ROLE
+    )
+    if membership is not None and membership.revoked_at is None:
+        await repository.set_membership_revoked(session, org_id, membership.id, at=at)
+        await _spend_invitations_if_unseated(session, org_id, user_id, at=at)
+
+
+async def _spend_invitations_if_unseated(
+    session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID, *, at: datetime
+) -> None:
+    """After a revoke: when the person holds no live seat here, spend the invitations this
+    organisation sent them, so an emailed link cannot sign in someone who has no seat."""
+    held = await repository.memberships_for_user_in_org(session, org_id, user_id)
+    if all(seat.revoked_at is not None for seat in held):
+        await invitations.spend_invitations(session, user_id=user_id, organization_id=org_id, at=at)
 
 
 async def resend_invitation(
@@ -226,6 +258,8 @@ async def resend_invitation(
     through SSO.
     """
     membership = await _require_membership(session, org_id, membership_id)
+    if membership.revoked_at is not None:
+        raise InvitationNotPending("That member's access has been revoked, so there is nothing to resend")
     org = await repository.organization_by_id(session, org_id)
     invited_to = org.name if org else "your organisation"
     people = await identity.user_refs_by_ids(session, [membership.user_id])
@@ -233,7 +267,12 @@ async def resend_invitation(
     if ref is None:
         raise MembershipNotFound()
     if not await invitations.reissue_invitation(
-        session, user_id=membership.user_id, invited_to=invited_to, now=now, organization_id=org_id
+        session,
+        user_id=membership.user_id,
+        invited_to=invited_to,
+        now=now,
+        organization_id=org_id,
+        role=membership.role,
     ):
         raise InvitationNotPending()
     return InvitationRead(email=ref.email, invited_to=invited_to)
@@ -319,5 +358,5 @@ async def count_staff(session: AsyncSession, org_id: uuid.UUID) -> int:
     Trainees are members too, and counting them here would tell an organisation
     its team was staffed when nobody could supervise anything.
     """
-    roles = sorted(domain.ORG_ADMIN_ROLES | {domain.ASSIGNED_STAFF_ROLE})
+    roles = sorted(domain.ORG_ADMIN_ROLES | domain.ASSIGNED_STAFF_ROLES)
     return await repository.count_memberships(session, org_id, roles=roles)

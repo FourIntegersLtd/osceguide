@@ -17,7 +17,7 @@ export function StartFailureAlert({
   const { surface } = useSurface();
   return (
     <Alert tone="danger" title="This station could not be started">
-      <p>{describeRefusal(cause, "We could not start this station. Please try again.", surface)}</p>
+      <p>{describeRefusal(cause, "We could not start this station. Check your microphone and connection, then try again. If it keeps happening, contact support.", surface)}</p>
       <div className="mt-3 flex gap-2">
         <Button variant="secondary" size="sm" onClick={onRetry}>
           Try again

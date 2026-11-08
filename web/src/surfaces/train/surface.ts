@@ -26,7 +26,7 @@ function nav({ href }: NavContext): NavItem[] {
 
 export const trainSurface: SurfaceManifest = {
   id: "train",
-  label: "My practice",
+  label: "Training",
   workspaceKinds: ["personal"],
   nav,
   /*

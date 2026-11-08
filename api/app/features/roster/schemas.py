@@ -207,7 +207,7 @@ class BulkTraineeCohortResponse(BaseModel):
 
 class BulkTraineeInvitationResult(BaseModel):
     trainee_id: uuid.UUID
-    outcome: str  # "sent" | "already_signed_in" | "not_found"
+    outcome: str  # "sent" | "already_signed_in" | "revoked" | "not_found"
 
 
 class BulkTraineeInvitationResponse(BaseModel):

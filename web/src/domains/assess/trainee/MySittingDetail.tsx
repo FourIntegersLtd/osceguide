@@ -15,6 +15,9 @@ import { useSurface } from "@/capabilities";
 import { useMicPreflight } from "@/foundation/livekit";
 import { JoinRoom } from "@/domains/assess/trainee/JoinRoom";
 import { SlotReadingBrief } from "@/domains/assess/trainee/SlotReadingBrief";
+import { HireAssessment } from "@/domains/assess/trainee/HireAssessment";
+import { activeMembership, useSession } from "@/foundation/session";
+import { TrainingRoom } from "@/domains/assess/trainee/TrainingRoom";
 import {
   mySittingsStreamPath,
   readMyResult,
@@ -34,7 +37,7 @@ import {
   progressOf,
   slotStatus,
 } from "@/domains/assess/trainee/support";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { b2bTokens as t } from "@/foundation/ui";
 import { boardPad, boardChip } from "@/foundation/ui/boardKit";
 import {
@@ -73,7 +76,7 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
   );
 
   return (
-    <TraineePage label="Your sitting">
+    <TraineePage label={`Your ${w.sitting}`}>
       <AsyncBoundary
         state={initial}
         isEmpty={() => mine.length === 0}
@@ -135,6 +138,18 @@ function Circuit({ sitting }: { sitting: MySitting }) {
   const exam = isExam(sitting);
   // Once the sitting is over there is nothing to join or prepare for: the stations and the result are what is left.
   const over = candidateDone(sitting);
+  const { session } = useSession();
+
+  if (w.hiring) {
+    return (
+      <HireAssessment
+        sitting={sitting}
+        org={activeMembership(session)?.org_name ?? "your employer"}
+        briefSlot={briefSlot}
+        resultLink={<MyResultLink sittingId={sitting.id} />}
+      />
+    );
+  }
 
   return (
     <>
@@ -149,8 +164,8 @@ function Circuit({ sitting }: { sitting: MySitting }) {
       <TraineeHead
         eyebrow={
           sitting.scheduled_for
-            ? whenWords(sitting.scheduled_for) || modeLabel(sitting)
-            : modeLabel(sitting)
+            ? whenWords(sitting.scheduled_for) || modeLabel(sitting, w)
+            : modeLabel(sitting, w)
         }
         title={sitting.name}
         desc={`${exam ? "Formal exam" : "Practice circuit"} · ${plural(total, "station")}`}
@@ -179,7 +194,9 @@ function Circuit({ sitting }: { sitting: MySitting }) {
 
       {sitting.can_join || over ? null : <MicCheck />}
 
-      {sitting.can_join ? (
+      {sitting.can_join && !exam ? <TrainingRoom sitting={sitting} /> : null}
+
+      {sitting.can_join && exam ? (
         <TraineeHero
           live
           size="md"
@@ -202,12 +219,12 @@ function Circuit({ sitting }: { sitting: MySitting }) {
         </Alert>
       ) : null}
 
-      {briefSlot ? <SlotReadingBrief slot={briefSlot} /> : null}
+      {briefSlot && !(sitting.can_join && !exam) ? <SlotReadingBrief slot={briefSlot} /> : null}
 
       {slots.length === 0 ? (
         <EmptyState
           title="Nothing assigned yet"
-          description="When your organisation adds stations for you on this circuit, they appear here."
+          description="Your stations will appear here once your organiser adds them."
         />
       ) : (
         <TraineeList title={exam ? "Your stations" : "Your turns"}>
@@ -239,7 +256,7 @@ function Slot({ slot, exam }: { slot: MySlot; exam: boolean }) {
       title={`${exam ? "Station" : "Turn"} ${slot.slot_index + 1}${slot.station_title ? ` · ${slot.station_title}` : ""}`}
       meta={
         slot.marking_failed
-          ? "This station could not be marked; your school has been told."
+          ? "This station could not be marked automatically. Your school has been told and will mark it for you."
           : status.done
             ? "Read this one back below. A finished station cannot be re-entered."
             : undefined

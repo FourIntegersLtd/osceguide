@@ -1,4 +1,4 @@
-import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
+import { EMPLOYER_WORDS, INSTITUTION_WORDS } from "@/capabilities/assess-words/vocabulary";
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Programme, Sitting, SittingMode } from "@/domains/assess/api";

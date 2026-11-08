@@ -21,34 +21,29 @@ function toWorkspace(membership: Membership): Workspace {
 /**
  * Which workspace a URL segment names, for this person.
  *
- * `/app/me` is always their own practice. `/app/<slug>` is an organisation
- * they belong to; if they do not belong to it, this answers null and the route
- * renders a 404 rather than a shell with no data in it.
+ * `/app/me` is the training workspace: every signed-in person has one, institution
+ * members included, so it resolves for all of them. If they do not belong to the
+ * workspace this answers null and the route renders a 404 with a way to their
+ * landing workspace, rather than a shell with no data in it.
  *
  * The memberships come from `/me`, which is the backend's list, so a person
  * who has been removed from an organisation stops being able to address it on
  * their next page load rather than on their next token refresh.
  */
 export function resolveWorkspace(slug: string, user: PlatformUser | null): Workspace | null {
-  if (slug === PERSONAL_SLUG) return PERSONAL_WORKSPACE;
-  if (!user) return null;
-
-  const membership = (user.memberships ?? []).find((m) => m.org_slug === slug);
-  if (!membership) return null;
-
-  return toWorkspace(membership);
+  if (slug === PERSONAL_SLUG && !user) return PERSONAL_WORKSPACE;
+  return workspacesFor(user).find((workspace) => workspace.slug === slug) ?? null;
 }
 
 /**
- * Every workspace this person can be in, their own first.
+ * Every workspace this person can be offered, training first.
  *
- * Their own practice leads because it is the one that is always there:
- * entitlements they bought, attempts they made on their own time. An
- * institution is something they additionally belong to.
+ * Training is everyone's own practice, so a member is offered it beside their
+ * institutions. The console is a separate row the switcher adds for platform
+ * admins, not a workspace.
  */
 export function workspacesFor(user: PlatformUser | null): Workspace[] {
-  const orgs = (user?.memberships ?? []).map(toWorkspace);
-  return [PERSONAL_WORKSPACE, ...orgs];
+  return [PERSONAL_WORKSPACE, ...(user?.memberships ?? []).map(toWorkspace)];
 }
 
 /**
@@ -56,7 +51,10 @@ export function workspacesFor(user: PlatformUser | null): Workspace[] {
  * in, else their institution (a person who belongs to one is there to work,
  * and `me` would show them the consumer exam picker), else their own practice.
  */
-export function landingWorkspace(user: PlatformUser | null, remembered: string | null): Workspace {
+export function landingWorkspace(
+  user: PlatformUser | null,
+  remembered: string | null,
+): Workspace {
   const available = workspacesFor(user);
   return (
     available.find((workspace) => workspace.slug === remembered) ??

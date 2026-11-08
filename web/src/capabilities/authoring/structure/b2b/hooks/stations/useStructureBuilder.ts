@@ -48,9 +48,12 @@ function resolveActiveSectionFallback(
 export function useStructureBuilder({
   value,
   onChange,
+  readOnly = false,
 }: {
   value: StationStructure;
   onChange: (next: StationStructure) => void;
+  /** A frozen version: undo and redo (buttons and keys) do nothing, so no edit can reach it. */
+  readOnly?: boolean;
 }) {
   const [selection, setSelection] = useState<BuilderSelection>({ kind: "none" });
   const [activeSectionId, setActiveSectionId] = useState<string | null>(() =>
@@ -91,6 +94,7 @@ export function useStructureBuilder({
   );
 
   const undo = useCallback(() => {
+    if (readOnly) return;
     const prev = undoStack.current.pop();
     if (!prev) return;
     skipHistory.current = true;
@@ -98,9 +102,10 @@ export function useStructureBuilder({
     onChange(prev);
     skipHistory.current = false;
     syncHistoryFlags();
-  }, [onChange, syncHistoryFlags, value]);
+  }, [onChange, readOnly, syncHistoryFlags, value]);
 
   const redo = useCallback(() => {
+    if (readOnly) return;
     const next = redoStack.current.pop();
     if (!next) return;
     skipHistory.current = true;
@@ -108,7 +113,7 @@ export function useStructureBuilder({
     onChange(next);
     skipHistory.current = false;
     syncHistoryFlags();
-  }, [onChange, syncHistoryFlags, value]);
+  }, [onChange, readOnly, syncHistoryFlags, value]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -118,6 +123,7 @@ export function useStructureBuilder({
       }
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
+      if (isTypingTarget(e)) return;
       if (e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -217,11 +223,6 @@ export function useStructureBuilder({
   const focusSection = useCallback((sectionId: string) => {
     setActiveSectionId(sectionId);
     setSelection({ kind: "none" });
-  }, []);
-
-  const openSectionSettings = useCallback((sectionId: string) => {
-    setActiveSectionId(sectionId);
-    setSelection({ kind: "section", sectionId });
   }, []);
 
   const sensors = useSensors(
@@ -371,7 +372,6 @@ export function useStructureBuilder({
     activeSectionId,
     setActiveSectionId,
     focusSection,
-    openSectionSettings,
     showIds,
     setShowIds,
     activeDragId,
@@ -391,3 +391,12 @@ export function useStructureBuilder({
     canRedo,
   };
 }
+
+/** Whether a key press came from a dialog (section settings) or a text field elsewhere (the template title): their own undo applies, and the layout must not change under it. */
+function isTypingTarget(e: KeyboardEvent): boolean {
+  return (
+    e.target instanceof Element &&
+    e.target.closest('[role="dialog"], input, textarea, [contenteditable]:not([contenteditable="false"])') !== null
+  );
+}
+

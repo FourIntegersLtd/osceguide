@@ -33,20 +33,20 @@ export function phaseLabel(phase: string | null | undefined): string {
  */
 export const ALERT_COPY: Record<string, string> = {
   no_running_attempt:
-    "The patient has not joined this station. Resend the patient if this does not clear.",
+    "The patient has not joined this station yet. Wait a few seconds, then choose Resend the patient.",
   attempt_failed:
-    "This station's consultation failed. Resend the patient, or redo the station once it is safe to.",
+    "The consultation stopped. Choose Resend the patient. If it fails again, redo the station when the candidate is ready.",
   voice_fault:
-    "The voice service is not answering. New stations may not start. The circuit will try again by itself; resend the patient if it does not clear.",
+    "The voice link is down, so candidates may not hear the patient. It will retry. If it is still down after a minute, choose Resend the patient.",
   clock_overdue:
-    "The clock has run past this phase and the circuit has not moved on by itself. Advance it by hand.",
+    "Time is up for this part but the circuit did not move on. Choose Next station to move it on yourself.",
 };
 
 /** The same alerts as the supervisor sees them in the room, where "do this" matters more than why. */
 const CONSOLE_ALERT_COPY: Record<string, string> = {
-  attempt_failed: "This station's attempt failed. Resend the patient or redo the station.",
-  voice_fault: "Voice fault in the room. The candidate may not hear the patient.",
-  clock_overdue: "The clock is overdue. Move the circuit on by hand.",
+  attempt_failed: "The consultation stopped working. Choose Resend the patient. If that fails, redo the station.",
+  voice_fault: "Voice problem. The candidate may not hear the patient. Choose Resend the patient. Tell the candidate if it continues.",
+  clock_overdue: "Time is up for this part. Choose Next station to move the circuit on.",
 };
 
 /**
@@ -62,11 +62,11 @@ export function alertCopy(
 ): string {
   if (code === "clock_overdue" && overdueSeconds) {
     const late = overdueSeconds >= 60 ? `${Math.floor(overdueSeconds / 60)} min ${overdueSeconds % 60} s` : `${overdueSeconds} s`;
-    return `The clock is overdue by ${late}. ${where === "console" ? "Move the circuit on by hand." : "Advance it by hand."}`;
+    return `Time ran out ${late} ago and the circuit has not moved on. ${where === "console" ? "Choose Next station to move the circuit on." : "Choose Next station to move it on yourself."}`;
   }
   if (station) {
-    if (code === "attempt_failed") return `Station ${station}'s attempt failed. Resend the patient or redo the station.`;
-    if (code === "no_running_attempt") return `The patient has not joined Station ${station}. Resend the patient if this does not clear.`;
+    if (code === "attempt_failed") return `Station ${station} stopped working. Choose Resend the patient. If that fails, redo the station.`;
+    if (code === "no_running_attempt") return `The patient has not joined Station ${station} yet. Wait a few seconds, then choose Resend the patient.`;
   }
   if (where === "console" && CONSOLE_ALERT_COPY[code]) return CONSOLE_ALERT_COPY[code];
   return ALERT_COPY[code] ?? code.replace(/_/g, " ");
@@ -123,98 +123,6 @@ export function progressTone(progress: SlotProgress): "success" | "warning" | "d
   return "warning";
 }
 
-/* ------------------------------------------------------------------------
- * The stepper.
- *
- * The four steps a supervisor walks, as the retiring runner drew them, with
- * one difference: every state below is read from the circuit rather than from
- * whatever this browser last did. Two supervisors on the same circuit now see
- * the same step.
- * --------------------------------------------------------------------- */
-
-export type StepState = "done" | "active" | "idle";
-
-export interface RunnerStep {
-  number: number;
-  label: string;
-  sublabel: string;
-  state: StepState;
-}
-
-export function runnerSteps(data: CircuitConsole): RunnerStep[] {
-  const circuit = data.circuit;
-  const slots = orderedSlots(data);
-  const started = circuit.started_at !== null;
-  const ended = circuit.ended_at !== null;
-  const active = slots.find((slot) => slot.id === circuit.active_slot_id) ?? null;
-  const position = active ? slots.findIndex((slot) => slot.id === active.id) + 1 : 0;
-
-  const onStation: StepState = !started ? "idle" : active ? (ended ? "done" : "active") : "done";
-  const reading: StepState = !active
-    ? "idle"
-    : circuit.phase === "reading"
-      ? "active"
-      : circuit.phase === "simulation" || slotProgress(active) === "completed"
-        ? "done"
-        : "idle";
-  const consultation: StepState = !active
-    ? "idle"
-    : circuit.phase === "simulation"
-      ? "active"
-      : slotProgress(active) === "completed"
-        ? "done"
-        : "idle";
-
-  return [
-    {
-      number: 1,
-      label: "Start the circuit",
-      sublabel: ended ? "Ended" : started ? "Running" : "Opens the room for everybody",
-      state: started ? "done" : "active",
-    },
-    {
-      number: 2,
-      label: "On station",
-      sublabel: !started
-        ? "After the circuit starts"
-        : active
-          ? `${personLabel(active)} · station ${position} of ${slots.length}`
-          : ended
-            ? `${slots.filter((each) => slotProgress(each) === "completed").length} of ${slots.length} stations sat`
-            : circuit.phase === "break"
-              ? "Between stations"
-              : "Waiting for the next station",
-      state: onStation,
-    },
-    {
-      number: 3,
-      label: "Reading time",
-      sublabel: !active
-        ? "Once somebody is on station"
-        : circuit.phase === "reading"
-          ? "The candidate is reading the brief"
-          : reading === "done"
-            ? "Done for this station"
-            : "Not running",
-      state: reading,
-    },
-    {
-      number: 4,
-      label: "Consultation",
-      sublabel: !active
-        ? "After reading time"
-        : circuit.phase === "simulation"
-          ? circuit.agent_dispatched
-            ? `Patient is live · ${stationLabel(active)}`
-            : "Waiting for the patient to join"
-          : consultation === "done"
-            ? "Finished"
-            : "After reading time",
-      state: consultation,
-    },
-  ];
-}
-
 /**
  * The line under an examiner's page title.
  *
@@ -235,7 +143,7 @@ export function observerSubtitle(data: CircuitConsole): string {
   const crowd = trainees.size > 1 ? `${trainees.size} trainees` : null;
 
   if (circuit.ended_at) {
-    parts.push(total > 0 ? `Ended · ${completed} of ${total} stations sat` : "Ended");
+    parts.push(total > 0 ? `Ended · ${completed} of ${total} stations done` : "Ended");
     if (crowd) parts.push(crowd);
     return parts.join(" · ");
   }
@@ -271,7 +179,7 @@ export function markable(slot: ConsoleSlot): boolean {
 export const EDIT_BLOCK_COPY: Record<string, string> = {
   circuit_ended: "This circuit has finished, so its stations can no longer be changed.",
   consultation_in_progress:
-    "Someone is taking a station right now. Changing the stations would delete that consultation.",
+    "Someone is taking a station right now. Changing the stations would lose their recording. Wait until they finish.",
   feedback_recorded:
     "Feedback has already been given on these stations, so they cannot be changed.",
 };
@@ -289,7 +197,7 @@ export function editLockNotice(circuit: {
 }): string | null {
   if (circuit.editable !== false && !circuit.edit_block) return null;
   const code = circuit.edit_block ?? "";
-  return EDIT_BLOCK_COPY[code] ?? "This circuit cannot be restructured right now.";
+  return EDIT_BLOCK_COPY[code] ?? "You cannot change this circuit's stations right now. Reload the page. If it is still locked, the circuit has already started.";
 }
 
 /**

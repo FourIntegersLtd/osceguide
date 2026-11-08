@@ -344,7 +344,7 @@ export function nothingPickableMessage(input: {
  * Access and unpublished stations read the same as when starting a station.
  */
 export function describeCreateSetFailure(cause: unknown, surface?: Surface): string {
-  return describeRefusal(cause, "We could not create this session. Please try again.", surface);
+  return describeRefusal(cause, "We could not create this session. Check your connection, then try again. If it keeps happening, contact support.", surface);
 }
 
 /** What a learner needs before a session: nothing to buy, nothing that sounds like a lab. */

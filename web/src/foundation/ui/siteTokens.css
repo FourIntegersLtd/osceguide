@@ -140,17 +140,12 @@
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
-@keyframes site-dots {
-  0%, 80%, 100% { opacity: 0.25; }
-  40% { opacity: 1; }
-}
 
 .site-wave-bar {
   transform-origin: center;
   animation: site-wave 1.2s ease-in-out infinite;
 }
 .site-pulse { animation: site-pulse 1.6s ease-in-out infinite; }
-.site-dot { animation: site-dots 1.2s ease-in-out infinite; }
 .site-marquee-track { animation: site-marquee 70s linear infinite; width: max-content; }
 .site-marquee:hover .site-marquee-track { animation-play-state: paused; }
 
@@ -172,7 +167,6 @@
 
   .site-wave-bar,
   .site-pulse,
-  .site-dot,
   .site-marquee-track { animation: none; }
   .site-marquee { overflow-x: auto; }
   .site-marquee-track { width: auto; }

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import InvalidInput
 from app.core.exam_settings import ExamSettings
+from app.core.jobs import allow_long_idle
 from app.core.logging import get_logger
 from app.core.settings import Settings
 from app.features.catalog.service import exam_code_by_id, exam_settings_by_id
@@ -128,6 +129,9 @@ async def autogenerate_station_draft(
         len(all_block_ids),
         len(required_block_ids),
     )
+
+    # The model call below takes about a minute.
+    await allow_long_idle(session)
 
     generation_started = time.monotonic()
     system = (

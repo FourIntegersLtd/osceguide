@@ -234,7 +234,6 @@ export function dashboardView(performance: Performance | null): DashboardView {
     })),
   };
 
-  const versions = performance?.rubric_versions ?? 1;
   return {
     title: "Dashboard",
     counted,
@@ -248,7 +247,7 @@ export function dashboardView(performance: Performance | null): DashboardView {
     trend,
     composition: (performance?.composition ?? []).map((row) => ({ name: row.label, ...foldTones(row.tones) })),
     bands: bandLegend(display),
-    versionNotice: performance?.mixed_versions ? `Scored under ${versions} marking scheme versions` : null,
+    versionNotice: performance?.mixed_versions ? "Some of these scores used an older version of the marking scheme, so they may not match exactly" : null,
     insights: weakestDomains(domains),
     display,
   };

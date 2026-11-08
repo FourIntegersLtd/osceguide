@@ -16,7 +16,7 @@ class SessionNotFound(NotFound):
     """No such practice session, or the caller was not one of its pair."""
 
     code = "practice_session_not_found"
-    default_message = "No such practice session"
+    default_message = "We couldn't find that practice session"
 
 
 class AlreadyQueued(Conflict):
@@ -80,7 +80,7 @@ class UnknownExamError(NotFound):
     """
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"
 
 
 # Re-exported, not copied: the code is the contract, and the slice named owns

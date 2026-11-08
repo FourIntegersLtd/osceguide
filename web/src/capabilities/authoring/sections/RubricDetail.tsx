@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { archiveVersionMessage } from "@/capabilities/authoring/lib/authoringCopy";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { READER_EMPTY_TEXT } from "@/capabilities/authoring/parts/CannotAuthor";
 import { useState } from "react";
@@ -16,6 +18,7 @@ import {
   AuthoringIconAction,
   AuthoringRowActions,
 } from "@/capabilities/authoring/parts/AuthoringIconAction";
+import { AuthoringActionMenu } from "@/capabilities/authoring/parts/AuthoringActionMenu";
 import { useAsync } from "@/foundation/hooks";
 import {
   addRubricVersion,
@@ -35,6 +38,7 @@ import { rubricEditPath } from "@/capabilities/authoring/templates/paths";
 /** A rubric's versions, and the writes against each one. */
 export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: () => void }) {
   const scope = useAuthoringScope();
+  const w = useAssessWords();
   const rubric = useAsync((signal) => readRubric(scope, rubricId, signal), [scope.base, rubricId]);
   const action = useAction(rubric.reload);
   const { hrefFor } = useSurface();
@@ -103,7 +107,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
               <Panel padding="md">
                 <p className="text-osce-body text-ink-muted">
                   {canAuthor
-                    ? "This marking scheme has no versions yet. Cut a draft to start writing it."
+                    ? "This marking scheme has no versions yet. Press New draft version to start writing it."
                     : READER_EMPTY_TEXT}
                 </p>
               </Panel>
@@ -138,36 +142,28 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                       >
                         <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
                       </AuthoringIconAction>
-                      {actions.publish ? (
-                        <AuthoringIconAction
-                          write
-                          variant="primary"
-                          label="Publish"
-                          busy={action.busy === `publish:${version.id}`}
-                          busyLabel="Publishing…"
-                          disabled={action.busy !== null}
-                          onClick={() =>
-                            void action.run(`publish:${version.id}`, () =>
-                              publishRubricVersion(scope, data.id, version.version),
-                            )
-                          }
-                        >
-                          <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
-                        </AuthoringIconAction>
-                      ) : null}
-                      {actions.archive ? (
-                        <AuthoringIconAction
-                          write
-                          variant="warning"
-                          label="Archive"
-                          busy={action.busy === `archive:${version.id}`}
-                          busyLabel="Archiving…"
-                          disabled={action.busy !== null}
-                          onClick={() => setArchiving({ id: version.id, version: version.version })}
-                        >
-                          <HiOutlineArchiveBox className="h-4 w-4" aria-hidden />
-                        </AuthoringIconAction>
-                      ) : null}
+                      <AuthoringActionMenu
+                        label={`Actions for version ${version.version}`}
+                        items={[
+                          actions.publish && {
+                            write: true,
+                            label: action.busy === `publish:${version.id}` ? "Publishing…" : "Publish",
+                            icon: <HiOutlineArrowUpTray className="h-4 w-4" />,
+                            disabled: action.busy !== null,
+                            onSelect: () =>
+                              void action.run(`publish:${version.id}`, () =>
+                                publishRubricVersion(scope, data.id, version.version),
+                              ),
+                          },
+                          actions.archive && {
+                            write: true,
+                            label: action.busy === `archive:${version.id}` ? "Archiving…" : "Archive",
+                            icon: <HiOutlineArchiveBox className="h-4 w-4" />,
+                            disabled: action.busy !== null,
+                            onSelect: () => setArchiving({ id: version.id, version: version.version }),
+                          },
+                        ]}
+                      />
                     </AuthoringRowActions>
                   </div>
                 </Panel>
@@ -196,7 +192,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
         tone="danger"
         title="Archive this version?"
         confirmText="Yes, archive"
-        message={`Version ${archiving?.version ?? ""} stops being used to mark new attempts. If it is the current version, the newest other published version takes over. It is refused while an exam or an upcoming sitting still uses it.`}
+        message={archiveVersionMessage(archiving?.version ?? "", w)}
       />
     </div>
   );

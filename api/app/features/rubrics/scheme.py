@@ -654,8 +654,11 @@ def validate_scheme(raw: Any, compiled: Mapping[str, Any] | None = None) -> list
 
 _ID_OK = validation.IDENTIFIER_PATTERN
 _ID_MESSAGE = validation.IDENTIFIER_MESSAGE
-_DIFFERENT_SCALES = "Domains use different scales. Use one scale for every domain for now."
-_NO_SUCH_LEVEL = "The rule names a level the scale does not have."
+_DIFFERENT_SCALES = "Every Domain must use the same rating scale for now. Choose one scale for all of them."
+_NO_SUCH_LEVEL = (
+    "The pass mark uses a level that is not on the rating scale. "
+    "Choose one of its levels, such as Good or Fair."
+)
 
 
 class _SchemeChecker:
@@ -689,18 +692,22 @@ class _SchemeChecker:
     def check_scales(self) -> None:
         """Each scale: an id, and levels best first or a number range."""
         if not self.scales:
-            self.fail("scales", "Add a scale: how each competency is rated.")
+            self.fail(
+                "scales",
+                "Add a rating scale so markers know how to rate each Competency, for example Good, Fair "
+                "and Poor.",
+            )
         seen: set[str] = set()
         for index, scale in enumerate(self.scales):
             path = f"scales[{index}]"
             if not isinstance(scale, Mapping):
-                self.fail(path, "A scale must be an object.")
+                self.fail(path, "This rating scale is not set up correctly. Remove it and add it again.")
                 continue
             scale_id = scale.get("id")
             if not isinstance(scale_id, str) or not _ID_OK.match(scale_id):
                 self.fail(f"{path}.id", _ID_MESSAGE)
             elif scale_id in seen:
-                self.fail(f"{path}.id", "Two scales share this id.")
+                self.fail(f"{path}.id", "Two rating scales have the same name. Give each its own name.")
             else:
                 seen.add(scale_id)
             if "levels" in scale:
@@ -708,11 +715,22 @@ class _SchemeChecker:
             elif "from" in scale or "to" in scale:
                 low, high = scale.get("from"), scale.get("to")
                 if not validation.is_number(low) or not validation.is_number(high) or low >= high:
-                    self.fail(path, "A number scale needs a lowest number below its highest.")
+                    self.fail(
+                        path,
+                        "A number scale needs a lowest number that is smaller than the highest, for "
+                        "example 1 to 5.",
+                    )
                 if scale.get("step", "any") not in validation.SCALE_STEPS:
-                    self.fail(f"{path}.step", "The step must be whole or any.")
+                    self.fail(
+                        f"{path}.step",
+                        "Choose whether markers give whole numbers only or any number, including decimals.",
+                    )
             else:
-                self.fail(path, "A scale needs levels, or a lowest and highest number.")
+                self.fail(
+                    path,
+                    "A rating scale needs either named levels, such as Good, Fair and Poor, or a lowest "
+                    "and highest number, such as 1 to 5.",
+                )
 
     def check_levels(self, scale: Mapping[str, Any], path: str) -> None:
         """A scale's levels: distinct words (or yes and no), points that never rise."""
@@ -724,35 +742,41 @@ class _SchemeChecker:
         for index, level in enumerate(levels):
             level_path = f"{path}.levels[{index}]"
             if not isinstance(level, Mapping):
-                self.fail(level_path, "A level must be an object.")
+                self.fail(level_path, "This level is not set up correctly. Remove it and add it again.")
                 continue
             value = level.get("value")
             if not isinstance(value, str) and not (yes_no and isinstance(value, bool)):
-                self.fail(f"{level_path}.value", "A level's value is a word, or yes and no.")
+                self.fail(
+                    f"{level_path}.value",
+                    "Each level needs a name, such as Good or Fair, or must be a Yes or No choice.",
+                )
             elif any(
                 value is earlier or (type(value) is type(earlier) and value == earlier) for earlier in seen
             ):
-                self.fail(f"{level_path}.value", "Two levels share this value.")
+                self.fail(
+                    f"{level_path}.value", "Two levels have the same name. Give each level its own name."
+                )
             seen.append(value)
             points = level.get("points")
             if not validation.is_number(points) or points < 0:
-                self.fail(f"{level_path}.points", "Points must be a number, zero or more.")
+                self.fail(f"{level_path}.points", "Points must be a number, 0 or more.")
             else:
                 if previous is not None and points > previous:
                     self.fail(
                         f"{level_path}.points",
-                        "Points must not rise down the list: put the best level first.",
+                        "A lower level cannot earn more points than the one above it. List the best level "
+                        "first, for example Good, then Fair, then Poor.",
                     )
                 previous = points
         if yes_no and level_points([level for level in levels if isinstance(level, Mapping)]) != [1, 0]:
-            self.fail(path, "A yes or no scale scores 1 and 0.")
+            self.fail(path, "A Yes or No scale must give 1 point for Yes and 0 points for No.")
 
     # outline
     def check_outline(self) -> None:
         """Blocks: domains with competencies, notes with feedback, custom ones left alone."""
         outline = self.raw.get("outline")
         if not isinstance(outline, list) or not outline:
-            self.fail("outline", "Add a domain: the scheme would ask the marker for nothing.")
+            self.fail("outline", "Add at least one Domain, otherwise the marker has nothing to mark.")
             return
         seen: set[str] = set()
         first_scale: Any = None
@@ -763,7 +787,10 @@ class _SchemeChecker:
         for index, block in enumerate(outline):
             path = f"outline[{index}]"
             if not isinstance(block, Mapping) or block.get("block") not in validation.BLOCK_KINDS:
-                self.fail(f"{path}.block", "A block is a domain, notes or custom.")
+                self.fail(
+                    f"{path}.block",
+                    "Each part of the marking scheme must be a Domain, a notes section or a custom section.",
+                )
                 continue
             if block["block"] == "custom":
                 continue
@@ -771,7 +798,10 @@ class _SchemeChecker:
             if not isinstance(block_id, str) or not _ID_OK.match(block_id):
                 self.fail(f"{path}.id", _ID_MESSAGE)
             elif block_id in seen:
-                self.fail(f"{path}.id", "Two blocks share this id.")
+                self.fail(
+                    f"{path}.id",
+                    "Two parts of the marking scheme have the same name. Give each its own name.",
+                )
             else:
                 seen.add(block_id)
             if block["block"] == "notes":
@@ -779,7 +809,11 @@ class _SchemeChecker:
                 continue
             scale_ref = block.get("scale", default_scale)
             if scale_ref not in self.by_id:
-                self.fail(f"{path}.scale", "This domain uses a scale the scheme does not have.")
+                self.fail(
+                    f"{path}.scale",
+                    "This Domain uses a rating scale that is not in the marking scheme. Choose one of the "
+                    "scales you have added.",
+                )
             elif first_scale is None:
                 first_scale = scale_ref
             elif scale_ref != first_scale and not mixed_reported:
@@ -795,7 +829,7 @@ class _SchemeChecker:
         """A domain's competencies: at least one, distinct ids, descriptors on real levels."""
         competencies = block.get("competencies")
         if not isinstance(competencies, list) or not competencies:
-            self.fail(f"{path}.competencies", "A domain needs at least one competency.")
+            self.fail(f"{path}.competencies", "Add at least one Competency to this Domain.")
             return
         words = (
             [level.get("value") for level in scale["levels"] if isinstance(level, Mapping)]
@@ -806,13 +840,16 @@ class _SchemeChecker:
         for index, competency in enumerate(competencies):
             where = f"{path}.competencies[{index}]"
             if not isinstance(competency, Mapping):
-                self.fail(where, "Each competency must be an object.")
+                self.fail(where, "This Competency is not set up correctly. Remove it and add it again.")
                 continue
             competency_id = competency.get("id")
             if not isinstance(competency_id, str) or not _ID_OK.match(competency_id):
                 self.fail(f"{where}.id", _ID_MESSAGE)
             elif competency_id in seen:
-                self.fail(f"{where}.id", "Two competencies in this domain share this id.")
+                self.fail(
+                    f"{where}.id",
+                    "Two Competencies in this Domain have the same name. Give each its own name.",
+                )
             else:
                 seen.add(competency_id)
             descriptors = competency.get("descriptors")
@@ -825,7 +862,8 @@ class _SchemeChecker:
                     if key not in words:
                         self.fail(
                             f"{where}.descriptors",
-                            f"A descriptor names a level the scale does not have: {key}.",
+                            f'The description for "{key}" does not match any level on the rating scale. '
+                            "Use a level from the scale, or remove it.",
                         )
 
     def check_feedback_list(self, items: Any, path: str) -> None:
@@ -842,12 +880,12 @@ class _SchemeChecker:
             if item.get("kind") not in validation.FEEDBACK_KINDS:
                 self.fail(
                     f"{where}.kind",
-                    f"Pick what this feedback is: one of {', '.join(validation.FEEDBACK_KINDS)}.",
+                    "Choose what kind of feedback this is.",
                 )
             if item.get("shape") not in validation.FEEDBACK_SHAPES:
                 self.fail(
                     f"{where}.shape",
-                    f"Pick how it is written: one of {', '.join(validation.FEEDBACK_SHAPES)}.",
+                    "Choose how this feedback is written: a single line, a paragraph or a list.",
                 )
 
     # pass, show, tone
@@ -870,11 +908,16 @@ class _SchemeChecker:
                 continue
             score = node.get("score")
             if "score" in node and score not in validation.SCORE_KINDS:
-                self.fail(f"{path}.score", "Pick how a score is counted: labels, sum, mean or percent.")
+                self.fail(
+                    f"{path}.score",
+                    "Choose how a score is worked out: count the ratings, add them up, take the average or "
+                    "use a percentage.",
+                )
             elif score == "labels" and not has_levels:
                 self.fail(
                     f"{path}.score",
-                    "Counting ratings needs a scale of levels; a number scale is summed or averaged.",
+                    "Counting how many ratings reach a level only works when ratings are named levels, "
+                    "such as Good or Fair. Your scale uses numbers, so choose Add up or Average instead.",
                 )
             self.check_rule(node.get("rule"), score, f"{path}.rule", scale, levels)
         overall = pass_.get("overall")
@@ -884,7 +927,10 @@ class _SchemeChecker:
             and overall.get("everyDomainPasses")
             and not (isinstance(domain, Mapping) and domain.get("rule"))
         ):
-            self.fail("pass.overall.everyDomainPasses", "Every domain must pass needs a domain pass rule.")
+            self.fail(
+                "pass.overall.everyDomainPasses",
+                "To require every Domain to pass, set a pass mark for each Domain first.",
+            )
 
     def check_rule(
         self, rule: Any, score: Any, path: str, scale: Mapping[str, Any] | None, levels: list[Any]
@@ -893,22 +939,26 @@ class _SchemeChecker:
         if rule is None:
             return
         if not isinstance(rule, Mapping) or rule.get("type") not in validation.RULE_TYPES:
-            self.fail(f"{path}.type", "A pass rule is a score or a count of ratings.")
+            self.fail(f"{path}.type", "Choose a pass mark based on either a score or a count of ratings.")
             return
         if score == "labels" and rule["type"] == "score":
             self.fail(
                 f"{path}.type",
-                "A count of ratings passes on a count rule: say how many must be rated at least a level.",
+                "When you count ratings, say how many must reach a level, for example at least 3 rated "
+                "Fair or better.",
             )
         at_least = rule.get("atLeast")
         if not validation.is_number(at_least) or at_least < 0:
-            self.fail(f"{path}.atLeast", "The pass line must be a number, zero or more.")
+            self.fail(f"{path}.atLeast", "The pass mark must be a number, 0 or more.")
         if rule["type"] != "labels":
             return
         if rule.get("of") not in validation.RULE_OF:
-            self.fail(f"{path}.of", "Count competencies, or a percentage of them.")
+            self.fail(
+                f"{path}.of",
+                "Choose whether the pass mark is a number of Competencies or a percentage of them.",
+            )
         elif rule["of"] == "percent" and validation.is_number(at_least) and at_least > 100:
-            self.fail(f"{path}.atLeast", "A percentage is at most 100.")
+            self.fail(f"{path}.atLeast", "A percentage cannot be more than 100.")
         value = rule.get("value")
         if levels:
             known = any(value is level or (type(value) is type(level) and value == level) for level in levels)
@@ -929,9 +979,11 @@ class _SchemeChecker:
         if isinstance(show, Mapping):
             for key, value in show.items():
                 if key not in validation.SCHEME_SHOW:
-                    self.fail(f"show.{key}", f"Unknown part of the feedback: {key}.")
+                    self.fail(
+                        f"show.{key}", f'"{key}" is not a part of the feedback that can be shown or hidden.'
+                    )
                 elif not isinstance(value, bool):
-                    self.fail(f"show.{key}", "Say true or false.")
+                    self.fail(f"show.{key}", "Choose Shown or Hidden.")
         tone = self.raw.get("tone")
         if tone is not None and tone not in validation.FEEDBACK_TONES:
-            self.fail("tone", "A tone is supportive, formal or brief.")
+            self.fail("tone", "Choose a tone for the feedback: supportive, formal or brief.")

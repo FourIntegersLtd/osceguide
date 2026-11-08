@@ -40,7 +40,17 @@ import {
   traineeCountLabel,
   traineeStatus,
 } from "@/domains/assess/roster/support";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { say } from "@/domains/assess/roster/rosterWords";
+import {
+  CANDIDATES_BULK_HINT,
+  CANDIDATES_EMPTY,
+  CANDIDATES_SEARCH,
+  candidatePills,
+  candidateStatus,
+  filterByPill,
+  type CandidatePillKey,
+} from "@/domains/assess/people/candidatesView";
 import { boardBtn, boardPadWide, boardInput, boardAvatar, boardButtonSmall } from "@/foundation/ui/boardKit";
 
 type Pending = {
@@ -79,6 +89,7 @@ export function TraineesPanel({
   cohorts,
   groups,
   canManage,
+  total,
   onAddPeople,
   onChanged,
 }: {
@@ -86,6 +97,8 @@ export function TraineesPanel({
   cohorts: Cohort[];
   groups: TraineeGroup[];
   canManage: boolean;
+  /** How many people the roster holds in all, for the All pill on a hire workspace. */
+  total?: number;
   /** Opens the Add people sheet from the empty state. */
   onAddPeople: () => void;
   onChanged: () => void;
@@ -111,7 +124,10 @@ export function TraineesPanel({
       listTrainees(orgSlug, signal, { cursor, search: query }),
     [orgSlug, query],
   );
-  const rows = pages.state.data ?? [];
+  const allRows = pages.state.data ?? [];
+  const [pill, setPill] = useState<CandidatePillKey>("all");
+  // Pills are a hire layout; an institution never leaves "all".
+  const rows = w.hiring ? filterByPill(allRows, pill) : allRows;
 
   // Ticked rows (`trainees.id`). A new search is a new list, so it starts clear.
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
@@ -140,7 +156,7 @@ export function TraineesPanel({
       try {
         const done = await call();
         const text =
-          typeof done === "string" ? done : bulkSummary(done.results, ok ?? "done", noun ?? "people");
+          typeof done === "string" ? done : bulkSummary(done.results, ok ?? "done", say(w, noun ?? "people"));
         setNotice({ tone: "success", text });
         setSelected(new Set());
         setConfirmingBulkRevoke(false);
@@ -158,7 +174,7 @@ export function TraineesPanel({
         setBulkBusy(false);
       }
     },
-    [pages.state, onChanged],
+    [pages.state, onChanged, w],
   );
   const awaiting = awaitingInvitation(rows);
   // Only rows still on the loaded pages count, so a deleted row or an old search never reaches a call.
@@ -175,7 +191,7 @@ export function TraineesPanel({
         await deleteTrainee(orgSlug, pending.trainee.id);
         setNotice({
           tone: "success",
-          text: `Removed ${displayName(pending.trainee)} from the roster.`,
+          text: say(w, `Removed ${displayName(pending.trainee)} from the roster.`),
         });
       } else if (pending.kind === "anonymise") {
         await anonymiseTrainee(orgSlug, pending.trainee.id);
@@ -189,7 +205,7 @@ export function TraineesPanel({
         setNotice({
           tone: "success",
           text: revoking
-            ? `Revoked access for ${displayName(pending.trainee)}.`
+            ? `Access removed for ${displayName(pending.trainee)}.`
             : `Restored access for ${displayName(pending.trainee)}.`,
         });
       }
@@ -207,7 +223,7 @@ export function TraineesPanel({
     } finally {
       setBusy(false);
     }
-  }, [pending, orgSlug, onChanged, pages.state]);
+  }, [pending, orgSlug, onChanged, pages.state, w]);
 
   /**
    * Re-send the choose-a-password link.
@@ -239,14 +255,14 @@ export function TraineesPanel({
         } else {
           setNotice({
             tone: "danger",
-            text: rosterErrorMessage(cause, trainee.email),
+            text: rosterErrorMessage(cause, trainee.email, w),
           });
         }
       } finally {
         setResending(null);
       }
     },
-    [orgSlug, onChanged],
+    [orgSlug, onChanged, w],
   );
 
   const revoking = pending?.kind === "revoke";
@@ -259,7 +275,7 @@ export function TraineesPanel({
       {notice ? <Note tone={notice.tone === "success" ? "ok" : notice.tone === "warning" ? "warn" : "bad"}>{notice.text}</Note> : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        {rows.length > 0 || query ? (
+        {!w.hiring && (rows.length > 0 || query) ? (
           <span className={t.assessEyebrow}>
             {traineeCountLabel(rows.length, w)}
             {pages.hasMore ? "+" : ""}
@@ -273,7 +289,7 @@ export function TraineesPanel({
             setSearch(event.target.value);
             setSelected(new Set());
           }}
-          placeholder={`Search ${w.trainees}…`}
+          placeholder={w.hiring ? CANDIDATES_SEARCH : `Search ${w.trainees}…`}
           aria-label={`Search ${w.trainees}`}
         />
         {canManage && awaiting.length > 0 ? (
@@ -297,6 +313,20 @@ export function TraineesPanel({
           </button>
         ) : null}
       </div>
+
+      {w.hiring && (allRows.length > 0 || query) ? (
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label={`Filter ${w.trainees}`}>
+          {candidatePills(allRows, cohorts, total ?? allRows.length, pages.hasMore).map((entry) => {
+            const key = typeof entry.key === "string" ? entry.key : entry.key.intake;
+            const on = typeof entry.key === "string" ? pill === entry.key : typeof pill !== "string" && pill.intake === entry.key.intake;
+            return (
+              <button key={key} type="button" aria-pressed={on} onClick={() => { setPill(entry.key); setSelected(new Set()); }} className={cn("rounded-full border px-3 py-1 text-assess-label", on ? "border-osce-accent bg-osce-accent text-white" : "border-osce-border bg-osce-surface text-osce-ink-900")}>
+                {entry.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       {canManage && rows.length > 0 ? (
         <TraineeBulkBar
@@ -332,7 +362,7 @@ export function TraineesPanel({
               const current = await readGroupMembers(orgSlug, groupId);
               await setGroupMembers(orgSlug, groupId, addToGroupIds(current, selectedIds));
               const after = await readGroupMembers(orgSlug, groupId);
-              return addToGroupSummary(selectedIds, after);
+              return addToGroupSummary(selectedIds, after, w);
             })
           }
           onRevoke={() => {
@@ -358,16 +388,16 @@ export function TraineesPanel({
           Loading {w.trainees}…
         </p>
       ) : rows.length === 0 ? (
-        query ? (
+        query || (w.hiring && allRows.length > 0) ? (
           <div className={boardPadWide}>
             <div className={t.assessMeta}>Search with no match</div>
-            <div>No {w.trainees} match &ldquo;{query}&rdquo;.</div>
+            <div>{query ? <>No {w.trainees} match &ldquo;{query}&rdquo;.</> : `No ${w.trainees} in this filter.`}</div>
           </div>
         ) : (
           <div className={boardPadWide}>
-            <h2 className={h2}>No {w.trainees} yet</h2>
+            <h2 className={h2}>{w.hiring ? CANDIDATES_EMPTY.title : `No ${w.trainees} yet`}</h2>
             <p className={cn(t.assessMeta, "m-0")}>
-              Add {w.trainees} so you can put them on {w.hiring ? "an assessment" : "an exam or training circuit"}.
+              {w.hiring ? CANDIDATES_EMPTY.body : `Add ${w.trainees} so you can put them on an exam or training circuit.`}
             </p>
             {canManage ? (
               <button type="button" className={cn(boardBtn("primary"), "self-start")} onClick={onAddPeople}>
@@ -381,14 +411,15 @@ export function TraineesPanel({
           <div role="row" className={th}>
             {canManage ? <span className="w-4">Select</span> : null}
             <span className="w-8" />
-            <span className="flex-[1_1_180px]">Name</span>
-            <span className="w-20">Year group</span>
-            <span className="w-[130px]">Programme</span>
-            <span className="w-[50px]">Sat</span>
+            <span className="flex-[1_1_180px]">{w.hiring ? w.Trainee : "Name"}</span>
+            <span className="w-20">{say(w, "Year group")}</span>
+            {w.hiring ? null : <span className="w-[130px]">Programme</span>}
+            {w.hiring ? null : <span className="w-[50px]">Sat</span>}
             <span className="w-[170px]">Status</span>
           </div>
           {rows.map((trainee) => {
             const status = traineeStatus(trainee);
+            const candidate = candidateStatus(trainee);
             const named = trainee.first_name || trainee.last_name;
             return (
               <div key={trainee.id} role="row" data-testid="trainee-row" className={row}>
@@ -409,12 +440,18 @@ export function TraineesPanel({
                   {named ? <div className={cn(t.assessMeta, "truncate")}>{trainee.email}</div> : null}
                 </div>
                 <span className="w-20">{cohortName(cohorts, trainee.cohort_id)}</span>
-                <span className={cn(t.assessMeta, "w-[130px]")}>
-                  {trainee.programme_names?.length ? trainee.programme_names.join(", ") : "No programme"}
-                </span>
-                <span className="w-[50px] tabular-nums">{trainee.stations_sat}</span>
+                {w.hiring ? null : (
+                  <span className={cn(t.assessMeta, "w-[130px]")}>
+                    {trainee.programme_names?.length ? trainee.programme_names.join(", ") : "No programme"}
+                  </span>
+                )}
+                {w.hiring ? null : <span className="w-[50px] tabular-nums">{trainee.stations_sat}</span>}
                 <span className="w-[170px]">
-                  <Chip tone={status.attention ? "warn" : "ok"}>{`● ${status.attention ?? status.label}`}</Chip>
+                  {w.hiring ? (
+                    <Chip tone={candidate.tone === "ok" ? "ok" : "warn"}>{candidate.label}</Chip>
+                  ) : (
+                    <Chip tone={status.attention ? "warn" : "ok"}>{`● ${status.attention ?? status.label}`}</Chip>
+                  )}
                 </span>
                 <TraineeRowActions
                   trainee={trainee}
@@ -454,9 +491,11 @@ export function TraineesPanel({
         </div>
       )}
 
+      {w.hiring && canManage && rows.length > 0 ? <p className={cn(t.assessMeta, "m-0")}>{CANDIDATES_BULK_HINT}</p> : null}
+
       {!canManage ? (
         <div className={boardPadWide}>
-          <div className={t.assessMeta}>Supervisor (read only)</div>
+          <div className={t.assessMeta}>{w.Supervisor} (read only)</div>
           <div>Contact an owner or admin to change who has access.</div>
         </div>
       ) : null}
@@ -475,12 +514,12 @@ export function TraineesPanel({
         lead={
           pending
             ? deleting
-              ? deleteLead(named, pending.trainee.stations_sat)
+              ? deleteLead(named, pending.trainee.stations_sat, w)
               : anonymising
                 ? `${named}'s name and email address will be scrubbed and their access revoked. Any decision already recorded about them is kept. This cannot be undone.`
                 : revoking
-                  ? `${named} will not be able to sign in or sit anything, and stays on the roster with their results intact.`
-                  : `${named} will be able to sign in and sit again.`
+                  ? say(w, `${named} will not be able to sign in or sit anything, and stays on the roster with their results intact.`)
+                  : say(w, `${named} will be able to sign in and sit again.`)
             : ""
         }
         error={error}
@@ -510,8 +549,8 @@ export function TraineesPanel({
 
       <Dialog
         open={confirmingBulkRevoke}
-        title={`Revoke access for ${selectedIds.length} ${selectedIds.length === 1 ? "person" : "people"}?`}
-        lead="They will not be able to sign in or sit anything, and stay on the roster with their results intact."
+        title={say(w, `Revoke access for ${selectedIds.length} ${selectedIds.length === 1 ? "person" : "people"}?`)}
+        lead={say(w, "They will not be able to sign in or sit anything. They stay on your list and keep their results.")}
         error={error}
         busy={bulkBusy}
         tone="danger"

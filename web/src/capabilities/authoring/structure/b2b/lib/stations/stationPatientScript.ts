@@ -37,7 +37,7 @@ export function patientScriptSections(extraHistory: StationBlock[] = []): Statio
         role: "persona",
         label: "Persona",
         placeholder:
-          "Tone, anxiety level, how they open up. e.g. Nervous at first but cooperative; tearful when discussing family.",
+          "Mood, how anxious they are, how easily they talk. e.g. Nervous at first but cooperative; tearful when discussing family.",
       },
       ],
     },

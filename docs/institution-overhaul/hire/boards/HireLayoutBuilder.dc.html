@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Station layout</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav on" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="2"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="head"><div><a class="meta" href="HireStations.dc.html">Exams › Stations</a><h1>Station layouts</h1><p class="desc">Optional. A layout is the set of sections every new station starts with, so all your stations read the same way.</p></div><div class="acts"><a class="btn pri" href="HireLayoutBuilder.dc.html">New layout</a></div></div>
+<div class="card"><div class="th"><span class="f">Layout</span><span style="width:140px">Status</span></div>
+<button class="row" style="width:100%;border-left:0;border-right:0;border-bottom:0;background:#fff;font-family:inherit;text-align:left;cursor:pointer" onClick="{{go1}}"><span class="f"><b style="font-weight:500">Acme nursing station</b><div class="meta">6 sections · copied from OSCE Guide standard</div></span><span style="width:140px"><span class="chip ok">Published</span></span></button></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="head"><div><a class="meta" href="HireStations.dc.html">Exams › Stations › Layouts</a><h1>Acme nursing station <span class="chip warn" style="vertical-align:middle">Draft v2</span></h1><p class="desc">Drag to reorder. Each section is a heading the station writer fills in.</p></div><div class="acts"><button class="btn">Save draft</button><button class="btn pri">Publish</button></div></div>
+<div class="card"><div class="row"><span class="f">1 Candidate brief</span><span class="meta">Candidate sees it</span></div><div class="row"><span class="f">2 Patient background</span><span class="meta">Patient actor</span></div><div class="row"><span class="f">3 Observations chart</span><span class="meta">Photo</span></div><div class="row"><span class="f">4 What the patient says if asked</span><span class="meta">Patient actor</span></div><div class="row"><span class="f">5 Assessor's notes</span><span class="meta">Assessor only</span></div><div class="row"><button class="btn sm">Add a section</button></div></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/station-templates</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/station-templates</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/station-templates/{id}/copy</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/station-templates/{id}/versions</code></div>
+<div class="call"><span class="m">PATCH</span><code>…/versions/{v}</code></div>
+<div class="call"><span class="m">DELETE</span><code>…/versions/{v}</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/station-templates/{id}/publish</code></div>
+<div class="call"><span class="m">POST</span><code>…/versions/{v}/archive</code></div>
+<h2>Refusals it shows</h2><div class="codes"><code>station_template_not_found</code><code>station_template_version_not_found</code><code>not_editable</code><code>already_published</code><code>not_archivable</code></div>
+<div class="note">Routes <code>/app/[w]/authoring/station-templates[/id]</code> · admin · the institution layout builder unchanged · owner content-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Layouts', 'Edit a layout'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, go1: () => this.setState({ t: 1 }) };
+  }
+}
+</script>
+</body>
+</html>

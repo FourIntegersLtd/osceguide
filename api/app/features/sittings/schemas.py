@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -23,6 +24,8 @@ class SlotRead(BaseModel):
     room_name: str | None = None
     started_at: datetime | None = None
     ended_at: datetime | None = None
+    # Who assesses this station, when the schedule names one.
+    assessor_user_id: uuid.UUID | None = None
     # The circuit's clock, shown against the slot it is currently on and null
     # for every other slot. Derived, not stored: the clock is the circuit's.
     phase: str | None = None
@@ -68,10 +71,15 @@ class CircuitRead(BaseModel):
     paused: bool = False
     paused_at: datetime | None = None
     auto_advance: bool = True
+    # Training rooms: everyone may speak, and when the supervisor closed the room kept open after End.
+    open_floor: bool = False
+    room_closed_at: datetime | None = None
     # Distinct trainees on this circuit (derived from its slots).
     trainee_count: int = 0
     # The supervisor's display name; filled where a screen lists circuits.
     supervisor_name: str | None = None
+    # The people named as station assessors, once each, in station order (set when a sitting is read).
+    assessor_names: list[str] = []
     slots: list[SlotRead] = Field(default_factory=list)
 
 
@@ -137,6 +145,8 @@ class CreateCircuit(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     trainee_ids: list[uuid.UUID]
     station_version_ids: list[uuid.UUID]
+    # Who assesses each station, paired positionally with `station_version_ids`; a null leaves one open.
+    station_assessor_ids: list[uuid.UUID | None] | None = None
     supervisor_user_id: uuid.UUID | None = None
     timing: TimingIn = Field(default_factory=TimingIn)
 
@@ -147,6 +157,7 @@ class CreateExamCircuits(BaseModel):
     name_prefix: str = Field("Exam", min_length=1, max_length=120)
     candidate_user_ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
     station_version_ids: list[uuid.UUID]
+    station_assessor_ids: list[uuid.UUID | None] | None = None
     supervisor_user_id: uuid.UUID | None = None
     timing: TimingIn | None = None
 
@@ -170,6 +181,8 @@ class RebuildCircuit(BaseModel):
     trainee_ids: list[uuid.UUID]
     station_version_ids: list[uuid.UUID]
     name: str | None = Field(default=None, min_length=1, max_length=200)
+    # Omit to keep each station's assessor; send the whole list, nulls included, to replace them.
+    station_assessor_ids: list[uuid.UUID | None] | None = None
     supervisor_user_id: uuid.UUID | None = None
     timing: TimingIn | None = None
     # The revision the caller read; an older one is refused 409 `stale_revision` (B-15).
@@ -260,6 +273,24 @@ class RoomGrant(BaseModel):
     can_publish: bool = True
 
 
+class FloorChange(BaseModel):
+    open: bool
+
+
+class MicChange(BaseModel):
+    allowed: bool
+
+
+class SchemeRead(BaseModel):
+    """The marking scheme of the station running now, in the author's form, and nothing else.
+
+    No system prompt, pacing or notes: this is what the people watching a training station read.
+    """
+
+    slot_id: uuid.UUID
+    structure: dict[str, Any]
+
+
 class SlotBriefRead(BaseModel):
     """A candidate's reading brief for one of their slots, during reading time and after."""
 
@@ -269,3 +300,28 @@ class SlotBriefRead(BaseModel):
     sections: list[AudienceSectionRead] = []
     # A station bound to no template carries its brief as one text instead.
     text: str | None = None
+
+
+class PeerMarkIn(BaseModel):
+    """One mark or comment on one scheme item (`domainId` or `domainId.competencyId`)."""
+
+    item: str = Field(min_length=1, max_length=160)
+    rating: str | None = Field(default=None, max_length=16)
+    comment: str | None = Field(default=None, max_length=2000)
+
+
+class SavePeerMarks(BaseModel):
+    marks: list[PeerMarkIn] = Field(max_length=200)
+
+
+class PeerMarkRead(BaseModel):
+    marker_id: uuid.UUID
+    marker_name: str
+    item: str
+    rating: str | None = None
+    comment: str | None = None
+
+
+class PeerMarksRead(BaseModel):
+    slot_id: uuid.UUID
+    items: list[PeerMarkRead]

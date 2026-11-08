@@ -15,3 +15,6 @@ export const OTHER_DEVICES_SIGN_OUT_MINUTES = 15;
 export const SUPPORT_REPLY_HOURS = 12;
 /** The free trial's station allowance, quoted in the staff console's help text for a plan's station limit. The backend's own trial limit (`TrialLimits.stations`) is the source of truth at runtime; this is copy, not a rule. */
 export const FREE_TRIAL_STATIONS = 3;
+
+/** The free trial's length, quoted in the landing copy. */
+export const FREE_TRIAL_DAYS = 14;

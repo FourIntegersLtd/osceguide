@@ -54,7 +54,7 @@ export function InvoicesPage() {
     return <Note tone="info">Invoices are for your organisation&apos;s administrators.</Note>;
   }
   return (
-    <div className="flex min-w-0 max-w-assess-page flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <div>
         <Link href={settings} className="text-assess-label">
           ‹ Settings

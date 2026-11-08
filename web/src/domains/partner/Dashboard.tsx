@@ -105,9 +105,9 @@ export function PartnerDashboard({ partner, name }: { partner: string; name?: st
   // The moment the numbers on screen arrived.
   const updatedAt = useMemo(() => (summary.data ? new Date() : null), [summary.data]);
 
-  const fail = (title: string, note = "Other sections are unaffected.") =>
+  const fail = (title: string, note = "Other sections are unaffected. Reload the page to try again.") =>
     function Failure(error: Error, retry: () => void) {
-      return <LoadFailure title={title} error={error} onRetry={retry} note={note} />;
+      return <LoadFailure title={title} error={error} onRetry={retry} note={note} showDetail={false} />;
     };
 
   const series = (report: Parameters<typeof countPoints>[0]) =>
@@ -139,7 +139,7 @@ export function PartnerDashboard({ partner, name }: { partner: string; name?: st
       {tab === "overview" ? (
         <>
           <FeeNote fee={summary.data?.fee} />
-          <AsyncBoundary state={summary} failure={fail("We couldn't load these numbers", "Nothing here is zero; it just hasn't loaded.")}>
+          <AsyncBoundary state={summary} failure={fail("We couldn't load these numbers", "Nothing here is zero; it just has not loaded. Reload the page to try again.")}>
             {(data) => {
               if (!data) return null;
               const figures = partnerHeroFigures(data);
@@ -158,7 +158,7 @@ export function PartnerDashboard({ partner, name }: { partner: string; name?: st
               );
             }}
           </AsyncBoundary>
-          <AsyncBoundary state={funnel} failure={fail("We couldn't load the funnel", "")}>
+          <AsyncBoundary state={funnel} failure={fail("We couldn't load the sign-up steps", "")}>
             {(data) => {
               if (!data) return null;
               // The funnel route counts only what it knows; the summary's numbers stand in when it has none.

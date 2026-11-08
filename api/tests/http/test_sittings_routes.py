@@ -401,7 +401,8 @@ async def test_starting_a_consultation_removes_stale_agents_first(
 
     assert response.status_code == 200, response.text
     assert response.json()["phase"] == "simulation"
-    assert [c[0] for c in agents.calls] == ["remove", "dispatch"]
+    # This sitting is training, so the new turn also re-applies microphones, after the patient is in.
+    assert [c[0] for c in agents.calls] == ["remove", "dispatch", "mics"]
     assert len(agents.dispatched) == 1
     metadata = agents.dispatched[0]["metadata"]
     assert set(metadata) == {"attempt_id", "backend", "candidate_ref"}, (

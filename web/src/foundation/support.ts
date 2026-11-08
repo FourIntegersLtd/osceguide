@@ -12,3 +12,6 @@ export const COMPLIANCE_DATES = {
   privacy: { effective: "January 1, 2025", updated: "May 4, 2025" },
   disclaimer: { effective: "January 1, 2025", updated: "April 3, 2025" },
 } as const;
+
+/** The "Book a demo" mail link every institutions call to action uses. */
+export const DEMO_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("OSCE Guide Demo")}`;

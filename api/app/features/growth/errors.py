@@ -9,7 +9,7 @@ class UnknownPartnerError(NotFound):
     """The partner named in the path or body is not one of the pilot partners."""
 
     code = "unknown_partner"
-    default_message = "No such partner"
+    default_message = "We couldn't find that partner"
 
 
 class ExamNotInPilotError(InvalidInput):
@@ -41,7 +41,7 @@ class ReferralNotFound(NotFound):
     """No referral matches that code, or the code belongs to the person redeeming it."""
 
     code = "referral_not_found"
-    default_message = "No such referral code"
+    default_message = "We couldn't find that referral code"
 
 
 class ReferralNotRedeemed(Conflict):
@@ -70,14 +70,14 @@ class InvalidDateRangeError(InvalidInput):
     """A reporting range that ends before it starts."""
 
     code = "invalid_date_range"
-    default_message = "from_date must be on or before to_date"
+    default_message = "The start date must be on or before the end date."
 
 
 class InvalidBucketError(InvalidInput):
     """A chart's `bucket` query param named none of `day`, `week` or `month`."""
 
     code = "invalid_bucket"
-    default_message = "bucket must be one of day, week or month"
+    default_message = "Group the figures by day, week or month."
 
 
 class ReporterNotFound(NotFound):

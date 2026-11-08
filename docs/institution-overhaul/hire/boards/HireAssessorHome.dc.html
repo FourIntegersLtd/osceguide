@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Assessor overview</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Assessor</div></div></div>
+<a class="nav on" href="HireAssessorHome.dc.html">Overview</a><a class="nav" href="HireNowRunning.dc.html">Now running</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="3"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div><div class="eyebrow">Acme Health Trust</div><h1>Overview</h1><p class="desc">The rotations you run and the stations you mark.</p></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="hero live"><div><div class="eyebrow">Your next rotation</div><h2 style="font-size:20px;margin-top:4px">Priya Shah · Band 6 nurse assessment day</h2><div class="meta">Today 10:30 · 4 stations · Room 2</div></div><a class="btn pri" href="HireConsole.dc.html">Open the console</a></div>
+<div class="card"><div class="th"><span class="f">Later today</span><span>Time</span></div>
+<a class="row" href="HireConsole.dc.html"><span class="f">Tom Reid</span><span class="meta">11:30</span></a>
+<a class="row" href="HireConsole.dc.html"><span class="f">Ama Mensah</span><span class="meta">13:00</span></a></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="hero"><div><div class="eyebrow">To mark</div><h2 style="font-size:20px;margin-top:4px">2 stations are waiting for your mark</h2><div class="meta">Results stay hidden from candidates until the admin releases them.</div></div><a class="btn pri" href="HireStationReview.dc.html">Mark the first one</a></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="empty"><h2>Nothing assigned to you</h2>When the admin puts you on a rotation, it shows here and you get an email.</div></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/supervisor/circuits</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/dashboard</code></div>
+<div class="meta">An assessor never sees hiring decisions, the Candidates list or Settings.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>forbidden</code><code>lead_cannot_run</code></div>
+<div class="note">Route <code>/app/[w]/dashboard</code> · assessor (supervisor role) · owner institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Rotation today', 'Marking waiting', 'Nothing yet'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2 };
+  }
+}
+</script>
+</body>
+</html>

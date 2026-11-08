@@ -68,7 +68,7 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
 - A gate in a lazy placeholder and in the component it loads must agree: the Help button showed, then
   vanished when the dock loaded. A route gate on a shared control needs a journey at the width where
   nothing else offers it (`e2e/train/help-everywhere.spec.ts` runs at phone width).
-- Page width is the shell's one container: a page under `app/app` and the screens it mounts set no `max-w-*`
+- Page width is the shell's one container, full width between equal gutters (no `max-w-*`/`mx-auto` on `b2cPageColumn`, `assessPage` or a screen's root; cap only paragraphs and forms, `e2e/support/phone.ts` `expectEvenGutters` measures it): a page under `app/app` and the screens it mounts set no `max-w-*`
   (`surfaces/pageWidth.test.ts` guards it). Toasts are top-centre and one with `durationMs` is capped at 60 s
   (`toastDuration.ts`); success feedback is a `useToast` toast, not an inline Alert. `Panel` is static; a part that folds is `FoldSection`. The Help button and FAB use a neutral `LuCircleHelp`, never Athena's face. `resolveCrumb` takes an options object; section and deep-page names are the one `NAV_LABELS` map. A confirm step is `foundation/ui/ConfirmModal`. Study search types into the URL
   (`useStudySearch`); A to Z and Podcasts load the whole catalogue once and page client-side (`catalogue.ts`).
@@ -113,3 +113,17 @@ Skip `schema.d.ts`, `openapi.json` and `_generated/`: they are generated.
 
 ## Deploy config
 - `web/vercel.json` `git.deploymentEnabled` ends in `"**": false`, so every branch Vercel must build is listed by name: `main` (staging, the promote gate) and the branch `promote-web.yml` pushes (`production-web`). An unlisted branch is discarded with no build and no error: the promote just times out after 15 minutes (2026-10-25). `check:deploy-branches` enforces it; ci-web runs on `promote-web.yml` edits for that reason.
+
+## Actions
+- A row or header with more than one action offers at most one inline primary and the rest in `ActionMenu` (`@/foundation/ui`, the "⋯" menu; danger items last). Never three buttons side by side. `RowAction` icon buttons stay for a single action. `ActionMenu` is `PopupMenu fixed`, so table/card `overflow` cannot clip it.
+
+## Landing `/` (rebuilt 2026-11)
+
+- Composition is `domains/marketing/LandingPage.tsx`; copy in `marketing/landingCopy.ts`, captures in `home/landingShots.ts`. Numbers in copy come from `foundation/config/copyNumbers.ts`.
+- Hero clip is `DemoVideo` with `poster`/`eager`/`sources`; it never plays under reduced motion or save-data, and `HeroClip` has a pause link.
+- The proof line (`HeroProofLine`) reads `all_feedback` and renders nothing when `/site/statistics` fails (e2e `layout.spec.ts`).
+- `SiteButton` variant `text` is the link-style action; only the nav and hero carry a filled button above pricing, the final CTA is the one navy band.
+- `site-wave*` CSS stays: `AuthQuotePanel` uses it. Exam pages share Blocks, HomeFaq, HomePractice, HomeFounders, `foundersLetter`, `faqItems`.
+
+- **Assess words live in `capabilities/assess-words`** (`useAssessWords`, `INSTITUTION_WORDS`, `EMPLOYER_WORDS`, `assessWordsFor(surface)`), not `domains/assess`. A node test imports `@/capabilities/assess-words/vocabulary`, never the barrel (it pulls TSX). A surface manifest may carry `refusal` (`screens`, `title`, `body(orgName)`): `app/app/[workspace]/screen.tsx` renders `RefusedScreen` for those screens before `notFound()`. Hire refuses practice and mock screens this way.
+- **Hire copy is a pure function of the words**: `thing(args…, w: AssessWords)` with `w` last, required and never defaulted, an inline `w.hiring ? employer : institution` ternary, and the institution branch byte-identical to the text before hire existed, pinned by a literal test for both arms. No regex rewrites of prose, no keyed `hiring/institution` tables except where a whole record is overridden.

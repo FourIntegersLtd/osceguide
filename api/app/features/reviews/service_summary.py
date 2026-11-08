@@ -7,8 +7,8 @@ a review of an R/A/G rubric combines to R/A/G, a 0-10 rubric to a number.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,6 +37,8 @@ class SlotOutcome:
     score: float | None
     # By the rubric's pass rule; None when it sets none or nothing is rated.
     passed: bool | None
+    # Each rated domain's 0-100 score, by the domain's title.
+    domain_scores: Mapping[str, float] = field(default_factory=dict)
 
 
 async def read_my_slot_review(
@@ -217,9 +219,12 @@ async def outcomes_for_slots(
         gp_lead = gp_leads.get(slot_id)
         reviewed = dict(gp_lead.field_values or {}) if gp_lead else {}
         effective = scoring.effective_ratings(scoring_rubric.structure, marked, reviewed)
+        by_domain = scoring.scores_by_domain(scoring_rubric.structure, effective)
+        titles = {domain.id: domain.title for domain in scoring_rubric.structure.domains}
         outcomes[slot_id] = SlotOutcome(
-            score=scoring.station_score(scoring.scores_by_domain(scoring_rubric.structure, effective)),
+            score=scoring.station_score(by_domain),
             passed=rubric_scoring.passed(scoring_rubric.structure, scoring_rubric.display, effective),
+            domain_scores={titles.get(domain_id, domain_id): value for domain_id, value in by_domain.items()},
         )
     return outcomes
 
@@ -227,3 +232,14 @@ async def outcomes_for_slots(
 def review_priority(*, completion_rate: float, assessment_score: float | None) -> str:
     """Which candidates a reviewer should look at first. See `scoring.review_priority`."""
     return scoring.review_priority(completion_rate=completion_rate, assessment_score=assessment_score)
+
+
+async def has_completed_review(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> bool:
+    """Whether a reviewer has completed a review of this slot (for practice: its feedback is shared)."""
+    reviews = await repository.slot_reviews(session, org_id, slot_id)
+    return any(review.status == "completed" for review in reviews)
+
+
+async def assessors_marking(session: AsyncSession, org_id: uuid.UUID) -> int:
+    """How many different people have completed a review of a station here (not peer observers)."""
+    return len(await repository.completed_reviewer_ids(session, org_id))

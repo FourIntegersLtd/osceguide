@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Your result</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Candidate</div></div></div>
+<a class="nav" href="HireCandidateHome.dc.html">My assessments</a><a class="nav on" href="HireCandidateResult.dc.html">Results</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="2"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><a class="meta" href="HireCandidateHome.dc.html">My assessments</a><h1>Band 6 nurse assessment</h1><p class="desc">14 October · released by Acme Health Trust</p></div><div class="acts"><button class="btn">Download PDF</button></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="hero"><div><div class="eyebrow">Your result</div><h2>Pass · 4 of 5 stations</h2><div class="meta">Acme Health Trust will contact you about next steps.</div></div><button class="btn pri" onClick="{{go1}}">I have read this</button></div>
+<div class="card"><div class="th"><span class="f">Station</span><span style="width:120px">Result</span><span style="width:140px"></span></div>
+<a class="row" href="HireCandidateReview.dc.html"><span class="f">1 Deteriorating patient</span><span style="width:120px"><span class="chip ok">Pass</span></span><span style="width:140px" class="meta">See feedback</span></a>
+<a class="row" href="HireCandidateReview.dc.html"><span class="f">2 Medicines round</span><span style="width:120px"><span class="chip ok">Pass</span></span><span style="width:140px" class="meta">See feedback</span></a>
+<a class="row" href="HireCandidateReview.dc.html"><span class="f">3 Discharge planning</span><span style="width:120px"><span class="chip live">Not yet</span></span><span style="width:140px" class="meta">See feedback</span></a>
+<a class="row" href="HireCandidateReview.dc.html"><span class="f">4 Difficult news</span><span style="width:120px"><span class="chip ok">Pass</span></span><span style="width:140px" class="meta">See feedback</span></a>
+<a class="row" href="HireCandidateReview.dc.html"><span class="f">5 Handover</span><span style="width:120px"><span class="chip ok">Pass</span></span><span style="width:140px" class="meta">See feedback</span></a></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="al ok"><b>Thank you</b>Acme Health Trust can see that you have read your result.</div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>/me/results/{id}</code></div>
+<div class="call"><span class="m">GET</span><code>/me/results/{id}.pdf</code></div>
+<div class="call"><span class="m">POST</span><code>/me/results/{id}/acknowledge</code></div>
+<div class="meta">Never shows the hiring decision (recruitment_outcome must not be in this response; checked by hand and in e2e). No "Keep practising" or "Self practice" on hire.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>result_not_released</code><code>result_not_found</code><code>outcome_not_releasable</code></div>
+<div class="note">Route <code>/app/[w]/trainee/results/[id]</code> · candidate · owner institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Released', 'Read'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, go1: () => this.setState({ t: 1 }) };
+  }
+}
+</script>
+</body>
+</html>

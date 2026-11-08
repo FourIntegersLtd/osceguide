@@ -1,5 +1,5 @@
-import { LuBriefcase, LuChartNoAxesColumn, LuClipboardCheck, LuGauge, LuGraduationCap, LuPencilRuler, LuRadio, LuUsers } from "react-icons/lu";
-import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
+import { LuBriefcase, LuChartNoAxesColumn, LuClipboardCheck, LuGauge, LuGraduationCap, LuPencilRuler, LuRadio, LuUserCheck, LuUsers } from "react-icons/lu";
+import type { NavContext, NavItem, ScreenName, SurfaceManifest } from "@/surfaces/contract";
 import { ASSESS_SCREEN_NAMES } from "@/surfaces/assess/surface";
 
 /**
@@ -26,16 +26,35 @@ function nav({ can, href }: NavContext): NavItem[] {
     { key: "results", label: "Results", href: href("/results"), icon: LuClipboardCheck, section: "run" },
     { key: "trainees", label: "Candidates", href: href("/trainees"), icon: LuUsers, section: "organise" },
   ];
+  if (can("manage_team")) staff.push({ key: "team", label: "Assessors", href: href("/team"), icon: LuUserCheck, section: "organise" });
   if (can("author_content")) staff.push({ key: "build", label: "Exams", href: href("/authoring"), icon: LuPencilRuler, section: "organise" });
   staff.push({ key: "reporting", label: "Reporting", href: href("/reporting"), icon: LuChartNoAxesColumn, section: "insight" });
   return staff;
 }
+
+/** The consumer practice screens: an employer account does not include them. */
+const PRACTICE_SCREENS: readonly ScreenName[] = [
+  "myPractice",
+  "practiceStation",
+  "mocks",
+  "mockDetail",
+  "mockStation",
+  "mockComplete",
+  "mockList",
+  "mockUpdate",
+];
 
 export const hireSurface: SurfaceManifest = {
   id: "hire",
   label: "Hiring",
   workspaceKinds: ["employer"],
   nav,
-  screenNames: ASSESS_SCREEN_NAMES,
+  screenNames: ASSESS_SCREEN_NAMES.filter((name) => !PRACTICE_SCREENS.includes(name)),
   screensFrom: "assess",
+  refusal: {
+    screens: PRACTICE_SCREENS,
+    title: "This is not part of your employer's account",
+    body: (orgName, staff) =>
+      `Practice stations and mock exams are not included with ${orgName}.${staff ? "" : " Your assessments are on your home page."}`,
+  },
 };

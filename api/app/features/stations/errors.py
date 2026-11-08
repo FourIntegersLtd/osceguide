@@ -11,7 +11,7 @@ class StationNotFound(NotFound):
     """No such station in this organisation, or the library."""
 
     code = "station_not_found"
-    default_message = "No such station"
+    default_message = "We couldn't find that station"
 
 
 class StationNotInPlan(Forbidden):
@@ -29,21 +29,21 @@ class VersionNotFound(NotFound):
     """No such station version, on a station that does exist."""
 
     code = "version_not_found"
-    default_message = "No such version"
+    default_message = "We couldn't find that version"
 
 
 class StationFlagNotFound(NotFound):
     """No such reported problem against a station."""
 
     code = "station_flag_not_found"
-    default_message = "No such report on a station"
+    default_message = "We couldn't find that report on a station"
 
 
 class NotEditableError(Conflict):
     """A published version was asked to change in place; a new draft version is what changes."""
 
     code = "not_editable"
-    default_message = "Published content cannot be edited; create a new version"
+    default_message = "Published content can't be edited. Create a new version to make changes."
 
 
 class StationEmptyError(Conflict):
@@ -72,7 +72,9 @@ class StationBeingProduced(Conflict):
     """The agent is working on this version; a save now would be overwritten by its next step."""
 
     code = "station_being_produced"
-    default_message = "The agent is working on this version; stop it or wait for it to finish"
+    default_message = (
+        "The AI assistant is still working on this version. Wait for it to finish, or stop it first."
+    )
 
 
 class NotDeletableError(Conflict):
@@ -111,14 +113,14 @@ class StationNotPublishedError(Conflict):
     """
 
     code = "station_not_published"
-    default_message = "A circuit can only use a published station"
+    default_message = "Only published stations can be added to a circuit."
 
 
 class TemplateNotPublishedError(Conflict):
     """A station was built on a template version that is still a draft."""
 
     code = "template_not_published"
-    default_message = "A station can only be built on a published template version"
+    default_message = "A station can only be built from a published template. Publish the template first."
 
 
 class UnknownExamError(NotFound):
@@ -132,7 +134,7 @@ class UnknownExamError(NotFound):
     """
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"
 
 
 class StationTemplateNotFound(NotFound):
@@ -145,21 +147,21 @@ class StationTemplateNotFound(NotFound):
     """
 
     code = "station_template_not_found"
-    default_message = "No such station template"
+    default_message = "We couldn't find that station template"
 
 
 class StationTemplateVersionNotFound(NotFound):
     """No such version of a station template that does exist."""
 
     code = "station_template_version_not_found"
-    default_message = "No such station template version"
+    default_message = "We couldn't find that station template version"
 
 
 class GenerationProfileNotFound(NotFound):
     """No such autogeneration profile key."""
 
     code = "generation_profile_not_found"
-    default_message = "No such generation profile"
+    default_message = "We couldn't find that generation profile"
 
 
 # Re-exported, not redefined: browsing another exam's library is refused with
@@ -185,7 +187,7 @@ class NotAMediaBlockError(InvalidInput):
     """
 
     code = "not_a_media_block"
-    default_message = "That block does not take images"
+    default_message = "You can't add an image to that part of the station."
 
 
 class PhotoNotOnStationError(NotFound):
@@ -210,18 +212,18 @@ class StationImportNotFound(NotFound):
     """No such station import for this owner."""
 
     code = "station_import_not_found"
-    default_message = "No such station import"
+    default_message = "We couldn't find that station import"
 
 
 class ImportNotReadyError(Conflict):
     """A station was asked for from an import that has no template yet, or is already being drafted."""
 
     code = "import_not_ready"
-    default_message = "That import is not ready for a station to be drafted"
+    default_message = "That import isn't finished yet, so a station can't be drafted from it."
 
 
 class PhotoStorageUnavailable(Unavailable):
     """No object storage is configured, so a photo upload or delete cannot proceed."""
 
     code = "photo_storage_unavailable"
-    default_message = "Image storage is not configured"
+    default_message = "Image uploads aren't available right now. Please try again later."

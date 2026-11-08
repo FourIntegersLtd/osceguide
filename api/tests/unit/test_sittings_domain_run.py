@@ -209,11 +209,23 @@ def test_resuming_a_running_circuit_is_refused() -> None:
 @pytest.mark.parametrize("index", [-1, 3, 99])
 def test_a_jump_outside_the_circuit_is_refused(index: int) -> None:
     with pytest.raises(domain.InvalidCircuit):
-        domain_run.ensure_jump_target(index, slot_count=3)
+        domain_run.ensure_jump_target(index, slot_count=3, slot_status="scheduled", mode="exam")
 
 
 def test_a_jump_to_a_real_station_is_allowed() -> None:
-    domain_run.ensure_jump_target(2, slot_count=3)
+    domain_run.ensure_jump_target(2, slot_count=3, slot_status="scheduled", mode="exam")
+
+
+@pytest.mark.parametrize("status", ["completed", "skipped"])
+def test_an_exam_jump_to_a_finished_station_is_refused(status: str) -> None:
+    with pytest.raises(domain.InvalidCircuit):
+        domain_run.ensure_jump_target(1, slot_count=3, slot_status=status, mode="exam")
+
+
+@pytest.mark.parametrize("status", ["completed", "skipped"])
+def test_a_training_jump_back_to_a_finished_turn_is_allowed(status: str) -> None:
+    """A trainee who was passed over, or wants another go, can be brought back in."""
+    domain_run.ensure_jump_target(1, slot_count=3, slot_status=status, mode="training")
 
 
 # --------------------------------------------------------------------------

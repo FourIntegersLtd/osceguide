@@ -10,12 +10,17 @@ import {
   AuthoringIconAction,
   AuthoringRowActions,
 } from "@/capabilities/authoring/parts/AuthoringIconAction";
+import { AuthoringActionMenu } from "@/capabilities/authoring/parts/AuthoringActionMenu";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { usedByCell } from "@/capabilities/authoring/sections/StationUsedBy";
 import { cn } from "@/foundation/ui/cn";
 import { BoardChip, boardMeta } from "@/capabilities/authoring/parts/boardUi";
 import { boardCardClipped, boardRowWide, boardHeadRowWide, boardPadWide, boardButtonSmall } from "@/foundation/ui/boardKit";
 import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
+import Link from "next/link";
+import { useSurface } from "@/capabilities";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { startFromOursLabel, stationsEmptyBody } from "@/capabilities/authoring/lib/authoringCopy";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 
 function stationCreatedAtLabel(station: Station, short = false): string {
@@ -28,7 +33,7 @@ function stationCreatedAtLabel(station: Station, short = false): string {
   return short ? date.toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" }) : date.toLocaleString("en-GB");
 }
 
-/** Whether an editor has signed a published station into the library. A draft has nothing to approve. */
+/** Whether an editor has signed a published platform-library station in. A draft has nothing to approve, and an organisation's own station never waits on platform staff (the caller does not render this for it). */
 function ApprovalPill({ station }: { station: Station }) {
   if (station.status !== "published") return null;
   return (
@@ -52,6 +57,7 @@ export function StationsTable({
   onOpen,
   onArchive,
   onToggleApproval,
+  showApproval,
 }: {
   stations: Station[];
   /** The "Load more" footer: the section's cursor pages. */
@@ -62,8 +68,13 @@ export function StationsTable({
   onArchive: (station: Station) => void;
   /** Staff only: approve a published station into the library, or take it back out. */
   onToggleApproval?: (station: Station) => void;
+  /** Platform library only: approval gates what learners see there, never an organisation's own stations. */
+  showApproval: boolean;
 }) {
   const canAuthor = useCanAuthor();
+  const w = useAssessWords();
+  const { hrefFor } = useSurface();
+  const oursLabel = startFromOursLabel(w);
   const org = !useAuthoringChrome().b2c;
   const columns = useMemo(
     () => [
@@ -96,7 +107,7 @@ export function StationsTable({
         render: (station: Station) => (
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={station.status} />
-            <ApprovalPill station={station} />
+            {showApproval ? <ApprovalPill station={station} /> : null}
           </div>
         ),
       },
@@ -127,56 +138,50 @@ export function StationsTable({
           const approvalBusy = busy === `approval:${station.id}`;
           return (
             <AuthoringRowActions>
-              {onToggleApproval && canArchive ? (
-                <AuthoringIconAction
-                  write
-                  variant="ghost"
-                  label={station.approved ? "Withdraw approval" : "Approve"}
-                  busy={approvalBusy}
-                  busyLabel={station.approved ? "Withdrawing…" : "Approving…"}
-                  disabled={busy !== null}
-                  onClick={() => onToggleApproval(station)}
-                >
-                  {station.approved ? (
-                    <HiOutlineXCircle className="h-4 w-4" aria-hidden />
-                  ) : (
-                    <HiOutlineCheckBadge className="h-4 w-4" aria-hidden />
-                  )}
-                </AuthoringIconAction>
-              ) : null}
-              {canArchive ? (
-                <AuthoringIconAction
-                  write
-                  variant="warning"
-                  label="Archive"
-                  busy={archiveBusy}
-                  busyLabel="Archiving…"
-                  disabled={busy !== null}
-                  onClick={() => onArchive(station)}
-                >
-                  <HiOutlineArchiveBox className="h-4 w-4" aria-hidden />
-                </AuthoringIconAction>
-              ) : null}
               <AuthoringIconAction variant="ghost" label="Open versions" onClick={() => onOpen(station)}>
                 <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
               </AuthoringIconAction>
+              <AuthoringActionMenu
+                label={`Actions for ${station.title}`}
+                items={[
+                  onToggleApproval && canArchive && {
+                    write: true,
+                    label: approvalBusy
+                      ? station.approved ? "Withdrawing…" : "Approving…"
+                      : station.approved ? "Withdraw approval" : "Approve",
+                    icon: station.approved ? <HiOutlineXCircle className="h-4 w-4" /> : <HiOutlineCheckBadge className="h-4 w-4" />,
+                    disabled: busy !== null,
+                    onSelect: () => onToggleApproval(station),
+                  },
+                  canArchive && {
+                    write: true,
+                    label: archiveBusy ? "Archiving…" : "Archive",
+                    icon: <HiOutlineArchiveBox className="h-4 w-4" />,
+                    disabled: busy !== null,
+                    onSelect: () => onArchive(station),
+                  },
+                ]}
+              />
             </AuthoringRowActions>
           );
         },
       },
     ],
-    [busy, onArchive, onOpen, onToggleApproval],
+    [busy, onArchive, onOpen, onToggleApproval, showApproval],
   );
 
   if (org) {
     const emptyState = search
       ? { title: "No matching stations", description: "Try a different name, or clear the exam filter." }
-      : { title: "No stations yet", description: canAuthor ? "Create one with New station, from a template or straight from a prompt." : READER_EMPTY_TEXT };
+      : { title: "No stations yet", description: stationsEmptyBody(canAuthor, READER_EMPTY_TEXT, w) };
     if (stations.length === 0) {
       return (
         <div className={boardPadWide}>
           <h2 className="m-0 text-osce-body font-semibold !leading-[normal] text-ink">{emptyState.title}</h2>
           <p className={`m-0 ${boardMeta}`}>{emptyState.description}</p>
+          {oursLabel && canAuthor && !search ? (
+            <Link href={hrefFor("/programmes")} className={`${boardButtonSmall} self-start`}>{oursLabel}</Link>
+          ) : null}
         </div>
       );
     }
@@ -202,7 +207,7 @@ export function StationsTable({
             </span>
             <span className="w-[200px]">
               <StatusBadge status={station.status} />
-              {station.status === "published" ? (
+              {showApproval && station.status === "published" ? (
                 <>
                   {" "}
                   <BoardChip tone={station.approved ? "ok" : "warn"}>{station.approved ? "Approved" : "Awaiting approval"}</BoardChip>
@@ -211,20 +216,28 @@ export function StationsTable({
             </span>
             <span className="w-[90px]">{usedByCell(station.used_by_count)}</span>
             <span className={`w-[130px] ${boardMeta}`}>{stationCreatedAtLabel(station, true)}</span>
-            <span className="w-[150px]">
-              {onToggleApproval && station.status === "published" ? (
-                <button type="button" disabled={busy !== null} onClick={() => onToggleApproval(station)} className={boardButtonSmall}>
-                  {station.approved ? "Withdraw approval" : "Approve"}
-                </button>
-              ) : null}
-              {station.status === "published" && canAuthor ? (
-                <button type="button" disabled={busy !== null} onClick={() => onArchive(station)} className={boardButtonSmall}>
-                  {busy === `archive:${station.id}` ? "Archiving…" : "Archive"}
-                </button>
-              ) : null}
+            <span className="flex w-[150px] items-center gap-1">
               <button type="button" onClick={() => onOpen(station)} className={boardButtonSmall}>
                 Open versions ›
               </button>
+              <AuthoringActionMenu
+                label={`Actions for ${station.title}`}
+                items={[
+                  onToggleApproval && station.status === "published" && {
+                    label: busy === `approval:${station.id}` ? (station.approved ? "Withdrawing…" : "Approving…") : station.approved ? "Withdraw approval" : "Approve",
+                    icon: station.approved ? <HiOutlineXCircle className="h-4 w-4" /> : <HiOutlineCheckBadge className="h-4 w-4" />,
+                    disabled: busy !== null,
+                    onSelect: () => onToggleApproval(station),
+                  },
+                  station.status === "published" && {
+                    write: true,
+                    label: busy === `archive:${station.id}` ? "Archiving…" : "Archive",
+                    icon: <HiOutlineArchiveBox className="h-4 w-4" />,
+                    disabled: busy !== null,
+                    onSelect: () => onArchive(station),
+                  },
+                ]}
+              />
             </span>
           </div>
         ))}

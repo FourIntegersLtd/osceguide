@@ -16,7 +16,7 @@ class MessageNotFound(NotFound):
     """No such site message. Used when marking a message handled by an id that does not exist."""
 
     code = "message_not_found"
-    default_message = "No such message"
+    default_message = "We couldn't find that message"
 
 
 class CannotReplyInApp(Conflict):

@@ -94,7 +94,7 @@ export function TrialPanel({
       </div>
       {blockedReason ? <p className="text-osce-caption text-ink-subtle">{blockedReason}</p> : null}
       {trial.error ? <Alert tone="danger">{trial.error}</Alert> : null}
-      {snapshot?.status === "failed" ? <Alert tone="danger">{snapshot.error ?? "The trial could not be marked."}</Alert> : null}
+      {snapshot?.status === "failed" ? <Alert tone="danger">{snapshot.error ?? "The test mark did not finish. Try again. If it keeps failing, contact support."}</Alert> : null}
       {inputs ? (
         <div className="rounded-osce-md border border-osce-border bg-osce-canvas p-3">
           <p className="mb-2 text-osce-caption text-ink-subtle">

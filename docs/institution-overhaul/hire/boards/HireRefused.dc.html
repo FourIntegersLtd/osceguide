@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Not on this account</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Candidate</div></div></div>
+<a class="nav" href="HireCandidateHome.dc.html">My assessments</a><a class="nav" href="HireCandidateResult.dc.html">Results</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="card"><div class="empty"><h2>This is not part of your employer's account</h2>Practice stations and mock exams are not included with Acme Health Trust. Your assessments are on your home page.<a class="btn pri" href="HireCandidateHome.dc.html">Go to my assessments</a></div></div>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="meta">None. The hire surface leaves these screens out of its screen list, so the route renders this refusal without calling the api.</div>
+<h2>Covers</h2><div class="codes"><code>trainee/practice</code><code>stations/[id]/practise</code><code>mocks/**</code></div>
+<div class="note">Any hire role · owner web-foundation-owner (surfaces/hire/surface.ts screenNames)</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -277,10 +277,10 @@ async def publish_version(
             )
         domain.validate_pacing(version_row.pacing)
         if not (version_row.system_prompt or "").strip():
-            raise domain.InvalidRubric("A rubric cannot be published without marking instructions.")
+            raise domain.InvalidRubric("Add marking instructions before publishing this marking scheme.")
         if org_id is None and not version_row.marking_layout:
             raise domain.InvalidRubric(
-                "Platform catalogue rubrics need an examiner marking layout before publish."
+                "Choose a marking layout for examiners before publishing this marking scheme."
             )
     except Exception as exc:  # noqa: BLE001
         raise_mapped(exc, REFUSALS)

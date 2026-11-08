@@ -114,7 +114,7 @@ class UnknownExamError(NotFound):
     this code, so choosing it would open an account on nothing."""
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"
 
 
 class InvalidAvatarFile(InvalidInput):
@@ -135,7 +135,7 @@ class UserNotFound(NotFound):
     """
 
     code = "user_not_found"
-    default_message = "No such user"
+    default_message = "We couldn't find that user"
 
 
 class InvalidLegacyToken(Unauthenticated):
@@ -157,7 +157,7 @@ class LegacyAccountNotImported(Unauthenticated):
     """
 
     code = "legacy_account_not_imported"
-    default_message = "This account has not been migrated yet"
+    default_message = "This account hasn't been moved to the new site yet. Contact support."
 
 
 class InvalidMfaCode(Unauthenticated):
@@ -171,28 +171,28 @@ class MfaChallengeExpired(Unauthenticated):
     """The sign-in challenge is missing, signed wrong, the wrong kind, or past its expiry."""
 
     code = "mfa_challenge_expired"
-    default_message = "That sign-in challenge has expired. Sign in again."
+    default_message = "That sign-in has timed out. Sign in again."
 
 
 class MfaRequiredByPolicy(Conflict):
     """Refuses turning MFA off for an account the policy says must keep it."""
 
     code = "mfa_required_by_policy"
-    default_message = "This account must keep two-factor sign-in"
+    default_message = "Two-step sign-in can't be turned off for this account."
 
 
 class MfaAlreadyEnrolled(Conflict):
     """An authenticator is already confirmed, so enrolment cannot start again."""
 
     code = "mfa_already_enrolled"
-    default_message = "An authenticator is already set up"
+    default_message = "An authenticator app is already set up."
 
 
 class MfaNotEnrolled(Conflict):
     """No confirmed authenticator, so there is nothing to verify, disable or reset."""
 
     code = "mfa_not_enrolled"
-    default_message = "This account has no authenticator set up"
+    default_message = "This account has no authenticator app set up."
 
 
 class LegacyExchangeUnavailable(Unavailable):
@@ -203,4 +203,4 @@ class LegacyExchangeUnavailable(Unavailable):
     """
 
     code = "legacy_exchange_unavailable"
-    default_message = "Legacy sign-in is not available here"
+    default_message = "This way of signing in is no longer available. Use your email and password."

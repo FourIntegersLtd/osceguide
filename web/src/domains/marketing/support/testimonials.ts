@@ -65,6 +65,8 @@ export interface MarqueeTestimonial {
   role: string;
   excerpt: string;
   highlight: string;
+  /** Wording of the landing page's quote cards where it differs from `excerpt`. */
+  landing?: { text: string; highlight: string };
 }
 
 export const MARQUEE_TESTIMONIALS: MarqueeTestimonial[] = [
@@ -95,6 +97,7 @@ export const MARQUEE_TESTIMONIALS: MarqueeTestimonial[] = [
     excerpt:
       "I love practising with AI and checking my improvements across domains. Prep with @OSCEGuide is as flexible as my schedule.",
     highlight: "as flexible as my schedule",
+    landing: { text: "I love practising with AI and checking my improvements across domains. Prep is as flexible as my schedule.", highlight: "as flexible as my schedule" },
   },
   {
     name: "Dr C.O",
@@ -102,6 +105,7 @@ export const MARQUEE_TESTIMONIALS: MarqueeTestimonial[] = [
     excerpt:
       "Colleagues are often busy when I am, but with @OSCEGuide I can role play anytime, even at night. A game changer in my SCA prep.",
     highlight: "A game changer",
+    landing: { text: "Most times colleagues are not free when I am. With OSCE Guide I can role play anytime, even at night.", highlight: "role play anytime, even at night" },
   },
   {
     name: "Dr Adeleke",
@@ -123,6 +127,7 @@ export const MARQUEE_TESTIMONIALS: MarqueeTestimonial[] = [
     excerpt:
       "Amazing idea. The AI is fast and responsive. I no longer need to search for a study group. I passed my exam.",
     highlight: "I passed my exam",
+    landing: { text: "The AI is fast and responsive. I no longer need to search for a study group. I passed my exam.", highlight: "I passed my exam" },
   },
   {
     name: "Dr L",
@@ -144,5 +149,6 @@ export const MARQUEE_TESTIMONIALS: MarqueeTestimonial[] = [
     excerpt:
       "I started late and tried most sites. @OSCEGuide was by far the best. The AI is really responsive and the cases are excellent.",
     highlight: "by far the best",
+    landing: { text: "I started late and tried most sites. OSCE Guide was by far the best. Every time I've sent a panicked email, the team has replied almost immediately.", highlight: "by far the best" },
   },
 ];

@@ -104,6 +104,9 @@ async def sweep_now(
             session, now=now, grace_seconds=service_catchup.OVERDUE_GRACE_SECONDS
         )
         stale = await repository_run.stale_circuits(session, quiet_since=now - service_run.STALE_AFTER)
+        forgotten = await repository_run.forgotten_training_rooms(
+            session, ended_before=now - service_run.ROOM_KEPT_FOR
+        )
         silent = await repository_run.silent_patient_circuits(
             session,
             dispatched_before=now - timedelta(seconds=PATIENT_RESEND_AFTER_SECONDS),
@@ -152,6 +155,24 @@ async def sweep_now(
         else:
             ended += 1
             log.info("ended a circuit left running overnight", circuit_id=str(stale_circuit.circuit_id))
+
+    for forgotten_circuit in forgotten:
+        completed, _ = await _one_circuit(
+            "closing training room",
+            forgotten_circuit.circuit_id,
+            partial(
+                service_run.close_forgotten_room,
+                org_id=forgotten_circuit.org_id,
+                circuit_id=forgotten_circuit.circuit_id,
+                agents=agents,
+                now=now,
+            ),
+            opener=opener,
+        )
+        if not completed:
+            failed += 1
+        else:
+            log.info("closed a training room left open", circuit_id=str(forgotten_circuit.circuit_id))
 
     for silent_circuit in silent:
         completed, resent = await _one_circuit(

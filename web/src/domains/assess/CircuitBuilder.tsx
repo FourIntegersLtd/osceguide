@@ -11,18 +11,20 @@ import {
   DefaultBreakInput,
   DurationInputs,
   StationOrder,
+  StationAssessors,
   SupervisorSelect,
 } from "@/domains/assess/ScheduleSteps";
 import type { CircuitShape } from "@/domains/assess/api";
 import {
   EMPTY_DRAFT,
   circuitTiming,
+  stationAssessorIds,
   type PickerSet,
   type ScheduleDraft,
   type TraineeRow,
 } from "@/domains/assess/scheduleSitting";
 import { circuitLeads, isBulkExam } from "@/domains/assess/support";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import {
   DEFAULT_BREAK_MINUTES,
   DEFAULT_READING_MINUTES,
@@ -70,6 +72,8 @@ export type StaffRow = { user_id: string; email?: string | null; role: string };
  */
 export interface CircuitDraft extends CircuitShape {
   stations: PickedStation[];
+  /** An employer's assessor for each station, by station version id. */
+  stationAssessors?: Record<string, string>;
 }
 
 export function CircuitBuilder({
@@ -142,13 +146,14 @@ export function CircuitBuilder({
     try {
       await onSubmit(
         {
-          name: name.trim() || (bulk ? "Exam" : "Circuit"),
+          name: name.trim() || (bulk ? "Exam" : w.Circuit),
           stationVersionIds: stations.map((station) => station.version_id),
           // `trainee_ids` on the wire means *user* ids: a slot names a user, and
           // an organisation may examine somebody it has not rostered. A trainee
           // who has never signed in has no user row and cannot be put on one.
           traineeIds: picked,
           supervisorUserId: draft.supervisorId || null,
+          stationAssessorIds: stationAssessorIds(draft, w),
           timing: circuitTiming(draft),
         },
         bulk,
@@ -161,33 +166,31 @@ export function CircuitBuilder({
     }
   }, [name, draft, stations, picked, isExam, bulk, onSubmit]);
 
-  const submitText = bulk ? `Create ${picked.length} circuits` : submitLabel;
+  const submitText = bulk ? `Create ${picked.length} ${w.circuits}` : submitLabel;
   const prefix = name.trim() || "Exam";
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm text-ink-muted">
-        Used for Edit on an existing circuit and for Add a circuit on a sitting. The Schedule wizard builds the first
-        circuits.
-      </p>
       {above}
-      {error && <Alert tone="danger">{assessErrorMessage(error)}</Alert>}
+      {error && <Alert tone="danger">{assessErrorMessage(error, w)}</Alert>}
       {tooManyCandidates && (
         <Alert tone="warning">
           An exam run takes at most {candidateCap} candidates at a time. Deselect {picked.length - candidateCap}.
         </Alert>
       )}
       {tooManyStations && <Alert tone="warning">
-          Station {MAX_EXAM_STATIONS + 1} cannot be added: a circuit has at most {MAX_EXAM_STATIONS}.
+          Station {MAX_EXAM_STATIONS + 1} cannot be added: a {w.circuit} has at most {MAX_EXAM_STATIONS}.
         </Alert>}
 
+      {/* A locked rotation is looked at, not changed: native disabled keeps every field and the station picker still. */}
+      <fieldset disabled={disabled && w.hiring} className="contents">
       <Panel title="Details">
         <div className="max-w-lg">
           <Input
             label={bulk ? "Name prefix" : "Name"}
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder={bulk ? "Exam" : "Morning circuit"}
+            placeholder={bulk ? "Exam" : `Morning ${w.circuit}`}
           />
         </div>
       </Panel>
@@ -209,7 +212,7 @@ export function CircuitBuilder({
         title={`Stations (${stations.length})`}
         description={
           isExam
-            ? `At most ${MAX_EXAM_STATIONS} on a formal exam circuit. The picker loads more with Load more.`
+            ? `At most ${MAX_EXAM_STATIONS} on a formal exam ${w.circuit}. The picker loads more with Load more.`
             : "The picker loads more with Load more."
         }
       >
@@ -233,16 +236,23 @@ export function CircuitBuilder({
         </div>
       </Panel>
 
-      <Panel title="Supervisor">
+      <Panel title={w.Supervisor}>
         <div className="flex max-w-lg flex-col gap-4">
           <SupervisorSelect draft={draft} patch={patch} leads={leads} inviteHref={hrefFor("/team")} />
         </div>
       </Panel>
 
+      {w.hiring ? (
+        <Panel title="Who assesses?">
+          <StationAssessors draft={draft} patch={patch} leads={leads} />
+        </Panel>
+      ) : null}
+      </fieldset>
+
       <div className="flex items-center justify-end gap-3">
         {bulk ? (
           <p className="text-sm text-ink-muted">
-            {picked.length} candidates make {picked.length} circuits, one each, named {prefix} 1 to {prefix} {picked.length}.
+            {picked.length} candidates make {picked.length} {w.circuits}, one each, named {prefix} 1 to {prefix} {picked.length}.
           </p>
         ) : null}
         <Button
@@ -274,5 +284,6 @@ function draftOf(initial: CircuitDraft | undefined, mode: string): ScheduleDraft
       minutes: timing?.breakLengths?.[after] ?? timing?.breakMinutes ?? DEFAULT_BREAK_MINUTES,
     })),
     supervisorId: initial?.supervisorUserId ?? "",
+    stationAssessors: initial?.stationAssessors ?? {},
   };
 }

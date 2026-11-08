@@ -9,7 +9,7 @@ class PostNotFound(NotFound):
     """No post matches that id, or the viewer may not see it."""
 
     code = "post_not_found"
-    default_message = "No such post"
+    default_message = "We couldn't find that post"
 
 
 class NotYoursError(Forbidden):
@@ -35,7 +35,7 @@ class InvalidAuthorFilter(InvalidInput):
     """
 
     code = "invalid_author_filter"
-    default_message = "The only author filter is `me`"
+    default_message = "You can only filter posts by your own, using `me`."
 
 
 class ContentTooLongError(InvalidInput):
@@ -70,7 +70,7 @@ class UnknownExamError(NotFound):
     """
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"
 
 
 class StationNotFound(NotFound):
@@ -81,14 +81,14 @@ class StationNotFound(NotFound):
     """
 
     code = "station_not_found"
-    default_message = "No such station"
+    default_message = "We couldn't find that station"
 
 
 class InvalidCategoryError(InvalidInput):
     """The category is not general, platform, skills or exam."""
 
     code = "invalid_category"
-    default_message = "A category is general, platform, skills or exam"
+    default_message = "Choose a category: general, platform, skills or exam."
 
 
 class ExamRequiredError(InvalidInput):

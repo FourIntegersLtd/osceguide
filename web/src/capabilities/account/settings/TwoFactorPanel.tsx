@@ -150,7 +150,7 @@ export function TwoFactorPanel() {
               <RecoveryCodes codes={dialog.codes} doneLabel="Done" onDone={close} />
             ) : dialog.kind === "regenerate" ? (
               <CodeDialog
-                description="Your current recovery codes stop working as soon as new ones are made."
+                description="Your old recovery codes will stop working. Save the new ones somewhere safe."
                 action="Make new codes"
                 run={regenerateRecoveryCodes}
                 onDone={(codes) => setDialog({ kind: "codes", codes })}

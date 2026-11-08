@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Edit rotation</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav on" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="3"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><a class="meta" href="HireAssessment.dc.html">Assessments › Band 6 nurse, December intake</a><h1>Priya Shah's rotation</h1><p class="desc">The stations Priya goes through, in order, and who assesses each one.</p></div><div class="acts"><a class="btn" href="HireAssessment.dc.html">Cancel</a><a class="btn pri" href="HireAssessment.dc.html">Save rotation</a></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="card pad"><div class="g2"><div><label for="c">Candidate</label><input class="input" id="c" value="Priya Shah"></div><div><label for="s">Starts</label><input class="input" id="s" value="09:00"></div></div></div>
+<div class="card"><div class="th"><span style="width:40px">#</span><span class="f">Station</span><span style="width:200px">Assessor</span><span style="width:80px">Minutes</span></div>
+<div class="row"><span style="width:40px">1</span><span class="f">Deteriorating patient (NEWS2)</span><span style="width:200px">Dan Lowe</span><span style="width:80px">10</span></div>
+<div class="row"><span style="width:40px">2</span><span class="f">Medicines round and a drug error</span><span style="width:200px">Dan Lowe</span><span style="width:80px">10</span></div>
+<div class="row"><span style="width:40px">3</span><span class="f">Discharge planning with a carer</span><span style="width:200px"><input class="input" placeholder="Choose an assessor" aria-label="Assessor for station 3"></span><span style="width:80px">10</span></div>
+<div class="row"><span style="width:40px">4</span><span class="f">Breaking difficult news</span><span style="width:200px">Sara Khan</span><span style="width:80px">10</span></div>
+<div class="row"><span style="width:40px">5</span><span class="f">Handover (SBAR)</span><span style="width:200px">Sara Khan</span><span style="width:80px">10</span></div>
+<div class="row"><button class="btn sm">Add a station</button><span class="meta">Drag rows to change the order.</span></div></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="al warn"><b>Joy Okafor is editing this rotation</b>You can look, but your changes would overwrite theirs. Try again when they finish.</div>
+<div class="card"><div class="row"><span class="f meta">The rotation is shown read-only.</span></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="al bad"><b>This rotation has started</b>Stations that have run cannot change. Use the console to redo a station.</div>
+<a class="btn pri" href="HireConsole.dc.html" style="align-self:flex-start">Open the console</a>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">POST</span><code>{o}/sittings/{id}/circuits</code> <span class="meta">new</span></div>
+<div class="call"><span class="m">PUT</span><code>{o}/circuits/{id}</code> <span class="meta">edit</span></div>
+<div class="call"><span class="m">GET</span><code>{o}/circuits/{id}/edit-lock</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/stations</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/memberships</code></div>
+<h2>Refusals it shows</h2><div class="codes"><code>circuit_locked</code><code>circuit_already_ended</code><code>invalid_circuit</code><code>trainee_already_on_circuit</code><code>station_not_on_circuit</code><code>lead_cannot_run</code><code>stale_revision</code></div>
+<div class="note">Routes <code>/app/[w]/sittings/[id]/circuits/new</code>, <code>/circuits/[id]/edit</code> · admin · "Rotation" needs sign-off · owner institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Edit', 'Someone else editing', 'Started'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2 };
+  }
+}
+</script>
+</body>
+</html>

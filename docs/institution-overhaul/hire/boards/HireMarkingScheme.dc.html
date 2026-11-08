@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Marking scheme builder</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav on" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="head"><div><a class="meta" href="HireSchemeVersions.dc.html">Exams › Marking schemes</a><h1>Band 6 nurse scheme <span class="chip warn" style="vertical-align:middle">Draft v4</span></h1><p class="desc">Domains, the competencies in each, one scale, the pass rule and the feedback. Same builder as institutions; only the people words change.</p></div><div class="acts"><button class="btn">Save draft</button><button class="btn pri">Publish</button></div></div>
+<div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="7"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="card"><div class="th"><span class="f">Domains</span><span>Competencies</span></div>
+<div class="row"><span class="f"><b style="font-weight:500">Clinical assessment</b><div class="meta">Can be judged while the station is running</div></span><span>4</span></div>
+<div class="row"><span class="f"><b style="font-weight:500">Communication with the patient</b></span><span>3</span></div>
+<div class="row"><span class="f"><b style="font-weight:500">Safety and escalation</b></span><span>3</span></div>
+<div class="row"><span class="f"><b style="font-weight:500">Professional behaviour</b><div class="meta">Optional: the assessor may leave this</div></span><span>2</span></div>
+<div class="row"><button class="btn sm">Add a domain</button></div></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>Scale</h2><div class="acts"><button class="pill on">Red, Amber, Green</button><button class="pill">Clear pass to clear fail</button><button class="pill">Pass or fail</button><button class="pill">0 to 10, whole numbers</button></div>
+<div class="card"><div class="row"><span class="chip ok">Green</span><span class="f">Safe and competent at Band 6</span></div><div class="row"><span class="chip warn">Amber</span><span class="f">Some gaps; needs support</span></div><div class="row"><span class="chip live">Red</span><span class="f">Unsafe or not at Band 6</span></div></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>Pass rule</h2><p class="desc" style="font-size:15px">A domain passes when <b>3</b> of its competencies are <b>Amber or better</b>. The station passes when <b>every domain</b> passes.</p><div class="hint">Pass and fail feed the candidate's result. The hiring decision is yours, on the Decisions page.</div></div>
+</sc-if>
+<sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="th"><span class="f">Feedback: what the candidate sees</span><span>Shown</span></div>
+<div class="row"><span class="f">Rating for each domain</span><span class="chip ok">Shown</span></div>
+<div class="row"><span class="f">Assessor's written feedback</span><span class="chip ok">Shown</span></div>
+<div class="row"><span class="f">Transcript quotes</span><span class="chip">Hidden</span></div>
+<div class="row"><span class="f">Tone</span><span class="meta">Plain and direct</span></div></div>
+</sc-if>
+<sc-if value="{{s4}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>Advanced</h2><div class="meta">The scheme as JSON, for schemes the builder cannot show.</div><textarea class="input" style="font-family:ui-monospace,monospace;font-size:13px;min-height:160px">{ "version": 3, "domains": [ … ] }</textarea></div>
+</sc-if>
+<sc-if value="{{s5}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>Trial mark</h2><div class="meta">Mark one past candidate's transcript with this draft before you publish. Nothing is saved to their result.</div><div><label for="tc">Transcript</label><input class="input" id="tc" value="Candidate 0412 · Deteriorating patient · 3 Oct"></div><div><button class="btn pri">Run trial mark</button></div></div>
+</sc-if>
+<sc-if value="{{s6}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="row"><span class="f">Version 4</span><span class="chip warn">Draft</span></div><div class="row"><span class="f">Version 3 · Band 6 nurse OSCE marks with it</span><span class="chip ok">Published</span></div><div class="row"><span class="f">Version 2</span><span class="chip">Archived</span></div></div>
+</sc-if>
+<div class="acts" style="justify-content:space-between"><button class="btn" onClick="{{back}}">Back</button><span class="meta">{{where}}</span><button class="btn pri" onClick="{{next}}">Next</button></div>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/rubrics/{rubric_id}</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/rubrics/{id}/versions</code></div>
+<div class="call"><span class="m">PATCH</span><code>{o}/rubrics/{id}/versions/{v}</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/rubrics/{id}/versions/{v}/publish</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/rubrics/preview</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/rubrics/draft-instructions</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/rubrics/trial-candidates</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/rubrics/{id}/versions/{v}/trial</code></div>
+<h2>Refusals it shows</h2><div class="codes"><code>stale_revision</code><code>not_editable</code><code>already_published</code><code>invalid_rubric</code><code>rubric_version_not_found</code><code>invalid_trial_transcript</code><code>marking_not_ready</code></div>
+<div class="note">Route <code>/app/[w]/authoring/rubrics/[id]/versions/[v]</code> · admin · the v3 builder from the institution canvas (SchemeBuilder board) unchanged; hire words only (assessor, candidate) · owner content-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['1 Domains', '2 Scale', '3 Pass rule', '4 Feedback', '5 Advanced', '6 Trial mark', 'Versions'];
+    const go = (k) => this.setState({ t: Math.max(0, Math.min(L.length - 1, k)) });
+    const o = { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => go(k) })),
+      back: () => go(t - 1), next: () => go(t + 1), where: 'Step ' + (t + 1) + ' of ' + L.length };
+    L.forEach((_, k) => { o['s' + k] = t === k; });
+    return o;
+  }
+}
+</script>
+</body>
+</html>

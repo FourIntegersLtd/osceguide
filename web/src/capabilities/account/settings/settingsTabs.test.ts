@@ -6,12 +6,12 @@ test("an organisation's own tabs open the strip, then the person's, then Invoice
   const extras = [
     { id: "organisation", label: "Organisation" },
     { id: "sso", label: "Single sign-on" },
-    { id: "provisioning", label: "Provisioning" },
+    { id: "provisioning", label: "Automatic user sync" },
     { id: "invoices", label: "Invoices", after: true },
   ];
   assert.deepEqual(
     arrangeTabs(tabsFor("assess"), extras).map((tab) => tab.label),
-    ["Organisation", "Single sign-on", "Provisioning", "Your account", "Preferences", "Invoices"],
+    ["Organisation", "Single sign-on", "Automatic user sync", "Your account", "Preferences", "Invoices"],
   );
 });
 

@@ -100,6 +100,9 @@ class Circuit(Base, UUIDPrimaryKey, Timestamps, Revisioned):
     # R-16: when the voice service last refused to bring the patient in. Set by the
     # automatic advance that failed, cleared by the step that finally succeeds.
     voice_fault_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Training rooms only: everyone may speak, and when the supervisor closed the room kept open after End.
+    open_floor: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    room_closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class CircuitStation(Base, UUIDPrimaryKey):
@@ -183,6 +186,9 @@ class Slot(Base, UUIDPrimaryKey, Timestamps):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     exam_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Who assesses this station on the day (hire board, "Who assesses?"). Display only: the
+    # circuit's lead still runs it and a reviewer is still named by the review workflow.
+    assessor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
 class CircuitIntervention(Base, UUIDPrimaryKey):
@@ -246,3 +252,30 @@ class CircuitRunHistory(Base, UUIDPrimaryKey):
     stations_completed: Mapped[int] = mapped_column(Integer, nullable=False)
     # `completed` when every station was sat, `ended_early` when any was skipped.
     status: Mapped[str] = mapped_column(String(16), nullable=False)
+
+
+class SlotPeerMark(Base, UUIDPrimaryKey, Timestamps):
+    """One watching trainee's mark or comment on one scheme item of another trainee's turn.
+
+    Unique per circuit, slot, marker and item, so a tick saved twice is one row. The supervisor's
+    own review stays the official mark; these are shared with the trainee who was consulted.
+    """
+
+    __tablename__ = "slot_peer_marks"
+    __table_args__ = (
+        UniqueConstraint("circuit_id", "slot_id", "marker_id", "item", name="uq_slot_peer_marks_item"),
+        Index("ix_slot_peer_marks_slot", "org_id", "slot_id"),
+    )
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    circuit_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("circuits.id", ondelete="CASCADE"), nullable=False
+    )
+    slot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("slots.id", ondelete="CASCADE"), nullable=False)
+    marker_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # `domainId` or `domainId.competencyId` in the station's marking scheme.
+    item: Mapped[str] = mapped_column(String(160), nullable=False)
+    rating: Mapped[str | None] = mapped_column(String(16))
+    comment: Mapped[str | None] = mapped_column(Text)

@@ -36,10 +36,9 @@ export const RESERVED_SLUGS: readonly string[] = [
 /**
  * What an organisation is for, as the backend spells it.
  *
- * `tenancy/schemas.py` constrains `org_type` to `institution | partner` today.
- * `employer` is listed here because the Hire arm exists in the frontend and
- * the backend will grow the value; an unknown value is handled rather than
- * crashing, see `workspaceKind`.
+ * `tenancy/schemas.py` accepts `institution | partner | employer` when an organisation is
+ * created. An unknown stored value is still handled rather than crashing, see
+ * `workspaceKind`.
  */
 export type OrgType = "institution" | "partner" | "employer";
 
@@ -71,7 +70,7 @@ export function isPersonal(workspace: Workspace): workspace is PersonalWorkspace
 export const PERSONAL_WORKSPACE: PersonalWorkspace = {
   kind: "personal",
   slug: PERSONAL_SLUG,
-  name: "My practice",
+  name: "Training",
   orgSlug: null,
   role: null,
 };

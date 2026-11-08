@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Locator, type Page } from "@playwright/test";
 import { call, orgPath } from "../support/api";
 import { compareRegion, openBoard, serveBoards, type BoardServer } from "../support/board-diff";
 import { openPage, signedInAs } from "../support/session";
@@ -27,24 +27,43 @@ const HIDE_APP = `[role="dialog"] h2,[role="dialog"] p,[role="dialog"] ul *{colo
 interface Case { last?: boolean; key: string; tab: string; board: string; app: (p: Page) => Promise<void>; boardNth?: number; prep?: (p: Page) => Promise<void> }
 const row = (p: Page, tid: string) => p.locator(`[data-testid="${tid}"]`);
 const press = (p: Page, name: string, nth = 0) => p.getByRole("button", { name, exact: true }).nth(nth).click();
+/** Row actions live in a per-row "Actions for ..." menu: open each row's menu in `scope` until one offers `name`, and choose it. */
+async function viaMenu(scope: Locator, name: string, nth = 0): Promise<void> {
+  const page = scope.page();
+  const triggers = scope.getByRole("button", { name: /^Actions for / });
+  const total = await triggers.count();
+  let seen = 0;
+  for (let i = 0; i < total; i++) {
+    await triggers.nth(i).click();
+    const item = page.getByRole("menuitem", { name: new RegExp(`^${name}\\b`) });
+    if ((await item.count()) > 0) {
+      if (seen === nth) return item.click();
+      seen++;
+    }
+    await page.keyboard.press("Escape");
+  }
+  throw new Error(`no row offers ${name}`);
+}
+const GROUPS = (p: Page) => p.getByRole("list", { name: "Trainee groups" });
+const COHORTS = (p: Page) => p.getByRole("list", { name: "Year groups" });
 const tickTwo = async (p: Page, tid: string) => { await row(p, tid).nth(0).getByRole("checkbox").check(); await row(p, tid).nth(1).getByRole("checkbox").check(); };
 
 const CASES: Case[] = [
-  { key: "edit", tab: "Trainees", board: ".th + .row .btn.sm:text-is('Edit')", app: (p) => row(p, "trainee-row").nth(0).getByRole("button", { name: "Edit" }).click() },
-  { key: "revoke", tab: "Trainees", board: ".th + .row .btn.sm:text-is('Revoke')", app: (p) => row(p, "trainee-row").nth(0).getByRole("button", { name: "Revoke" }).click() },
-  { key: "restore", tab: "Trainees", board: ".btn.sm:text-is('Restore')", app: (p) => p.getByRole("button", { name: "Restore" }).first().click() },
-  { key: "delete", tab: "Trainees", board: ".btn.sm.bad:text-is('Delete')", app: (p) => p.getByRole("button", { name: "Delete" }).first().click() },
-  { key: "anon", tab: "Trainees", board: ".btn.sm:text-is('Anonymise')", app: (p) => p.getByRole("button", { name: "Anonymise" }).first().click() },
+  { key: "edit", tab: "Trainees", board: ".th + .row .btn.sm:text-is('Edit')", app: (p) => viaMenu(row(p, "trainee-row").nth(0), "Edit") },
+  { key: "revoke", tab: "Trainees", board: ".th + .row .btn.sm:text-is('Revoke')", app: (p) => viaMenu(row(p, "trainee-row").nth(0), "Revoke") },
+  { key: "restore", tab: "Trainees", board: ".btn.sm:text-is('Restore')", app: (p) => viaMenu(row(p, "trainee-row"), "Restore") },
+  { key: "delete", tab: "Trainees", board: ".btn.sm.bad:text-is('Delete')", app: (p) => viaMenu(row(p, "trainee-row"), "Delete") },
+  { key: "anon", tab: "Trainees", board: ".btn.sm:text-is('Anonymise')", app: (p) => viaMenu(row(p, "trainee-row"), "Anonymise") },
   { key: "bulkrevoke", tab: "Trainees", board: ".btn.sm.bad:text-is('Revoke access')", app: async (p) => { await tickTwo(p, "trainee-row"); await press(p, "Revoke access"); } },
-  { key: "role", tab: "Staff", board: ".btn.sm:text-is('Change role')", app: (p) => row(p, "staff-row").nth(1).getByRole("button", { name: "Change role" }).click() },
-  { key: "srevoke", tab: "Staff", board: ".btn.sm:text-is('Revoke')", last: true, app: (p) => row(p, "staff-row").nth(1).getByRole("button", { name: "Revoke", exact: true }).click() },
-  { key: "srestore", tab: "Staff", board: ".btn.sm:text-is('Restore')", app: (p) => p.getByRole("button", { name: "Restore" }).first().click() },
+  { key: "role", tab: "Staff", board: ".btn.sm:text-is('Change role')", app: (p) => viaMenu(row(p, "staff-row").nth(1), "Change role") },
+  { key: "srevoke", tab: "Staff", board: ".btn.sm:text-is('Revoke')", last: true, app: (p) => viaMenu(row(p, "staff-row").nth(1), "Revoke") },
+  { key: "srestore", tab: "Staff", board: ".btn.sm:text-is('Restore')", app: (p) => viaMenu(row(p, "staff-row"), "Restore") },
   { key: "sbulk", tab: "Staff", board: ".btn.sm.bad:text-is('Revoke access')", app: async (p) => { await row(p, "staff-row").nth(1).getByRole("checkbox").check(); await press(p, "Revoke access"); } },
-  { key: "rcohort", tab: "Groups and year groups", board: ".btn.sm:text-is('Rename')", app: (p) => press(p, "Rename", 0) },
-  { key: "dcohort", tab: "Groups and year groups", board: ".btn.sm:text-is('Delete')", app: (p) => press(p, "Delete", 0) },
-  { key: "rgroup", tab: "Groups and year groups", board: ".btn.sm:text-is('Rename') ", last: true, app: (p) => p.getByRole("button", { name: "Rename", exact: true }).last().click() },
-  { key: "dgroup", tab: "Groups and year groups", board: ".btn.sm:text-is('Delete') ", last: true, app: (p) => p.getByRole("button", { name: "Delete", exact: true }).last().click() },
-  { key: "members", tab: "Groups and year groups", board: ".btn.sm:text-is('People')", app: (p) => press(p, "People") },
+  { key: "rcohort", tab: "Groups and year groups", board: ".btn.sm:text-is('Rename')", app: (p) => viaMenu(COHORTS(p), "Rename") },
+  { key: "dcohort", tab: "Groups and year groups", board: ".btn.sm:text-is('Delete')", app: (p) => viaMenu(COHORTS(p), "Delete") },
+  { key: "rgroup", tab: "Groups and year groups", board: ".btn.sm:text-is('Rename') ", last: true, app: (p) => viaMenu(GROUPS(p), "Rename") },
+  { key: "dgroup", tab: "Groups and year groups", board: ".btn.sm:text-is('Delete') ", last: true, app: (p) => viaMenu(GROUPS(p), "Delete") },
+  { key: "members", tab: "Groups and year groups", board: ".btn.sm:text-is('People')", app: (p) => viaMenu(GROUPS(p), "People") },
 ];
 
 let boards: BoardServer;

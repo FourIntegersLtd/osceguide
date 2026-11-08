@@ -7,7 +7,7 @@ import type { Surface } from "@/capabilities";
 import { liveBoardStreamPath, readLiveBoard, type LiveBoard } from "@/domains/assess/dashboard/api";
 import { attentionFromResults } from "@/domains/assess/dashboard/support";
 import { readResultsIndex } from "@/domains/assess/results/api";
-import { INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
+import { INSTITUTION_WORDS } from "@/capabilities/assess-words";
 import { navBadgeGate, navBadges, type NavBadges } from "@/surfaces/navBadges";
 
 /**

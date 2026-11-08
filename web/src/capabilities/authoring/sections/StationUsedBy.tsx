@@ -1,13 +1,15 @@
 "use client";
 
+import { INSTITUTION_WORDS, useAssessWords, type AssessWords } from "@/capabilities/assess-words";
+import { usedByText } from "@/capabilities/authoring/lib/authoringCopy";
 import { AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { listStationVersions } from "@/capabilities/stations";
 
 /** What one count means, said the same way wherever a version is shown. */
-export function usedByLabel(count: number): string {
+export function usedByLabel(count: number, w: AssessWords = INSTITUTION_WORDS): string {
   if (count === 0) return "Not used anywhere yet";
-  return `Used ${count} time${count === 1 ? "" : "s"}: by circuits, attempts, peer sessions and practice sets`;
+  return usedByText(count, w);
 }
 
 /** The short form for a list cell. */
@@ -24,6 +26,7 @@ export function usedByCell(count: number | null | undefined): string {
  * the one read that carries it.
  */
 export function StationUsedBy({ stationId, version }: { stationId: string; version: number }) {
+  const w = useAssessWords();
   const versions = useAsync((signal) => listStationVersions(stationId, signal), [stationId]);
   return (
     <AsyncBoundary
@@ -49,7 +52,7 @@ export function StationUsedBy({ stationId, version }: { stationId: string; versi
                 : "block text-osce-caption text-ink-muted"
             }
           >
-            v{version}: {usedByLabel(count)}.
+            v{version}: {usedByLabel(count, w)}.
           </span>
         );
       }}

@@ -94,7 +94,7 @@ describe("capability registry", () => {
     const hireStaff = capabilitiesFor("hire", { can: staff, includeHidden: true }).map((c) => c.id);
     assert.ok(!hireStaff.includes("stations"), "hire staff are refused the station library");
     const hireCandidate = capabilitiesFor("hire", { can: {}, includeHidden: true }).map((c) => c.id);
-    assert.ok(hireCandidate.includes("stations"));
+    assert.ok(!hireCandidate.includes("stations"), "practice is refused on hire, so its station library is not mounted");
     for (const surface of ["assess", "hire", "partner"] as const) {
       const ids = capabilitiesFor(surface, { can: {}, includeHidden: true }).map((c) => c.id);
       for (const id of ["community", "study-a-to-z", "study-slides", "study-podcast", "media", "help"]) {

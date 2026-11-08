@@ -110,6 +110,31 @@ async def test_autogenerate_station_draft_success(client: AsyncClient, make_acto
     assert body["content"]["notes"] == "A 55-year-old presents with central chest pain."
 
 
+async def test_autogenerate_lifts_the_idle_timeout_before_the_model_call(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import text
+
+    _, admin = await org_with_admin(client, make_actor)
+    version_id = await published_template_version(client, admin)
+    seen: list[str] = []
+
+    async def model(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        seen.append((await db_session.execute(text("show idle_in_transaction_session_timeout"))).scalar_one())
+        block = StationContentBlockModel(blockId="notes", value="x")
+        return StationContentAutogenerateModel(title="T", blocks=[block]), ""
+
+    with patch("app.features.stations.station_autogenerate.generate_station_autogenerate", new=model):
+        res = await client.post(
+            "/api/v1/orgs/kings/stations/autogenerate-draft",
+            headers=bearer(admin),
+            json={"prompt": "Chest pain", "template_version_id": str(version_id)},
+        )
+
+    assert res.status_code == 200, res.text
+    assert seen and set(seen) == {"25min"}
+
+
 async def test_autogenerate_station_draft_includes_sca_station_prompt(
     client: AsyncClient, make_actor
 ) -> None:  # type: ignore[no-untyped-def]

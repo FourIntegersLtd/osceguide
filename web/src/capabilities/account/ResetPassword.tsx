@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { useSession } from "@/foundation/session";
-import { confirmPasswordReset, invitationOrganisation, login } from "@/foundation/platform-client";
+import { confirmPasswordReset, login, readInvitation } from "@/foundation/platform-client";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import { boardAlert } from "@/foundation/ui/boardKit";
 import AuthShell from "@/capabilities/account/AuthShell";
@@ -13,7 +13,7 @@ import AuthButton from "@/capabilities/account/AuthButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
 import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
 import { mapResetPasswordError } from "@/capabilities/account/support/mapAuthApiError";
-import { invitationSubtitle } from "@/capabilities/account/support/invitationCopy";
+import { invitationView, type InvitationFacts } from "@/capabilities/account/support/invitationCopy";
 import { afterPasswordReset } from "@/capabilities/account/support/afterPasswordReset";
 import {
   PASSWORD_HINT,
@@ -52,19 +52,21 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
   const [linkSpent, setLinkSpent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const [organisationName, setOrganisationName] = useState<string | null>(null);
+  const [invited, setInvited] = useState<InvitationFacts>({ organisationName: null, orgType: null, role: null });
   const [after, setAfter] = useState<"sign_in_next" | "second_step" | "sign_in_failed">("sign_in_next");
 
   useEffect(() => {
     if (!invitation || !token) return;
     let current = true;
-    void invitationOrganisation(token).then((name) => {
-      if (current) setOrganisationName(name);
+    void readInvitation(token).then((found) => {
+      if (current && found) setInvited(found);
     });
     return () => {
       current = false;
     };
   }, [invitation, token]);
+
+  const view = invitationView(invited);
 
   const handleFormSubmission = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -179,10 +181,8 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
       sidePanel={invitation ? undefined : <AuthQuotePanel />}
       lead={invitation}
       compact={!invitation}
-      title={invitation ? (organisationName ? `Join ${organisationName}` : "Accept your invitation") : "Choose a new password"}
-      subtitle={
-        invitation ? invitationSubtitle(organisationName) : "Choose something you'll remember"
-      }
+      title={invitation ? view.title : "Choose a new password"}
+      subtitle={invitation ? view.subtitle : "Choose something you'll remember"}
     >
       <form className="flex flex-col gap-3.5" method="post" onSubmit={handleFormSubmission} noValidate>
         <AuthFormField
@@ -222,7 +222,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
           </p>
         ) : null}
         <AuthButton isLoading={isSubmitting}>
-          {isSubmitting ? "Saving…" : invitation ? "Accept invitation" : "Reset password"}
+          {isSubmitting ? "Saving…" : invitation ? view.action : "Reset password"}
         </AuthButton>
       </form>
     </AuthShell>

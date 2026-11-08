@@ -39,9 +39,9 @@ export function ScaleBlock({ scheme, onScheme, readOnly, problems }: { scheme: S
   const own = [...problemsAt(problems, ["scales"]), ...problemsAt(problems, ["scales", 0])];
   const presetName = SCALE_PRESETS.find((p) => p.id === pending)?.label ?? "";
   const pendingNumber = pending !== null && isNumberScale(SCALE_PRESETS.find((p) => p.id === pending)?.scale);
-  const clears = hasDescriptions ? [pendingNumber ? "Level descriptions are cleared, since a number scale has no levels." : `The level descriptions written for ${nowNameOf(scale)} are cleared.`] : [];
-  const moves = pending !== null && presetMovesRules(scheme, pending) ? ["The pass rules on the Pass rule tab move to the new scale too, the station rule as well as the domain rule."] : [];
-  const tones = presetClearsTones(scheme) ? ["The score colours (tones) set under Advanced are cleared, since they were written for the old scale; set them again if you want them."] : [];
+  const clears = hasDescriptions ? [pendingNumber ? "Your descriptions of each level will be deleted, because number ratings have no named levels." : `The level descriptions you wrote for ${nowNameOf(scale)} will be deleted.`] : [];
+  const moves = pending !== null && presetMovesRules(scheme, pending) ? ["Your pass rules will be moved onto the new rating scale. Check them on the Pass rule tab."] : [];
+  const tones = presetClearsTones(scheme) ? ["The score colours you set under Advanced will be removed, because they only suit the old scale. You can set them again."] : [];
   const switchMessage = [...clears, ...moves, ...tones, "Instructions and competencies stay."].join(" ");
 
   return (
@@ -95,7 +95,7 @@ export function ScaleBlock({ scheme, onScheme, readOnly, problems }: { scheme: S
               )}
             </div>
           ))}
-          {rising ? <p className="text-osce-caption text-osce-danger-text">Points must not rise down the list: put the best level first.</p> : null}
+          {rising ? <p className="text-osce-caption text-osce-danger-text">Points must go down as you go down the list. Put the best level at the top, or lower the points of the levels below it.</p> : null}
           {own.map((message) => (
             <p key={message} className="text-osce-caption text-osce-danger-text">{message}</p>
           ))}
@@ -113,7 +113,7 @@ export function ScaleBlock({ scheme, onScheme, readOnly, problems }: { scheme: S
               Add level
             </AuthoringButton>
           )}
-          <p className="text-osce-caption text-ink-muted">A total adds these points up. The first level is the best.</p>
+          <p className="text-osce-caption text-ink-muted">Each level is worth points. The total adds them up. Put the best level first.</p>
         </div>
       ) : null}
       {scale && isNumberScale(scale) ? (
@@ -141,7 +141,7 @@ export function ScaleBlock({ scheme, onScheme, readOnly, problems }: { scheme: S
           <p className="text-osce-caption text-ink-muted">The marker gives each competency a number in this range.</p>
         </div>
       ) : null}
-      {!scale ? <p className="text-osce-caption text-osce-danger-text">This scheme has no scale. Pick one to start from.</p> : null}
+      {!scale ? <p className="text-osce-caption text-osce-danger-text">Choose how competencies are rated, for example Good / Fair / Poor, to continue.</p> : null}
       <ConfirmModal
         isOpen={pending !== null}
         title={`Switch to ${presetName}?`}

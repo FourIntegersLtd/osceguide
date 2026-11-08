@@ -3,6 +3,7 @@ import type { AuthoringScope, Json } from "@/capabilities/authoring/api/scope";
 import type { Station, StationVersion } from "@/capabilities/authoring/api/scope";
 import { pathId } from "@/capabilities/authoring/api/scope";
 import { explainArchiveRefusal } from "@/capabilities/authoring/api/archiveRefusal";
+import type { AssessWords } from "@/capabilities/assess-words/vocabulary";
 
 type S = components["schemas"];
 
@@ -151,11 +152,12 @@ export function archiveStationVersion(
   scope: AuthoringScope,
   station: string,
   version: number,
+  w: AssessWords,
 ): Promise<StationVersion> {
   return platformRequest<StationVersion>(`${scope.base}/stations/${pathId(station)}/versions/${version}/archive`, {
     method: "POST",
   }).catch((cause: unknown) => {
-    throw explainArchiveRefusal(cause);
+    throw explainArchiveRefusal(cause, w);
   });
 }
 

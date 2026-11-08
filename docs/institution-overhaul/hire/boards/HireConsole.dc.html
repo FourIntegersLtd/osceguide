@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rotation console</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Assessor</div></div></div>
+<a class="nav" href="HireAssessorHome.dc.html">Overview</a><a class="nav on" href="HireNowRunning.dc.html">Now running</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="4"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><a class="meta" href="HireAssessment.dc.html">Band 6 nurse, November intake</a><h1>Priya Shah's rotation</h1><p class="desc">5 stations · 10 minutes each · you assess stations 1 to 3</p></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="hero"><div><div class="eyebrow">Not started</div><h2>Priya is in the waiting room</h2><div class="meta">Start when you are ready. The patient joins as soon as you start.</div></div><button class="btn pri" onClick="{{go1}}">Start the rotation</button></div>
+<ol class="rail" aria-label="Stations"><li class="st now">1 NEWS2</li><li class="st">2 Medicines</li><li class="st">3 Discharge</li><li class="st">4 Bad news</li><li class="st">5 SBAR</li></ol>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="hero live"><div><div class="eyebrow">Station 3 of 5 · Discharge planning with a carer</div><h2 class="clock">06:12 left</h2><div class="meta">Auto-advance is on: the next station starts when the clock ends.</div></div><div class="acts"><button class="btn">Pause</button><button class="btn pri">Next station</button></div></div>
+<ol class="rail" aria-label="Stations"><li class="st done">1 NEWS2</li><li class="st done">2 Medicines</li><li class="st now">3 Discharge</li><li class="st">4 Bad news</li><li class="st">5 SBAR</li></ol>
+<div class="card"><div class="th"><span class="f">If something goes wrong</span></div>
+<div class="row"><span class="f">The patient has not spoken</span><button class="btn sm">Resend the patient</button></div>
+<div class="row"><span class="f">Lost time to a technical problem</span><button class="btn sm">Add 2 minutes</button><button class="btn sm">Restart the clock</button></div>
+<div class="row"><span class="f">The station has to be done again</span><button class="btn sm">Redo station</button></div>
+<div class="row"><span class="f">Go to another station</span><button class="btn sm">Jump to…</button></div>
+<div class="row"><span class="f">Let a colleague watch</span><button class="btn sm">Copy observer link</button></div>
+<div class="row"><span class="f">Stop the whole rotation</span><button class="btn sm bad">End rotation</button></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="hero"><div><div class="eyebrow">Rotation finished</div><h2>Mark 3 stations</h2><div class="meta">The AI's first marks are ready. Check each one and add your rating.</div></div><a class="btn pri" href="HireStationReview.dc.html">Mark station 1</a></div>
+<div class="card"><div class="th"><span class="f">Station</span><span style="width:160px">AI mark</span><span style="width:160px">Your mark</span></div>
+<a class="row" href="HireStationReview.dc.html"><span class="f">1 Deteriorating patient (NEWS2)</span><span style="width:160px"><span class="chip ok">Ready</span></span><span style="width:160px"><span class="chip warn">To do</span></span></a>
+<a class="row" href="HireStationReview.dc.html"><span class="f">2 Medicines round and a drug error</span><span style="width:160px"><span class="chip ok">Ready</span></span><span style="width:160px"><span class="chip ok">Done</span></span></a>
+<a class="row" href="HireStationReview.dc.html"><span class="f">3 Discharge planning with a carer</span><span style="width:160px"><span class="chip info">Marking…</span></span><span style="width:160px"><span class="chip warn">To do</span></span></a></div>
+<button class="btn pri" disabled style="align-self:flex-start">Finish marking</button><div class="why">Finish needs your mark on all 3 stations.</div>
+</sc-if>
+<sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+<div class="al ok"><b>Marking finished</b>Your marks are locked. The administrator makes the hiring decision.</div>
+<a class="btn" href="HireAssessorHome.dc.html" style="align-self:flex-start">Back to overview</a>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/circuits/{id}/console</code></div>
+<div class="call"><span class="m">SSE</span><code>{o}/circuits/{id}/console/stream</code></div>
+<div class="call"><span class="m">GET</span><code>…/review</code>, <code>…/interventions</code></div>
+<div class="call"><span class="m">POST</span><code>…/start</code>, <code>pause</code>, <code>resume</code></div>
+<div class="call"><span class="m">POST</span><code>…/advance</code>, <code>jump-to</code>, <code>redo-station</code></div>
+<div class="call"><span class="m">POST</span><code>…/resend-patient</code>, <code>reset-clock</code>, <code>extend-clock</code></div>
+<div class="call"><span class="m">POST</span><code>…/end</code>, <code>observer-token</code></div>
+<div class="call"><span class="m">PATCH</span><code>…/auto-advance</code></div>
+<div class="call"><span class="m">POST</span><code>…/review/finalize</code></div>
+<h2>Refusals it shows</h2><div class="codes"><code>circuit_not_started</code><code>circuit_not_live</code><code>circuit_paused</code><code>circuit_not_paused</code><code>circuit_already_ended</code><code>no_active_station</code><code>lead_cannot_run</code><code>circuit_review_finalized</code><code>review_incomplete</code><code>reviews_pending</code><code>voice_unavailable</code></div>
+<div class="note">Route <code>/app/[w]/circuits/[id]</code> · assessor and admin · start belongs to attempt-engine; the workflow to institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Before start', 'Running', 'Mark it', 'Finished'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2, s3: t === 3, go1: () => this.setState({ t: 1 }) };
+  }
+}
+</script>
+</body>
+</html>

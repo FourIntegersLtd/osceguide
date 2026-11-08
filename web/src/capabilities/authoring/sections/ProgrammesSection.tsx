@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { programmeDialogLead, programmeEmptyBody, programmeLead } from "@/capabilities/authoring/lib/authoringCopy";
 import { useState } from "react";
 import { useSurface } from "@/capabilities";
 import { HiOutlineAcademicCap, HiOutlineArrowPath, HiOutlineNoSymbol, HiOutlinePlusCircle } from "react-icons/hi2";
@@ -40,6 +42,7 @@ import { boardBtn } from "@/foundation/ui/boardKit";
  */
 export function ProgrammesSection() {
   const scope = useAuthoringScope();
+  const w = useAssessWords();
   const org = !useAuthoringChrome().b2c;
   const programmes = useAsync((signal) => listProgrammes(scope, signal), [scope.base]);
   const exams = useAsync((signal) => listExams(scope, {}, signal), [scope.base]);
@@ -75,7 +78,7 @@ export function ProgrammesSection() {
           ) : null
         }
       >
-        A programme groups this institution&apos;s sittings under one exam.
+        {programmeLead(w)}
       </AuthoringSectionLead>
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
@@ -88,7 +91,7 @@ export function ProgrammesSection() {
         onDismissError={programmes.reload}
         empty={{
           title: "No programmes yet",
-          description: "Add a programme for each exam you run sittings against.",
+          description: programmeEmptyBody(w),
         }}
       >
         {items.map((programme) => {
@@ -142,7 +145,7 @@ export function ProgrammesSection() {
       <AuthoringDialog
         open={adding}
         title="Add programme"
-        lead="Choose the exam. Sittings you schedule for it are grouped under this programme."
+        lead={programmeDialogLead(w)}
         error={action.error}
         busy={action.busy === "add"}
         busyLabel="Adding…"

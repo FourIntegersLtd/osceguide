@@ -20,7 +20,7 @@ from app.features.roster.schemas import InvitationRead, TraineeRead, UpdateTrain
 from app.features.roster.service import _display_name, _require_trainee, _trainee_read
 from app.features.sittings import service as sittings
 from app.features.tenancy import service as tenancy
-from app.features.tenancy import service_audit
+from app.features.tenancy import service_audit, service_memberships
 
 # The editable fields. Both a name and an intake can be blanked, so an absent
 # key and an explicit null cannot be confused for one another: the first says
@@ -81,7 +81,7 @@ async def delete_trainee(
         await repository.delete_trainee(session, org_id, trainee_id)
     except IntegrityError as exc:
         raise errors.TraineeInUse() from exc
-    await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
+    await service_memberships.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
     await service_audit.record_for_owner(
         session,
         org_id=org_id,
@@ -108,7 +108,7 @@ async def anonymise_trainee(
         await repository.anonymise_trainee(
             session, org_id, trainee_id, email=f"anon-{trainee_id}@anonymised.invalid", at=now
         )
-        await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
+        await service_memberships.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
         # An erased person is no longer scheduled: their unstarted stations end as absent (S-21). The
         # address was rewritten above, so it is free to be rostered again as a new trainee.
         if trainee.user_id is not None:
@@ -137,6 +137,10 @@ async def resend_invitation(
     invitation as much as the second.
     """
     trainee = await _require_trainee(session, org_id, trainee_id)
+    if trainee.access_revoked_at is not None:
+        raise errors.InvitationNotPending(
+            "That person's access has been revoked, so there is no invitation to re-send"
+        )
     org = await tenancy.org_ref_by_id(session, org_id)
     invited_to = org.name if org else "your institution"
     user_id = trainee.user_id
@@ -153,13 +157,19 @@ async def resend_invitation(
                 invited_to=invited_to,
                 now=now,
                 organization_id=org_id,
+                role=tenancy.TRAINEE_ROLE,
             )
             await repository.link_trainee_to_user(session, org_id, trainee_id, user_id=created.id)
             return InvitationRead(email=created.email, invited_to=invited_to)
         user_id = ref.id
         await repository.link_trainee_to_user(session, org_id, trainee_id, user_id=user_id)
     if not await invitations.reissue_invitation(
-        session, user_id=user_id, invited_to=invited_to, now=now, organization_id=org_id
+        session,
+        user_id=user_id,
+        invited_to=invited_to,
+        now=now,
+        organization_id=org_id,
+        role=tenancy.TRAINEE_ROLE,
     ):
         raise errors.InvitationNotPending()
     return InvitationRead(email=trainee.email, invited_to=invited_to)

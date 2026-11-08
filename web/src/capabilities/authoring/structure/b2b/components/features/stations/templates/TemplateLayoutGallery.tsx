@@ -134,7 +134,7 @@ export function TemplateStartPanel({
   return (
     <>
       {examField ? (
-        <div className="flex flex-wrap gap-4 [&>div]:min-w-[200px] [&>div]:flex-1">
+        <div className="flex flex-wrap gap-6 [&>div]:min-w-[200px] [&>div]:flex-1">
           {examField}
           {titleField}
         </div>

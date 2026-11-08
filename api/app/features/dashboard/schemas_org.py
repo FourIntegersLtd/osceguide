@@ -123,9 +123,14 @@ class ConsoleSlot(BaseModel):
     exam_completed_at: datetime | None
     trainee: ConsolePerson
     station: ConsoleStation
+    # Who the schedule names to assess this station. Shown, never enforced.
+    assessor: ConsolePerson | None = None
     # Whether this slot has been marked. The console probed one request per
     # slot for this.
     has_review: bool
+    # The engine has marked this station: its attempt is evaluated. Not the same as `has_review`,
+    # which is a person's review.
+    ai_marked: bool = False
     # Marked by the sitting results' own rule: the attempt is evaluated or a completed review rated it.
     marked: bool
     # Reviews started on this slot and not yet completed.
@@ -161,6 +166,9 @@ class ConsoleCircuit(BaseModel):
     started_at: datetime | None
     ended_at: datetime | None
     agent_dispatched: bool
+    # Training rooms: the supervisor's floor switch, and when a kept-open room was closed.
+    open_floor: bool = False
+    room_closed_at: datetime | None = None
     # What a rebuild names as the revision it read (B-15).
     revision: int = 1
     supervisor: ConsolePerson | None

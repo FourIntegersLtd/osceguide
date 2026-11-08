@@ -35,7 +35,7 @@ export function AddExamDate({
       await updateMe({ exam_date: day, exam_time: null });
       onSaved?.(day);
     } catch {
-      setErrorMessage("Failed to update exam date");
+      setErrorMessage("We could not save your exam date. Check your connection and try again.");
     } finally {
       setBusy(false);
     }

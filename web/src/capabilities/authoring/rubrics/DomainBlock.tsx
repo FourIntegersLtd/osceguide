@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { markedLiveLabel } from "@/capabilities/authoring/lib/authoringCopy";
 import { Switch, Textarea, cn, getInputClassName } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { FeedbackRows } from "@/capabilities/authoring/rubrics/FeedbackBlock";
@@ -33,6 +35,7 @@ function Instructions({ value, path, readOnly, onChange }: { value: string; path
 
 /** The detail of a domain: its instructions, switches and the feedback written once per domain. */
 export function DomainDetail({ scheme, onScheme, readOnly, onEditCustom, onDelete, i }: DetailProps & { i: number }) {
+  const w = useAssessWords();
   const block = scheme.outline[i] as DomainBlock;
   const base = `outline[${i}]`;
   return (
@@ -40,12 +43,12 @@ export function DomainDetail({ scheme, onScheme, readOnly, onEditCustom, onDelet
       <h3 className="text-osce-body font-semibold text-ink">{block.title || "Domain"}</h3>
       <Instructions value={block.instructions ?? ""} path={`${base}.instructions`} readOnly={readOnly} onChange={(v) => onScheme(updateBlock(scheme, i, { instructions: v }))} />
       <div className="flex items-center gap-3">
-        <Switch label="Can be judged while the station is running" checked={block.live === true} disabled={readOnly} onChange={(v) => onScheme(updateBlock(scheme, i, { live: v }))} />
-        <span className="text-osce-body text-ink">Can be judged while the station is running</span>
+        <Switch label={markedLiveLabel(w)} checked={block.live === true} disabled={readOnly} onChange={(v) => onScheme(updateBlock(scheme, i, { live: v }))} />
+        <span className="text-osce-body text-ink">{markedLiveLabel(w)}</span>
       </div>
       <div className="flex items-center gap-3">
-        <Switch label="Optional: the marker may leave this domain empty" checked={block.optional === true} disabled={readOnly} onChange={(v) => onScheme(updateBlock(scheme, i, { optional: v }))} />
-        <span className="text-osce-body text-ink">Optional: the marker may leave this domain empty</span>
+        <Switch label="Optional: the marker may skip this domain" checked={block.optional === true} disabled={readOnly} onChange={(v) => onScheme(updateBlock(scheme, i, { optional: v }))} />
+        <span className="text-osce-body text-ink">Optional: the marker may skip this domain</span>
       </div>
       <section className="space-y-2">
         <h4 className="text-osce-body font-semibold text-ink">Feedback the marker writes once for this domain</h4>
@@ -126,7 +129,7 @@ export function NotesDetail({ scheme, onScheme, readOnly, onEditCustom, onDelete
 export function CustomDetail({ onEditCustom }: { onEditCustom: () => void }) {
   return (
     <div className="space-y-3">
-      <p className="text-osce-body text-ink-muted">This block has a shape the form does not show. It is kept exactly as it is.</p>
+      <p className="text-osce-body text-ink-muted">This part has settings the builder cannot display. They are kept as they are. Edit them on the Advanced tab if needed.</p>
       <AuthoringButton variant="secondary" size="sm" onClick={onEditCustom}>
         Edit in Advanced
       </AuthoringButton>

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { FiMessageSquare } from "react-icons/fi";
 import { LOGIN_PATH } from "@/foundation/attribution/partnerConstants";
-import { SUPPORT_EMAIL } from "@/foundation/support";
+import { DEMO_MAILTO } from "@/foundation/support";
 import { SiteButtonLink } from "@/foundation/ui";
 import { PartnerLink } from "@/domains/marketing/home/PartnerLink";
 import { SectionHead } from "@/foundation/ui";
@@ -63,7 +63,7 @@ export function HomeTestimonials({ title = "What our doctors say", ctas }: { tit
           <>
             <PartnerLink path={LOGIN_PATH} size="lg">Start practising</PartnerLink>
             <SiteButtonLink
-              href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("OSCE Guide Demo")}`}
+              href={DEMO_MAILTO}
               variant="line"
               size="lg"
             >

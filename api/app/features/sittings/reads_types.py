@@ -54,6 +54,10 @@ class CircuitRef:
     paused_seconds: int = 0
     auto_advance: bool = True
     voice_fault_at: datetime | None = None
+    # Set when the supervisor closes a training room that was kept open after End.
+    room_closed_at: datetime | None = None
+    # Whether the supervisor opened the floor to every microphone (training rooms).
+    open_floor: bool = False
     # Raised by each edit; an edit made from an older read is refused (B-15).
     revision: int = 1
 
@@ -72,6 +76,8 @@ class SlotRef:
     started_at: datetime | None
     ended_at: datetime | None
     exam_completed_at: datetime | None
+    # Who the schedule names to assess this station; display only.
+    assessor_user_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)

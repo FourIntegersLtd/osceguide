@@ -93,11 +93,11 @@ async def generate_slide_deck(
     body: schemas.GenerateTextRequest,
     admin: PlatformAdmin,
     settings: SettingsDep,
-    _session: Session,
+    session: Session,
 ) -> schemas.GenerateResult:
     _ = admin
     content = await service.generate_slide_deck(
-        prompt=body.prompt, exam_code=body.exam_code, settings=settings
+        prompt=body.prompt, exam_code=body.exam_code, session=session, settings=settings
     )
     return schemas.GenerateResult(content=content)
 
@@ -112,8 +112,10 @@ async def generate_podcast(
     body: schemas.GenerateTextRequest,
     admin: PlatformAdmin,
     settings: SettingsDep,
-    _session: Session,
+    session: Session,
 ) -> schemas.GenerateResult:
     _ = admin
-    content = await service.generate_podcast(prompt=body.prompt, exam_code=body.exam_code, settings=settings)
+    content = await service.generate_podcast(
+        prompt=body.prompt, exam_code=body.exam_code, session=session, settings=settings
+    )
     return schemas.GenerateResult(content=content)

@@ -134,6 +134,7 @@ def slot_read(slot: Slot, circuit: Circuit) -> SlotRead:
         room_name=slot.room_name,
         started_at=slot.started_at,
         ended_at=slot.ended_at,
+        assessor_user_id=slot.assessor_user_id,
         phase=slot_phase(circuit, slot),
         phase_started_at=circuit.phase_started_at if circuit.active_slot_id == slot.id else None,
         phase_ends_at=circuit.phase_ends_at if circuit.active_slot_id == slot.id else None,
@@ -160,6 +161,8 @@ def circuit_read(circuit: Circuit, slots: list[Slot]) -> CircuitRead:
         paused=circuit.paused_at is not None,
         paused_at=circuit.paused_at,
         auto_advance=circuit.auto_advance,
+        open_floor=circuit.open_floor,
+        room_closed_at=circuit.room_closed_at,
         trainee_count=len({slot.trainee_id for slot in slots}),
         slots=[slot_read(slot, circuit) for slot in slots],
     )

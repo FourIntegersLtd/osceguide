@@ -114,6 +114,10 @@ async def bulk_resend_trainee_invitations(
     """
     results: list[BulkTraineeInvitationResult] = []
     for trainee_id in _dedupe_ids(trainee_ids):
+        row = await repository.trainee_by_id(session, org_id, trainee_id)
+        if row is not None and row.access_revoked_at is not None:
+            results.append(BulkTraineeInvitationResult(trainee_id=trainee_id, outcome="revoked"))
+            continue
         try:
             await service_edit.resend_invitation(session, org_id, trainee_id, now=now)
         except errors.TraineeNotFound:

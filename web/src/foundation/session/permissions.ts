@@ -12,6 +12,8 @@ export const PERMISSIONS = [
   "run_circuits",
   "schedule_sittings",
   "sign_off_results",
+  // Writing the lead review of a station: an institution admin, or a hire lead assessor.
+  "lead_review",
   "export_results",
   // Writing stations, templates, rubrics, exams and programmes: the authoring write routes
   // are OrgAdmin inside an organisation, and the platform admin's on the staff console.

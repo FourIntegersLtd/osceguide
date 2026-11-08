@@ -11,7 +11,7 @@ describe("staleRefusal", () => {
     const error = staleRefusal(refusal("stale_revision"), "marking scheme");
     assert.equal(
       error?.message,
-      "Someone else changed this marking scheme just now. We have reloaded it with their changes; make your edit again.",
+      "Someone else changed this marking scheme just now. We have reloaded it with their changes; your changes were not saved. Please make your edit again.",
     );
   });
 

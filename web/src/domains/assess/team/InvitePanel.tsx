@@ -1,6 +1,7 @@
 "use client";
 
-import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
+import { ROLE_DESCRIPTIONS } from "@/foundation/session/roles";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { useState } from "react";
 import { b2bTokens as t, cn } from "@/foundation/ui";
 import { Note, PasswordFields, h2, hint } from "@/domains/assess/ui";
@@ -10,8 +11,11 @@ import { errorMessage } from "@/foundation/hooks";
 import { inviteMember, type SeatedMembership } from "@/domains/assess/team/api";
 import { BulkInviteDialog } from "@/domains/assess/team/BulkInviteDialog";
 import {
-  ASSIGNABLE_ROLES,
-  type AssignableRole,
+  assignableRoles,
+  type TeamRole,
+  roleHelp,
+  staffRoleLabel,
+  teamCopy,
 } from "@/domains/assess/team/support";
 import { boardBtn, boardPadWide, boardInput, boardLabel } from "@/foundation/ui/boardKit";
 
@@ -40,8 +44,10 @@ export function InvitePanel({
   canManage: boolean;
   onInvited: () => void;
 }) {
+  const w = useAssessWords();
+  const copy = teamCopy(w);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<AssignableRole>("supervisor");
+  const [role, setRole] = useState<TeamRole>("supervisor");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SeatedMembership | null>(null);
@@ -75,7 +81,7 @@ export function InvitePanel({
   if (!canManage) {
     return (
       <Note tone="info">
-        <b className="block">Only an owner or admin can invite staff</b>
+        <b className="block">{copy.inviteOnlyAdmin}</b>
         Ask one of them to add the person you need.
       </Note>
     );
@@ -90,30 +96,30 @@ export function InvitePanel({
           void submit();
         }}
       >
-        <h2 className={h2}>Invite someone to the team</h2>
-        <p className={cn(t.assessMeta, "m-0")}>Supervisors run circuits and mark them. Admins also manage the team and sign off results.</p>
+        <h2 className={h2}>{copy.inviteTitle}</h2>
+        <p className={cn(t.assessMeta, "m-0")}>{copy.inviteHelp}</p>
         <div>
           <label htmlFor="assess-invite-email" className={boardLabel}>Email address</label>
-          <input id="assess-invite-email" type="email" required autoComplete="off" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="supervisor@hospital.nhs.uk" className={boardInput} />
+          <input id="assess-invite-email" type="email" required autoComplete="off" value={email} onChange={(event) => setEmail(event.target.value)} placeholder={w.hiring ? "assessor@practice.nhs.uk" : "supervisor@hospital.nhs.uk"} className={boardInput} />
           <div className={hint}>If they have no account yet we create one and email them a link to choose a password.</div>
         </div>
         <div>
           <label htmlFor="assess-invite-role" className={boardLabel}>Their role</label>
-          <select id="assess-invite-role" value={role} onChange={(event) => setRole(event.target.value as AssignableRole)} className={boardInput}>
-            {ASSIGNABLE_ROLES.map((value) => (
+          <select id="assess-invite-role" value={role} onChange={(event) => setRole(event.target.value as TeamRole)} className={boardInput}>
+            {assignableRoles(w).map((value) => (
               <option key={value} value={value}>
-                {roleLabel(value)}
+                {staffRoleLabel(value, w)}
               </option>
             ))}
           </select>
-          <div className={hint}>{ROLE_DESCRIPTIONS[role]}</div>
+          <div className={hint}>{w.hiring ? roleHelp(w, role) : ROLE_DESCRIPTIONS[role]}</div>
         </div>
 
         <PasswordFields {...password.field} id="assess-invite-password" disabled={busy} />
 
         {error ? <Note tone="bad" role="alert">{error}</Note> : null}
         <button type="submit" className={cn(boardBtn("primary"), "self-start")} disabled={busy || email.trim().length === 0 || !password.ready}>
-          {busy ? "Inviting…" : "+ Add person"}
+          {busy ? "Inviting…" : copy.send}
         </button>
       </form>
 
@@ -123,14 +129,14 @@ export function InvitePanel({
         <Note tone="ok">
           {result.invited
             ? `Invited ${result.email}. They have been emailed a link to choose a password.`
-            : `${result.email} already had an account and is now ${roleLabel(result.role).toLowerCase()} here.`}
+            : `${result.email} already had an account and is now ${staffRoleLabel(result.role, w).toLowerCase()} here.`}
         </Note>
       ) : null}
 
       <div className={boardPadWide}>
         <h2 className={h2}>Import a spreadsheet</h2>
         <p className={cn(t.assessMeta, "m-0")}>
-          Upload a list of staff saved from Excel or Google Sheets as a .csv file. Anyone already on the team is skipped and shown to you.
+          {copy.sheetHelp}
         </p>
         <button type="button" className={cn(boardBtn(), "self-start")} onClick={() => setImportOpen(true)}>
           Import from spreadsheet

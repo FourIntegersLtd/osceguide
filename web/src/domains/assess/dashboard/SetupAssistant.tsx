@@ -8,7 +8,7 @@ import { useSurface } from "@/capabilities";
 import type { OrgSetup } from "@/domains/assess/dashboard/api";
 import { assistantPieces, assistantSteps, firstOpenStep, showsSkip, stepBlock } from "@/domains/assess/dashboard/setupSteps";
 import { TEMPLATE_CSV } from "@/domains/assess/roster/csv";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /** Saves the spreadsheet template to the browser's downloads. */
 function downloadTemplate() {

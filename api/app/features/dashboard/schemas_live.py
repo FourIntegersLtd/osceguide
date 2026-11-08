@@ -65,6 +65,14 @@ class LiveCircuit(BaseModel):
     alerts: list[str] = Field(default_factory=list)
 
 
+class NextSitting(BaseModel):
+    """The soonest sitting still to come, so an empty board can say what is next."""
+
+    id: uuid.UUID
+    name: str
+    scheduled_for: datetime
+
+
 class LiveBoard(BaseModel):
     """Everything running in one organisation, in one request.
 
@@ -77,6 +85,8 @@ class LiveBoard(BaseModel):
     # False when no job worker has checked in lately. The api still advances due
     # circuits on this read, but webhooks, marking and patient removal wait for it.
     worker_running: bool = True
+    # The soonest scheduled sitting, null when none is booked. Filled on the empty board.
+    next_sitting: NextSitting | None = None
 
 
 class LiveRunRead(BaseModel):
@@ -96,6 +106,8 @@ class LiveRunRead(BaseModel):
     started_at: datetime | None
     ended_at: datetime
     candidate_count: int
+    # Named while the circuit still exists; empty once it is deleted (the count remains).
+    candidates: list[LivePerson] = Field(default_factory=list)
     stations_total: int
     stations_completed: int
     status: str

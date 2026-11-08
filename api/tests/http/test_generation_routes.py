@@ -18,7 +18,7 @@ async def test_generate_blog_for_an_exam_with_no_settings_uses_the_neutral_promp
     admin = await make_actor("gen-admin@osceguide.com", platform_admin=True)
     captured: dict[str, str] = {}
 
-    async def fake_json_completion(*, settings, system: str, user: str) -> dict:  # type: ignore[no-untyped-def]
+    async def fake_json_completion(*, settings, system: str, user: str, session) -> dict:  # type: ignore[no-untyped-def]
         captured["system"] = system
         captured["user"] = user
         return {"title": "T", "content": "Body", "url": "t"}
@@ -115,3 +115,34 @@ async def test_a_deck_with_no_slides_is_refused_rather_than_saved_empty(
         )
 
     assert (res.status_code, res.json()["code"]) == (422, "generation_empty")
+
+
+@pytest.mark.parametrize("kind", ["station", "summary", "blog", "slide-deck", "podcast"])
+async def test_a_draft_lifts_the_idle_timeout_before_its_model_call(
+    kind: str, client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import text
+
+    admin = await make_actor(f"gen-idle-{kind}@osceguide.com", platform_admin=True)
+    seen: list[str] = []
+
+    async def model(_providers):  # type: ignore[no-untyped-def]
+        seen.append((await db_session.execute(text("show idle_in_transaction_session_timeout"))).scalar_one())
+        return {
+            "title": "A real title for it",
+            "topic": "A real topic for it",
+            "content": "Body",
+            "url": "t",
+            "script": 'Ben: "hello"',
+            "slides": [{"title": "One"}],
+        }
+
+    with patch("app.features.generation.service.first_that_answers", new=model):
+        res = await client.post(
+            f"/api/v1/platform/generate/{kind}",
+            headers=bearer(admin),
+            json={"prompt": "Write about asthma control", "exam_code": "sca"},
+        )
+
+    assert res.status_code == 200, res.text
+    assert seen and set(seen) == {"25min"}

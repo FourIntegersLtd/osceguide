@@ -1,10 +1,10 @@
 "use client";
 
-import { b2bTokens } from "@/foundation/ui";
 import { ratingLabel, type RatingValue } from "@/capabilities/feedback/rubric";
 import { RatingInput } from "@/domains/assess/results/RatingInput";
-import { formDomains, machineRating, unratedRequired, type ReviewForm } from "@/domains/assess/results/reviewForm";
-import { boardInput } from "@/foundation/ui/boardKit";
+import { aiDisagrees, LEAD_DECIDES } from "@/domains/assess/results/slotReviewSteps";
+import { formDomains, machineRating, ratingVariant, unratedRequired, type ReviewForm } from "@/domains/assess/results/reviewForm";
+import { boardChip, boardInput } from "@/foundation/ui/boardKit";
 
 /**
  * The rateable fields of a review form, domain by domain.
@@ -23,6 +23,7 @@ export function ReviewFields({
   comments,
   onComment,
   disabled,
+  flagLeadDecides = false,
 }: {
   form: ReviewForm | null | undefined;
   ratings: Record<string, RatingValue>;
@@ -32,6 +33,8 @@ export function ReviewFields({
   comments?: Record<string, string>;
   onComment?: (domainId: string, text: string) => void;
   disabled?: boolean;
+  /** Hire: mark a competency where the assessor and the AI differ, because the lead assessor settles it. */
+  flagLeadDecides?: boolean;
 }) {
   const domains = formDomains(form);
   if (!form || domains.length === 0) {
@@ -46,6 +49,11 @@ export function ReviewFields({
 
   return (
     <div className="flex flex-col gap-6">
+      <div className={`${ROW} py-2 text-assess-meta font-medium text-osce-ink-500`}>
+        <div className="min-w-0 flex-[1_1_180px]">Competency</div>
+        <div className={AI_COL}>AI</div>
+        <div className={YOU_COL}>You</div>
+      </div>
       <ul>
         {domains.map((domain) => {
           // A domain-level field repeats the domain's name, so its rating sits
@@ -61,10 +69,15 @@ export function ReviewFields({
               onChange={(value) => onRate(field.path, value)}
             />
           );
+          // The AI's rating is its own column, a pill in the rating's tone.
+          const leadChip = (path: string) =>
+            flagLeadDecides && aiDisagrees(machineRating(form.rating, payload, path), ratings[path]) ? (
+              <span className={`${boardChip("warn")} ml-2`}>{LEAD_DECIDES}</span>
+            ) : null;
           const machineNote = (path: string) => {
             const machine = machineRating(form.rating, payload, path);
             return machine !== null ? (
-              <div className="text-assess-meta text-osce-ink-500">Machine: {ratingLabel(form.rating, machine)}</div>
+              <span className={boardChip(CHIP_TONE[ratingVariant(form.rating, machine)])}>{ratingLabel(form.rating, machine)}</span>
             ) : null;
           };
           return (
@@ -72,20 +85,23 @@ export function ReviewFields({
               <div className={ROW}>
                 <div className="min-w-0 flex-[1_1_180px]">
                   <div className="font-medium">
-                    {domain.label}{" "}
-                    {domain.required ? <span className={b2bTokens.assessChipNeutral}>Required</span> : null}
+                    {domain.label}
+                    {own ? leadChip(own.path) : null}
                   </div>
-                  {own ? machineNote(own.path) : null}
                 </div>
-                {own ? input(own) : null}
+                <div className={AI_COL}>{own ? machineNote(own.path) : null}</div>
+                <div className={YOU_COL}>{own ? input(own) : null}</div>
               </div>
               {parts.map((field) => (
                 <div key={field.path} className={`${ROW} border-t border-osce-border-light pl-4`}>
                   <div className="min-w-0 flex-[1_1_180px]">
-                    <div>{field.label}</div>
-                    {machineNote(field.path)}
+                    <div>
+                      {field.label}
+                      {leadChip(field.path)}
+                    </div>
                   </div>
-                  {input(field)}
+                  <div className={AI_COL}>{machineNote(field.path)}</div>
+                  <div className={YOU_COL}>{input(field)}</div>
                 </div>
               ))}
               {comments && onComment ? (
@@ -116,3 +132,6 @@ export function ReviewFields({
 
 /** The board's `.row` inside a card: 12px above and below, no side padding. */
 const ROW = "flex flex-wrap items-center gap-4 py-4 text-assess-label text-osce-ink-900";
+const AI_COL = "w-[110px] shrink-0";
+const YOU_COL = "flex min-w-[160px] justify-end";
+const CHIP_TONE = { success: "ok", warning: "warn", danger: "live", neutral: "neutral" } as const;

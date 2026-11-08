@@ -8,6 +8,7 @@ import { candidateName } from "@/domains/assess/results/support";
 import type { ReactNode } from "react";
 import { useAsync } from "@/foundation/hooks";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { hasCode } from "@/foundation/platform-client";
 import {
   readDecision,
@@ -25,8 +26,9 @@ import {
   workflowLabel,
 } from "@/domains/assess/results/support";
 import { assessFormStack } from "@/foundation/ui/b2bTokens";
+import { resultOverrideHelper, saveNextLabel } from "@/domains/assess/results/hireDecisions";
 import { candidateProgress } from "@/domains/assess/results/candidateProgress";
-import { OutcomePicker, RecruitmentField, ReleasedDecision, ReopenButton, ResultPreviewButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
+import { OutcomePicker, RecruitmentField, ReleasedDecision, ReopenButton, ResultPdfButton, ResultPreviewButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
 import { boardRailStep } from "@/domains/assess/chrome";
 
 /**
@@ -41,18 +43,27 @@ export function CandidateDecision({
   sittingId,
   candidate,
   hire,
+  exam,
   stations,
+  onNext,
+  hasNext = false,
   onChanged,
 }: {
   orgSlug: string;
   sittingId: string;
   candidate: CandidateReport;
-  /** An exam-mode sitting (hire): the decision also records whether the candidate is taken on. */
+  /** A hire exam: the hire-only screen words and tools. */
   hire: boolean;
+  /** An exam-mode sitting on any arm: the decision also records the recruitment outcome. */
+  exam: boolean;
   /** The candidate's stations, drawn between the progress rail and the form. */
   stations: ReactNode;
+  /** Hire: after a save, open the next candidate still to decide. */
+  onNext?: () => void;
+  hasNext?: boolean;
   onChanged: () => void;
 }) {
+  const w = useAssessWords();
   const traineeId = candidate.trainee_id;
 
   const stored = useAsync(async (signal) => {
@@ -69,7 +80,7 @@ export function CandidateDecision({
   }
 
   if (stored.loading) return <Spinner />;
-  if (stored.error) return <div role="alert" className={boardAlert("bad")}>{assessErrorMessage(stored.error)}</div>;
+  if (stored.error) return <div role="alert" className={boardAlert("bad")}>{assessErrorMessage(stored.error, w)}</div>;
 
   const steps = candidateProgress(candidate);
   const nowId = steps.find((step) => step.state !== "done")?.id;
@@ -100,7 +111,10 @@ export function CandidateDecision({
         sittingId={sittingId}
         traineeId={traineeId}
         hire={hire}
-        suggestion={suggestedOutcome(candidate)?.note ?? null}
+        exam={exam}
+        onNext={onNext}
+        hasNext={hasNext}
+        suggestion={hire && (candidate.stations ?? []).length > 0 ? resultOverrideHelper(candidate.stations_passed, (candidate.stations ?? []).length) : suggestedOutcome(candidate)?.note ?? null}
         decision={stored.data}
         onChanged={() => {
           stored.reload();
@@ -116,6 +130,9 @@ function Form({
   sittingId,
   traineeId,
   hire,
+  exam,
+  onNext,
+  hasNext,
   suggestion,
   decision,
   onChanged,
@@ -124,10 +141,14 @@ function Form({
   sittingId: string;
   traineeId: string;
   hire: boolean;
+  exam: boolean;
+  onNext?: () => void;
+  hasNext: boolean;
   suggestion: string | null;
   decision: Decision | null;
   onChanged: () => void;
 }) {
+  const w = useAssessWords();
   const [outcome, setOutcome] = useState(outcomeChoice(decision?.assessment_outcome));
   const [recruitment, setRecruitment] = useState(decision?.recruitment_outcome ?? "");
   const [rationale, setRationale] = useState(decision?.rationale ?? "");
@@ -142,7 +163,8 @@ function Form({
   const expectedRevision = decision?.revision ?? 0;
   const draft = {
     assessmentOutcome: outcome || null,
-    recruitmentOutcome: hire ? recruitment || null : null,
+    // Omitted when the field is not shown: null would clear a stored outcome.
+    ...(exam ? { recruitmentOutcome: recruitment || null } : {}),
     rationale: rationale.trim() || null,
     expectedRevision,
   };
@@ -153,7 +175,7 @@ function Form({
   const canRelease = releasable({ decision });
   const blockers = signOffBlockers({ outcome: outcome || null, rationale });
 
-  const run = useCallback(async (label: string, action: () => Promise<unknown>, said: string) => {
+  const run = useCallback(async (label: string, action: () => Promise<unknown>, said: string): Promise<boolean> => {
     setBusy(label);
     setFailure(null);
     setNote(null);
@@ -162,25 +184,35 @@ function Form({
       await action();
       setNote(said);
       onChanged();
+      return true;
     } catch (cause) {
       // A refused save says the copy on screen is not the newest, which is a
       // different thing to say from "your request failed": the words typed
       // here are still worth keeping, and the latest revision has to be loaded
       // before another save can go through.
       if (hasCode(cause, "decision_revised")) setStale(true);
-      else setFailure(assessErrorMessage(cause));
+      else setFailure(assessErrorMessage(cause, w));
+      return false;
     } finally {
       setBusy(null);
     }
   }, [onChanged]);
 
-  const preview = decision ? <ResultPreviewButton orgSlug={orgSlug} sittingId={sittingId} traineeId={traineeId} /> : null;
+  const preview = decision ? (
+    <ResultPreviewButton
+      orgSlug={orgSlug}
+      sittingId={sittingId}
+      traineeId={traineeId}
+      label={w.hiring && hire ? "Preview what a candidate sees" : undefined}
+    />
+  ) : null;
 
   if (released) {
     return (
       <div className="flex flex-col gap-3.5">
         <ReleasedDecision decision={decision} />
         {preview}
+        {hire ? <ResultPdfButton orgSlug={orgSlug} sittingId={sittingId} traineeId={traineeId} /> : null}
       </div>
     );
   }
@@ -200,11 +232,11 @@ function Form({
 
       <div className={assessFormStack}>
         <div>
-          <OutcomePicker value={outcome} disabled={signedOff} onChange={setOutcome} />
+          <OutcomePicker value={outcome} disabled={signedOff} numbered={hire} onChange={setOutcome} />
           {suggestion && !signedOff ? <div className={`mt-2 ${t.assessMeta}`}>{suggestion}</div> : null}
         </div>
 
-        {hire ? <RecruitmentField value={recruitment} disabled={signedOff} onChange={setRecruitment} /> : null}
+        {exam ? <RecruitmentField value={recruitment} disabled={signedOff} onChange={setRecruitment} /> : null}
 
         <div>
           <label htmlFor="decision-rationale" className={`${boardLabel} mb-2`}>
@@ -229,7 +261,7 @@ function Form({
 
       {!signedOff && blockers.length > 0 ? (
         <div role="alert" className={boardAlert("warn")}>
-          <b className="block font-semibold">Before this can be signed off</b>
+          <b className="block font-semibold">{w.hiring ? "Before you sign off: mark every station and write the reason for your decision." : "Before this can be signed off"}</b>
           {blockers.map((blocker) => (
             <div key={blocker}>{blocker}</div>
           ))}
@@ -242,17 +274,18 @@ function Form({
           <>
             <button
               type="button"
-              className={boardBtn()}
+              className={boardBtn(onNext ? "primary" : undefined)}
               disabled={busy !== null}
-              onClick={() =>
-                run("save", () => saveDecision(orgSlug, sittingId, traineeId, draft), "Draft saved.")
-              }
+              onClick={async () => {
+                const saved = await run("save", () => saveDecision(orgSlug, sittingId, traineeId, draft), "Draft saved.");
+                if (saved && onNext && hasNext) onNext();
+              }}
             >
-              Save draft
+              {onNext ? saveNextLabel(hasNext) : "Save draft"}
             </button>
             <button
               type="button"
-              className={boardBtn("primary")}
+              className={boardBtn(onNext ? undefined : "primary")}
               disabled={busy !== null || blockers.length > 0}
               onClick={() =>
                 run(
@@ -267,7 +300,7 @@ function Form({
                 )
               }
             >
-              Sign off
+              {hire ? "Sign off results" : "Sign off"}
             </button>
           </>
         ) : (
@@ -288,7 +321,7 @@ function Form({
       </div>
 
       {signedOff && !canRelease ? (
-        <div role="alert" className={boardAlert("warn")}>Cannot be released: {releaseRefusal("outcome_not_releasable")}.</div>
+        <div role="alert" className={boardAlert("warn")}>{w.hiring ? "This result cannot be released yet" : "Cannot be released"}: {releaseRefusal("outcome_not_releasable")}.</div>
       ) : null}
       {signedOff && canRelease ? (
         <div className={t.assessMeta}>

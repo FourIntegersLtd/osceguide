@@ -13,7 +13,7 @@ class EmptyPlanUpdate(InvalidInput):
     """A plan PATCH set neither `active` nor `station_limit`, so there is nothing to change."""
 
     code = "empty_plan_update"
-    default_message = "Set at least one of active or station_limit"
+    default_message = "Change at least one thing: turn access on or off, or set a station limit."
 
 
 class UnknownPlanError(NotFound):
@@ -65,7 +65,7 @@ class UnknownExamError(NotFound):
     """
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"
 
 
 class ReceiptNotFound(NotFound):
@@ -73,7 +73,7 @@ class ReceiptNotFound(NotFound):
     ids are short and travel on forwarded documents, so probing must tell somebody nothing."""
 
     code = "receipt_not_found"
-    default_message = "No such receipt"
+    default_message = "We couldn't find that receipt"
 
 
 class AlreadyPurchased(Conflict):
@@ -100,7 +100,7 @@ class PlanNotFound(NotFound):
     the plan it discounts, so its own code is not found here either."""
 
     code = "plan_not_found"
-    default_message = "No such plan"
+    default_message = "We couldn't find that plan"
 
 
 class PlanCodeTaken(Conflict):
@@ -173,21 +173,21 @@ class PayerNotFound(NotFound):
     """No such account. The code every slice answers with for a missing person."""
 
     code = "user_not_found"
-    default_message = "No such account"
+    default_message = "We couldn't find that account"
 
 
 class BillingEventNotFound(NotFound):
     """No webhook delivery with that id is on the ledger, so there is nothing to replay."""
 
     code = "billing_event_not_found"
-    default_message = "No such webhook delivery"
+    default_message = "We couldn't find that webhook delivery"
 
 
 class PaymentNotFound(NotFound):
     """No payment with that id, so there is nothing to refund."""
 
     code = "payment_not_found"
-    default_message = "No such payment"
+    default_message = "We couldn't find that payment"
 
 
 class PaymentNotYetRecorded(NotFound):
@@ -204,7 +204,7 @@ class InvoiceNotFound(NotFound):
     """No invoice by that id belongs to this organisation."""
 
     code = "invoice_not_found"
-    default_message = "No such invoice"
+    default_message = "We couldn't find that invoice"
 
 
 class InvoiceNotEditableError(Conflict):

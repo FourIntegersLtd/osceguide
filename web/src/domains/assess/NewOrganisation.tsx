@@ -6,7 +6,8 @@ import { boardAlert, boardBtn, boardLabel } from "@/foundation/ui/boardKit";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import { AuthShell, AuthButton, AuthFormField } from "@/capabilities/account";
 import { sendSiteMessage } from "@/capabilities/help";
-import { setupRequestBody } from "@/domains/assess/newOrganisationRequest";
+import { setupRequestBody, type RegisterPath } from "@/domains/assess/newOrganisationRequest";
+import { NewEmployer, RegisterPathPills } from "@/domains/assess/NewEmployer";
 
 /**
  * What an organisation can use the platform for. Product copy, not data: the
@@ -21,7 +22,7 @@ const PURPOSES: readonly { id: ProgrammePurpose; label: string }[] = [
   { id: "recruitment", label: "Recruitment" },
 ];
 
-const ORG_TYPES = ["Medical school", "Training programme", "Deanery", "Employer"] as const;
+const ORG_TYPES = ["Medical school", "Training programme", "Deanery"] as const;
 
 function toggled<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
@@ -36,6 +37,7 @@ function toggled<T>(list: T[], value: T): T[] {
  * email. It creates no account, so it asks for no password (H-1).
  */
 export function NewOrganisation() {
+  const [path, setPath] = useState<RegisterPath>("school");
   const [name, setName] = useState("");
   const [orgType, setOrgType] = useState<string>(ORG_TYPES[0]);
   const [purposes, setPurposes] = useState<ProgrammePurpose[]>([]);
@@ -73,6 +75,9 @@ export function NewOrganisation() {
     }
   }
 
+  const pills = <RegisterPathPills value={path} onChange={setPath} />;
+  if (path === "employer") return <NewEmployer pills={pills} />;
+
   if (sent) {
     return (
       <AuthShell
@@ -102,13 +107,13 @@ export function NewOrganisation() {
           void send();
         }}
       >
+        {pills}
         <AuthFormField label="Organisation name" name="organisation" required value={name} onChange={(event) => setName(event.target.value)} />
         <AuthFormField
           label="Type"
           name="type"
           fieldType="select"
           options={ORG_TYPES.map((type) => ({ value: type, label: type }))}
-          hint="Employer sets you up for hiring: candidates and assessments instead of trainees and sittings."
           value={orgType}
           onChange={(event) => setOrgType(event.target.value)}
         />

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mark a station</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Assessor</div></div></div>
+<a class="nav on" href="HireAssessorHome.dc.html">Overview</a><a class="nav" href="HireNowRunning.dc.html">Now running</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="4"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><a class="meta" href="HireConsole.dc.html">Priya Shah's rotation</a><h1>Station 1: Deteriorating patient (NEWS2)</h1><p class="desc">Check the AI's first mark against the transcript, then give your rating.</p></div><div class="acts"><button class="btn">Save draft</button><button class="btn pri">Submit my mark</button></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="g2"><div class="card"><div class="th"><span class="f">Competency</span><span style="width:110px">AI</span><span style="width:160px">You</span></div>
+<div class="row"><span class="f">Calculates NEWS2 correctly</span><span style="width:110px"><span class="chip ok">Green</span></span><span style="width:160px"><button class="pill on">G</button><button class="pill">A</button><button class="pill">R</button></span></div>
+<div class="row"><span class="f">Escalates with SBAR</span><span style="width:110px"><span class="chip warn">Amber</span></span><span style="width:160px"><button class="pill">G</button><button class="pill on">A</button><button class="pill">R</button></span></div>
+<div class="row"><span class="f">Starts a sepsis screen</span><span style="width:110px"><span class="chip live">Red</span></span><span style="width:160px"><button class="pill">G</button><button class="pill">A</button><button class="pill">R</button></span></div>
+<div class="pad"><label for="fb">Feedback for the candidate</label><textarea class="input" id="fb">Clear NEWS2 and a good SBAR call. Start the sepsis screen sooner.</textarea></div></div>
+<div class="card pad"><h2>Transcript</h2><div class="meta">04:12 Candidate: "His respiratory rate is 26 and he is newly confused, so that is a NEWS2 of 7."</div><div class="meta">06:40 Candidate: "I will call the doctor now. Situation…"</div><button class="btn sm">Open the full transcript</button></div></div>
+<div class="why" style="text-align:right">Submit needs a rating on every competency.</div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="al info"><b>The AI is still marking this station</b>You can mark now, or wait. This page updates when the AI mark arrives.</div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="al bad"><b>The AI could not mark this station</b>The recording finished, but marking failed. Try again, or mark it yourself.</div><button class="btn pri" style="align-self:flex-start">Try marking again</button>
+</sc-if>
+<sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+<div class="al warn"><b>You and Dan Lowe disagree on 2 competencies</b>Sara Khan, the lead assessor, settles it. Her mark is the one that counts.</div>
+<div class="card"><div class="row"><span class="f">Escalates with SBAR</span><span>You: Amber · Dan: Green</span><span class="chip info">Lead decides</span></div><div class="row"><span class="f">Starts a sepsis screen</span><span>You: Red · Dan: Amber</span><span class="chip info">Lead decides</span></div></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/slots/{s}/reviews/mine</code></div>
+<div class="call"><span class="m">PUT</span><code>{o}/slots/{s}/reviews/mine</code></div>
+<div class="call"><span class="m">DELETE</span><code>{o}/slots/{s}/reviews/{id}</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/slots/{s}/gp-lead-review</code></div>
+<div class="call"><span class="m">PUT</span><code>{o}/slots/{s}/gp-lead-review</code></div>
+<div class="call"><span class="m">DELETE</span><code>{o}/slots/{s}/gp-lead-review</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/slots/{s}/marking/retry</code></div>
+<div class="call"><span class="m">GET</span><code>/attempts/{id}/transcript</code></div>
+<div class="meta">The AI mark arrives on the existing event stream (live AI-mark events), never polled. gp-lead-review is "Lead assessor" on hire.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>not_slot_reviewer</code><code>review_locked</code><code>review_conflict</code><code>review_not_draft</code><code>review_incomplete</code><code>invalid_rating</code><code>nothing_to_review</code><code>circuit_review_finalized</code><code>marking_not_ready</code><code>slot_not_found</code></div>
+<div class="note">Route <code>/app/[w]/slots/[id]/review</code> · assessor, lead assessor · owner marking-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Mark it', 'AI still marking', 'AI failed', 'Disagreement'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2, s3: t === 3 };
+  }
+}
+</script>
+</body>
+</html>

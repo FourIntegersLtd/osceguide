@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { examSettingsSubtitle } from "@/capabilities/authoring/lib/authoringCopy";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, AsyncBoundary, B2CPageHeader, StepRail } from "@/foundation/ui";
@@ -35,6 +37,7 @@ export function ExamSettingsScreen({ examId }: { examId: string }) {
 
 function Form({ exam, reload }: { exam: Exam; reload: () => void }) {
   const scope = useAuthoringScope();
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const router = useRouter();
   const action = useAction(reload);
@@ -65,7 +68,7 @@ function Form({ exam, reload }: { exam: Exam; reload: () => void }) {
 
   const steps = examSteps(state);
   return (
-    <div className="flex max-w-[1080px] flex-col gap-6" data-testid="exam-settings-page">
+    <div className="flex flex-col gap-6" data-testid="exam-settings-page">
       <B2CPageHeader
         board
         action={<span aria-hidden />}
@@ -73,13 +76,13 @@ function Form({ exam, reload }: { exam: Exam; reload: () => void }) {
         wideSubtitle
         eyebrow={exam.name}
         title="Exam settings"
-        subtitle="Every setting an exam has: its timings, how it is marked, and what trainees get after a station."
+        subtitle={examSettingsSubtitle(w)}
         back={{ href: examsListPath(hrefFor), label: "Exams" }}
       />
       {locked ? <Alert tone="info">OSCE Guide exams are edited in the staff catalogue.</Alert> : null}
       <div className={boardPad}>
         <StepRail board steps={steps} />
-        <div className="text-assess-desc !leading-[normal] text-ink">{examNextAction(state).line}</div>
+        <div className="text-assess-desc !leading-[normal] text-ink">{examNextAction(state, w).line}</div>
       </div>
       <div className={boardPad}>
         <ExamFields board value={form} onChange={setForm} codeDisabled />

@@ -1,5 +1,6 @@
 import { createCircuit, createExamCircuits, timingBody } from "@/domains/assess/api";
-import { circuitPlan, circuitTiming, eachCircuitJobs, type ScheduleDraft } from "@/domains/assess/scheduleSitting";
+import { circuitPlan, circuitTiming, eachCircuitJobs, stationAssessorIds, type ScheduleDraft } from "@/domains/assess/scheduleSitting";
+import type { AssessWords } from "@/capabilities/assess-words/vocabulary";
 
 /**
  * Make the circuits of a sitting that already exists.
@@ -13,7 +14,9 @@ export async function createSittingCircuits(
   sittingId: string,
   draft: ScheduleDraft,
   already: number,
+  w: AssessWords,
 ): Promise<void> {
+  const assessors = stationAssessorIds(draft, w);
   const plan = circuitPlan(draft);
   const stationVersionIds = draft.stations.map((station) => station.version_id);
   const timing = circuitTiming(draft);
@@ -23,6 +26,7 @@ export async function createSittingCircuits(
       stationVersionIds,
       traineeIds: draft.candidateIds,
       supervisorUserId: draft.supervisorId || null,
+      stationAssessorIds: assessors,
       timing,
     });
   } else if (plan.kind === "bulk") {
@@ -31,6 +35,7 @@ export async function createSittingCircuits(
       candidate_user_ids: draft.candidateIds,
       station_version_ids: stationVersionIds,
       supervisor_user_id: draft.supervisorId || null,
+      station_assessor_ids: assessors,
       timing: timingBody(timing),
     });
   } else {
@@ -41,6 +46,7 @@ export async function createSittingCircuits(
           stationVersionIds,
           traineeIds: [job.candidate],
           supervisorUserId: draft.supervisorByCandidate[job.candidate] || null,
+          stationAssessorIds: assessors,
           timing,
         });
       } catch (cause) {

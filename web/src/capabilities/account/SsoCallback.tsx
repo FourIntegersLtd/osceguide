@@ -67,11 +67,9 @@ export function SsoCallback() {
         // an SSO person's first sign-in may have just created one.
         router.replace("/app");
       })
-      .catch((cause: unknown) => {
+      .catch(() => {
         setError(
-          cause instanceof Error
-            ? cause.message
-            : "We could not finish signing you in with your organisation.",
+          "We could not finish signing you in with your organisation. Try again in a minute. If it keeps happening, sign in with your password or ask your administrator.",
         );
       });
   }, [params, ready, status, refresh, router]);

@@ -76,3 +76,21 @@ describe("an absent candidate needs no decision", () => {
     assert.deepEqual(attentionItems([absent], []), []);
   });
 });
+
+import { whereItIs } from "@/domains/assess/results/resultsWhere";
+
+describe("whereItIs", () => {
+  const base = { mode: "exam", not_decided: 0, draft: 0, signed_off: 0, released: 0, sat: 10 };
+  it("says Decide N while candidates who sat have no decision", () => {
+    assert.equal(whereItIs({ ...base, not_decided: 3 }).label, "3 decisions to make");
+  });
+  it("says Sign off when decisions are drafted or signed off and not released", () => {
+    assert.equal(whereItIs({ ...base, draft: 2, released: 8 }).label, "Signed off, not released");
+    assert.equal(whereItIs({ ...base, signed_off: 8 }).label, "Signed off, not released");
+  });
+  it("says Released once everything is out, and Marking before anyone has sat", () => {
+    assert.equal(whereItIs({ ...base, released: 10 }).label, "Released");
+    assert.equal(whereItIs({ ...base, sat: 0 }).label, "Marking");
+    assert.equal(whereItIs({ ...base, mode: "training", not_decided: 6 }).label, "Released");
+  });
+});

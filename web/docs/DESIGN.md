@@ -56,7 +56,7 @@ product preference, not a default.
 - **Assess skin (boards win).** The institution boards in `docs/institution-overhaul/boards` are the
   specification, so their literal values have tokens: `text-assess-h1` 28/1.2, `-h2` 24/1.3, `-desc` 16/1.5,
   `-meta` 13/1.5, `-card-title` 26/1.2 (the sign-in card title), `-state-title` 16/normal (a short state card's h2), `-label` 14, `-chip` 12, `-eyebrow` 11 caps `.06em`, `-num` 28 (all fixed, no tracking),
-  `max-w-assess-page` 1080, `h-assess-dot` 26, and the class strings `assessPage`, `assessTitle`,
+  `h-assess-dot` 26, and the class strings `assessPage`, `assessTitle`,
   `assessEyebrow`, `assessCard`, `assessChip*`, `assessButton*`, `assessStep*`, `assessStat*`,
   `assessWhyPanel` in `foundation/ui/b2bTokens.ts`. A screen that has a board uses them; it never writes a raw size.
   `web/e2e/assess/board-*.spec.ts` compares each board with the app and fails past 0.5% pixels.

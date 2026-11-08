@@ -162,6 +162,7 @@ async def rebuild_circuit(
     supervisor_user_id: uuid.UUID | None = None,
     timing: TimingIn | None = None,
     revision: int | None = None,
+    station_assessor_ids: list[uuid.UUID | None] | None = None,
 ) -> CircuitRead:
     """Change who is on a circuit and which stations they sit (C3).
 
@@ -190,6 +191,13 @@ async def rebuild_circuit(
 
     await roster.ensure_rosterable(session, org_id, trainee_ids)
     await ensure_lead_may_run(session, org_id, supervisor_user_id)
+    assessors = await service.station_assessors(
+        session,
+        org_id,
+        station_version_ids,
+        station_assessor_ids,
+        keep=[(slot.station_version_id, slot.assessor_user_id) for slot in slots],
+    )
     mode = domain.Mode(sitting.mode)
     try:
         planned = domain.build_slots(
@@ -231,6 +239,7 @@ async def rebuild_circuit(
             for slot in planned
         ],
         room_name=circuit.room_name,
+        assessors=assessors,
     )
     await service_notify.trainees_scheduled(session, org_id, sitting, trainee_ids)
     await service_notify.reviewer_assigned(session, org_id, sitting, circuit)

@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { importLabel, stationsLead } from "@/capabilities/authoring/lib/authoringCopy";
 import { AuthoringConfirm } from "@/capabilities/authoring/parts/AuthoringConfirm";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -49,6 +51,7 @@ import { StationUsedBy } from "@/capabilities/authoring/sections/StationUsedBy";
  */
 export function StationsSection() {
   const scope = useAuthoringScope();
+  const w = useAssessWords();
   const org = !useAuthoringChrome().b2c;
   const { session } = useSession();
   const router = useRouter();
@@ -137,7 +140,7 @@ export function StationsSection() {
         action={
           <>
             <AuthoringLeadButton icon={HiOutlineCloudArrowUp} onClick={() => setImporting(true)}>
-              Import from PDF or Word
+              {importLabel(w)}
             </AuthoringLeadButton>
             <AuthoringLeadButton primary icon={HiOutlinePlusCircle} onClick={() => router.push(stationNewPath(hrefFor))}>
               New station
@@ -145,7 +148,7 @@ export function StationsSection() {
           </>
         }
       >
-        Published station cases for sessions and practice.
+        {stationsLead(w)}
         {stations.data ? (
           <span className={org ? "block text-assess-label font-bold text-ink" : "block text-osce-data font-normal text-ink-muted"}>
             {visibleCount}
@@ -185,6 +188,7 @@ export function StationsSection() {
           search={query}
           busy={action.busy}
           onOpen={(station) => goTo({ status, station: station.id })}
+          showApproval={scope.kind === "platform"}
           onToggleApproval={
             scope.kind === "platform" && isPlatformAdmin(session)
               ? (station) =>
@@ -224,7 +228,7 @@ export function StationsSection() {
           if (!archiveConfirm) return;
           const { id, version } = archiveConfirm;
           void action
-            .run(`archive:${id}`, () => archiveStationVersion(scope, id, version))
+            .run(`archive:${id}`, () => archiveStationVersion(scope, id, version, w))
             .then((ok) => {
               if (ok) setArchiveConfirm(null);
             });

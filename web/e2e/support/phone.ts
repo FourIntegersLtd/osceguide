@@ -81,5 +81,19 @@ export async function expectPagesReachable(page: Page, paths: readonly string[])
   for (const path of paths) {
     await openPage(page, path);
     await expectReachableOnPhone(page, path);
+    await expectEvenGutters(page, path);
   }
+}
+
+/** The page column fills the main panel: the left gutter equals the right one, at any width. */
+export async function expectEvenGutters(page: Page, label: string): Promise<void> {
+  const { left, right } = await page.evaluate(() => {
+    const main = document.querySelector("[data-b2c-scroll]");
+    const column = main?.firstElementChild;
+    if (!main || !column) return { left: 0, right: -1 };
+    const m = main.getBoundingClientRect();
+    const c = column.getBoundingClientRect();
+    return { left: c.left - m.left, right: m.left + main.clientWidth - c.right };
+  });
+  if (Math.abs(left - right) > 1) throw new Error(`${label}: left gutter ${left}px, right gutter ${right}px`);
 }

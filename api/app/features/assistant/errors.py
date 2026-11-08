@@ -21,14 +21,14 @@ class SessionNotFound(NotFound):
     """No assistant session exists with the given id."""
 
     code = "assistant_session_not_found"
-    default_message = "No such assistant session"
+    default_message = "We couldn't find that assistant session"
 
 
 class UnknownAssistantTypeError(InvalidInput):
     """The session names a `session_type` no worker recognises."""
 
     code = "unknown_assistant_type"
-    default_message = "No assistant handles that kind of session"
+    default_message = "There's no assistant for that kind of session."
 
 
 class SessionNotJoinable(Conflict):
@@ -42,7 +42,7 @@ class SessionNotReady(Conflict):
     """The session has no rendered instructions for a worker to dispatch."""
 
     code = "assistant_session_not_ready"
-    default_message = "That session has no rendered instructions"
+    default_message = "That session isn't ready yet. Try again in a moment."
 
 
 class SessionNotYours(Forbidden):

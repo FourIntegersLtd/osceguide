@@ -1,5 +1,7 @@
 "use client";
 
+import { say } from "@/domains/assess/roster/rosterWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { useCallback, useState } from "react";
 import { errorMessage } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
@@ -63,6 +65,7 @@ function Form({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const w = useAssessWords();
   const [firstName, setFirstName] = useState(trainee.first_name ?? "");
   const [lastName, setLastName] = useState(trainee.last_name ?? "");
   const [cohortId, setCohortId] = useState(trainee.cohort_id ?? "");
@@ -97,8 +100,8 @@ function Form({
   return (
     <Dialog
       open
-      title="Edit trainee"
-      lead="Only what is on this form is written. The email address cannot be changed here, because it keeps this person’s results linked to them."
+      title={say(w, "Edit trainee")}
+      lead={say(w, "Only what is on this form is written. The email address cannot be changed here, because it keeps this person’s results linked to them.")}
       error={error}
       busy={busy}
       commitLabel="Save"
@@ -107,7 +110,7 @@ function Form({
       onCommit={() => void commit()}
     >
       <div>
-        <label htmlFor="assess-trainee-edit-email" className={boardLabel}>Member</label>
+        <label htmlFor="assess-trainee-edit-email" className={boardLabel}>{w.hiring ? "Email address" : "Member"}</label>
         <input id="assess-trainee-edit-email" readOnly value={trainee.email} className={boardInput} />
       </div>
 
@@ -123,18 +126,18 @@ function Form({
       </div>
 
       <div>
-        <label htmlFor="assess-trainee-edit-cohort" className={boardLabel}>Year group</label>
+        <label htmlFor="assess-trainee-edit-cohort" className={boardLabel}>{say(w, "Year group")}</label>
         <select id="assess-trainee-edit-cohort" value={cohortId} onChange={(event) => setCohortId(event.target.value)} className={boardInput}>
-          <option value="">No year group</option>
+          <option value="">{say(w, "No year group")}</option>
           {cohorts.map((cohort) => (
             <option key={cohort.id} value={cohort.id}>
               {cohort.name}
             </option>
           ))}
         </select>
-        <div className={hint}>An intake. Choose an existing one; year groups are created under Groups and year groups.</div>
+        <div className={hint}>{say(w, "An intake. Choose an existing one; year groups are created under Groups and year groups.")}</div>
         {cohorts.length === 0 ? (
-          <Note tone="info">No year groups in the organisation yet. Create one under Groups, then come back to set it here.</Note>
+          <Note tone="info">{say(w, "No year groups in the organisation yet. Create one under Groups, then come back to set it here.")}</Note>
         ) : null}
       </div>
     </Dialog>

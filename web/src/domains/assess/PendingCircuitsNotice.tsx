@@ -10,6 +10,7 @@ import {
   loadPending,
   savePending,
 } from "@/domains/assess/scheduleCircuits";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * Shown on a sitting the wizard made but could not finish building.
@@ -26,6 +27,7 @@ export function PendingCircuitsNotice({
   sittingId: string;
   onDone: () => void;
 }) {
+  const w = useAssessWords();
   const [pending, setPending] = useState(() => loadPending(sittingId));
   const [busy, setBusy] = useState(false);
   if (!pending) return null;
@@ -33,12 +35,12 @@ export function PendingCircuitsNotice({
   const retry = async () => {
     setBusy(true);
     try {
-      await createSittingCircuits(orgSlug, sittingId, pending.draft, pending.created);
+      await createSittingCircuits(orgSlug, sittingId, pending.draft, pending.created, w);
       clearPending(sittingId);
       setPending(null);
       onDone();
     } catch (cause) {
-      const next = { ...pending, created: circuitsMade(cause, pending.created), message: assessErrorMessage(cause) };
+      const next = { ...pending, created: circuitsMade(cause, pending.created), message: assessErrorMessage(cause, w) };
       savePending(sittingId, next);
       setPending(next);
     } finally {
@@ -47,11 +49,11 @@ export function PendingCircuitsNotice({
   };
 
   return (
-    <Alert tone="danger" title="The circuits were not made">
+    <Alert tone="danger" title={`The ${w.circuits} were not made`}>
       <p>{pending.message}</p>
       <div className="mt-2">
         <Button themeType="b2b" variant="secondary" disabled={busy} onClick={() => void retry()}>
-          {busy ? <Spinner label="Making the circuits" className="text-current" /> : "Try again"}
+          {busy ? <Spinner label={`Making the ${w.circuits}`} className="text-current" /> : "Try again"}
         </Button>
       </div>
     </Alert>

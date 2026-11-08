@@ -80,8 +80,8 @@ export function readSessionCookies(request: NextRequest): Partial<TokenPair> {
   };
 }
 
-export function writeSessionCookies(response: NextResponse, pair: TokenPair): NextResponse {
-  const base = {
+function cookieOptions() {
+  return {
     httpOnly: true,
     secure: secure(),
     // `Lax` rather than `Strict`: the SSO callback and the emailed reset and
@@ -92,8 +92,23 @@ export function writeSessionCookies(response: NextResponse, pair: TokenPair): Ne
     path: "/",
     maxAge: REFRESH_TTL_SECONDS,
   } as const;
+}
 
-  response.cookies.set(REFRESH_COOKIE, pair.refreshToken, base);
+export function writeSessionCookies(response: NextResponse, pair: TokenPair): NextResponse {
+  response.cookies.set(REFRESH_COOKIE, pair.refreshToken, cookieOptions());
+  return writeAccessCookies(response, pair);
+}
+
+/**
+ * Replace the access token only, for an issuer that continues the same refresh
+ * chain (a workspace switch). The refresh cookie is not rewritten, so its
+ * lifetime still ends where the server's chain ends.
+ */
+export function writeAccessCookies(
+  response: NextResponse,
+  pair: Pick<TokenPair, "accessToken" | "expiresAt">,
+): NextResponse {
+  const base = cookieOptions();
   response.cookies.set(ACCESS_COOKIE, pair.accessToken, base);
   response.cookies.set(EXPIRES_COOKIE, String(pair.expiresAt), base);
   // The marker is the one a script may read, so it carries no token.
@@ -112,4 +127,19 @@ export function clearSessionCookies(response: NextResponse): NextResponse {
     });
   }
   return response;
+}
+
+/**
+ * The claims of a token, read without verifying it. platform-api verifies every token it is
+ * shown; callers here only pair two tokens or pass a hint back to it. `null` when unreadable.
+ */
+export function readTokenClaims(token: string | undefined): Record<string, unknown> | null {
+  try {
+    const payload = token?.split(".")[1];
+    if (!payload) return null;
+    const claims: unknown = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return claims && typeof claims === "object" && !Array.isArray(claims) ? (claims as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
 }

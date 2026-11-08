@@ -54,3 +54,57 @@ async def test_reporting_is_closed_to_a_trainee(client: AsyncClient, make_actor)
     await org_with_admin(client, make_actor)
     stranger = await make_actor("learner@example.com")
     assert (await client.get("/api/v1/orgs/kings/reporting", headers=bearer(stranger))).status_code == 403
+
+
+async def test_reporting_breaks_released_results_down_by_station_and_counts_assessors(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.voice.service import get_room_agents
+    from tests.support.fakes import FakeRoomAgents
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings")
+    station = await published_station(client, admin, "kings", "Chest pain")
+    rostered = await client.post(
+        "/api/v1/orgs/kings/trainees", json={"email": "cand@example.com"}, headers=bearer(admin)
+    )
+    circuit = await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[rostered.json()["user_id"]],
+        station_version_ids=[station],
+    )
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/advance", json={}, headers=bearer(admin))
+    reviewed = await client.put(
+        f"/api/v1/orgs/kings/slots/{circuit['slots'][0]['id']}/reviews/mine",
+        json={"field_values": {"consulting.score": "a"}, "status": "completed"},
+        headers=bearer(admin),
+    )
+    assert reviewed.status_code == 200, reviewed.text
+    await settle_decision(
+        client,
+        admin,
+        org_slug="kings",
+        sitting_id=sitting["id"],
+        trainee_id=rostered.json()["id"],
+        release=True,
+    )
+
+    body = (await client.get("/api/v1/orgs/kings/reporting", headers=bearer(admin))).json()
+
+    assert body["assessors_marking"] == 1
+    assert body["stations"] == [
+        {"station_title": "Chest pain", "assessed": 1, "pass_rate": None, "weakest_competency": "Consulting"}
+    ]
+
+
+async def test_reporting_has_no_stations_before_anything_is_released(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+
+    body = (await client.get("/api/v1/orgs/kings/reporting", headers=bearer(admin))).json()
+
+    assert (body["stations"], body["assessors_marking"]) == ([], 0)

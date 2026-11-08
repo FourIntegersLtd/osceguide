@@ -1,5 +1,6 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
 import { Select, Switch, cn, getInputClassName } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
@@ -7,7 +8,7 @@ import {
   FEEDBACK_SHAPE_WORDS,
   SHOW_KEYS,
   SHOW_WORDS,
-  TONE_WORDS,
+  toneWords,
   addFeedback,
   isCustom,
   removeFeedback,
@@ -44,7 +45,7 @@ export function FeedbackRows({
         isCustom(item) ? (
           <div key={`${item.id ?? "custom"}-${k}`} className="flex flex-wrap items-center gap-2 rounded-osce-md bg-osce-canvas px-3 py-2 text-osce-meta text-ink-muted">
             <span className="flex-1">{item.id ?? "Custom field"}</span>
-            <span>Custom field, edit in Advanced</span>
+            <span>Extra field. Change it on the Advanced tab.</span>
             <AuthoringButton variant="ghost" size="sm" onClick={onEditCustom}>
               Edit in Advanced
             </AuthoringButton>
@@ -87,6 +88,7 @@ export function FeedbackRows({
 
 /** What the marker writes for every competency, what the candidate sees, and the tone. */
 export function FeedbackBlock({ scheme, onScheme, readOnly, problems, onEditCustom }: { scheme: Scheme; onScheme: (s: Scheme) => void; readOnly: boolean; problems: readonly Problem[]; onEditCustom: () => void }) {
+  const tones = toneWords(useAssessWords());
   const own = problems.filter((p) => p.path.startsWith("competencyFeedback") || p.path.startsWith("show") || p.path === "tone");
   return (
     <div className="space-y-6" data-path="competencyFeedback">
@@ -97,7 +99,7 @@ export function FeedbackBlock({ scheme, onScheme, readOnly, problems, onEditCust
       <section className="space-y-2">
         <h3 className="text-osce-body font-semibold text-ink">Feedback the marker writes for every competency</h3>
         <FeedbackRows items={scheme.competencyFeedback ?? []} where={{ level: "competency" }} scheme={scheme} onScheme={onScheme} readOnly={readOnly} onEditCustom={onEditCustom} />
-        <p className="text-osce-caption text-ink-muted">The rating itself is always asked for; it is not in this list.</p>
+        <p className="text-osce-caption text-ink-muted">The marker always gives a rating, so it is not listed here.</p>
       </section>
       <section className="space-y-1" data-path="show">
         <h3 className="text-osce-body font-semibold text-ink">What the candidate sees</h3>
@@ -119,7 +121,7 @@ export function FeedbackBlock({ scheme, onScheme, readOnly, problems, onEditCust
       <section className="space-y-2" data-path="tone">
         <h3 className="text-osce-body font-semibold text-ink">Tone</h3>
         <div role="radiogroup" aria-label="Tone" className="flex flex-wrap gap-2">
-          {TONE_WORDS.map((tone) => {
+          {tones.map((tone) => {
             const on = (scheme.tone ?? null) === tone.value;
             return (
               <button
@@ -136,7 +138,7 @@ export function FeedbackBlock({ scheme, onScheme, readOnly, problems, onEditCust
             );
           })}
         </div>
-        <p className="text-osce-caption text-ink-muted">{TONE_WORDS.find((t) => (scheme.tone ?? null) === t.value)?.hint}</p>
+        <p className="text-osce-caption text-ink-muted">{tones.find((t) => (scheme.tone ?? null) === t.value)?.hint}</p>
       </section>
       {own.map((p) => (
         <p key={`${p.path}-${p.message}`} className="text-osce-caption text-osce-danger-text">{p.message}</p>

@@ -110,7 +110,7 @@ def test_an_invalid_draft_previews_as_its_problems() -> None:
 
     assert previewed.valid is False
     assert [problem.model_dump() for problem in previewed.problems] == [
-        {"path": "sections[0].competencies", "message": "A domain needs at least one competency to rate."}
+        {"path": "sections[0].competencies", "message": "Add at least one Competency to this Domain."}
     ]
     assert previewed.sample_result is None
 

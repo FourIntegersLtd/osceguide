@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { AsyncBoundary, b2bTokens as t, cn } from "@/foundation/ui";
 import { acts, card, fields } from "@/domains/assess/ui";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { useAsync } from "@/foundation/hooks";
 import { formatWhen } from "@/domains/assess/team/chrome";
+import { teamCopy } from "@/domains/assess/team/support";
 import { listAudit, type AuditFilters } from "@/domains/assess/team/api";
 import { boardBtn, boardPadWide, boardInput, boardLabel } from "@/foundation/ui/boardKit";
 
@@ -19,6 +21,7 @@ import { boardBtn, boardPadWide, boardInput, boardLabel } from "@/foundation/ui/
  * prefix, such as `membership.`) is the server's, as on the platform audit.
  */
 export function ActivityPanel({ orgSlug }: { orgSlug: string }) {
+  const w = useAssessWords();
   const [draft, setDraft] = useState<AuditFilters>({
     actorEmail: "",
     action: "",
@@ -106,7 +109,7 @@ export function ActivityPanel({ orgSlug }: { orgSlug: string }) {
             : {
                 title: "Nothing here yet.",
                 description:
-                  "Invitations, role changes and roster edits appear here as they happen.",
+                  teamCopy(w).auditEmpty,
               }
         }
       >

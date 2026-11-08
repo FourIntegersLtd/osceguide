@@ -16,7 +16,7 @@ class TraineeNotFound(NotFound):
     """No trainee with that id is on this organisation's roster."""
 
     code = "trainee_not_found"
-    default_message = "No such trainee"
+    default_message = "We couldn't find that trainee"
 
 
 class TraineeExists(Conflict):
@@ -37,7 +37,7 @@ class CohortNotFound(NotFound):
     """No cohort with that id exists at this organisation."""
 
     code = "cohort_not_found"
-    default_message = "No such cohort"
+    default_message = "We couldn't find that cohort"
 
 
 class CohortExists(Conflict):
@@ -58,7 +58,7 @@ class GroupNotFound(NotFound):
     """No group with that id exists at this organisation."""
 
     code = "group_not_found"
-    default_message = "No such group"
+    default_message = "We couldn't find that group"
 
 
 class GroupExists(Conflict):

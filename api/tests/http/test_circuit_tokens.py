@@ -16,9 +16,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from app.features.voice.service import get_room_agents, get_voice_tokens
-from tests.http.test_sittings_routes import a_template_version
 from tests.support.fakes import FakeRoomAgents, FakeVoiceTokens
-from tests.support.sittings import a_trainee, org_with_admin, published_station
+from tests.support.sittings import (
+    a_trainee,
+    add_programme,
+    org_with_admin,
+    published_station,
+    started_circuit,
+)
 from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db
@@ -41,31 +46,13 @@ async def a_live_circuit(
     mode: str = "exam",
 ) -> tuple[str, str, str, uuid.UUID]:
     """An org admin, a started circuit, and the candidate rostered onto it."""
-    org_id, admin = await org_with_admin(client, make_actor)
-    template = await a_template_version(client, admin)
-    sitting = (
-        await client.post(
-            "/api/v1/orgs/kings/sittings",
-            json={"name": "S", "programme_id": str(template), "mode": mode},
-            headers=bearer(admin),
-        )
-    ).json()
-    station = await published_station(client, admin, "kings", "S1")
-    trainee_id = await a_trainee(db_session, f"cand-{uuid.uuid4().hex[:8]}@example.com")
-    circuit = (
-        await client.post(
-            f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
-            json={"name": "C", "trainee_ids": [str(trainee_id)], "station_version_ids": [station]},
-            headers=bearer(admin),
-        )
-    ).json()
-    started = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
-    assert started.status_code == 200, started.text
+    run = await started_circuit(client, make_actor, db_session, mode=mode)
+    trainee_id = run.trainees[0]
     # Minted for the trainee the roster already created, rather than through
     # `make_actor`, which makes a new person: the point of every assertion here
     # is that this is the identity the circuit knows.
     candidate = mint_token(user_id=trainee_id, email=f"c-{trainee_id}@example.com")
-    return admin, candidate, circuit["id"], trainee_id
+    return run.admin, candidate, run.circuit_id, trainee_id
 
 
 async def test_a_candidate_joins_the_room_with_no_patient_attached(
@@ -121,7 +108,7 @@ async def test_there_is_no_room_before_the_circuit_starts(
     client: AsyncClient, make_actor, db_session: AsyncSession, tokens: FakeVoiceTokens
 ) -> None:
     org_id, admin = await org_with_admin(client, make_actor)
-    template = await a_template_version(client, admin)
+    template = await add_programme(client, admin, org_slug="kings")
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",

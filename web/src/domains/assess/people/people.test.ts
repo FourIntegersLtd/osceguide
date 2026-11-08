@@ -9,8 +9,7 @@ import {
   isAwaitingInvite,
   resendSummary,
   revokableStaff,
-  revokeLead,
-  staffRevokeTitle,
+  teamCopy,
 } from "@/domains/assess/team/support";
 import { PlatformError } from "@/foundation/platform-client";
 import {
@@ -21,7 +20,7 @@ import {
   addToGroupSummary,
   cohortDeleteLead,
 } from "@/domains/assess/roster/support";
-import { INSTITUTION_WORDS } from "@/domains/assess/vocabulary";
+import { INSTITUTION_WORDS } from "@/capabilities/assess-words/vocabulary";
 import { initialPeopleTab, peopleTabs } from "@/domains/assess/people/support";
 
 const realFetch = globalThis.fetch;
@@ -139,7 +138,7 @@ describe("staff bulk revoke", () => {
   it("tells a refused batch (409 last_admin) apart from any other failure", () => {
     const refused = new PlatformError(409, { code: "last_admin", message: "x" });
     assert.equal(bulkRevokeFailure(refused, "fallback"), LAST_ADMIN_MESSAGE);
-    assert.match(LAST_ADMIN_MESSAGE, /nobody was revoked/);
+    assert.match(LAST_ADMIN_MESSAGE, /no one was removed/);
     assert.equal(bulkRevokeFailure(new Error("boom"), "fallback"), "fallback");
   });
 
@@ -151,8 +150,8 @@ describe("staff bulk revoke", () => {
   });
 
   it("titles the confirmation by count", () => {
-    assert.equal(staffRevokeTitle(1), "Revoke access for 1 staff member?");
-    assert.equal(staffRevokeTitle(3), "Revoke access for 3 staff members?");
+    assert.equal(teamCopy(INSTITUTION_WORDS).revokeBulk(1), "Revoke access for 1 staff member?");
+    assert.equal(teamCopy(INSTITUTION_WORDS).revokeBulk(3), "Revoke access for 3 staff members?");
   });
 
   it("explains the two roles together in the change-role box", () => {
@@ -165,7 +164,7 @@ describe("staff bulk revoke", () => {
 
 describe("revokeLead", () => {
   it("warns when you revoke yourself and names anyone else", () => {
-    assert.match(revokeLead("me@x.org", true), /your own access/);
-    assert.match(revokeLead("a@x.org", false), /^a@x\.org will lose access/);
+    assert.match(teamCopy(INSTITUTION_WORDS).revokeOne("me@x.org", true), /your own access/);
+    assert.match(teamCopy(INSTITUTION_WORDS).revokeOne("a@x.org", false), /^a@x\.org will lose access/);
   });
 });

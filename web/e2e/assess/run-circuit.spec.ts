@@ -52,9 +52,11 @@ test.describe.serial("ASSESS-2/3 run a circuit", () => {
     await admin.getByRole("button", { name: "Next station" }).click();
     // voice_unavailable (503): a visible message, and the circuit is still controllable.
     await expect(admin.getByRole("alert").filter({ hasText: /voice|room|LiveKit|unavailable/i }).first()).toBeVisible();
-    await expect(admin.getByRole("button", { name: "End circuit" })).toBeVisible();
+    // End sits in the "⋯" menu, last, with the other less common controls.
+    await admin.getByRole("button", { name: "More circuit controls" }).click();
+    await expect(admin.getByRole("menuitem", { name: "End circuit" })).toBeVisible();
 
-    await admin.getByRole("button", { name: "End circuit" }).click();
+    await admin.getByRole("menuitem", { name: "End circuit" }).click();
     await admin.getByRole("dialog").getByRole("button", { name: "End the circuit" }).click();
 
     await openPage(admin, `/app/${w.slug}/sittings/${sitting.id}`);

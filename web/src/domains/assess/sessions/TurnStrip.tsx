@@ -6,12 +6,16 @@ import { assessMeta } from "@/foundation/ui/b2bTokens";
 import { boardPad } from "@/foundation/ui/boardKit";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
 import { overrides } from "@/domains/assess/sessions/api";
-import { OverrideDialog, type OverrideRequest } from "@/domains/assess/sessions/OverrideDialog";
+import { OverrideDialog, type OverrideInput, type OverrideRequest } from "@/domains/assess/sessions/OverrideDialog";
 import { personLabel, slotProgress, stationLabel } from "@/domains/assess/sessions/support";
+import { TURN_LABEL, turnsOf, type TurnState } from "@/domains/assess/sessions/turns";
+import { boardChip, type BoardChipTone } from "@/foundation/ui/boardKit";
 import { cardTitle } from "@/domains/assess/chrome";
 
+const CHIP: Record<TurnState, BoardChipTone> = { done: "ok", now: "info", next: "warn", waiting: "neutral" };
+
 /**
- * Who is on this circuit, and where the examination is in it.
+ * The turns on a training circuit: who is on, who is up next, and a quiet way to start anyone out of order.
  *
  * The retiring strip put a candidate on station by activating a slot in the
  * browser. A station here is somewhere the circuit is, so tapping a name is a
@@ -42,72 +46,76 @@ export function TurnStrip({
 }) {
   const [request, setRequest] = useState<OverrideRequest | null>(null);
   const circuit = data.circuit;
-  const slots = (data.slots ?? []).slice().sort((a, b) => a.slot_index - b.slot_index);
   const live = circuit.started_at !== null && circuit.ended_at === null;
   const canJump = live && busy === null && !offline;
 
-  async function commit(input: { reason: string | null; seconds: number }) {
+  async function commit(input: OverrideInput) {
     if (!request) return;
     const pending = request;
     await run(pending.name, () => pending.run(input));
     setRequest(null);
   }
 
-  const active = circuit.active_slot_id;
-  const redoable = canJump ? slots.filter((slot) => slotProgress(slot) === "completed") : [];
+  const { rows } = turnsOf(data);
 
   return (
     <div className={boardPad}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className={cardTitle}>Stations on this circuit</h2>
+        <h2 className={cardTitle}>Turns</h2>
         {onAdd ? (
           <Button themeType="b2b" variant="secondary" size="sm" onClick={onAdd}>
             Add trainee
           </Button>
         ) : null}
       </div>
-      {canJump ? <p className={assessMeta}>Tap a name to jump the circuit to that station</p> : null}
 
-      <div className="flex flex-wrap items-center gap-2.5">
-        {slots.map((slot, index) => {
-          const isActive = slot.id === active;
-          const live = isActive && circuit.agent_dispatched;
+      <ol className="m-0 flex list-none flex-col p-0">
+        {rows.map((row) => {
+          const isNow = row.state === "now";
           return (
-            <button
-              key={slot.id}
-              type="button"
-              disabled={!canJump || isActive}
-              aria-current={isActive ? "step" : undefined}
-              onClick={() => setRequest(jumpRequest(orgSlug, circuitId, slot))}
-              title={canJump && !isActive ? "Jump the circuit to this station" : undefined}
-              className={`inline-flex min-h-9 items-center rounded-full border px-3 text-assess-meta disabled:cursor-default ${
-                isActive
-                  ? "border-assess-select-border bg-assess-chip-info-bg text-assess-chip-info-text"
-                  : "border-osce-border bg-osce-surface text-osce-ink-900"
+            <li
+              key={row.slot.id}
+              aria-current={isNow ? "step" : undefined}
+              className={`flex min-h-12 flex-wrap items-center gap-x-4 gap-y-1 rounded-board px-3 py-2 transition-colors duration-150 motion-reduce:transition-none ${
+                isNow ? "bg-assess-chip-info-bg" : ""
               }`}
             >
-              {index + 1} · {personLabel(slot)} · {stationLabel(slot)}
-              {live ? " · Patient is live" : ""}
-            </button>
+              <div className="min-w-0 flex-[1_1_160px]">
+                <div className="truncate text-assess-label font-medium text-osce-ink-900">{row.person}</div>
+                <div className={`${assessMeta} truncate`}>{row.station}</div>
+              </div>
+              <span className={`${boardChip(CHIP[row.state])} shrink-0`}>
+                {TURN_LABEL[row.state]}
+                {isNow && circuit.agent_dispatched ? " · Patient is live" : ""}
+              </span>
+              <div className="flex min-w-[7.5rem] justify-end">
+                {canJump && !isNow && slotProgress(row.slot) !== "completed" ? (
+                  <Button
+                    themeType="b2b"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Start turn now: ${row.person}`}
+                    onClick={() => setRequest(jumpRequest(orgSlug, circuitId, row.slot))}
+                  >
+                    Start turn now
+                  </Button>
+                ) : null}
+                {canJump && row.state === "done" && slotProgress(row.slot) === "completed" ? (
+                  <Button
+                    themeType="b2b"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Redo this turn: ${row.person}`}
+                    onClick={() => setRequest(redoRequest(orgSlug, circuitId, row.slot))}
+                  >
+                    Redo
+                  </Button>
+                ) : null}
+              </div>
+            </li>
           );
         })}
-      </div>
-
-      {redoable.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2.5">
-          {redoable.map((slot) => (
-            <Button
-              key={slot.id}
-              themeType="b2b"
-              variant="ghost"
-              size="sm"
-              onClick={() => setRequest(redoRequest(orgSlug, circuitId, slot))}
-            >
-              Redo this station ({personLabel(slot)})
-            </Button>
-          ))}
-        </div>
-      ) : null}
+      </ol>
 
       <OverrideDialog
         request={request}
@@ -123,9 +131,9 @@ export function TurnStrip({
 function jumpRequest(slug: string, circuitId: string, slot: ConsoleSlot): OverrideRequest {
   return {
     name: "jump",
-    title: `Jump to ${personLabel(slot)}`,
-    lead: `The circuit moves to ${stationLabel(slot)}. Stations passed over are recorded as skipped.`,
-    commitLabel: "Jump to it",
+    title: `Start ${personLabel(slot)}'s turn now`,
+    lead: `${personLabel(slot)} goes in now for ${stationLabel(slot)}. Turns passed over are marked as skipped.`,
+    commitLabel: "Start the turn",
     run: ({ reason }) => overrides.jumpTo(slug, circuitId, slot.id, reason),
   };
 }
@@ -134,7 +142,7 @@ function redoRequest(slug: string, circuitId: string, slot: ConsoleSlot): Overri
   return {
     name: "redo",
     title: `Redo ${stationLabel(slot)}`,
-    lead: `${personLabel(slot)} sits this station again with a new patient. The first attempt stays on the record.`,
+    lead: `${personLabel(slot)} takes this station again with a new patient. The first try is kept.`,
     commitLabel: "Redo it",
     run: ({ reason }) => overrides.redoStation(slug, circuitId, slot.id, reason),
   };

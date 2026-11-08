@@ -22,4 +22,11 @@ describe("page width", () => {
     const shell = readFileSync(join(process.cwd(), "src/surfaces/WorkspaceShell.tsx"), "utf8");
     assert.match(shell, /b2cPageColumn/);
   });
+
+  it("the page column has no width cap or centring: it fills the gutters at any viewport", () => {
+    const tokens = readFileSync(join(process.cwd(), "src/foundation/ui/productTokens.ts"), "utf8");
+    const column = /export const b2cPageColumn =\s*"([^"]*)"/.exec(tokens)?.[1] ?? "";
+    assert.match(column, /\bw-full\b/);
+    assert.doesNotMatch(column, /max-w-|mx-auto/);
+  });
 });

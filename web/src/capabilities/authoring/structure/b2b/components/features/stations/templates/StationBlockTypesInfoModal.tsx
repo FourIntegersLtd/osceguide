@@ -1,4 +1,6 @@
 "use client";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { fieldTypesHelp } from "@/capabilities/authoring/lib/authoringCopy";
 import { B2BModal } from "@/capabilities/authoring/structure/b2b/components/ui/B2BModal";
 import { formsOrderForKind, type TemplateKind } from "@/capabilities/authoring/structure/b2b/lib/stations/blockTypeLabels";
 import { B2BButton } from "@/capabilities/authoring/structure/b2b/components/ui/B2BButton";
@@ -11,6 +13,7 @@ export function StationBlockTypesInfoModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const words = useAssessWords();
   return (
     <B2BModal
       open={open}
@@ -24,8 +27,7 @@ export function StationBlockTypesInfoModal({
         <p className="text-osce-body text-ink-muted leading-relaxed">
           {" "}
           These are the building blocks for station and feedback templates.
-          Pick the type that best matches what you want trainees or examiners
-          to fill in.{" "}
+          {fieldTypesHelp(words)}{" "}
         </p>{" "}
         <ul className="mt-5 space-y-5">
           {" "}

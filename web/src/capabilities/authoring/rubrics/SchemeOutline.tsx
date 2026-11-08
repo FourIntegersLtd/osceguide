@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useMediaQuery } from "@/foundation/hooks";
 import { Alert, Badge, ConfirmModal, Modal, PopupMenu, cn } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { pathText } from "@/capabilities/authoring/rubrics/jsonPath";
@@ -104,11 +103,7 @@ export function SchemeOutline({ scheme, onScheme, readOnly, problems, reveal, on
     if (isOpen(b, i) && focus?.block === i) setFocus(null);
     setToggled(new Map(toggled).set(b.id, !isOpen(b, i)));
   };
-  // Wide: the detail sits beside the outline and follows focus. Narrow: it is a sheet, so only Details opens it.
-  const wide = useMediaQuery("(min-width: 1280px)", true);
-  const focusRow = (next: Focus) => {
-    if (wide) setFocus(next);
-  };
+  // The detail is always a modal, opened only by Details (or a problem pointing into it), so it is seen opening.
   /** Apply an edit that moves rows, keeping the picked row on the row it was on. */
   const edit = (next: Scheme, change: OutlineChange) => {
     setFocus((current) => remapFocus(current, change));
@@ -121,8 +116,8 @@ export function SchemeOutline({ scheme, onScheme, readOnly, problems, reveal, on
     const competency = hit[2] === undefined ? undefined : Number(hit[2]);
     const row = scheme.outline[block];
     if (row?.block === "domain") setToggled((t) => new Map(t).set(row.id, true));
-    // On a sheet, only a problem in the detail fields opens it; the row's own title or label is focused where it stands.
-    if (wide || !/^(\.(title|label))?$/.test(hit[3] ?? "")) setFocus(competency === undefined ? { block } : { block, competency });
+    // Only a problem in the detail fields opens it; the row's own title or label is focused where it stands.
+    if (!/^(\.(title|label))?$/.test(hit[3] ?? "")) setFocus(competency === undefined ? { block } : { block, competency });
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => revealPath(reveal.path)));
   }, [reveal?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps -- runs once per request
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
@@ -195,7 +190,7 @@ export function SchemeOutline({ scheme, onScheme, readOnly, problems, reveal, on
           The builder cannot show this marking scheme. Edit it as JSON under Advanced.{" "}
           <AuthoringButton variant="ghost" size="sm" onClick={onEditCustom}>Open the JSON</AuthoringButton>
         </Alert>
-        <p className="text-osce-caption text-ink-muted">Scale, Pass rule and Feedback are hidden too: they live inside the JSON for this scheme.</p>
+        <p className="text-osce-caption text-ink-muted">Rating scale, Pass rule and Feedback cannot be shown for this scheme. Edit it on the Advanced tab.</p>
       </div>
     );
   }
@@ -204,13 +199,13 @@ export function SchemeOutline({ scheme, onScheme, readOnly, problems, reveal, on
   const deleting = (() => {
     if (!pending || !pickedBlock) return { title: "", body: "" };
     if (pending.kind === "competency" && pickedBlock.block === "domain") {
-      return { title: `Delete ${pickedBlock.competencies[pending.j]?.label ?? "this competency"}?`, body: "Its instructions and level descriptions go too. Close without saving to undo." };
+      return { title: `Delete ${pickedBlock.competencies[pending.j]?.label ?? "this competency"}?`, body: "Its instructions and level descriptions go too. To bring it back, leave without saving." };
     }
     if (pickedBlock.block === "domain") {
       const n = pickedBlock.competencies.length;
-      return { title: `Delete ${pickedBlock.title || "this domain"}?`, body: `Its ${n} ${n === 1 ? "competency" : "competencies"} and their instructions go too. Close without saving to undo.` };
+      return { title: `Delete ${pickedBlock.title || "this domain"}?`, body: `Its ${n} ${n === 1 ? "competency" : "competencies"} and their instructions go too. To bring it back, leave without saving.` };
     }
-    return { title: `Delete ${pickedBlock.block === "notes" ? pickedBlock.title || "this notes block" : "this block"}?`, body: "Everything the marker writes there goes too, including its custom field. Close without saving to undo." };
+    return { title: `Delete ${pickedBlock.block === "notes" ? pickedBlock.title || "this notes block" : "this block"}?`, body: "Everything the marker writes there goes too, including its custom field. To bring it back, leave without saving." };
   })();
   const detailKind = !block ? "" : block.block === "custom" ? "Custom field" : focus?.competency !== undefined && block.block === "domain" ? `Competency in ${block.title || block.id}` : block.block === "domain" ? "Domain" : "Notes";
 
@@ -241,7 +236,7 @@ export function SchemeOutline({ scheme, onScheme, readOnly, problems, reveal, on
                           {b.block === "custom" ? (
                             <button type="button" className="min-h-11 flex-1 text-left text-osce-body text-ink-muted" onClick={() => setFocus({ block: i })}>Custom block</button>
                           ) : (
-                            <input aria-label={`Title of ${b.block} ${i + 1}`} data-path={pathText(["outline", i, "title"])} className={titleInput} readOnly={readOnly} value={b.title ?? ""} onFocus={() => focusRow({ block: i })} onChange={(event) => onScheme(updateBlock(scheme, i, { title: event.target.value }))} />
+                            <input aria-label={`Title of ${b.block} ${i + 1}`} data-path={pathText(["outline", i, "title"])} className={titleInput} readOnly={readOnly} value={b.title ?? ""} onChange={(event) => onScheme(updateBlock(scheme, i, { title: event.target.value }))} />
                           )}
                           <Badge variant="neutral" className="shrink-0">{b.block === "domain" ? `${b.competencies.length} ${b.competencies.length === 1 ? "competency" : "competencies"}` : b.block === "notes" ? "Notes" : "Custom"}</Badge>
                           {count > 0 ? <Badge variant="danger">{count}</Badge> : null}
@@ -268,7 +263,7 @@ export function SchemeOutline({ scheme, onScheme, readOnly, problems, reveal, on
                                 {(handle) => (
                                   <>
                                     {readOnly ? null : handle}
-                                    <input aria-label={`Competency ${j + 1} of ${label}`} data-path={pathText(["outline", i, "competencies", j, "label"])} className={titleInput} readOnly={readOnly} value={c.label} onFocus={() => focusRow({ block: i, competency: j })} onChange={(event) => onScheme(updateCompetency(scheme, i, j, { label: event.target.value }))} />
+                                    <input aria-label={`Competency ${j + 1} of ${label}`} data-path={pathText(["outline", i, "competencies", j, "label"])} className={titleInput} readOnly={readOnly} value={c.label} onChange={(event) => onScheme(updateCompetency(scheme, i, j, { label: event.target.value }))} />
                                     {cc > 0 ? <Badge variant="danger">{cc}</Badge> : null}
                                     <AuthoringButton variant="ghost" size="sm" aria-label={`Details of ${c.label}`} onClick={() => setFocus({ block: i, competency: j })}>Details</AuthoringButton>
                                     {readOnly ? null : (
@@ -293,21 +288,8 @@ export function SchemeOutline({ scheme, onScheme, readOnly, problems, reveal, on
             </div>
           </SortableContext>
         </DndContext>
-        {wide ? (
-          <div className="rounded-osce-md border border-osce-border p-4" data-testid="outline-detail" aria-label="Details">
-            {detail ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-osce-caption uppercase tracking-wide text-ink-muted">{detailKind}</span>
-                  <AuthoringButton variant="secondary" size="sm" onClick={() => setFocus(null)}>Done</AuthoringButton>
-                </div>
-                {detail}
-              </div>
-            ) : <p className="text-osce-meta text-ink-muted">Pick a domain, competency or notes block to edit it here.</p>}
-          </div>
-        ) : null}
       </div>
-      {!wide && detail ? (
+      {detail ? (
         <Modal onClose={() => setFocus(null)} title={detailKind}>
           {detail}
         </Modal>

@@ -167,7 +167,7 @@ function InvoiceBody({
       onChanged();
     } catch (cause) {
       if (cause instanceof PlatformError && cause.code === "invoice_not_editable") {
-        setFailure("That invoice is paid or void, so its purchase order number can no longer change.");
+        setFailure("That invoice is paid or cancelled, so its purchase order number can no longer change.");
         onChanged();
       } else {
         setFailure(errorMessage(cause));
@@ -235,7 +235,7 @@ function InvoiceBody({
               {checked.reason} To remove one, contact support.
             </p>
           ) : null}
-          <div className={hint}>Your finance team&apos;s reference. It can change until the invoice is paid or void.</div>
+          <div className={hint}>Your finance team&apos;s reference. It can change until the invoice is paid or cancelled.</div>
         </form>
       ) : (
         <p className={cn(t.assessMeta, "m-0")}>Purchase order number: {invoice.po_number ?? "Not set"}</p>

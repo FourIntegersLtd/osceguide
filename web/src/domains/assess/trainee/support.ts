@@ -1,6 +1,7 @@
 import { PlatformError } from "@/foundation/platform-client";
 import { errorMessage } from "@/foundation/hooks/useAsync";
 import type { MySitting, MySlot, OrgStation } from "@/domains/assess/trainee/api";
+import type { AssessWords } from "@/capabilities/assess-words/vocabulary";
 
 /**
  * The vocabulary and the arithmetic of a candidate's own view.
@@ -85,8 +86,10 @@ export function isExam(sitting: MySitting): boolean {
   return EXAM_MODES.has(sitting.mode);
 }
 
-export function modeLabel(sitting: MySitting): string {
-  return isExam(sitting) ? "Examination" : "Practice circuit";
+/** What kind of occasion this is. An employer has no practice: its non-exam rotation is "Training rotation". */
+export function modeLabel(sitting: MySitting, w: AssessWords): string {
+  if (isExam(sitting)) return w.hiring ? w.Sitting : "Examination";
+  return w.hiring ? `${w.training} ${w.circuit}` : "Practice circuit";
 }
 
 /** A sitting in one of these is over: it sorts last and belongs under "Past" (T-9). */
@@ -140,6 +143,27 @@ export function liveSittings(sittings: readonly MySitting[]): MySitting[] {
 }
 
 /**
+ * The live sittings split for the overview: at most ONE embedded room.
+ *
+ * Only an exam embeds a room (the candidate must be in LiveKit before reading
+ * ends); a practice circuit links to its page, which holds the room. Two
+ * mounted rooms on one page fight over the microphone.
+ */
+export function liveRooms(live: readonly MySitting[]): {
+  embedded: MySitting | null;
+  linked: MySitting[];
+} {
+  const embedded = live.find(isExam) ?? null;
+  return { embedded, linked: live.filter((each) => each !== embedded) };
+}
+
+/** Hero title: "Your turn is live" only while the person's own slot is active. */
+export function liveTitle(sitting: MySitting): string {
+  if (isExam(sitting)) return liveBannerCopy(sitting).title;
+  return activeSlot(sitting) ? "Your turn is live" : "Practice circuit is open";
+}
+
+/**
  * The sitting that owns a slot, for a link that named the slot and not the sitting.
  *
  * The retiring client emailed `/b2b/trainee/join/<slotId>`, while this platform
@@ -180,8 +204,8 @@ export function stationsCompleted(sittings: readonly MySitting[]): number {
  * examination, where the candidate works through their own stations, and never
  * a count of zero for a sitting whose slots have not been published yet.
  */
-export function summaryLine(sitting: MySitting): string {
-  const parts = [modeLabel(sitting)];
+export function summaryLine(sitting: MySitting, w: AssessWords): string {
+  const parts = [modeLabel(sitting, w)];
   const { completed, total } = progressOf(sitting);
   // A finished sitting's row says only what to do next (the board), not when it was or how far it got.
   if (isOver(sitting)) return parts.join(" · ");
@@ -202,9 +226,9 @@ export function whenWords(iso: string, now: Date = new Date()): string {
 }
 
 /** What the button on the spotlight row should say. */
-export function continueLabel(sitting: MySitting): string {
+export function continueLabel(sitting: MySitting, w: AssessWords): string {
   if (joinable(sitting)) return "Your station is open";
-  if (sitting.paused) return "Paused by your supervisor";
+  if (sitting.paused) return `Paused by your ${w.supervisor}`;
   if (sitting.live) return "Running now";
   const { completed, total } = progressOf(sitting);
   if (total > 0 && completed === total) return "Finished: open it for your result and feedback";
@@ -295,15 +319,20 @@ export function splitFinished(sittings: readonly MySitting[]): { current: MySitt
   return { current: sittings.filter((s) => !isOver(s)), past: sittings.filter(isOver) };
 }
 
-const JOIN_REFUSALS: Record<string, string> = {
-  circuit_not_live: "This circuit is not open yet. You will be let in when your supervisor starts it.",
-  circuit_not_found: "That circuit is not on your list any more. Ask your organiser.",
+/** An institution trainee is told "circuit"; a candidate is told the employer's word. */
+const joinRefusals = (w: AssessWords): Record<string, string> => ({
+  circuit_not_live: `This ${w.circuit} is not open yet. You will be let in when your ${w.supervisor} starts it.`,
+  circuit_not_found: w.hiring
+    ? "You are no longer down to sit this. Contact your organiser."
+    : "That circuit is not on your list any more. Ask your organiser.",
   voice_unavailable: "The voice service is not available right now. Try again in a minute.",
-  trainee_revoked: "Your access to this organisation has been withdrawn.",
-  trainee_not_on_roster: "You are not on this circuit.",
-};
+  trainee_revoked: w.hiring
+    ? "You no longer have access to this organisation. Contact them if you think this is a mistake."
+    : "Your access to this organisation has been withdrawn.",
+  trainee_not_on_roster: w.hiring ? `You are not on the list for this ${w.sitting}.` : "You are not on this circuit.",
+});
 
 /** Why a join was refused, in words a candidate can act on (T-7). */
-export function joinFailureCopy(cause: unknown): string {
-  return (cause instanceof PlatformError ? JOIN_REFUSALS[cause.code] : undefined) ?? errorMessage(cause);
+export function joinFailureCopy(cause: unknown, w: AssessWords): string {
+  return (cause instanceof PlatformError ? joinRefusals(w)[cause.code] : undefined) ?? errorMessage(cause);
 }

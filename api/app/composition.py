@@ -22,6 +22,7 @@ from app.features.identity.service import account_status, may_call_with_temporar
 from app.features.roster.service import audiences_for_viewer
 from app.features.tenancy.service import (
     is_institution_admin,
+    may_lead_review,
     is_org_admin,
     may_read_org,
     may_run_circuit,
@@ -51,4 +52,5 @@ def bind_seams() -> None:
         may_run_circuit=may_run_circuit,
         is_org_admin=is_org_admin,
         is_institution_admin=is_institution_admin,
+        may_lead_review=may_lead_review,
     )

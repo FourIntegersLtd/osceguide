@@ -89,7 +89,7 @@ function LoadedReferral({ referralId }: { referralId: string }) {
 
 function ReferralMissing() {
   return (
-    <div className="mx-auto w-full max-w-[1100px] space-y-4">
+    <div className="w-full space-y-4">
       <Back />
       <Panel title="Referral">
         <p className={settingsSub}>Referral not found.</p>
@@ -100,7 +100,7 @@ function ReferralMissing() {
 
 function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
   return (
-    <div className="mx-auto w-full max-w-[1100px] space-y-6">
+    <div className="w-full space-y-6">
       <div className="space-y-2">
         <Back />
         <h1 className="font-title text-osce-heading font-semibold text-ink">Referral</h1>

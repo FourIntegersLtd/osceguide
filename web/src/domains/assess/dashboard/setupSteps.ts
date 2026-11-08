@@ -1,5 +1,5 @@
 import type { OrgSetup } from "@/domains/assess/dashboard/api";
-import type { AssessWords } from "@/domains/assess/vocabulary";
+import type { AssessWords } from "@/capabilities/assess-words";
 
 /** The setup assistant on Home: its five steps and the judgements about them, from the flags `/dashboard` returns. */
 
@@ -137,4 +137,47 @@ export function setupComplete(steps: AssistantStep[]): boolean {
 export function firstOpenStep(steps: AssistantStep[]): number {
   const index = steps.findIndex((step) => !step.done);
   return index === -1 ? steps.length - 1 : index;
+}
+
+export type HireRailStep = {
+  id: "exam" | "candidates" | "assessors" | "assessment";
+  label: string;
+  optional: boolean;
+  done: boolean;
+  cta: string;
+  /** Surface-relative; the caller runs it through `hrefFor`. */
+  href: string;
+  /** Why the step cannot be used yet, in words beneath its button. */
+  blocked: string | null;
+};
+
+/** What still stands between the account and its first assessment, from the flags the api derives `ready_to_run` from. */
+function assessmentBlocked(setup: OrgSetup, w: AssessWords): string {
+  const missing: string[] = [];
+  if (!setup.programme_exam_rubric_ready) missing.push(withArticle(w.exam));
+  if (!setup.stations_available) missing.push("stations");
+  if (!setup.trainees_added) missing.push(w.trainees);
+  const list = missing.length > 1 ? `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}` : (missing[0] ?? "your team");
+  return `You need ${list} first.`;
+}
+
+/** A new hire account's four-step rail (Exam, Candidates, Assessors, Assessment), from the same flags as the assistant. */
+export function hireRail(setup: OrgSetup, w: AssessWords): HireRailStep[] {
+  return [
+    {
+      id: "exam", label: w.Exam, optional: false, done: setup.programme_exam_rubric_ready && setup.stations_available,
+      cta: `Set up an ${w.exam}`, href: NEW_EXAM_PATH, blocked: null,
+    },
+    { id: "candidates", label: w.Trainees, optional: false, done: setup.trainees_added, cta: w.addPeople, href: "/trainees", blocked: null },
+    { id: "assessors", label: w.Supervisors, optional: true, done: setup.team_invited, cta: `Invite ${withArticle(w.supervisor)}`, href: "/team", blocked: null },
+    {
+      id: "assessment", label: w.Sitting, optional: false, done: setup.sitting_scheduled, cta: w.scheduleSitting, href: SCHEDULE_SITTING_PATH,
+      blocked: setup.ready_to_run ? null : assessmentBlocked(setup, w),
+    },
+  ];
+}
+
+/** The one step the rail asks for next: the first required step not done. */
+export function hireRailNext(steps: readonly HireRailStep[]): HireRailStep | null {
+  return steps.find((step) => !step.done && !step.optional) ?? null;
 }

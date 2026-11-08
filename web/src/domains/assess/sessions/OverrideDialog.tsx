@@ -8,6 +8,9 @@ import {
   validOverrideSeconds,
 } from "@/domains/assess/sessions/support";
 import { boardInput } from "@/foundation/ui/boardKit";
+import { Select } from "@/foundation/ui";
+
+export type OverrideInput = { reason: string | null; seconds: number; choice: string };
 
 export interface OverrideRequest {
   /** The control being confirmed, used as the busy key. */
@@ -18,7 +21,10 @@ export interface OverrideRequest {
   tone?: "commit" | "danger";
   /** Shown when the override needs a number as well as a reason. */
   seconds?: number;
-  run: (input: { reason: string | null; seconds: number }) => Promise<unknown>;
+  /** Shown when the override picks one of several stations (Jump to…). The first is preselected. */
+  choices?: { value: string; label: string }[];
+  choiceLabel?: string;
+  run: (input: OverrideInput) => Promise<unknown>;
 }
 
 /**
@@ -41,7 +47,7 @@ export function OverrideDialog({
   busy: boolean;
   error: string | null;
   onClose: () => void;
-  onCommit: (input: { reason: string | null; seconds: number }) => void;
+  onCommit: (input: OverrideInput) => void;
 }) {
   // The form is mounted by the request and unmounted with it, so each override
   // starts blank. Carrying the last one's reason into the next would write it
@@ -69,10 +75,11 @@ function OverrideForm({
   busy: boolean;
   error: string | null;
   onClose: () => void;
-  onCommit: (input: { reason: string | null; seconds: number }) => void;
+  onCommit: (input: OverrideInput) => void;
 }) {
   const [reason, setReason] = useState("");
   const [seconds, setSeconds] = useState(request.seconds ?? 60);
+  const [choice, setChoice] = useState(request.choices?.[0]?.value ?? "");
 
   return (
     <PeopleDialog
@@ -86,9 +93,22 @@ function OverrideForm({
       commitLabel={request.commitLabel}
       busyLabel="Working…"
       onClose={onClose}
-      onCommit={() => onCommit({ reason: reason.trim() || null, seconds })}
+      onCommit={() => onCommit({ reason: reason.trim() || null, seconds, choice })}
     >
       <div className={assessFormStack}>
+        {request.choices ? (
+          <label className={assessFormHeading}>
+            <span className="text-assess-label font-medium">{request.choiceLabel}</span>
+            <Select value={choice} onChange={(event) => setChoice(event.target.value)}>
+              {request.choices.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+        ) : null}
+
         {request.seconds !== undefined ? (
           <label className={assessFormHeading}>
             <span className="text-assess-label font-medium">Seconds to add</span>

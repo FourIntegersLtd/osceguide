@@ -83,6 +83,20 @@ are `institution-owner`'s; this is how a mark and an outcome are computed.
   alone is not "marked". Reviewers hear an AI mark on their own `attempt` stream because
   `sittings.announcements.attempt_progress` also tells the circuit supervisor and the org admins.
 
+- **Peer marks never feed scoring.** A trainee's marks on someone else's practice turn are shown
+  to the supervisor live and to the consulted trainee after release; the delivery gate is
+  `has_completed_review` (training only), never a peer mark. A live tick is a `partial` draft that
+  merges ratings and keeps notes, and is refused over a completed review (`review_already_completed`).
+- **Sheet-level sign-off** (`POST .../decisions/sign-off`, `results.service.sign_off_all`) loops the single `sign_off`
+  in the request's one transaction: any refusal (`decisions_incomplete` for a candidate who sat and has no decision,
+  `not_signable`, `evidence_changed`, `reviews_pending`) rolls back all of it. Candidates are those with a sat slot
+  (not `candidate_user_ids`, which reads circuit membership). `DecisionRead.signed_off_by_name` is the signer's name
+  (email when unnamed) via `identity.user_refs_by_ids`; `_read` is async for that reason.
+- **Org reporting by station** (`dashboard/service_reporting._station_rows`): released candidates' slots, scored by
+  `reviews.outcomes_for_slots` (its `domain_scores` carry each domain's 0-100 by title). Weakest competency is the
+  lowest mean domain; `assessors_marking` is distinct staff with a completed slot or GP-lead review, never peer
+  observers. The route has no period or exam filter, so both are all time.
+
 ## What a failure looks like here
 - A wrong score with no error: a rule never called, a v1 rubric read as v2, a field silently dropped.
 - A result changed in place instead of appended, or shown before it was released.

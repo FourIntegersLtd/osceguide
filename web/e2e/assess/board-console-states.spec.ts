@@ -62,7 +62,7 @@ for (const viewport of VIEWPORTS) {
   test(`help dialog matches Console, ${viewport.name}`, async ({ browser }) => {
     const p = await open(browser, viewport, "Console", w.live, null);
     await p.board.locator("button.help").dispatchEvent("click");
-    await p.app.getByRole("button", { name: "Observing an examination" }).click();
+    await p.app.getByRole("button", { name: "Watching an exam" }).click();
     await p.app.locator('[role="dialog"]').waitFor();
     await p.board.addStyleTag({ content: ".dlg h2{color:inherit}" });
     await score(browser, p, "Console", `dialog-help-${viewport.name}`, viewport.name, ".dlg", '[role="dialog"]');
@@ -82,7 +82,7 @@ for (const viewport of VIEWPORTS) {
   test(`changed by hand matches Console tab 8, ${viewport.name}`, async ({ browser }) => {
     const p = await open(browser, viewport, "Console", w.training, 7);
     await p.board.addStyleTag({ content: ".page > .card.pad > .row:nth-child(n+5),.page > .card.pad > .meta{display:none!important}" });
-    await p.app.getByRole("button", { name: /What was changed by hand/ }).click();
+    await p.app.getByRole("button", { name: /Changes made during the circuit/ }).click();
     await p.app.getByText("Fire alarm test").first().waitFor();
     await p.app.addStyleTag({ content: '[data-board="station-content"]{display:none!important}' });
     const region = 'section:has(> button[aria-expanded="true"])';

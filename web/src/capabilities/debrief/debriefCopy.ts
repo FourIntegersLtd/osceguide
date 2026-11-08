@@ -5,9 +5,9 @@ export const FEEDBACK_VS_DEBRIEF =
 /** The debrief explainer's opening, by exam kind. What Athena reads is the transcript and the feedback. */
 export const DEBRIEF_INTRO = {
   default:
-    "Athena analyses your consultation transcript and your feedback, then talks it through with you in a spoken session focused on what to change.",
+    "Athena (our AI examiner) reads what you said and the feedback you got, then talks it through with you in a spoken session focused on what to change.",
   ortho:
-    "Athena uses your transcript and station feedback to run a structured debrief on clinical reasoning, prioritisation, communication, or portfolio, aligned to ST3 T&O standards.",
+    "Athena (our AI examiner) uses your transcript and station feedback to run a debrief on clinical reasoning, prioritisation, communication or portfolio, based on what examiners look for at ST3 Trauma and Orthopaedics level.",
 };
 
 export const DEBRIEF_HEADING = {

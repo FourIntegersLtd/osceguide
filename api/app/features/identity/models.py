@@ -238,3 +238,7 @@ class PasswordResetToken(Base, UUIDPrimaryKey, Timestamps):
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True
     )
+    # The seat an invitation was sent for, so a person holding several in that organisation is
+    # shown the right one. Null for a plain reset, a practice-access link (it seats nobody) and a
+    # link issued before this column; the lookup then falls back to the oldest seat.
+    membership_role: Mapped[str | None] = mapped_column(String(32), nullable=True)

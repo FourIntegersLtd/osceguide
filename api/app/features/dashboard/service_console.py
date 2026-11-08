@@ -54,6 +54,7 @@ async def build_console(
     user_ids = [slot.trainee_id for slot in detail.slots]
     if detail.circuit.supervisor_user_id is not None:
         user_ids.append(detail.circuit.supervisor_user_id)
+    user_ids.extend(slot.assessor_user_id for slot in detail.slots if slot.assessor_user_id is not None)
 
     people = await identity.user_refs_by_ids(session, user_ids)
     trainees = await roster.trainees_by_user_id(session, org_id, user_ids)
@@ -95,6 +96,8 @@ async def build_console(
         started_at=detail.circuit.started_at,
         ended_at=detail.circuit.ended_at,
         agent_dispatched=detail.circuit.agent_dispatched_at is not None,
+        open_floor=detail.circuit.open_floor,
+        room_closed_at=detail.circuit.room_closed_at,
         revision=detail.circuit.revision,
         supervisor=(
             person(detail.circuit.supervisor_user_id)
@@ -155,7 +158,9 @@ async def build_console(
                 exam_completed_at=slot.exam_completed_at,
                 trainee=person(slot.trainee_id),
                 station=_station(slot.station_version_id, station_summaries),
+                assessor=person(slot.assessor_user_id) if slot.assessor_user_id is not None else None,
                 has_review=slot.id in reviewed,
+                ai_marked=slot.id in live and live[slot.id].status == "evaluated",
                 marked=service_evidence.station_is_marked(
                     slot.id in live and live[slot.id].status == "evaluated",
                     summaries[slot.id].overall_rag if slot.id in summaries else None,

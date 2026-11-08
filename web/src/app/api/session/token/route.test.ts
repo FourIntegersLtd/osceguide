@@ -64,3 +64,29 @@ test("a refresh that finds platform-api failing is retried later, never read as 
   assert.equal(again.status, 503);
   assert.equal(cleared(again), false);
 });
+
+function jwtIn(activeOrg: string | null): string {
+  const part = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${part({ alg: "HS256" })}.${part({ active_org: activeOrg })}.sig`;
+}
+
+async function refreshBodySentFor(accessToken: string): Promise<Record<string, unknown>> {
+  let sent: Record<string, unknown> = {};
+  globalThis.fetch = async (_url, init) => {
+    sent = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(JSON.stringify({ access_token: "a", refresh_token: "r", expires_in: 900 }));
+  };
+  const request = new NextRequest("http://localhost:3100/api/session/token", {
+    method: "POST",
+    headers: { cookie: `osce_rt=old; osce_at=${accessToken}; osce_session=1`, "content-type": "application/json" },
+    body: "{}",
+  });
+  await POST(request);
+  return sent;
+}
+
+test("a refresh asks for the workspace the expired token was in", async () => {
+  assert.equal((await refreshBodySentFor(jwtIn("guys"))).active_org_slug, "guys");
+  assert.equal((await refreshBodySentFor(jwtIn(null))).active_org_slug, null);
+  assert.equal("active_org_slug" in (await refreshBodySentFor("not-a-jwt")), false);
+});

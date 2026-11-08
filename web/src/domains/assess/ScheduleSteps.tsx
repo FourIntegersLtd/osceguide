@@ -1,6 +1,7 @@
 "use client";
 
 import { boardBtn } from "@/foundation/ui/boardKit";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -28,6 +29,7 @@ import {
   type StationLibraryScope,
 } from "@/capabilities/stations";
 import { errorMessage } from "@/foundation/hooks";
+import { PEOPLE_DIALOG_SIZE } from "@/domains/assess/ui";
 import { plural } from "@/foundation/format";
 import { resendInvitation } from "@/domains/assess/roster/api";
 import { moveItem } from "@/domains/assess/support";
@@ -47,7 +49,7 @@ import {
 } from "@/domains/assess/SittingFields";
 import {
   CONSULTATION_BOUNDS,
-  SUPERVISOR_OPTIONS,
+  supervisorOptions,
   candidateStanding,
   endsAbout,
   freeBreakPositions,
@@ -171,6 +173,7 @@ export function StationOrder({
   note?: string;
 }) {
   const { hrefFor } = useSurface();
+  const w = useAssessWords();
   const [adding, setAdding] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -230,7 +233,7 @@ export function StationOrder({
           className={boardBtn()}
           onClick={() => setAdding(true)}
         >
-          Add from this exam
+          {w.hiring ? "Add a station" : "Add from this exam"}
         </button>
         <Link
           href={hrefFor("/authoring/stations/new")}
@@ -240,15 +243,22 @@ export function StationOrder({
         >
           Write a new station
         </Link>
+        {w.hiring && stations.length > 1 ? (
+          <span className={`${t.assessMeta} self-center`}>Drag rows to change the order.</span>
+        ) : null}
       </div>
       {adding ? (
         <Modal
-          title={`Add from ${examName}`}
+          labelledBy="add-station-title"
+          hideCloseButton
           onClose={() => setAdding(false)}
-          width={{ mobile: "100%", desktop: "48rem" }}
+          {...PEOPLE_DIALOG_SIZE}
+          bodyClassName="p-6"
         >
-          <div className="flex flex-col gap-6">
-            <h2 className={t.assessTitle}>Find a station for {examName}</h2>
+          <div className="flex min-h-0 flex-col gap-4">
+            <h2 id="add-station-title" className="m-0 text-assess-desc font-semibold text-osce-ink-900">
+              Find a station for {examName}
+            </h2>
             <StationLibrary
               scope={scope}
               onPick={(station: LibraryStation) =>
@@ -269,7 +279,7 @@ export function StationOrder({
                 new Set(stations.map((station) => station.version_id))
               }
             />
-            <div className="flex justify-end">
+            <div className="flex justify-end border-t border-osce-border-light pt-3">
               <button
                 type="button"
                 className={boardBtn("primary")}
@@ -350,6 +360,7 @@ export function CandidatePicker({
   /** The wizard says the count in a note below instead. */
   showCount?: boolean;
 }) {
+  const w = useAssessWords();
   const [tab, setTab] = useState<PeopleTab>("people");
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -410,7 +421,7 @@ export function CandidatePicker({
           {trainees.filter((trainee) => trainee.user_id !== null).length}{" "}
           selected.
           {single
-            ? " A formal exam circuit is one candidate's sitting: they go through every station."
+            ? ` A formal exam ${w.circuit} is one candidate's ${w.sitting}: they go through every station.`
             : ""}
         </p>
       ) : null}
@@ -791,22 +802,62 @@ export function SupervisorSelect({
   leads: { value: string; label: string }[];
   inviteHref: string;
 }) {
+  const w = useAssessWords();
   return (
     <>
       <FieldSelect
-        label="Supervisor"
+        label={w.Supervisor}
         id="sitting-supervisor"
         value={draft.supervisorId}
         onChange={(value) => patch({ supervisorId: value })}
         options={[{ value: "", label: "Unassigned" }, ...leads]}
       />
       <p className={t.assessMeta}>
-        No supervisors yet?{" "}
+        No {w.supervisors} yet?{" "}
         <Link href={inviteHref} className={linkClass}>
           Invite staff
         </Link>
       </p>
     </>
+  );
+}
+
+/** An employer's "Who assesses?" list: an assessor for each station, one person may cover several. */
+export function StationAssessors({
+  draft,
+  patch,
+  leads,
+}: {
+  draft: ScheduleDraft;
+  patch: Patch;
+  leads: { value: string; label: string }[];
+}) {
+  const options = [{ value: "", label: "Choose" }, ...leads];
+  return (
+    <div className="flex flex-col gap-2">
+      <p className={t.assessMeta}>Naming an assessor for each station is optional. One person can cover more than one station.</p>
+      <ul className={flushCard}>
+        {draft.stations.map((station, index) => (
+          <li key={station.version_id} className={flushRow}>
+            <span className="min-w-0 flex-[1_1_200px] font-medium">{`${index + 1} ${station.title}`}</span>
+            <select
+              className={cn(fieldInput, "w-[200px]")}
+              aria-label={`Assessor for station ${index + 1}`}
+              value={draft.stationAssessors[station.version_id] ?? ""}
+              onChange={(event) =>
+                patch({ stationAssessors: { ...draft.stationAssessors, [station.version_id]: event.target.value } })
+              }
+            >
+              {options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -824,6 +875,7 @@ export function SupervisorStep({
   candidateNames: Record<string, string>;
   inviteHref: string;
 }) {
+  const w = useAssessWords();
   const options = [{ value: "", label: "Unassigned" }, ...leads];
   const canSplit = draft.mode === "exam" && draft.candidateIds.length > 1;
   const each = canSplit && draft.perCandidate;
@@ -831,8 +883,8 @@ export function SupervisorStep({
     <div className="flex flex-col gap-6">
       {canSplit ? (
         <OptionCards
-          label="Who supervises"
-          options={SUPERVISOR_OPTIONS.map((option) => ({
+          label={w.hiring ? "Who assesses" : "Who supervises"}
+          options={supervisorOptions(w).map((option) => ({
             key: option.title,
             title: option.title,
             body: option.body,
@@ -850,7 +902,7 @@ export function SupervisorStep({
               </span>
               <select
                 className={cn(fieldInput, "w-[200px]")}
-                aria-label={`Supervisor for ${candidateNames[id] ?? id}`}
+                aria-label={`${w.Supervisor} for ${candidateNames[id] ?? id}`}
                 value={draft.supervisorByCandidate[id] ?? ""}
                 onChange={(event) =>
                   patch({
@@ -880,6 +932,7 @@ export function SupervisorStep({
           />
         </div>
       )}
+      {w.hiring ? <StationAssessors draft={draft} patch={patch} leads={leads} /> : null}
     </div>
   );
 }

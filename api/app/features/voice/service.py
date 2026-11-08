@@ -219,6 +219,9 @@ def grant_for_room(
     can_publish: bool,
     tokens: VoiceTokens,
     settings: Settings,
+    can_publish_sources: list[str] | None = None,
+    display_name: str | None = None,
+    ttl_seconds: int | None = None,
 ) -> RoomGrant:
     """A token for a room that already exists, with no agent attached.
 
@@ -234,7 +237,9 @@ def grant_for_room(
         agent_name=None,
         dispatch_metadata=None,
         can_publish=can_publish,
-        ttl_seconds=settings.livekit_token_ttl_seconds,
+        can_publish_sources=can_publish_sources,
+        ttl_seconds=ttl_seconds or settings.livekit_token_ttl_seconds,
+        display_name=display_name,
     )
     return RoomGrant(token=token, server_url=settings.livekit_url, room=room)
 

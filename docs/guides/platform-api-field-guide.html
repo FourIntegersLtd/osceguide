@@ -734,11 +734,12 @@ const SCHEMA = [
        ["token_hash", "varchar(64) not null unique", ""],
        ["used_at", "timestamptz null", ""]],
       r:[["Why", "Every token is kept, spent or not, because that is the only way reuse can be told from forgery. Overwriting a single <em>current_token_hash</em> on rotation loses the evidence: a replayed token is simply not found, which is indistinguishable from a token that never existed, so the leaked chain stays alive."]]},
-     {t:"password_reset_tokens", b:"Growth: unbounded. Retention: GAP: used and expired tokens are never deleted; one row per reset request. <em>user_id</em> → <em>users.id</em> CASCADE, <em>token_hash varchar(64) not null unique</em>, <em>expires_at timestamptz not null</em>, <em>used_at timestamptz null</em>.", f:[
+     {t:"password_reset_tokens", b:"Growth: unbounded. Retention: GAP: used and expired tokens are never deleted; one row per reset request. <em>user_id</em> → <em>users.id</em> CASCADE, <em>token_hash varchar(64) not null unique</em>, <em>expires_at timestamptz not null</em>, <em>used_at timestamptz null</em>, <em>organization_id</em> → <em>organizations.id</em> SET NULL, null: the organisation that sent an invitation (the invitation page names it); null for a plain reset link.", f:[
        ["user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
        ["token_hash", "varchar(64) not null unique", ""],
        ["expires_at", "timestamptz not null", ""],
-       ["used_at", "timestamptz null", ""]]},
+       ["used_at", "timestamptz null", ""],
+       ["organization_id", "uuid null → organizations.id ON DELETE SET NULL", ""]]},
      {t:"user_mfa", b:"Growth: per-user. One authenticator for one account. <em>user_id</em> is the primary key, so there is no second secret. <em>confirmed_at</em> stays null until a code from that secret has been accepted; until then the row is an enrolment in progress, not a second factor. <em>last_used_step</em> is the TOTP counter of the last accepted code, and a later code at that step or earlier is refused as a replay. The secret is Fernet ciphertext under <em>MFA_SECRET_KEY</em>, never the shared secret itself. No <em>updated_at</em>.", flags:["no updated_at"], f:[
        ["user_id", "uuid not null → users.id CASCADE", "primary key"],
        ["secret_ciphertext", "text not null", "Fernet token, not the TOTP secret"],
@@ -870,7 +871,8 @@ const SCHEMA = [
        ["exam_id", "uuid not null → exams.id RESTRICT", ""],
        ["title", "varchar(300) not null", ""],
        ["status", "varchar(32) not null default 'draft'", "<em>draft</em> | <em>published</em> | <em>archived</em>"],
-       ["current_version_id", "uuid null → station_versions.id SET NULL (use_alter)", "set once a version is published; attempts bind to the version, never here"]],
+       ["current_version_id", "uuid null → station_versions.id SET NULL (use_alter)", "set once a version is published; attempts bind to the version, never here"],
+       ["approved", "boolean not null default false", "an editor's sign-off, independent of <em>status</em>: a platform-library station must be both <em>published</em> and <em>approved</em> before a normal reader's browse or read of the library returns it (staff bypass this, same as the plan window); mirrors legacy b2c's <em>approved</em> flag. Not enforced on an org's own station — only the platform-library reads check it"]],
       r:[["check", "<em>ck_stations_owner_matches_org</em>: <em>platform</em> ⇒ <em>org_id IS NULL</em>, <em>org</em> ⇒ <em>org_id IS NOT NULL</em>. Indexes <em>(org_id, exam_id)</em> and <em>(exam_id, owner_kind)</em>."]]},
      {t:"station_versions", b:"Growth: fixed. One immutable revision of a station's content. An attempt references a version, never a station, so editing a station tomorrow cannot change what somebody was assessed on yesterday.", f:[
        ["station_id", "uuid not null → stations.id CASCADE", ""],
@@ -982,7 +984,7 @@ const SCHEMA = [
        ["failed_reason", "varchar(200) null", ""],
        ["legacy_ref", "varchar(200) null", "where this row came from in Firestore or b2b, e.g. <em>b2c:transcript:abc123</em>; dropped with the <em>migration</em> package once every tenant is across"]],
       r:[["Why", "The four references are <em>RESTRICT</em>, not <em>CASCADE</em> or <em>SET NULL</em>: an attempt is a recording of something that happened to a person, and deleting the slot it belonged to must not quietly take the transcript with it. <em>SET NULL</em> is not available either, because the CHECK below requires an <em>exam_slot</em> attempt to name its slot."],
-         ["Why", "Constraints: - CHECK <em>ck_attempts_kind_matches_reference</em> — exactly one optional reference matches the kind. Written as a CHECK rather than left to the service, because six code paths create attempts and only one needs to be wrong for a slot to end up with two live attempts. - CHECK <em>ck_attempts_status</em> — <em>created</em>, <em>running</em>, <em>interaction_complete</em>, <em>evaluated</em>, <em>failed</em>. The vocabulary lives in the database as well as in <em>domain.Status</em>, because <em>set_status</em> took a bare string and a typo wrote a status nothing would ever match, stalling the attempt in it. - Partial UNIQUE <em>uq_attempts_live_slot</em> on <em>slot_id</em> WHERE <em>slot_id IS NOT NULL AND status &lt;&gt; 'failed'</em> — a slot has at most one attempt that has not failed; a re-dispatch fails the old one first. - Partial UNIQUE <em>uq_attempts_legacy_ref</em> WHERE <em>legacy_ref IS NOT NULL</em> — a second import run updates nothing rather than duplicating history."],
+         ["Why", "Constraints: - CHECK <em>ck_attempts_kind_matches_reference</em> — exactly one optional reference matches the kind. Written as a CHECK rather than left to the service, because six code paths create attempts and only one needs to be wrong for a slot to end up with two live attempts. - CHECK <em>ck_attempts_status</em> — <em>created</em>, <em>running</em>, <em>interaction_complete</em>, <em>evaluated</em>, <em>failed</em>. The vocabulary lives in the database as well as in <em>domain.Status</em>, because <em>set_status</em> took a bare string and a typo wrote a status nothing would ever match, stalling the attempt in it. - Partial UNIQUE <em>uq_attempts_live_slot</em> on <em>slot_id</em> WHERE <em>slot_id IS NOT NULL AND status &lt;&gt; 'failed'</em> — a slot has at most one attempt that has not failed; a re-dispatch fails the old one first. - Partial UNIQUE <em>uq_attempts_legacy_ref</em> WHERE <em>legacy_ref IS NOT NULL</em> — a second import run updates nothing rather than duplicating history. - Partial UNIQUE <em>uq_attempts_one_unstarted</em> <em>NULLS NOT DISTINCT</em> on <em>(user_id, kind, exam_id, org_id, station_version_id, set_entry_id)</em> WHERE the attempt is <em>created</em>, never started, not frozen, has no room, has a station version and is a <em>practice</em>/<em>set_station</em>/<em>self_practice</em> — a double start makes one row. The migration fails older duplicates with <em>failed_reason='duplicate_start'</em>. Partial indexes <em>ix_attempts_set_entry_id</em>, <em>ix_attempts_peer_session_id</em>, <em>ix_attempts_source_attempt_id</em> (foreign keys, WHERE not null). - Exam-day indexes (migration <em>3e5b8d1f7a42</em>): <em>ix_payments_user_id</em>, <em>ix_refresh_chains_user_id</em>, <em>ix_entitlements_user_id</em>, <em>ix_circuits_sitting_id</em>, <em>ix_circuit_trainees_trainee_id</em>, <em>ix_slots_org_circuit</em>, <em>ix_candidate_result_revisions_org_released</em>, <em>ix_stations_library</em> <em>(exam_id, created_at, id)</em> for the published library page, <em>ix_station_versions_station_published</em>. The same migration sets the database's <em>statement_timeout</em> (15s) and <em>idle_in_transaction_session_timeout</em> (60s)."],
          ["Why", "Transitions (<em>domain._ALLOWED</em>) run <em>created → running → interaction_complete → evaluated</em>, with <em>failed</em> reachable throughout; <em>TERMINAL = {evaluated, failed}</em>."]]},
      {t:"transcript_messages", b:"Growth: per-turn. Retention: compact_transcripts folds an attempt's turns into transcripts.messages an hour after delivery and deletes the rows, so only live attempts hold per-turn rows. One turn. No <em>updated_at</em>: a spoken turn is never edited.", flags:["no updated_at"], f:[
        ["attempt_id", "uuid not null → attempts.id CASCADE", "indexed with <em>seq</em>"],
@@ -1119,7 +1121,9 @@ const SCHEMA = [
        ["paused_at", "timestamptz null", "set while the clock is stopped"],
        ["paused_seconds", "int not null default 0", "total time this phase spent paused, so elapsed excludes it"],
        ["auto_advance", "boolean not null default true", "off means a human decides every move"],
-       ["voice_fault_at", "timestamptz null", "when the voice service last refused to bring the patient in (R-16); cleared by the step that succeeds"]],
+       ["voice_fault_at", "timestamptz null", "when the voice service last refused to bring the patient in (R-16); cleared by the step that succeeds"],
+       ["open_floor", "boolean not null default false", "training rooms: every participant may speak (the end-of-session conversation)"],
+       ["room_closed_at", "timestamptz null", "training rooms: when the supervisor closed the room that stayed open after End"]],
       r:[["Why", "The examination clock is here, not on the slot. A break belongs to no slot — it is the circuit resting between stations — and that is the one thing a per-slot clock could not express, which is why breaks were stored and counted down by nobody. A pause has the same shape: stopping the clock must rewrite one deadline, and with the clock on two rows it rewrote two."],
          ["Why", "<em>phase_seq</em> is how a human beats the clock. Every transition is a job scheduled for the moment the phase ends, carrying the sequence it was scheduled against; any override bumps the sequence, so the job it raced arrives holding a number that no longer matches and does nothing. That is the whole concurrency design — no lease, no claim table, one integer."]]},
      {t:"circuit_interventions", b:"Growth: per-org. What a human did to a running examination, and why. Append-only, and no <em>updated_at</em>: an intervention is a fact about a moment, not a row anybody edits. When a candidate says their station went wrong, the question is what was done to it and by whom, and before this the answer was nowhere.", flags:["append-only", "no updated_at"], f:[
@@ -1132,6 +1136,14 @@ const SCHEMA = [
        ["phase_seq_before", "int not null", "places the intervention against the transition it displaced"],
        ["phase_seq_after", "int not null", "places the intervention against the transition it displaced"],
        ["at", "timestamptz not null", ""]]},
+     {t:"slot_peer_marks", b:"Growth: per-org. What a trainee watching another trainee's practice turn marked on the station's scheme, one row per circuit, slot, marker and item (<em>domainId</em> or <em>domainId.competencyId</em>). The supervisor's own review stays the official mark; these are shown live to the supervisor and to the consulted trainee once the turn's feedback is shared.", f:[
+       ["org_id", "uuid not null → organizations.id CASCADE", ""],
+       ["circuit_id", "uuid not null → circuits.id CASCADE", "unique with <em>slot_id</em>, <em>marker_id</em>, <em>item</em>"],
+       ["slot_id", "uuid not null → slots.id CASCADE", "indexed with <em>org_id</em>"],
+       ["marker_id", "uuid not null → users.id CASCADE", "the watching trainee"],
+       ["item", "varchar(160) not null", "a domain id, or <em>domain.competency</em>"],
+       ["rating", "varchar(16) null", "a point on the scheme's scale"],
+       ["comment", "text null", ""]]},
      {t:"circuit_run_history", b:"Growth: per-org. One finished run of a circuit, as the exam-day board last saw it: written once by <em>service_steps.finish</em> in the transaction that ends the circuit, never edited. The board is built live from running circuits, so without this a circuit that ended left nothing to look back at. No <em>updated_at</em>. Read by <em>GET /orgs/{org_slug}/live/history</em>.", flags:["no updated_at"], f:[
        ["org_id", "uuid not null → organizations.id CASCADE", "index <em>(org_id, ended_at)</em> — the history's query"],
        ["circuit_id", "uuid null → circuits.id SET NULL", "SET NULL so a later delete keeps what happened on the day"],
@@ -1230,7 +1242,8 @@ const SCHEMA = [
        ["amount_pence", "int not null", ""],
        ["currency", "varchar(3) not null default 'gbp'", ""],
        ["duration_days", "int not null", "<em>DEFAULT_PLAN_DAYS = {one_month: 30, three_month: 90, six_month: 180}</em>"],
-       ["active", "bool not null default true", ""]]},
+       ["active", "bool not null default true", ""],
+       ["station_limit", "int null", "how many library stations this plan unlocks, already counting the 3 free-trial stations; <em>null</em> means every station. Staff-editable from <em>/staff/billing</em>, unlike every other column here"]]},
      {t:"stripe_events", b:"Growth: unbounded. Retention: GAP: one row per acted-on webhook delivery, kept forever; only the recent window is needed for replay protection. Every webhook delivery we have acted on — the thing b2c has no equivalent of. Stripe retries until it gets a 2xx, and without this a retry re-runs the grant. No <em>updated_at</em>.", flags:["no updated_at"], f:[
        ["event_id", "varchar(100) not null unique", ""],
        ["event_type", "varchar(100) not null", "<em>ACCESS_GRANTING_EVENTS = {checkout.session.completed}</em>"],
@@ -1357,7 +1370,7 @@ const SCHEMA = [
        ["claimed_by_user_id", "uuid null → users.id SET NULL", ""],
        ["claimed_at", "timestamptz null", ""],
        ["cancelled_at", "timestamptz null", ""]]},
-     {t:"peer_sessions", b:"Growth: per-user. The session a claim creates. Two people, one room, one appointed time. <em>post_id</em> → <em>availability_posts.id</em> SET NULL (nullable), <em>owner_user_id</em> and <em>claimer_user_id</em> → <em>users.id</em> CASCADE (indexed together), <em>exam_id</em> → <em>exams.id</em> RESTRICT, <em>starts_at timestamptz not null</em>, <em>room_name varchar(200) null</em>, <em>status varchar(16) not null default 'scheduled'</em>, <em>practice_session_id</em> → <em>practice_sessions.id</em> SET NULL (nullable — filled once the matched pair opens their LiveKit room), <em>doctor_user_id</em> and <em>patient_user_id</em> → <em>users.id</em> SET NULL (nullable — the two roles are appointed when the session starts, not when it is scheduled), <em>ended_at timestamptz null</em>, <em>cancelled_at timestamptz null</em>, <em>reminder_sent_at timestamptz null</em> (set once <em>marketplace.jobs.send_marketplace_session_reminders</em> queues the \"starts in an hour\" email to both participants; also the job's idempotency check).", f:[
+     {t:"peer_sessions", b:"Growth: per-user. The session a claim creates. Two people, one room, one appointed time. <em>post_id</em> → <em>availability_posts.id</em> SET NULL (nullable), <em>owner_user_id</em> and <em>claimer_user_id</em> → <em>users.id</em> CASCADE (indexed together; <em>claimer_user_id</em> also indexed alone), <em>exam_id</em> → <em>exams.id</em> RESTRICT, <em>starts_at timestamptz not null</em>, <em>room_name varchar(200) null</em>, <em>status varchar(16) not null default 'scheduled'</em>, <em>practice_session_id</em> → <em>practice_sessions.id</em> SET NULL (nullable — filled once the matched pair opens their LiveKit room), <em>doctor_user_id</em> and <em>patient_user_id</em> → <em>users.id</em> SET NULL (nullable — the two roles are appointed when the session starts, not when it is scheduled), <em>ended_at timestamptz null</em>, <em>cancelled_at timestamptz null</em>, <em>reminder_sent_at timestamptz null</em> (set once <em>marketplace.jobs.send_marketplace_session_reminders</em> queues the \"starts in an hour\" email to both participants; also the job's idempotency check).", f:[
        ["post_id", "uuid null → availability_posts.id ON DELETE SET NULL", ""],
        ["owner_user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
        ["claimer_user_id", "uuid not null → users.id ON DELETE CASCADE", ""],
@@ -1496,7 +1509,11 @@ const SCHEMA = [
        ["taken_on", "date not null", ""],
        ["total_bytes", "bigint not null", ""],
        ["relations", "jsonb not null", ""],
-       ["alert_level", "smallint not null", ""]]}
+       ["alert_level", "smallint not null", ""]]},
+     {t:"legacy_sync_records", b:"Growth: unbounded. One row per legacy Firestore document ever copied, about 25,000 today and growing with the old site. Retention: deleted by hand with the rest of the legacy copy when the old site is retired (<em>scripts/sync_b2c.py</em> is a one-off bridge, so the table goes with it). <em>collection varchar(120) not null</em>, <em>doc_id varchar(300) not null</em> (together the primary key), <em>source_updated_at timestamptz not null</em> (Firestore's <em>update_time</em> for the document when it was last copied). Owned by <em>health</em>. Written only by <em>scripts/sync_b2c.py</em>, which skips every document whose stored time equals Firestore's and fetches the rest. Row level security is on and no policy is defined.", f:[
+       ["collection", "varchar(120) not null", ""],
+       ["doc_id", "varchar(300) not null", ""],
+       ["source_updated_at", "timestamptz not null", ""]]}
    ]}
   ]
 }
@@ -1619,6 +1636,7 @@ const API = [
   {n:"Sittings a trainee is rostered onto", rows:[
    ["GET","/api/v1/me/sittings","BEARER","What a trainee is rostered onto, where the circuit's clock is, and whether they can join."],
    ["GET","/api/v1/me/sittings/stream","BEARER","The trainee portal, pushed."],
+   ["GET","/api/v1/auth/invitation/{token}","PUBLIC","Who an invitation is for and which organisation sent it"],
    ["POST","/api/v1/me/circuits/{circuit_id}/join-token","BEARER","A room token with <em>no agent attached</em> — the circuit dispatches the patient. Not under /orgs: being rostered on is the permission, and a candidate should not have to name their institution to sit its examination"]
   ]},
   {n:"Community", rows:[
@@ -1716,6 +1734,9 @@ const API = [
   ]},
   {n:"Attempts and slots", rows:[
    ["GET","/api/v1/me/attempts","BEARER","Everything this person has sat, newest first"],
+   ["GET","/api/v1/me/slots/{slot_id}/peer-marks","BEARER","What fellow trainees marked on the caller's published turn, named by marker, examiner notes never included"],
+   ["GET","/api/v1/me/circuits/{circuit_id}/scheme","BEARER","The marking scheme of a training circuit, without examiner notes, for the trainee watching"],
+   ["PUT","/api/v1/me/circuits/{circuit_id}/slots/{slot_id}/peer-marks","BEARER","A watching trainee saves their marks for another's turn; refused for the active trainee and for exam circuits"],
    ["GET","/api/v1/me/slots/{slot_id}/brief","BEARER","The reading brief for one of the caller's slots, once the circuit has reached it"],
    ["GET","/api/v1/me/slots/{slot_id}/review","BEARER","A candidate's own review of one of their slots, once their result is released and the GP lead has completed one; before that state says not_released or not_marked"]
   ]},
@@ -1907,6 +1928,9 @@ const API = [
    ["POST","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/decisions/release","INST_ADMIN","Release Many"],
    ["GET","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/readout","ORG_ADMIN","The document a course lead downloads after an examination: the cohort ranked, what it adds up to, and what it recommends"],
    ["GET","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/report.csv","ORG_ADMIN","Read Sitting Report Csv"],
+   ["POST","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/circuits/bulk","ORG_ADMIN","Build several circuits at once"],
+   ["GET","/api/v1/orgs/{org_slug}/results","INST_ADMIN","Results across the organisation"],
+   ["GET","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/result-preview","INST_ADMIN","The result as the candidate would see it, before release"],
    ["POST","/api/v1/orgs/{org_slug}/sittings/{sitting_id}/circuits","ORG_ADMIN","Build a circuit: stations, trainees, and the slots they imply"]
   ]},
   {n:"Running a circuit — it runs itself", rows:[
@@ -1922,6 +1946,11 @@ const API = [
    ["GET","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/review","ORG_STAFF","Read Circuit Review"]
   ]},
   {n:"Overrides, for when exam day goes wrong", rows:[
+   ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/floor","ORG_STAFF","Give the floor to one trainee in a training room"],
+   ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/participants/{identity}/mic","ORG_STAFF","Allow or mute one person's microphone"],
+   ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/room/close","ORG_STAFF","Close a training room after it has ended"],
+   ["GET","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/scheme","ORG_STAFF","The marking scheme for the live marking panel"],
+   ["GET","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/slots/{slot_id}/peer-marks","ORG_STAFF","Every watching trainee's marks for one turn, labelled by marker"],
    ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/advance","ORG_STAFF","\"This phase is done.\" Not <em>end the station</em>: during a break it starts the next reading period"],
    ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/pause","ORG_STAFF","Stop the clock. Nothing advances until it is resumed"],
    ["POST","/api/v1/orgs/{org_slug}/circuits/{circuit_id}/resume","ORG_STAFF","Start it again, with the deadline pushed out by exactly the pause — no more, which would be unfair to everybody else sitting it"],
@@ -1990,9 +2019,8 @@ const API = [
    ["PUT","/api/v1/platform/users/{user_id}/platform-admin","PLATFORM_ADMIN","Grant or revoke the console itself."],
    ["GET","/api/v1/platform/users/{user_id}/attempts","PLATFORM_ADMIN","One person's attempts, newest first, each saying whether its transcript arrived, whether it was marked, and what the queue holds for it"],
    ["GET","/api/v1/platform/users/{user_id}/billing-events","PLATFORM_ADMIN","Every webhook delivery that named this person's address, applied or refused"],
-   ["GET","/api/v1/platform/users/{user_id}/entitlements","PLATFORM_ADMIN","Every grant this person has held — purchase, institution, trial, admin — with live computed now and revoked ones kept"],
-   ["POST","/api/v1/platform/users/{user_id}/entitlements","PLATFORM_ADMIN","Grant access outright, source admin, with the reason in the audit log"],
    ["POST","/api/v1/platform/users/{user_id}/messages","PLATFORM_ADMIN","A note to one person's inbox"],
+   ["GET","/api/v1/platform/users/{user_id}/billing-access","PLATFORM_ADMIN","What this person's plan lets them use"],
    ["GET","/api/v1/platform/users/{user_id}/payments","PLATFORM_ADMIN","This person's payments, newest first, with what each one bought"],
    ["POST","/api/v1/platform/users/{user_id}/payments","PLATFORM_ADMIN","Record a payment that did not come through Stripe, granting what it bought"],
    ["POST","/api/v1/platform/users/{user_id}/reset-mfa","PLATFORM_ADMIN","Reset User Mfa"],
@@ -2044,6 +2072,8 @@ const API = [
    ["GET","/api/v1/platform/stations","PLATFORM_ADMIN","Every library station, drafts included — the author's own view of it."],
    ["POST","/api/v1/platform/stations/autogenerate-draft","PLATFORM_ADMIN","Autogenerate Platform Station Draft"],
    ["POST","/api/v1/platform/stations","PLATFORM_ADMIN","A new library station, as a draft"],
+   ["POST","/api/v1/platform/stations/{station_id}/approve","PLATFORM_ADMIN","Make a published station visible to readers"],
+   ["POST","/api/v1/platform/stations/{station_id}/revoke-approval","PLATFORM_ADMIN","Hide a station from readers again"],
    ["POST","/api/v1/platform/stations/{station_id}/versions","PLATFORM_ADMIN","A new draft version"],
    ["PATCH","/api/v1/platform/stations/{station_id}/versions/{version}","PLATFORM_ADMIN","Edit the draft"],
    ["DELETE","/api/v1/platform/stations/{station_id}/versions/{version}","PLATFORM_ADMIN","Only a draft: a published version is what an attempt was assessed against, so it is archived"],
@@ -2097,7 +2127,6 @@ const API = [
    ["GET","/api/v1/platform/billing/plans","PLATFORM_ADMIN","Every plan the platform has priced, on sale or retired"],
    ["POST","/api/v1/platform/billing/plans","PLATFORM_ADMIN","Price an exam: creates the Stripe prices and the plan with its 10%-off referral twin"],
    ["PATCH","/api/v1/platform/billing/plans/{plan_code}","PLATFORM_ADMIN","Put a plan and its referral twin on sale, or retire them"],
-   ["PATCH","/api/v1/platform/entitlements/{entitlement_id}","PLATFORM_ADMIN","Move the end date"],
    ["POST","/api/v1/platform/entitlements/{entitlement_id}/revoke","PLATFORM_ADMIN","Withdraw a grant; the row stays so the history holds"],
    ["PATCH","/api/v1/platform/invoices/{invoice_id}","PLATFORM_ADMIN","Update Invoice"],
    ["POST","/api/v1/platform/payments/{payment_id}/refund","PLATFORM_ADMIN","Withdraw what a refunded payment bought"],

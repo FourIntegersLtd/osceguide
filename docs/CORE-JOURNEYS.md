@@ -118,6 +118,7 @@ new labels when phase 3 merges.
 | ASSESS-4 | Reviewer marks, admin decides and signs off, releases, candidate reads | yes, marked slot seeded | `assess/mark-and-release.spec.ts` |
 | ASSESS-5 | Roles: supervisor, trainee and People boundaries | yes | `assess/roles.spec.ts` |
 | ASSESS-6 | Candidate sits a station by voice | no, needs LiveKit | skipped |
+| ASSESS-7 | Training room: supervisor and trainees in one room, live marking, peer marks, close | no, needs LiveKit; walked by hand (`verify-institution`, Training room) | none |
 
 **ASSESS-1.** Actor: institution admin.
 1. Open Home. Until setup is done it shows one step at a time ("Step N of 5",
@@ -181,12 +182,27 @@ Outcome: each role sees only what its capabilities grant. Gaps: B-5, R-2, R-6.
 patient, the examiner agent closes, scoring runs. Skipped: LiveKit. Covered in
 pieces by ASSESS-2/3 and ASSESS-4's seam. Gaps: S-1, S-2, R-5.
 
+**ASSESS-7.** Actors: supervisor, two trainees on a training circuit.
+1. The supervisor starts the circuit and joins the room; both trainees join with camera on.
+   Only the trainee with the turn has a microphone; "Bring in <next>" moves it.
+2. The supervisor ticks the scheme while the trainee speaks (saved as a draft review, notes
+   untouched); the waiting trainee marks the same scheme and the supervisor sees those marks live.
+3. The supervisor opens the floor so everyone may speak, then ends the circuit: the room stays.
+4. The supervisor releases their review; the trainee whose turn it was reads "From the room".
+5. "Close the room" disconnects everyone. A room nobody closes is closed after six hours.
+
+Outcome: peer marks never feed the score; release of the supervisor's review is the only door
+to the trainee. A live tick never undoes a released review (`review_already_completed`).
+
 ## HIRE: the employer
 
 | ID | Journey | Local | Spec |
 |---|---|---|---|
 | HIRE-1 | Employer admin sees the hiring menu (Overview; Run: Assessments, Now running, Results; Organise: Candidates, Exams; Insight: Reporting), not the institution's wording | yes, `@staging` | `hire/employer.spec.ts` |
 | HIRE-2 | A candidate is shown only "My assessments" | yes, `@staging` | `hire/employer.spec.ts` |
+| HIRE-3 | Employer sees the hire home and saves a hiring decision, then moves to the next candidate | no | `hire/employer.spec.ts`, `assess/board-hire-home.spec.ts`, `assess/board-hire-decisions.spec.ts` |
+| HIRE-4 | A candidate sees their assessment and result with no practice and no hiring decision | no | `hire/employer.spec.ts` |
+| HIRE-5 | An employer admin opening practice or mocks gets the refusal page with a way back to Overview | yes, `@staging` | `hire/employer.spec.ts` |
 
 Actors: an `employer` organisation's `institution_admin`, and a `trainee`
 member. The hire menu has the same sections as Assess, in hire words (Assessments,

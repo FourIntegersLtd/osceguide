@@ -1,5 +1,6 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
 import { useState } from "react";
 import { AsyncBoundary, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
@@ -27,6 +28,7 @@ import { usedByLabel } from "@/capabilities/authoring/sections/StationUsedBy";
  * pay a request for it.
  */
 export function StationVersionHistory({ stationId, board = false }: { stationId: string; board?: boolean }) {
+  const w = useAssessWords();
   // The boards draw the history open, so it is read at once; the console reads it when first opened.
   const [asked, setAsked] = useState(board);
   const versions = useAsync(
@@ -52,7 +54,7 @@ export function StationVersionHistory({ stationId, board = false }: { stationId:
                       <b className="font-medium">v{item.version}</b>
                       <div className={boardMeta}>
                         <BoardChip tone={statusChip(item.status).tone}>{statusChip(item.status).label}</BoardChip> {stamp(item, true)}
-                        {typeof item.used_by_count === "number" && item.published_at ? ` · ${usedByLabel(item.used_by_count)}` : ""}
+                        {typeof item.used_by_count === "number" && item.published_at ? ` · ${usedByLabel(item.used_by_count, w)}` : ""}
                       </div>
                     </span>
                   </div>
@@ -97,7 +99,7 @@ export function StationVersionHistory({ stationId, board = false }: { stationId:
                       <span className="min-w-0 flex-1 text-osce-caption text-ink-muted">
                         {stamp(item)}
                         {typeof item.used_by_count === "number"
-                          ? ` · ${usedByLabel(item.used_by_count)}`
+                          ? ` · ${usedByLabel(item.used_by_count, w)}`
                           : ""}
                       </span>
                     </li>

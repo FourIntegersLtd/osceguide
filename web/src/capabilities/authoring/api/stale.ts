@@ -9,6 +9,6 @@ import { hasCode } from "@/foundation/platform-client";
 export function staleRefusal(cause: unknown, what: string): Error | null {
   if (!hasCode(cause, "stale_revision")) return null;
   return new Error(
-    `Someone else changed this ${what} just now. We have reloaded it with their changes; make your edit again.`,
+    `Someone else changed this ${what} just now. We have reloaded it with their changes; your changes were not saved. Please make your edit again.`,
   );
 }

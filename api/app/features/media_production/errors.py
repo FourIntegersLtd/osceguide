@@ -9,7 +9,7 @@ class AvUnavailable(AppError):
     """Raised when the storage or narration providers a production job needs are not configured."""
 
     code = "av_unavailable"
-    default_message = "Audio/video production is not configured on this environment"
+    default_message = "Audio and video production isn't available right now."
 
 
 class AvAlreadyRunning(Conflict):
@@ -32,7 +32,7 @@ class ClaimOutsideItem(InvalidInput):
     """Raised when a hand check places a claim on a slide the item does not have."""
 
     code = "claim_outside_item"
-    default_message = "A claim names a slide this item does not have"
+    default_message = "A fact refers to a slide that doesn't exist."
 
 
 class NotRunning(Conflict):

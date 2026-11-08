@@ -295,12 +295,10 @@ export default function Login() {
                 // Stay put and say why. On a host that still shows the password
                 // form the reader has a way in; on an `sso_only` host the notice
                 // below points at support. Either way a silent no-op is worse.
-                .catch((cause: unknown) => {
+                .catch(() => {
                   setSsoBusy(false);
                   setSsoNotice(
-                    cause instanceof Error
-                      ? cause.message
-                      : "We could not reach your organisation's sign-in.",
+                    "We could not reach your organisation's sign-in. Try again in a minute. If it keeps happening, sign in with your password or ask your administrator.",
                   );
                 });
             }}

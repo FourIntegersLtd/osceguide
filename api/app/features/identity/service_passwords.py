@@ -23,7 +23,7 @@ from app.features.identity.errors import (
     PasswordNotSet,
     WeakPasswordError,
 )
-from app.features.identity.schemas import TokenPair
+from app.features.identity.schemas import InvitationLookup, TokenPair
 from app.features.identity.tokens import hash_password, hash_token, new_token, verify_password
 from app.features.notifications import service as notifications
 from app.features.tenancy import service as tenancy
@@ -85,7 +85,9 @@ async def confirm_password_reset(session: AsyncSession, *, token: str, password:
         # reset tokens, for a roster admin's invite/resend, and refuses these
         # accounts too — SEC-011).
         raise InvalidResetToken()
-    await repository.mark_reset_token_used(session, token_id=record.id, at=now)
+    # Every open link goes with the one redeemed: a resend from another organisation is not a second
+    # way into an account that now has a password.
+    await repository.mark_all_reset_tokens_used(session, user_id=record.user_id, at=now)
     await repository.set_password_hash(session, record.user_id, await hash_password(password))
     # A password change ends every existing session: whoever prompted the reset
     # may be holding one.
@@ -141,12 +143,20 @@ async def change_password(
     return await service_sessions.issue(session, user, settings=settings, now=now, memberships=memberships)
 
 
-async def invitation_organisation_name(session: AsyncSession, *, token: str, now: datetime) -> str:
-    """The name of the organisation behind a live invitation token.
+async def invitation_facts(session: AsyncSession, *, token: str, now: datetime) -> InvitationLookup:
+    """The organisation (name and type) and the role behind a live invitation token.
 
     Refuses `invalid_reset_token` for every other case alike (unknown, spent, expired, a plain
     reset link that names no organisation, an account SSO has since taken the password from), so
     the answer tells a token-tester nothing `confirm_password_reset` would not. Writes nothing.
+
+    The role is the seat the token was sent for (`membership_role`) while the invitee still holds
+    it live in that organisation. Without one (a link from before the column, or one that seats
+    nobody) or once that seat is gone, the invitee's oldest live seat there is shown, which with
+    several (`uq_memberships_org_user_role` allows it) may not be the one meant.
+
+    An organisation-scoped link that seats nobody (a practice-access invitation) answers with
+    `role` None; a revoked seat's links are spent when it is revoked, so they are refused above.
     """
     record = await repository.reset_token_by_hash(session, hash_token(token))
     if record is None or record.used_at is not None or now >= record.expires_at:
@@ -159,4 +169,7 @@ async def invitation_organisation_name(session: AsyncSession, *, token: str, now
     org = await tenancy.org_ref_by_id(session, record.organization_id)
     if org is None:
         raise InvalidResetToken()
-    return org.name
+    seats = await tenancy.memberships_for_token(session, user.id)
+    held = [seat.role for seat in seats if seat.org_id == org.id]
+    role = record.membership_role if record.membership_role in held else (held[0] if held else None)
+    return InvitationLookup(organisation_name=org.name, org_type=org.org_type, role=role)

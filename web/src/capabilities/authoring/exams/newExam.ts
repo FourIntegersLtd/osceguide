@@ -49,9 +49,35 @@ export function toMinutes(seconds: number | string): number {
   return Math.round(Number(seconds) / 60);
 }
 
-/** The 409 on a taken code, said as which exam holds it and what to do. */
-export function codeTakenMessage(code: string, name: string, status: string): string {
-  return status === "draft"
-    ? `The code "${code}" is already used by the draft "${name}". Open it from Exams and choose Continue setup, or pick another code.`
-    : `The code "${code}" is already used by the exam "${name}". Pick another code.`;
+const CODE_RANDOM_LENGTH = 4;
+const CODE_SLUG_MAX = 24;
+const CODE_RETRIES = 3;
+
+/** An exam code nobody types: the name's slug plus four random base36 characters, matching the api's 2 to 32 letters, digits and dashes. */
+export function generateExamCode(name: string): string {
+  const slug = name
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+/, "")
+    .slice(0, CODE_SLUG_MAX)
+    .replace(/-+$/, "");
+  let random = "";
+  while (random.length < CODE_RANDOM_LENGTH) random += Math.random().toString(36).slice(2);
+  return `${slug || "EXAM"}-${random.slice(0, CODE_RANDOM_LENGTH).toUpperCase()}`;
+}
+
+/** Create with a generated code; if the api says it is taken, try a new one up to three more times. */
+export async function createWithFreshCode<T>(
+  name: string,
+  isTaken: (cause: unknown) => boolean,
+  create: (code: string) => Promise<T>,
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await create(generateExamCode(name));
+    } catch (cause) {
+      if (!isTaken(cause)) throw cause;
+      if (attempt >= CODE_RETRIES) throw new Error("The exam could not be created just now. Try again.");
+    }
+  }
 }

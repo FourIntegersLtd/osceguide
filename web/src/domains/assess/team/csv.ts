@@ -124,7 +124,7 @@ export function parseStaffCsv(text: string): StaffCsvParse {
       skippedLines,
       invalidLines,
       badRoles,
-      error: "No row in that file had an address and a role we can grant.",
+      error: "None of the rows had both an email address and a role (Admin or Supervisor). Check the column headings and try again.",
     };
   }
   if (rows.length > MAX_TEAM_UPLOAD) {

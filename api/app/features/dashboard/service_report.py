@@ -106,6 +106,7 @@ async def build_sitting_report(
                     recruitment_outcome=decision.recruitment_outcome,
                     signed_off_at=decision.signed_off_at,
                     released_at=decision.released_at,
+                    signed_off_by_name=decision.signed_off_by_name,
                 )
                 if decision
                 else None,

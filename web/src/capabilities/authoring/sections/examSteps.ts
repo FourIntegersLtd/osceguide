@@ -1,5 +1,6 @@
 /** Where an exam stands on its way to being offered: the steps, and the one thing to do next. */
 
+import { INSTITUTION_WORDS, type AssessWords } from "@/capabilities/assess-words/vocabulary";
 import type { RailStep } from "@/foundation/ui";
 
 export type ExamStepId = "scheme" | "publish";
@@ -40,10 +41,10 @@ export function examChip(exam: ExamState, programme: ProgrammeState): ExamChip {
   return "Not available";
 }
 
-export function toggleHelp(on: boolean): string {
+export function toggleHelp(on: boolean, w: AssessWords = INSTITUTION_WORDS): string {
   return on
-    ? "On: this exam can be picked when you schedule a sitting."
-    : "Off: existing sittings carry on, but no new ones can be scheduled.";
+    ? `On: this exam can be picked when you schedule ${w.hiring ? "an" : "a"} ${w.sitting}.`
+    : `Off: existing ${w.sittings} carry on, but no new ones can be scheduled.`;
 }
 
 export type AvailabilityStep = "add" | "activate" | "retire";
@@ -67,11 +68,11 @@ export function publishPlan(exam: { status: string }, programme: ProgrammeState)
 
 export type ExamNextAction = { id: "pick-scheme" | "publish" | "programme" | "none"; line: string };
 
-export function examNextAction(exam: ExamState): ExamNextAction {
-  if (exam.status === "retired") return { id: "none", line: "Retired. It is no longer offered for new sittings." };
+export function examNextAction(exam: ExamState, w: AssessWords = INSTITUTION_WORDS): ExamNextAction {
+  if (exam.status === "retired") return { id: "none", line: `Retired. It is no longer offered for new ${w.sittings}.` };
   if (exam.status === "published") return { id: "programme", line: "Live. Add a programme for it so people can take it." };
   if (!exam.rubric_version_id) return { id: "pick-scheme", line: "Pick a marking scheme, then publish." };
-  return { id: "publish", line: "Publish this exam to run sittings against it." };
+  return { id: "publish", line: `Publish this exam to run ${w.sittings} against it.` };
 }
 
 /** The programme an exam is offered through, matched by the exam's id (a code is only unique per owner). */

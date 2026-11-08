@@ -171,7 +171,7 @@ function SettingsFrame({
   if (surface !== "train") {
     // Assess, hire and partner: the Settings board's header and tab strip (docs/institution-overhaul/boards/Settings.dc.html).
     return (
-      <div className="flex min-w-0 max-w-[1080px] flex-col gap-6" data-testid="settings-page">
+      <div className="flex min-w-0 flex-col gap-6" data-testid="settings-page">
         <div>
           <div className={t.assessEyebrow}>Settings</div>
           <h1 className={t.assessTitle}>Settings</h1>

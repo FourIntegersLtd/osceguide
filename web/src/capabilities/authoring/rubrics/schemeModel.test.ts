@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { assessWordsFor } from "@/capabilities/assess-words/vocabulary";
 import {
+  toneWords,
   SCALE_PRESETS,
   addCompetency,
   addDomain,
@@ -18,6 +20,8 @@ import {
   placeLabel,
   presetMovesRules,
   ruleSentence,
+  clampPercent,
+  defaultPassLine,
   updatePass,
   remapFocus,
   parseSchemeJson,
@@ -72,9 +76,30 @@ describe("schemeModel", () => {
     );
   });
 
+  it("a percentage rule reads in marks available, and an older total rule still reads as before", () => {
+    assert.equal(
+      ruleSentence("domain", { score: "percent", rule: { type: "score", atLeast: 60 } }, RAG),
+      "Pass a domain when it scores at least 60% of the marks available.",
+    );
+    assert.equal(
+      ruleSentence("overall", { score: "percent", rule: { type: "score", atLeast: 55 }, everyDomainPasses: true }, RAG),
+      "Pass the station when it scores at least 55% of the marks available, and every domain passes.",
+    );
+    assert.equal(ruleSentence("domain", { score: "mean", rule: { type: "score", atLeast: 2 } }, RAG), "Pass a domain when its average is at least 2.");
+  });
+
+  it("percentages are clamped to 0-100 and start at 60", () => {
+    assert.equal(clampPercent(150), 100);
+    assert.equal(clampPercent(-4), 0);
+    assert.equal(clampPercent(Number.NaN), 0);
+    assert.equal(defaultPassLine("percent", RAG), 60);
+    assert.equal(defaultPassLine("mean", RAG), 1.8);
+    assert.equal(defaultPassLine("mean", MARKS_0_1), 0.6);
+  });
+
   it("no rule", () => {
-    assert.equal(ruleSentence("domain", undefined, RAG), "Domains have no pass line.");
-    assert.equal(ruleSentence("overall", undefined, RAG), "The station has no pass line.");
+    assert.equal(ruleSentence("domain", undefined, RAG), "Domains have no pass mark, so any score counts.");
+    assert.equal(ruleSentence("overall", undefined, RAG), "The station has no pass mark, so there is no pass or fail.");
   });
 
   it("a problem path finds its block", () => {
@@ -193,7 +218,14 @@ describe("remapFocus", () => {
 
   it("reads the JSON editor's text, or says why not", () => {
     assert.deepEqual(parseSchemeJson('{"schemaVersion":3,"outline":[]}'), { scheme: { schemaVersion: 3, outline: [] } });
-    assert.deepEqual(parseSchemeJson('{"schemaVersion":2}'), { error: "The scheme must say schemaVersion 3." });
-    assert.match((parseSchemeJson("{") as { error: string }).error, /^This is not valid JSON: /);
+    assert.deepEqual(parseSchemeJson('{"schemaVersion":2}'), { error: "This text is not a marking scheme this builder can open. Discard your edits, or paste a scheme copied from this builder." });
+    assert.deepEqual(parseSchemeJson("{"), { error: "The text has a typing mistake and cannot be read. Fix it, or press Discard changes." });
+  });
+});
+
+describe("toneWords", () => {
+  it("names the formal tone for the workspace's marker", () => {
+    assert.equal(toneWords().find((t) => t.value === "formal")?.label, "Formal examiner");
+    assert.equal(toneWords(assessWordsFor("hire")).find((t) => t.value === "formal")?.label, "Formal assessor");
   });
 });

@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { examinerLayoutTitle, livePromptsHelp, markingInstructionsHelp, reviewLayoutHelp } from "@/capabilities/authoring/lib/authoringCopy";
 import { useId, useState } from "react";
 import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
@@ -10,9 +12,9 @@ import { Alert, cn, FoldSection, getInputClassName, Textarea } from "@/foundatio
 /** The four pacing numbers a rubric's station runs on, in seconds. */
 const PACING_KEYS = [
   { key: "total_seconds", label: "Whole station", hint: "How long the station lasts." },
-  { key: "introduction_seconds", label: "Introduction ends", hint: "Must come before history ends." },
-  { key: "history_seconds", label: "History ends", hint: "When the patient moves on from history." },
-  { key: "safety_net_seconds", label: "Safety-net window", hint: "The last stretch, counted back from the end." },
+  { key: "introduction_seconds", label: "Introduction ends", hint: "Introduction must end before history-taking ends." },
+  { key: "history_seconds", label: "History ends", hint: "Second at which history-taking stops." },
+  { key: "safety_net_seconds", label: "Safety-net advice time", hint: "How many seconds at the end of the station are used for safety-net advice." },
 ] as const;
 
 export type Pacing = Record<string, unknown>;
@@ -57,15 +59,16 @@ export function AdvancedDisclosure({
   /** Text typed in the JSON editor and not yet applied; null when there is none. It outlives tab and scheme changes. */
   json: { text: string | null; onText: (text: string | null) => void };
 }) {
+  const w = useAssessWords();
   const promptId = useId();
   return (
     <div className="space-y-4" data-path="advanced">
-      <FoldSection title="Marking instructions" description="Written for the AI marker and for supervisors.">
+      <FoldSection title="Marking instructions" description={markingInstructionsHelp(w)}>
         {!readOnly ? (
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <p className="text-osce-caption text-ink-muted">Draft them for me from the domains, then edit.</p>
+            <p className="text-osce-caption text-ink-muted">Write a first draft for me from the domains, then edit.</p>
             <AuthoringButton variant="secondary" size="sm" isLoading={draft.busy} disabled={!draft.allowed || draft.busy} onClick={draft.run}>
-              Draft them for me
+              Write a first draft for me
             </AuthoringButton>
           </div>
         ) : null}
@@ -82,8 +85,8 @@ export function AdvancedDisclosure({
           onChange={(event) => onSystemPrompt(event.target.value)}
           className="mt-1 font-mono"
         />
-        {systemPrompt.trim() === "" ? <p className="mt-1 text-osce-caption text-osce-danger-text">Write the marking instructions, or press Draft them for me.</p> : null}
-        <p className="mt-0.5 text-osce-caption text-ink-subtle">What the marking model reads before the transcript. A version cannot be published without it.</p>
+        {systemPrompt.trim() === "" ? <p className="mt-1 text-osce-caption text-osce-danger-text">Write the marking instructions, or press Write a first draft for me.</p> : null}
+        <p className="mt-0.5 text-osce-caption text-ink-subtle">Tell the AI marker how to mark. It reads this before it reads the candidate&apos;s transcript. You cannot publish without it.</p>
       </FoldSection>
 
       <FoldSection title="Pacing, in seconds" defaultOpen={false}>
@@ -104,20 +107,20 @@ export function AdvancedDisclosure({
             </label>
           ))}
         </div>
-        <p className="mt-2 text-osce-caption text-ink-subtle">When the live supervisor prompts move on. Leave blank for none.</p>
+        <p className="mt-2 text-osce-caption text-ink-subtle">{livePromptsHelp(w)}</p>
       </FoldSection>
 
-      <FoldSection title="Examiner layout" defaultOpen={false}>
+      <FoldSection title={examinerLayoutTitle(w)} defaultOpen={false}>
         <p className="text-osce-caption text-ink-subtle">
-          What the supervisor sees when reviewing a station, in order.
+          {reviewLayoutHelp(w)}
           {layoutRequired ? " Platform catalogue marking schemes need one before they can be published." : ""}
         </p>
-        <div className={cn("mt-3 rounded-osce-md border border-osce-border bg-osce-surface p-3", readOnly && "pointer-events-none opacity-80")}>
-          <StructureBuilder kind="feedback" value={markingLayout} onChange={onMarkingLayout} />
+        <div className="mt-3 rounded-osce-md border border-osce-border bg-osce-surface p-3">
+          <StructureBuilder kind="feedback" value={markingLayout} onChange={onMarkingLayout} readOnly={readOnly} />
         </div>
       </FoldSection>
 
-      <FoldSection title="Scheme as JSON" defaultOpen={openJson}>
+      <FoldSection title="Marking scheme as text (for experts)" defaultOpen={openJson}>
         <SchemeJson scheme={scheme} onScheme={onScheme} readOnly={readOnly} typed={json.text} onTyped={json.onText} />
       </FoldSection>
     </div>
@@ -140,7 +143,7 @@ function SchemeJson({ scheme, onScheme, readOnly, typed, onTyped }: { scheme: Sc
   };
   return (
     <div className="space-y-2" data-path="advanced.json">
-      <p className="text-osce-caption text-ink-subtle">Custom rows and anything the blocks cannot show are edited here.</p>
+      <p className="text-osce-caption text-ink-subtle">Only use this for things the builder screens cannot show. A typing mistake here can stop the scheme from working.</p>
       <Textarea
         textareaSize="sm"
         rows={16}
@@ -148,15 +151,15 @@ function SchemeJson({ scheme, onScheme, readOnly, typed, onTyped }: { scheme: Sc
         value={typed ?? JSON.stringify(scheme, null, 2)}
         onChange={(event) => onTyped(event.target.value)}
         className="font-mono"
-        aria-label="Scheme as JSON"
+        aria-label="Marking scheme as text (for experts)"
         invalid={error !== null}
       />
       {error ? <Alert tone="danger">{error}</Alert> : null}
-      {typed !== null && !error ? <p className="text-osce-caption text-osce-warning-text">These JSON edits are not applied yet. Apply them, or discard them, before you save or leave.</p> : null}
+      {typed !== null && !error ? <p className="text-osce-caption text-osce-warning-text">Your text changes are not applied yet. Press Apply to keep them or Discard to drop them, then save.</p> : null}
       {readOnly ? null : (
         <div className="flex gap-2">
           <AuthoringButton variant="secondary" size="sm" disabled={typed === null} onClick={apply}>
-            Apply JSON
+            Apply text changes
           </AuthoringButton>
           <AuthoringButton variant="ghost" size="sm" disabled={typed === null} onClick={discard}>
             Discard edits

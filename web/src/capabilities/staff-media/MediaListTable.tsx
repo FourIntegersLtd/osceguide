@@ -14,6 +14,7 @@ import {
   AuthoringIconAction,
   AuthoringRowActions,
 } from "@/capabilities/authoring/parts/AuthoringIconAction";
+import { AuthoringActionMenu } from "@/capabilities/authoring/parts/AuthoringActionMenu";
 import type { MediaItem } from "@/capabilities/staff-media/api";
 import {
   isSpokenKind,
@@ -111,42 +112,6 @@ export function MediaListTable({
           const running = isAvRunning(avStatus(item.content ?? {}));
           return (
             <AuthoringRowActions>
-              {isDraft ? (
-                <AuthoringIconAction
-                  variant="ghost"
-                  label="Delete draft"
-                  busy={busy === `delete:${item.id}`}
-                  busyLabel="Deleting…"
-                  disabled={busy !== null}
-                  onClick={() => onDelete(item)}
-                >
-                  <HiOutlineTrash className="h-4 w-4" aria-hidden />
-                </AuthoringIconAction>
-              ) : null}
-              {running ? (
-                <AuthoringIconAction
-                  variant="ghost"
-                  label="Release stuck job"
-                  busy={busy === `unlock:${item.id}`}
-                  busyLabel="Releasing…"
-                  disabled={busy !== null}
-                  onClick={() => onUnlock(item)}
-                >
-                  <HiOutlineLockOpen className="h-4 w-4" aria-hidden />
-                </AuthoringIconAction>
-              ) : null}
-              {!isDraft ? (
-                <AuthoringIconAction
-                  variant="ghost"
-                  label="Unpublish"
-                  busy={busy === `unpublish:${item.id}`}
-                  busyLabel="Unpublishing…"
-                  disabled={busy !== null}
-                  onClick={() => onUnpublish(item)}
-                >
-                  <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
-                </AuthoringIconAction>
-              ) : null}
               {isDraft && !running ? (
                 <AuthoringIconAction
                   variant="primary"
@@ -158,14 +123,36 @@ export function MediaListTable({
                 >
                   <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
                 </AuthoringIconAction>
-              ) : null}
-              <AuthoringIconAction
-                variant="ghost"
-                label="Edit"
-                onClick={() => onOpen(item)}
-              >
-                <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
-              </AuthoringIconAction>
+              ) : (
+                <AuthoringIconAction variant="ghost" label="Edit" onClick={() => onOpen(item)}>
+                  <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
+                </AuthoringIconAction>
+              )}
+              <AuthoringActionMenu
+                label={`Actions for ${item.title ?? "this item"}`}
+                items={[
+                  isDraft && !running && { label: "Edit", icon: <HiOutlineChevronRight className="h-4 w-4" />, onSelect: () => onOpen(item) },
+                  running && {
+                    label: busy === `unlock:${item.id}` ? "Releasing…" : "Release stuck job",
+                    icon: <HiOutlineLockOpen className="h-4 w-4" />,
+                    disabled: busy !== null,
+                    onSelect: () => onUnlock(item),
+                  },
+                  !isDraft && {
+                    label: busy === `unpublish:${item.id}` ? "Unpublishing…" : "Unpublish",
+                    icon: <HiOutlineArrowDownTray className="h-4 w-4" />,
+                    disabled: busy !== null,
+                    onSelect: () => onUnpublish(item),
+                  },
+                  isDraft && {
+                    label: busy === `delete:${item.id}` ? "Deleting…" : "Delete draft",
+                    icon: <HiOutlineTrash className="h-4 w-4" />,
+                    tone: "danger" as const,
+                    disabled: busy !== null,
+                    onSelect: () => onDelete(item),
+                  },
+                ]}
+              />
             </AuthoringRowActions>
           );
         },

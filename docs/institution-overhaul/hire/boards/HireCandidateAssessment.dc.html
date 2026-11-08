@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Your assessment</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Candidate</div></div></div>
+<a class="nav on" href="HireCandidateHome.dc.html">My assessments</a><a class="nav" href="HireCandidateResult.dc.html">Results</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="3"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><a class="meta" href="HireCandidateHome.dc.html">My assessments</a><h1>Band 6 nurse assessment</h1><p class="desc">Thursday 20 November · 09:00 to 09:55 · 5 stations of 10 minutes</p></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<ol class="rail" aria-label="Your stations"><li class="st now">1 Deteriorating patient</li><li class="st">2 Medicines round</li><li class="st">3 Discharge planning</li><li class="st">4 Difficult news</li><li class="st">5 Handover</li></ol>
+<div class="card pad"><h2>Station 1 brief</h2><p class="desc" style="font-size:15px">You are the nurse in charge of a surgical ward. Mr Hughes, 68, is on day 2 after bowel surgery. A healthcare assistant is worried about him. Assess him and act on what you find.</p><div class="hint">Each station's brief opens when the one before it ends.</div></div>
+<div class="hero"><div><div class="eyebrow">On the day</div><h2>Wait here for your assessor</h2><div class="meta">This page shows a Join button when your assessor starts station 1.</div></div><button class="btn pri" disabled>Join station 1</button></div>
+<div class="why" style="text-align:right">Join opens when your assessor starts the rotation.</div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="hero live"><div><div class="eyebrow">Station 2 of 5 · Medicines round</div><h2>Ready when you are</h2><div class="meta">Read the brief, then join. The clock starts when the patient speaks.</div></div><a class="btn pri" href="HireCandidateRoom.dc.html">Join station 2</a></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="al ok"><b>You have finished</b>Thank you. Acme Health Trust will tell you when your result is ready. You can close this page.</div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>/me/sittings</code></div>
+<div class="call"><span class="m">SSE</span><code>/me/sittings/stream</code></div>
+<div class="call"><span class="m">GET</span><code>/me/slots/{id}/brief</code></div>
+<div class="call"><span class="m">POST</span><code>/me/circuits/{id}/join-token</code></div>
+<h2>Refusals it shows</h2><div class="codes"><code>circuit_not_started</code><code>circuit_not_live</code><code>circuit_paused</code><code>no_active_station</code><code>slot_not_found</code><code>slot_locked</code></div>
+<div class="note">Route <code>/app/[w]/trainee/sittings/[id]</code> · candidate · owner institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Before', 'Between stations', 'Finished'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2 };
+  }
+}
+</script>
+</body>
+</html>

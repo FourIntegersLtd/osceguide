@@ -94,7 +94,13 @@ async def test_a_rubric_that_could_not_be_marked_against_is_refused(client: Asyn
     assert response.status_code == 201, response.text
     draft = response.json()["versions"][0]
     assert draft["problems"] == [
-        {"path": "", "message": "A rubric needs a scale: the scores a competency may be given."}
+        {
+            "path": "",
+            "message": (
+                "Add a rating scale so markers know how to rate each Competency, "
+                "for example Good, Fair and Poor."
+            ),
+        }
     ]
     assert draft["result_schema"] == {}
     published = await client.post(

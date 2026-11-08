@@ -1,4 +1,4 @@
-import type { AssessWords } from "@/domains/assess/vocabulary";
+import type { AssessWords } from "@/capabilities/assess-words";
 import { humanise } from "@/foundation/format";
 import { isAdminRole, isSupervisorRole } from "@/foundation/session/roles";
 import {

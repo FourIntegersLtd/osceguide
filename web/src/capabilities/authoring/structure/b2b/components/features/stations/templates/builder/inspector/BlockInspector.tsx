@@ -1,3 +1,4 @@
+import { useAssessWords } from "@/capabilities/assess-words";
 import { Checkbox, Select, Textarea } from "@/foundation/ui";
 import { columnsFromLabels } from "@/capabilities/authoring/structure/b2b/lib/stations/richBlockValues";
 import { newId } from "@/capabilities/authoring/structure/b2b/lib/stations/stationTemplatePresets";
@@ -64,9 +65,10 @@ export function BlockInspector({
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
+  const w = useAssessWords();
   const audience = sectionAudience(section);
   const role = blockRole(block, section);
-  const roleOptions = rolesForAudience(audience);
+  const roleOptions = rolesForAudience(audience, w);
   const roleIsChoice = kind === "station" && roleOptions.length > 1;
 
   const catalogHint = blockHints?.[block.id] ?? "";
@@ -123,10 +125,10 @@ export function BlockInspector({
             </Select>
           ) : (
             <p className="rounded-osce-md bg-osce-canvas px-3 py-2 text-assess-label text-ink-muted">
-              {roleMeta(role).label}
+              {roleMeta(role, w).label}
             </p>
           )}
-          <p className={inspectorHint}>{roleMeta(role).description}</p>
+          <p className={inspectorHint}>{roleMeta(role, w).description}</p>
         </div>
       ) : null}
       <Checkbox

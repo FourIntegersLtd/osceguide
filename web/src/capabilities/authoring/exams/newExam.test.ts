@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  codeTakenMessage,
+  createWithFreshCode,
+  generateExamCode,
   NEW_EXAM_STEPS,
   toMinutes,
   resumeStep,
@@ -46,15 +47,43 @@ describe("New exam sheet", () => {
   });
 });
 
-describe("codeTakenMessage", () => {
-  it("names the exam that holds the code and where to find it", () => {
-    assert.equal(
-      codeTakenMessage("csm", "Consultation skills mock", "draft"),
-      'The code "csm" is already used by the draft "Consultation skills mock". Open it from Exams and choose Continue setup, or pick another code.',
+describe("generateExamCode", () => {
+  it("slugs the name and adds four random characters", () => {
+    const code = generateExamCode("Paediatrics block");
+    assert.match(code, /^PAEDIATRICS-BLOCK-[A-Z0-9]{4}$/);
+    assert.match(generateExamCode("  Final MB (OSCE) 2026!! "), /^FINAL-MB-OSCE-2026-[A-Z0-9]{4}$/);
+  });
+  it("always fits the api pattern and differs per call", () => {
+    for (const name of ["", "!!!", "x".repeat(80), "Ünï côdé"]) {
+      assert.match(generateExamCode(name), /^[A-Z0-9-]{2,32}$/);
+    }
+    assert.notEqual(generateExamCode("Paediatrics"), generateExamCode("Paediatrics"));
+    assert.ok(generateExamCode("x".repeat(80)).length <= 32);
+  });
+});
+
+describe("createWithFreshCode", () => {
+  const taken = (cause: unknown) => cause === "taken";
+  it("retries a taken code up to three times with a new code each time", async () => {
+    const seen: string[] = [];
+    const made = await createWithFreshCode("Mock", taken, async (code) => {
+      seen.push(code);
+      if (seen.length < 4) throw "taken";
+      return code;
+    });
+    assert.equal(seen.length, 4);
+    assert.equal(new Set(seen).size, 4);
+    assert.equal(made, seen[3]);
+  });
+  it("gives a plain error without a code after the retries", async () => {
+    await assert.rejects(
+      createWithFreshCode("Mock", taken, async () => {
+        throw "taken";
+      }),
+      (e: Error) => !/code/i.test(e.message) && e.message.length > 0,
     );
-    assert.equal(
-      codeTakenMessage("csm", "Consultation skills mock", "published"),
-      'The code "csm" is already used by the exam "Consultation skills mock". Pick another code.',
-    );
+  });
+  it("passes any other failure through", async () => {
+    await assert.rejects(createWithFreshCode("Mock", taken, async () => { throw new Error("boom"); }), /boom/);
   });
 });

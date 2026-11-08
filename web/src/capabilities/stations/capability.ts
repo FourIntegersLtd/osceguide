@@ -12,11 +12,11 @@ export const stationsCapability: CapabilityModule = {
   id: "stations",
   title: "Stations",
   description: "Browse every scenario published for your exams, and practise one.",
-  surfaces: ["assess", "hire"],
+  surfaces: ["assess"],
   permission: null,
   section: "practice",
   path: "/stations",
-  staffRefusedOn: ["assess", "hire"],
+  staffRefusedOn: ["assess"],
   unmountedGoesTo: "/mocks",
   icon: LuStethoscope,
 };

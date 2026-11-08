@@ -1,7 +1,8 @@
 /**
  * Seeds the sample state of the HireHome board (docs/institution-overhaul/boards/HireHome.dc.html): an employer
- * organisation "Acme Health Trust" with 36 candidates, 4 assessors and 5 assessments, one of them running
+ * organisation "Acme Health Trust" with 36 candidates, 4 assessors and 4 assessments, one of them running
  * (Band 6 nurse assessment day, assessor Dr Patel) and one finished with 4 candidates waiting on a hiring decision.
+ * `{ training: true }` adds a fifth, a finished training rotation (HIRE-6), which the board specs do not expect.
  * Existing api routes only; the finished circuit's rows are written like the Results seed does (local database).
  */
 import { call, orgPath } from "./api";
@@ -13,7 +14,7 @@ import { seedSitting, seedSittingsOrg, type SittingsOrg } from "./seed-sittings"
 
 const NAMES = ["Amara Okoye", "Ben Hart", "Chloe Imran", "Dev Shah", "Esme Lowe", "Femi Adeyemi", "Grace Bell"];
 
-export async function seedHireOrg(): Promise<SittingsOrg> {
+export async function seedHireOrg(options: { training?: boolean } = {}): Promise<SittingsOrg> {
   const org = await seedSittingsOrg({
     adminName: "Ms Clarke",
     trainees: NAMES.length,
@@ -36,6 +37,12 @@ export async function seedHireOrg(): Promise<SittingsOrg> {
   await seedSitting(org, { name: "Band 5 recruitment day", mode: "exam", exam: "finals", scheduledFor: day(-7), circuits: single([3, 4, 5, 6], "Dr Patel") });
   for (const [n, offset] of [[1, 7], [2, 14], [3, 21]] as const) {
     await seedSitting(org, { name: `Band 7 panel ${n}`, mode: "exam", exam: "year3", scheduledFor: day(offset), circuits: single([n], "Dr Quinn") });
+  }
+  if (options.training) {
+    // A finished training rotation: the results page must say there are no hiring decisions (HIRE-6).
+    const practice = await seedSitting(org, { name: "Band 5 training rotation", mode: "training", exam: "finals", scheduledFor: day(-3), circuits: single([6], "Dr Quinn", 1) });
+    finish(org, practice, [6], "true");
+    psql(`UPDATE sittings SET status = 'completed' WHERE id = '${practice}';`);
   }
   await seedSitting(org, {
     name: "Band 6 nurse assessment day", mode: "exam", exam: "year4", scheduledFor: day(0), start: true, readingMinutes: 60,

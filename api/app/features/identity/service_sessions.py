@@ -6,6 +6,7 @@ which workspace a token lands in — lives here.
 
 from __future__ import annotations
 
+import enum
 import uuid
 from datetime import datetime, timedelta
 
@@ -39,7 +40,18 @@ from app.features.identity.tokens import (
 from app.features.tenancy import service as tenancy
 
 
-def _principal_for(user: User, *, memberships: list[Membership]) -> Principal:
+class _Unset(enum.Enum):
+    """ "No workspace named": land where a fresh sign-in lands."""
+
+    DEFAULT = enum.auto()
+
+
+DEFAULT_WORKSPACE = _Unset.DEFAULT
+
+
+def _principal_for(
+    user: User, *, memberships: list[Membership], workspace: str | None | _Unset = DEFAULT_WORKSPACE
+) -> Principal:
     """The token's view of a person.
 
     The landing workspace comes from `tenancy.domain.pick_default_workspace`.
@@ -48,10 +60,20 @@ def _principal_for(user: User, *, memberships: list[Membership]) -> Principal:
         user_id=user.id,
         email=user.email,
         memberships=tuple(memberships),
-        active_org_slug=default_workspace_slug(memberships),
+        active_org_slug=_landing_slug(memberships, workspace),
         is_platform_admin=user.is_platform_admin,
         must_change_password=user.must_change_password,
     )
+
+
+def _landing_slug(memberships: list[Membership], workspace: str | None | _Unset) -> str | None:
+    """The workspace a refreshed token lands in. A named one is kept only if the person
+    still holds it (memberships come from the database); otherwise the default."""
+    if workspace is None:
+        return None
+    if isinstance(workspace, str) and any(held.org_slug == workspace for held in memberships):
+        return workspace
+    return default_workspace_slug(memberships)
 
 
 def default_workspace_slug(memberships: list[Membership]) -> str | None:
@@ -140,6 +162,7 @@ async def refresh(
     memberships_for: MembershipLookup,
     settings: Settings,
     now: datetime,
+    workspace: str | None | _Unset = DEFAULT_WORKSPACE,
 ) -> TokenPair:
     """Trade a refresh token for a new pair, rotating the chain. Refuses
     `invalid_refresh_token` for one unknown, revoked or expired, and raises
@@ -191,7 +214,7 @@ async def refresh(
         session, token_id=token.id, chain_id=chain.id, token_hash=token_hash, at=now
     )
     memberships = await memberships_for(session, user.id)
-    principal = _principal_for(user, memberships=memberships)
+    principal = _principal_for(user, memberships=memberships, workspace=workspace)
     return TokenPair(
         access_token=access_token_for(principal, settings=settings, now=now),
         refresh_token=raw_refresh,

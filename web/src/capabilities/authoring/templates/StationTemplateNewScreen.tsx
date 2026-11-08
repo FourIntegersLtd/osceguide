@@ -15,7 +15,7 @@ import type {
 } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
 import { TemplateStartPanel } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/TemplateLayoutGallery";
-import { boardAlert, boardBtn, boardInput, boardLabel, boardPad } from "@/foundation/ui/boardKit";
+import { boardAlert, boardBtn, boardInput, boardLabel, boardPadWide } from "@/foundation/ui/boardKit";
 import { AuthoringExamSelect } from "@/capabilities/authoring/parts/AuthoringExamSelect";
 import {
   b2bTemplateTitleSchema,
@@ -161,7 +161,7 @@ function CreateStationTemplateWizardBody({
       setSaving(true);
       await onSave(parsed.data, structure, selectedExamCode.trim());
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to create template.");
+      setError(e instanceof Error ? e.message : "We could not save the template. Try again.");
     } finally {
       setSaving(false);
     }
@@ -193,7 +193,7 @@ function CreateStationTemplateWizardBody({
 
   if (step === 1) {
     return (
-      <div className={boardPad}>
+      <div className={`${boardPadWide} !gap-7`}>
         {rail}
         <TemplateStartPanel
           orgSlug={orgKey}
@@ -214,13 +214,13 @@ function CreateStationTemplateWizardBody({
                 onChange={handleExamChange}
                 required
                 emptyLabel="Select an exam…"
-                className={boardInput}
+                className="[&>select]:min-h-11 [&>select]:text-assess-desc"
               />
             </div>
           }
         />
         {errorAlert}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 pt-2">
           <button type="button" className={boardBtn()} onClick={onCancel}>
             Cancel
           </button>
@@ -233,7 +233,7 @@ function CreateStationTemplateWizardBody({
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-7">
       <label className="block">
         <span className={boardLabel}>Title</span>
         <input
@@ -251,7 +251,7 @@ function CreateStationTemplateWizardBody({
         allowCustomGenerationPrompt
       />
       {errorAlert}
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex flex-wrap items-center gap-2.5 pt-2">
         <button type="button" className={boardBtn()} onClick={() => setStep(1)}>
           Back
         </button>
@@ -262,7 +262,7 @@ function CreateStationTemplateWizardBody({
           {saving ? "Saving…" : saveLabel}
         </button>
       </div>
-    </>
+    </div>
   );
 }
 

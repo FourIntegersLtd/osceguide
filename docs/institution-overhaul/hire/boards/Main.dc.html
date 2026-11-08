@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hire journey</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<main class="main" style="max-width:1200px;margin:0 auto"><div class="page">
+<div><div class="eyebrow">Hire arm redesign</div><h1>One employer, start to finish</h1><p class="desc">Thirty screens, one job each. Every screen lists the platform-api calls it makes and the refusals it can show. Follow the primary button on each screen to walk the journey.</p></div>
+<div class="al warn"><b>Sign off before any code</b>Two things need your yes: the boards themselves, and the new word "Rotation" for a circuit on employer accounts.</div>
+<div class="cols">
+<div class="colm">
+<div class="card"><div class="th"><span class="f">Join and set up</span></div>
+<a class="row" href="HireRegister.dc.html"><span class="f">1 Register an employer</span><span class="meta">Public</span></a>
+<a class="row" href="HireAcceptInvite.dc.html"><span class="f">2 Accept an invitation</span><span class="meta">Candidate or assessor</span></a>
+<a class="row" href="HireHome.dc.html"><span class="f">3 Overview</span><span class="meta">Admin</span></a>
+<a class="row" href="HireAssessorHome.dc.html"><span class="f">4 Overview</span><span class="meta">Assessor</span></a></div>
+<div class="card"><div class="th"><span class="f">Build the exam</span></div>
+<a class="row" href="HireExams.dc.html"><span class="f">5 Exams</span></a>
+<a class="row" href="HireNewExam.dc.html"><span class="f">6 New exam, or adopt one</span></a>
+<a class="row" href="HireExamDetail.dc.html"><span class="f">7 Exam detail and settings</span></a>
+<a class="row" href="HireSchemeVersions.dc.html"><span class="f">8 Marking schemes</span></a>
+<a class="row" href="HireMarkingScheme.dc.html"><span class="f">9 Marking scheme builder</span></a>
+<a class="row" href="HireStations.dc.html"><span class="f">10a Stations: list, new, import</span></a>
+<a class="row" href="HireStationBuilder.dc.html"><span class="f">10b Station builder</span></a>
+<a class="row" href="HireLayoutBuilder.dc.html"><span class="f">11 Station layout</span></a></div>
+<div class="card"><div class="th"><span class="f">People</span></div>
+<a class="row" href="HireCandidates.dc.html"><span class="f">12 Candidates</span></a>
+<a class="row" href="HireAssessors.dc.html"><span class="f">13 Assessors</span></a></div>
+</div>
+<div class="colm">
+<div class="card"><div class="th"><span class="f">Run the assessment</span></div>
+<a class="row" href="HireAssessments.dc.html"><span class="f">14 Assessments</span></a>
+<a class="row" href="HireScheduleAssessment.dc.html"><span class="f">15 Schedule an assessment</span></a>
+<a class="row" href="HireAssessment.dc.html"><span class="f">16 One assessment</span></a>
+<a class="row" href="HireEditRotation.dc.html"><span class="f">17 Edit a rotation</span></a>
+<a class="row" href="HireNowRunning.dc.html"><span class="f">18 Now running</span></a>
+<a class="row" href="HireConsole.dc.html"><span class="f">19 Rotation console and review</span></a>
+<a class="row" href="HireStationReview.dc.html"><span class="f">20 Mark a station</span></a></div>
+<div class="card"><div class="th"><span class="f">Decide and report</span></div>
+<a class="row" href="HireResults.dc.html"><span class="f">21 Results</span></a>
+<a class="row" href="HireDecisions.dc.html"><span class="f">22 Hiring decisions</span><span class="new">New screen</span></a>
+<a class="row" href="HireReporting.dc.html"><span class="f">23 Reporting</span></a>
+<a class="row" href="HireSettings.dc.html"><span class="f">24 Settings and invoices</span></a></div>
+<div class="card"><div class="th"><span class="f">The candidate</span></div>
+<a class="row" href="HireCandidateHome.dc.html"><span class="f">25 My assessments</span></a>
+<a class="row" href="HireCandidateAssessment.dc.html"><span class="f">26 One assessment</span></a>
+<a class="row" href="HireCandidateRoom.dc.html"><span class="f">27 The station room</span></a>
+<a class="row" href="HireCandidateResult.dc.html"><span class="f">28 My result</span></a>
+<a class="row" href="HireCandidateReview.dc.html"><span class="f">29 Station feedback</span></a>
+<a class="row" href="HireRefused.dc.html"><span class="f">30 Not on an employer account</span></a></div>
+</div>
+</div>
+<div class="card"><div class="th"><span class="f">Institution word</span><span style="width:220px">On an employer account</span></div>
+<div class="row"><span class="f">Sitting</span><span style="width:220px">Assessment</span></div>
+<div class="row"><span class="f">Trainee</span><span style="width:220px">Candidate</span></div>
+<div class="row"><span class="f">Supervisor</span><span style="width:220px">Assessor</span></div>
+<div class="row"><span class="f">Year group</span><span style="width:220px">Intake</span></div>
+<div class="row"><span class="f">Home</span><span style="width:220px">Overview</span></div>
+<div class="row"><span class="f">My training</span><span style="width:220px">My assessments</span></div>
+<div class="row"><span class="f">Circuit</span><span style="width:220px">Rotation <span class="new">Needs sign-off</span></span></div>
+<div class="row meta">Unchanged: Exam, Marking scheme, Station, Domain, Competency. The hiring decision (Hired, Reserve list, Not hired, Withdrawn) is only on Formal exam assessments, and the candidate never sees it.</div></div>
+</div></main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

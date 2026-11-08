@@ -181,7 +181,7 @@ describe("the dashboard, read off the rubric's display", () => {
     assert.equal(view.trend.subtitle, "Score over time");
     assert.equal(view.trend.threshold, 9);
     assert.equal(view.summaryCards[0]?.value, "100%");
-    assert.equal(view.versionNotice, "Scored under 2 marking scheme versions");
+    assert.equal(view.versionNotice, "Some of these scores used an older version of the marking scheme, so they may not match exactly");
   });
 
   it("with nothing marked, draws empty charts rather than inventing a scale", () => {

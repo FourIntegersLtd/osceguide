@@ -3,14 +3,20 @@
 import { useState } from "react";
 import { Alert, AsyncBoundary, Button, ButtonLink } from "@/foundation/ui";
 import { assessMeta } from "@/foundation/ui/b2bTokens";
-import { boardPad, boardInput } from "@/foundation/ui/boardKit";
+import { boardInput } from "@/foundation/ui/boardKit";
 import type { AsyncState } from "@/foundation/hooks";
 import {
   finalizeCircuitReview,
   type CircuitReviewState,
 } from "@/domains/assess/sessions/api";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
-import { cardTitle } from "@/domains/assess/chrome";
+import { RailSection } from "@/domains/assess/sessions/RailSection";
+import Link from "next/link";
+import { useSurface } from "@/capabilities";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { reviewStations } from "@/domains/assess/sessions/circuitReviewSteps";
+import { HIRE_MARK, hireFinishState, hireMarkRows } from "@/domains/assess/sessions/hireConsole";
+import { slotReviewPath } from "@/domains/assess/sessions/support";
 
 /**
  * Publishing what was marked, once the circuit is done.
@@ -57,6 +63,7 @@ export function CircuitFeedbackCard({
           key={current.review?.finalized_at ?? "none"}
           current={current}
           ended={ended}
+          data={data}
           marked={slots.filter((slot) => slot.marked).length}
           total={slots.length}
           busy={busy}
@@ -79,6 +86,7 @@ export function CircuitFeedbackCard({
 }
 
 function FeedbackForm({
+  data,
   current,
   ended,
   marked,
@@ -87,6 +95,7 @@ function FeedbackForm({
   offline,
   publish,
 }: {
+  data: CircuitConsole;
   current: CircuitReviewState;
   ended: boolean;
   marked: number;
@@ -95,55 +104,86 @@ function FeedbackForm({
   offline: boolean;
   publish: (notes: string | null) => Promise<boolean>;
 }) {
+  const w = useAssessWords();
+  const { hrefFor } = useSurface();
+  const stations = reviewStations(data);
+  const finish = hireFinishState(stations);
   const [notes, setNotes] = useState(current.review?.merged_notes ?? "");
   const publishedAt = current.state === "published" ? current.review.finalized_at : null;
 
   const compact = !ended;
 
   return (
-    <div className={boardPad} data-board="feedback">
-      <h2 className={cardTitle}>Share this circuit&apos;s feedback</h2>
+    <RailSection id="feedback" title={w.hiring && ended ? HIRE_MARK.title : "Send feedback to candidates"} hint={`${marked} of ${total} ${total === 1 ? "station" : "stations"} marked`} data-board="feedback">
       <p className="m-0 text-assess-label leading-normal text-osce-ink-500">
         {compact
-          ? `Marked on ${marked} of ${total} station${total === 1 ? "" : "s"}. ${publishedAt ? "Published." : "Not published yet."} You can publish once at least one station is marked; this is the step that finalises the circuit's feedback.`
-          : "Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one."}
+          ? marked === 0
+            ? "Mark at least one station first. Then you can send each candidate their feedback."
+            : publishedAt
+              ? "Feedback has been sent."
+              : "Send each candidate their feedback once the stations are marked."
+          : "Each candidate sees one summary of their marks. Sending again replaces the last one."}
       </p>
 
       {compact ? (
         <ButtonLink href="#circuit-review" themeType="b2b" variant="secondary" className="self-start">
-          Go to circuit feedback
+          Send feedback
         </ButtonLink>
       ) : (
         <>
           <p className={assessMeta}>
-            Marked on {marked} of {total} station{total === 1 ? "" : "s"}
+            {marked} of {total} {total === 1 ? "station" : "stations"} marked
           </p>
 
+          {w.hiring ? (
+            <div role="table" aria-label="Your marks" className="flex flex-col text-assess-label">
+              <div role="row" className="flex gap-2 font-semibold">
+                {HIRE_MARK.headers.map((h) => (
+                  <span key={h} role="columnheader" className="flex-1">{h}</span>
+                ))}
+              </div>
+              {hireMarkRows(stations, data.slots ?? []).map((row) => (
+                <div key={row.slotId} role="row" className="flex gap-2 py-1">
+                  <span role="cell" className="flex-1">{row.label}</span>
+                  <span role="cell" className="flex-1">{row.ai}</span>
+                  <span role="cell" className="flex-1">
+                    {row.yours === "Done" ? (
+                      row.yours
+                    ) : (
+                      <Link href={hrefFor(slotReviewPath(row))} className="text-osce-accent underline">
+                        {row.yours}
+                      </Link>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           <label htmlFor="circuit-feedback-notes" className="sr-only">
-            Notes on the circuit as a whole
+            Note for candidates
           </label>
           <textarea
             id="circuit-feedback-notes"
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             rows={4}
-            placeholder="Anything to say about the circuit as a whole (optional)"
+            placeholder="Add a note for everyone (optional)"
             className={`${boardInput} min-h-24 py-2.5`}
           />
 
           {publishedAt ? (
             <Alert tone="success">
-              Published {new Date(publishedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.
-              Publishing again replaces it.
+              Sent {new Date(publishedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.
+              Sending again replaces it.
             </Alert>
           ) : (
-            <Alert tone="info">Not published yet.</Alert>
+            <Alert tone="info">Not sent yet.</Alert>
           )}
 
           {marked === 0 ? (
             <p className={assessMeta}>
-              You can publish once at least one station is marked; this is the step that finalises the
-              circuit&apos;s feedback.
+              Mark at least one station first. Then you can send each candidate their feedback.
             </p>
           ) : null}
 
@@ -152,13 +192,14 @@ function FeedbackForm({
             variant="primary"
             className="self-start"
             isLoading={busy === "publish"}
-            disabled={busy !== null || offline || marked === 0}
+            disabled={busy !== null || offline || marked === 0 || (w.hiring && finish.disabled)}
             onClick={() => publish(notes.trim() || null)}
           >
-            {publishedAt ? "Publish again" : "Publish circuit feedback"}
+            {w.hiring ? HIRE_MARK.finish : publishedAt ? "Send again" : "Send feedback"}
           </Button>
+          {w.hiring && finish.reason ? <p className={assessMeta}>{finish.reason}</p> : null}
         </>
       )}
-    </div>
+    </RailSection>
   );
 }

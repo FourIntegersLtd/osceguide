@@ -17,6 +17,7 @@ import {
   type SittingFormValues,
 } from "@/domains/assess/support";
 import { PeopleDialog as Dialog } from "@/domains/assess/ui";
+import { useAssessWords, type AssessWords } from "@/capabilities/assess-words";
 
 /**
  * Correcting a sitting that has already been scheduled.
@@ -45,6 +46,7 @@ export function SittingEditForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const w = useAssessWords();
   const lock = sittingEditLock(sitting);
   const choices = useAsync(
     async (signal) => ({
@@ -75,7 +77,7 @@ export function SittingEditForm({
       onSaved();
       onClose();
     } catch (cause) {
-      setFailure(refusal(cause));
+      setFailure(refusal(cause, w));
       if (hasCode(cause, "stale_revision")) onSaved();
     } finally {
       setBusy(false);
@@ -85,8 +87,8 @@ export function SittingEditForm({
   return (
     <Dialog
       open
-      title="Edit sitting"
-      lead="Name, date and year group. Mode, exam and type lock once a circuit starts."
+      title={`Edit ${w.sitting}`}
+      lead={`Name, date and ${w.yearGroup}. Mode, exam and type lock once a ${w.circuit} starts.`}
       error={failure}
       busy={busy}
       commitLabel="Save"
@@ -157,18 +159,18 @@ export function SittingEditForm({
  * explain better, because its `invalid_circuit` message names what to do about
  * the circuits.
  */
-function refusal(cause: unknown): string {
+function refusal(cause: unknown, w: AssessWords): string {
   if (hasCode(cause, "stale_revision")) {
-    return "Someone else changed this sitting just now. We have reloaded it: close this and choose Edit again to see their changes.";
+    return `Someone else changed this ${w.sitting} just now. We have reloaded it: close this and choose Edit again to see their changes.`;
   }
   if (hasCode(cause, "sitting_locked")) {
-    return "This sitting has begun, so what it examines is fixed. Its name and date can still change.";
+    return `This ${w.sitting} has begun, so what it examines is fixed. Its name and date can still change.`;
   }
   if (hasCode(cause, "exam_rubric_not_ready", "rubric_version_not_published")) {
-    return "That programme has no published marking scheme yet. Publish one, or choose another programme.";
+    return "That exam has no published marking scheme yet. Publish one, or choose another exam.";
   }
   if (hasCode(cause, "programme_not_found")) {
-    return "That programme is no longer here. Pick another.";
+    return "That exam was removed. Choose another one.";
   }
   return errorMessage(cause);
 }

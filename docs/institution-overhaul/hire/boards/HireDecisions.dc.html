@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hiring decisions</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav on" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="5"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><a class="meta" href="HireResults.dc.html">Results</a><h1>Band 6 nurse, October intake <span class="new" style="vertical-align:middle">New screen</span></h1><p class="desc">Formal exam · 14 Oct · 10 candidates. Decide each candidate, sign off, then release.</p></div><div class="acts"><button class="btn">Download CSV</button></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="g4"><div class="tile"><div class="meta">Hired</div><h2>4</h2></div><div class="tile"><div class="meta">Reserve list</div><h2>2</h2></div><div class="tile"><div class="meta">Not hired</div><h2>1</h2></div><div class="tile"><div class="meta">Still to decide</div><h2>3</h2></div></div>
+<div class="card"><div class="th"><span class="f">Candidate</span><span style="width:140px">Result</span><span style="width:200px">Hiring decision</span></div>
+<button class="row" style="width:100%;border-left:0;border-right:0;border-bottom:0;background:#fff;font-family:inherit;text-align:left;cursor:pointer" onClick="{{go1}}"><div class="av">PS</div><span class="f">Priya Shah<div class="meta">5 of 5 stations passed</div></span><span style="width:140px"><span class="chip ok">Pass</span></span><span style="width:200px"><span class="chip ok">Hired</span></span></button>
+<button class="row" style="width:100%;border-left:0;border-right:0;border-bottom:0;background:#fff;font-family:inherit;text-align:left;cursor:pointer" onClick="{{go1}}"><div class="av">TR</div><span class="f">Tom Reid<div class="meta">4 of 5 stations passed</div></span><span style="width:140px"><span class="chip ok">Pass</span></span><span style="width:200px"><span class="chip warn">To decide</span></span></button>
+<button class="row" style="width:100%;border-left:0;border-right:0;border-bottom:0;background:#fff;font-family:inherit;text-align:left;cursor:pointer" onClick="{{go1}}"><div class="av">AM</div><span class="f">Ama Mensah<div class="meta">2 of 5 stations passed</div></span><span style="width:140px"><span class="chip live">Fail</span></span><span style="width:200px"><span class="chip">Not hired</span></span></button></div>
+<button class="btn pri" disabled style="align-self:flex-start">Sign off results</button><div class="why">Sign off needs a decision for all 10 candidates. 3 are left.</div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><div class="acts" style="justify-content:space-between"><h2>Tom Reid</h2><button class="btn sm" onClick="{{go0}}">Back to all candidates</button></div>
+<div class="card"><div class="row"><span class="f">1 Deteriorating patient (NEWS2)</span><span class="chip ok">Pass</span></div><div class="row"><span class="f">2 Medicines round and a drug error</span><span class="chip ok">Pass</span></div><div class="row"><span class="f">3 Discharge planning with a carer</span><span class="chip live">Fail</span><a class="btn sm" href="HireStationReview.dc.html">See marks</a></div><div class="row"><span class="f">4 Breaking difficult news</span><span class="chip ok">Pass</span></div><div class="row"><span class="f">5 Handover (SBAR)</span><span class="chip ok">Pass</span></div></div>
+<div><label>1. Result</label><div class="acts"><button class="pill on">Pass</button><button class="pill">Fail</button></div><div class="hint">From the marking: 4 of 5 stations passed. Change it only with a reason.</div></div>
+<div><label>2. Hiring decision</label><div class="acts"><button class="pill on">Hired</button><button class="pill">Reserve list</button><button class="pill">Not hired</button><button class="pill">Withdrawn</button></div><div class="hint">Only your team sees this. The candidate sees their result and feedback, never this decision.</div></div>
+<div><label for="n">Note (optional, team only)</label><input class="input" id="n" value="Strong on escalation; offer ward 7."></div>
+<div class="acts"><button class="btn pri" onClick="{{go0}}">Save and next candidate</button></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="hero"><div><div class="eyebrow">Signed off by Joy Okafor, today 14:02</div><h2>Release results to 10 candidates</h2><div class="meta">They get an email and can read their result and feedback. Hiring decisions are not sent.</div></div><button class="btn pri" onClick="{{go3}}">Release results</button></div>
+<div class="acts"><button class="btn">Preview what a candidate sees</button><button class="btn">Download result PDF</button></div>
+</sc-if>
+<sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+<div class="al ok"><b>Results released</b>10 candidates have been told. Hired 5 · Reserve list 3 · Not hired 2.</div>
+<div class="g4"><div class="tile"><div class="meta">Hired</div><h2>5</h2></div><div class="tile"><div class="meta">Reserve list</div><h2>3</h2></div><div class="tile"><div class="meta">Not hired</div><h2>2</h2></div><div class="tile"><div class="meta">Withdrawn</div><h2>0</h2></div></div>
+</sc-if>
+<sc-if value="{{s4}}" hint-placeholder-val="{{false}}">
+<div class="al info"><b>This was a Training assessment</b>Training gives candidates feedback only, so there are no hiring decisions. Sign off and release the results as usual.</div>
+<div class="card"><div class="row"><div class="av">LW</div><span class="f">Leah Ward</span><span class="chip ok">Pass</span></div><div class="row"><div class="av">OS</div><span class="f">Omar Said</span><span class="chip live">Fail</span></div></div>
+<button class="btn pri" style="align-self:flex-start">Sign off results</button>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/sittings/{id}/report</code> <span class="meta">summary strip</span></div>
+<div class="call"><span class="m">GET</span><code>…/cohort</code>, <code>…/readout</code></div>
+<div class="call"><span class="m">GET</span><code>…/candidates/{t}/decision</code></div>
+<div class="call"><span class="m">PUT</span><code>…/candidates/{t}/decision</code></div>
+<div class="call"><span class="m">POST</span><code>…/sign-off</code></div>
+<div class="call"><span class="m">POST</span><code>…/release</code>, <code>…/decisions/release</code></div>
+<div class="call"><span class="m">GET</span><code>…/result-preview</code>, <code>…/result.pdf</code>, <code>…/report.csv</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/slots/{s}/reviews</code></div>
+<div class="meta">recruitment_outcome is on the decision and in the report already; no api change. The web shows it only when the arm is hire and the mode is exam.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>recruitment_outside_exam</code><code>decision_outside_exam</code><code>decision_revised</code><code>evidence_changed</code><code>incompatible_outcomes</code><code>invalid_workflow</code><code>not_signable</code><code>reviews_pending</code><code>outcome_not_releasable</code><code>candidate_did_not_sit</code><code>result_not_found</code><code>not_an_exam_sitting</code><code>stale_revision</code></div>
+<div class="note">Route <code>/app/[w]/sittings/[id]/results</code> · admin · follow-up: a hired list across assessments needs an api filter · owner institution-owner (scores: marking-owner)</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Decide', 'One candidate', 'Signed off', 'Released', 'Training'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2, s3: t === 3, s4: t === 4,
+      go0: () => this.setState({ t: 0 }), go1: () => this.setState({ t: 1 }), go3: () => this.setState({ t: 3 }) };
+  }
+}
+</script>
+</body>
+</html>

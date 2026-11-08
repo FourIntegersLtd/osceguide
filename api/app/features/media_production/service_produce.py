@@ -277,10 +277,15 @@ def _deployed_draft(subject: Subject, exam_code: str | None, settings: Settings,
                 return await station_facts.draft_production(
                     session, subject.template_version_id, prompt, settings
                 )
+        # Deck and podcast read nothing from the database: no session, so no pooled connection sits idle.
         if kind == "slide_deck":
-            return await generation.generate_slide_deck(prompt=prompt, exam_code=exam_code, settings=settings)
+            return await generation.generate_slide_deck(
+                prompt=prompt, exam_code=exam_code, session=None, settings=settings
+            )
         if kind == "podcast":
-            return await generation.generate_podcast(prompt=prompt, exam_code=exam_code, settings=settings)
+            return await generation.generate_podcast(
+                prompt=prompt, exam_code=exam_code, session=None, settings=settings
+            )
         async with sessions() as session:
             return await generation.generate_summary(
                 prompt=prompt, exam_code=exam_code, session=session, settings=settings

@@ -16,7 +16,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ports import RoomAgents
 from app.features.attempts import service_reads as attempts
-from app.features.dashboard.schemas_live import LiveBoard, LiveCircuit, LivePerson, LiveRunRead, LiveStation
+from app.features.dashboard.schemas_live import (
+    LiveBoard,
+    LiveCircuit,
+    LivePerson,
+    LiveRunRead,
+    LiveStation,
+    NextSitting,
+)
 from app.features.health import service as health
 from app.features.identity import service as identity
 from app.features.sittings import service_catchup
@@ -34,7 +41,17 @@ async def build_live_board(
     worker_running = await health.worker_running(session, now=now)
     details = await sittings.live_circuits(session, org_id)
     if not details:
-        return LiveBoard(as_of=now, circuits=[], worker_running=worker_running)
+        upcoming = await sittings.next_sitting(session, org_id, after=now)
+        return LiveBoard(
+            as_of=now,
+            circuits=[],
+            worker_running=worker_running,
+            next_sitting=(
+                NextSitting(id=upcoming.id, name=upcoming.name, scheduled_for=upcoming.scheduled_for)
+                if upcoming and upcoming.scheduled_for
+                else None
+            ),
+        )
 
     slot_ids = [slot.id for detail in details for slot in detail.slots]
     user_ids = {slot.trainee_id for detail in details for slot in detail.slots}
@@ -129,16 +146,18 @@ async def list_run_history(
     `sittings` at the moment a circuit ended.
     """
     runs, next_cursor = await sittings.run_history(session, org_id, limit=limit, cursor=cursor)
-    supervisors = await identity.user_refs_by_ids(
-        session, list({run.supervisor_user_id for run in runs if run.supervisor_user_id})
+    circuit_candidates = await sittings.candidates_by_circuit(
+        session, org_id, [run.circuit_id for run in runs if run.circuit_id]
     )
+    wanted = {run.supervisor_user_id for run in runs if run.supervisor_user_id}
+    wanted |= {user_id for users in circuit_candidates.values() for user_id in users}
+    supervisors = await identity.user_refs_by_ids(session, list(wanted))
 
     def supervisor(user_id: uuid.UUID | None) -> LivePerson | None:
         """The supervisor's name and email, from the batch fetched above."""
         if user_id is None:
             return None
-        ref = supervisors.get(user_id)
-        return LivePerson(user_id=user_id, name=ref.name if ref else None, email=ref.email if ref else None)
+        return _person(supervisors, user_id)
 
     return [
         LiveRunRead(
@@ -152,12 +171,22 @@ async def list_run_history(
             started_at=run.started_at,
             ended_at=run.ended_at,
             candidate_count=run.candidate_count,
+            candidates=[
+                _person(supervisors, user_id)
+                for user_id in (circuit_candidates.get(run.circuit_id, []) if run.circuit_id else [])
+            ],
             stations_total=run.stations_total,
             stations_completed=run.stations_completed,
             status=run.status,
         )
         for run in runs
     ], next_cursor
+
+
+def _person(refs: Any, user_id: uuid.UUID) -> LivePerson:
+    """A person's name and email for a board row, from a batch of user lookups already made."""
+    ref = refs.get(user_id)
+    return LivePerson(user_id=user_id, name=ref.name if ref else None, email=ref.email if ref else None)
 
 
 def _candidates(detail: sittings.CircuitDetail) -> list[uuid.UUID]:

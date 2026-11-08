@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { HiOutlinePlus, HiOutlineXMark } from "react-icons/hi2";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { addPhotoLabel } from "@/capabilities/authoring/lib/authoringCopy";
 import { mediaItems, type MediaItem } from "@/capabilities/attempt-runner/material/sectionsByAudience";
 import { b2bInputBase } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 import { Alert, PhotoUpload, type PhotoUploadResult } from "@/foundation/ui";
@@ -49,6 +51,7 @@ export function MediaBlockEditor({
   board?: boolean;
   onChange: (next: unknown) => void;
 }) {
+  const addLabel = addPhotoLabel(useAssessWords());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [newUrl, setNewUrl] = useState("");
@@ -156,7 +159,7 @@ export function MediaBlockEditor({
             className={board ? "inline-flex shrink-0 items-center gap-1 text-assess-label text-accent hover:underline disabled:opacity-50" : "inline-flex shrink-0 items-center gap-1 text-osce-caption font-semibold text-accent hover:underline disabled:opacity-50"}
           >
             {board ? null : <HiOutlinePlus className="h-4 w-4" aria-hidden />}
-            Add
+            {board ? addLabel : "Add"}
           </button>
         </div>
       )}

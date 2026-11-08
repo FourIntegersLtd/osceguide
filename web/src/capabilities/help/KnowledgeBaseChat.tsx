@@ -7,7 +7,6 @@ import { B2CPanelCard, B2CPanelCardHeader, Button } from "@/foundation/ui";
 import MarkdownRenderer from "@/foundation/ui/MarkdownRenderer";
 import mdStyles from "@/foundation/ui/markdown.module.css";
 import { helpType } from "@/foundation/ui/helpType";
-import { errorMessage } from "@/foundation/hooks";
 import { askKnowledge } from "./api";
 const helpPanelFooter = "shrink-0 border-t border-osce-border-light bg-osce-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:p-4 lg:pb-4";
 
@@ -41,15 +40,14 @@ export function KnowledgeBaseChat({
       const data = await askKnowledge(nextMessages, examCode);
       const reply =
         (data?.reply || "").trim() ||
-        "I could not generate a response. Please try again.";
+        "I could not answer that. Try rewording your question, or search the guides.";
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
-    } catch (err: unknown) {
-      const errorMsg = errorMessage(err instanceof Error ? err : new Error(String(err)));
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: `Search failed: ${errorMsg}`,
+          content: "Search did not work. Check your connection and try again.",
         },
       ]);
     } finally {

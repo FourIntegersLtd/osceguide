@@ -1,5 +1,7 @@
 "use client";
 
+import { say } from "@/domains/assess/roster/rosterWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { useState } from "react";
 import { hasCode } from "@/foundation/platform-client";
 import { errorMessage } from "@/foundation/hooks";
@@ -52,6 +54,7 @@ function RenameForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const w = useAssessWords();
   const [name, setName] = useState(cohort.name);
   const [academicYear, setAcademicYear] = useState(cohort.academic_year ?? "");
   const [busy, setBusy] = useState(false);
@@ -81,7 +84,7 @@ function RenameForm({
   return (
     <Dialog
       open
-      title="Rename year group"
+      title={say(w, "Rename year group")}
       lead="Everyone in this intake stays in it. Only the name changes."
       error={error}
       busy={busy}
@@ -163,6 +166,7 @@ function DeleteForm({
   onClose: () => void;
   onDeleted: () => void;
 }) {
+  const w = useAssessWords();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -179,7 +183,7 @@ function DeleteForm({
          an administrator learns which intake is still holding people. */
       setError(
         hasCode(cause, "cohort_in_use")
-          ? `${errorMessage(cause)} Move them onto another intake from their row on the Trainees tab first.`
+          ? `${errorMessage(cause)} Move them onto another intake from their row on the ${w.Trainees} tab first.`
           : errorMessage(cause),
       );
     } finally {
@@ -187,17 +191,17 @@ function DeleteForm({
     }
   };
 
-  const lead = cohortDeleteLead(cohort.name, cohort.sitting_count ?? 0);
+  const lead = cohortDeleteLead(cohort.name, cohort.sitting_count ?? 0, w);
 
   return (
     <Dialog
       open
       tone="danger"
-      title="Delete year group"
+      title={say(w, "Delete year group")}
       lead={lead}
       error={error}
       busy={busy}
-      commitLabel="Delete year group"
+      commitLabel={say(w, "Delete year group")}
       busyLabel="Deleting…"
       onClose={onClose}
       onCommit={() => void commit()}

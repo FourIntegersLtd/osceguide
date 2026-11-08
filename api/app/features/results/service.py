@@ -9,14 +9,17 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
+from app.features.identity import service as identity
 from app.features.notifications import service as notifications
 from app.features.results import domain, errors, repository, service_evidence
 from app.features.results.models import CandidateResultRevision
 from app.features.results.schemas import (
     BulkReleaseCandidate,
     BulkReleaseResult,
+    BulkSignOffResult,
     DecisionRead,
     ReleasedCandidate,
+    SignedOffCandidate,
     SkippedRelease,
 )
 from app.features.reviews import service_summary as reviews
@@ -131,7 +134,7 @@ async def save_draft(
         evidence_fingerprint=domain.fingerprint(evidence),
         created_by=actor_id,
     )
-    return _read(revision_row)
+    return await _read(session, revision_row)
 
 
 async def sign_off(
@@ -188,7 +191,58 @@ async def sign_off(
         actor_user_id=actor_id,
         idempotency_key=f"signoff:{sitting_id}:{trainee_id}:{revision_row.revision}",
     )
-    return _read(revision_row)
+    return await _read(session, revision_row)
+
+
+async def sign_off_all(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    sitting_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    now: datetime,
+) -> BulkSignOffResult:
+    """Sign off every decided, unsigned candidate of a sitting in the request's one transaction.
+
+    Refused with `decisions_incomplete` while any candidate has no decision yet. Each candidate
+    goes through `sign_off`, so a not-signable, re-marked or review-pending candidate refuses the
+    whole call and nothing is signed. A signed-off or released candidate is left as it is.
+    """
+    sitting = await sittings.sitting_ref(session, org_id, sitting_id)
+    if sitting is None:
+        raise errors.SittingNotFound()
+    # The people who sat a station: the ones a decision can be recorded for (R-11).
+    sat = {
+        slot.trainee_id
+        for slot in await sittings.slots_for_sitting(session, org_id, sitting_id)
+        if slot.status in sittings.SAT_SLOT_STATUSES
+    }
+    candidates = await roster.trainees_by_user_id(session, org_id, sorted(sat))
+    current = {
+        row.trainee_id: row
+        for row in await repository.latest_revisions_for_sitting(session, org_id, sitting_id)
+    }
+    # On an exam the hiring outcome is the decision; a draft without one is still undecided.
+    undecided = [
+        trainee.id
+        for trainee in candidates.values()
+        if trainee.id not in current
+        or (sitting.mode == "exam" and not current[trainee.id].recruitment_outcome)
+    ]
+    if undecided:
+        raise errors.DecisionsIncompleteError(
+            f"{len(undecided)} candidate{'s have' if len(undecided) != 1 else ' has'} no decision yet",
+            details={"left": len(undecided)},
+        )
+    outcome = BulkSignOffResult()
+    for trainee in candidates.values():
+        if current[trainee.id].workflow_state != domain.Workflow.DRAFT:
+            continue
+        decision = await sign_off(
+            session, org_id, sitting_id=sitting_id, trainee_id=trainee.id, actor_id=actor_id, now=now
+        )
+        outcome.signed_off.append(SignedOffCandidate(trainee_id=trainee.id, decision=decision))
+    return outcome
 
 
 async def release(
@@ -266,7 +320,7 @@ async def release(
         payload={"sitting_id": str(sitting_id), "org_slug": org.slug, "org_name": org.name},
         idempotency_key=f"result_released:{sitting_id}:{trainee_id}",
     )
-    return _read(revision_row)
+    return await _read(session, revision_row)
 
 
 async def release_many(
@@ -301,6 +355,14 @@ async def release_many(
             continue
         outcome.released.append(ReleasedCandidate(trainee_id=candidate.trainee_id, decision=decision))
     return outcome
+
+
+async def released_candidates(session: AsyncSession, org_id: uuid.UUID) -> dict[uuid.UUID, set[uuid.UUID]]:
+    """Per sitting, the roster ids whose current decision is released. For reporting by station."""
+    grouped: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for sitting_id, trainee_id in await repository.released_candidates(session, org_id):
+        grouped.setdefault(sitting_id, set()).add(trainee_id)
+    return grouped
 
 
 async def sitting_has_settled_decision(
@@ -340,7 +402,7 @@ async def read_decision(
 ) -> DecisionRead | None:
     """The current revision, or `None` before anybody has recorded one."""
     revision_row = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
-    return None if revision_row is None else _read(revision_row)
+    return None if revision_row is None else await _read(session, revision_row)
 
 
 async def _require(
@@ -353,7 +415,18 @@ async def _require(
     return revision_row
 
 
-def _read(revision_row: CandidateResultRevision) -> DecisionRead:
+async def _signer_names(
+    session: AsyncSession, revisions: Sequence[CandidateResultRevision]
+) -> dict[uuid.UUID, str]:
+    """Display names of the people who signed these revisions off, one query for all."""
+    signers = {row.signed_off_by for row in revisions if row.signed_off_by is not None}
+    if not signers:
+        return {}
+    refs = await identity.user_refs_by_ids(session, sorted(signers))
+    return {user_id: ref.name or ref.email for user_id, ref in refs.items()}
+
+
+def _decision(revision_row: CandidateResultRevision, names: Mapping[uuid.UUID, str]) -> DecisionRead:
     """Map a stored revision onto what a route returns."""
     return DecisionRead(
         revision=revision_row.revision,
@@ -362,8 +435,13 @@ def _read(revision_row: CandidateResultRevision) -> DecisionRead:
         recruitment_outcome=revision_row.recruitment_outcome,
         rationale=revision_row.rationale,
         signed_off_at=revision_row.signed_off_at,
+        signed_off_by_name=names.get(revision_row.signed_off_by) if revision_row.signed_off_by else None,
         released_at=revision_row.released_at,
     )
+
+
+async def _read(session: AsyncSession, revision_row: CandidateResultRevision) -> DecisionRead:
+    return _decision(revision_row, await _signer_names(session, [revision_row]))
 
 
 async def decisions_for_sitting(
@@ -371,7 +449,8 @@ async def decisions_for_sitting(
 ) -> dict[uuid.UUID, DecisionRead]:
     """Every candidate's current decision, keyed by `trainees.id`. For the sitting report."""
     revisions = await repository.latest_revisions_for_sitting(session, org_id, sitting_id)
-    return {revision_row.trainee_id: _read(revision_row) for revision_row in revisions}
+    names = await _signer_names(session, revisions)
+    return {revision_row.trainee_id: _decision(revision_row, names) for revision_row in revisions}
 
 
 async def released_outcomes_by_sitting(

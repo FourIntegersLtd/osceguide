@@ -126,7 +126,7 @@ export function SchemeBuilder({
       const answer = await draftRubricInstructions(scope, draft.structure as unknown as Record<string, unknown>);
       const filled = applySuggestions(draft.structure, answer.items).filled;
       draft.edit((current) => applySuggestions(current, answer.items).scheme);
-      setNote(filled === 0 ? "Every place already has instructions." : `Drafted instructions for ${filled} ${filled === 1 ? "place" : "places"}. Read them before you save.`);
+      setNote(filled === 0 ? "All domains and competencies already have instructions." : `Drafted instructions for ${filled} ${filled === 1 ? "place" : "places"}. Read them before you save.`);
     });
 
   const runTrial = (body: TrialMarkRequest) =>
@@ -230,7 +230,7 @@ export function SchemeBuilder({
               ) : null}
               {tab === "trial" ? (
                 <Panel title="Trial mark" description="Mark a real attempt or a pasted transcript with this draft, before anyone else does.">
-                  <TrialPanel trial={trial} inputs={trialInputs(trial.snapshot, draft.preview)} blockedReason={jsonPending ? "Apply or discard the JSON edits on the Advanced tab first." : valid ? null : "A trial needs a marking scheme with no problems."} onRun={runTrial} />
+                  <TrialPanel trial={trial} inputs={trialInputs(trial.snapshot, draft.preview)} blockedReason={jsonPending ? "Apply or discard your text changes on the Advanced tab first." : valid ? null : "Fix the problems listed first, then you can try a test mark."} onRun={runTrial} />
                 </Panel>
               ) : null}
               {tab === "versions" ? (

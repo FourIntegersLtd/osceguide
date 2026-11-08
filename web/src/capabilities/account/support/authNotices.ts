@@ -12,12 +12,12 @@ export const AUTH_NOTICE_PARAMS = ["reset", "reason", "sso_error", "registered",
 const SSO_ERROR_MESSAGES: Record<string, string> = {
   cancelled: "Sign-in was cancelled. You can try again whenever you're ready.",
   not_provisioned:
-    "Your organisation account isn't set up on OSCE Guide yet. Contact your administrator or our support team.",
-  invalid_tenant: "We couldn't match your organisation. Contact support and mention \"SSO sign-in\".",
+    "Your work account has not been added to OSCE Guide yet. Ask your organisation's administrator to add you.",
+  invalid_tenant: "We could not find your organisation. Check you used the right sign-in link, or ask your administrator.",
 };
 
 const DEFAULT_SSO_ERROR =
-  "We couldn't sign you in with your organisation account. Please try again. If this keeps happening, contact support and mention \"SSO sign-in\".";
+  "We could not sign you in with your work account. Try again. If it keeps happening, sign in with your password or ask your administrator.";
 
 export function readAuthNotice(params: URLSearchParams): AuthNotice | null {
   if (params.get("reset") === "success") {

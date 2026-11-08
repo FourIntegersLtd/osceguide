@@ -28,7 +28,7 @@ import { TranscriptView } from "@/capabilities/feedback";
  * beside it, so pulling every consultation into every page load would cost the
  * institution for a document only sometimes wanted.
  */
-export function AttemptTranscript({ attemptId, cardClassName = boardPad }: { attemptId: string | null; cardClassName?: string }) {
+export function AttemptTranscript({ attemptId, cardClassName = boardPad, loadLabel = "Load the transcript" }: { attemptId: string | null; cardClassName?: string; loadLabel?: string }) {
   const [wanted, setWanted] = useState(false);
   const state = useAsync(
     (signal) =>
@@ -52,7 +52,7 @@ export function AttemptTranscript({ attemptId, cardClassName = boardPad }: { att
             onClick={() => setWanted(true)}
           >
             <HiOutlineChatBubbleLeftRight className="h-4 w-4 shrink-0" aria-hidden />
-            Load the transcript
+            {loadLabel}
           </button>
         </div>
       </div>

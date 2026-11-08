@@ -1,6 +1,5 @@
 "use client";
 
-import type { AssessWords } from "@/domains/assess/vocabulary";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -24,6 +23,15 @@ import {
   sittingsScopeNote,
   type SittingFilters,
 } from "@/domains/assess/support";
+import {
+  assessmentBuckets,
+  assessmentNoExam,
+  bucketLabel,
+  sittingNextStep,
+  type AssessmentBucket,
+  type DecisionRow,
+} from "@/domains/assess/hireAssessments";
+import { readResultsIndex } from "@/domains/assess/results/api";
 import { sittingTally } from "@/domains/assess/dashboard/support";
 import { boardCard, boardHeadRow, boardPad, boardRow, boardTab, boardTabs, boardChip, boardButtonSmall , boardBtn } from "@/foundation/ui/boardKit";
 import {
@@ -31,7 +39,7 @@ import {
   sittingWhen,
   sittingWhenAt,
 } from "@/domains/assess/sittingWords";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords, type AssessWords } from "@/capabilities/assess-words";
 
 /** The sitting running now, else the soonest one still to come; finished ones are never next. */
 export function nextUp(
@@ -92,6 +100,15 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
     (signal) => listProgrammes(orgSlug, signal),
     [orgSlug],
   );
+  // Hire: the Next step chip counts decisions from the results index (one read, no polling).
+  const hire = w.hiring;
+  const decisions = useAsync(
+    (signal) => (hire ? readResultsIndex(orgSlug, signal) : Promise.resolve(null)),
+    [orgSlug, hire],
+  );
+  const decisionRows: Record<string, DecisionRow> = {};
+  for (const row of decisions.data?.rows ?? []) decisionRows[row.sitting_id] = row;
+  const [pill, setPill] = useState<AssessmentBucket>("upcoming");
   // The box answers every keystroke; the server is asked once typing pauses.
   const [typed, setTyped] = useState("");
   useEffect(() => {
@@ -106,10 +123,22 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
     if (next === NO_SITTING_FILTERS) setTyped("");
   };
   const canSchedule = can(session, "schedule_sittings");
+  // Hire with no exam open for scheduling: the button is off and says why beneath it.
+  const noExam = hire && programmes.data !== null && !programmes.data.items.some((programme) => programme.status === "active");
+  const noExamWords = assessmentNoExam(w);
   const schedule = canSchedule ? (
-    <Link href={hrefFor("/sittings/new")} className={boardBtn("primary")}>
-      {w.scheduleSitting}
-    </Link>
+    noExam ? (
+      <div className="flex flex-col gap-1.5">
+        <button type="button" disabled className={boardBtn("primary")}>
+          {w.scheduleSitting}
+        </button>
+        <span className={t.assessMeta}>{noExamWords.why}</span>
+      </div>
+    ) : (
+      <Link href={hrefFor("/sittings/new")} className={boardBtn("primary")}>
+        {w.scheduleSitting}
+      </Link>
+    )
   ) : null;
 
   const loaded = pages.state.data;
@@ -152,7 +181,9 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
           <div className={t.assessEyebrow}>Run</div>
           <h1 className={t.assessTitle}>{w.Sittings}</h1>
           <p className={t.assessDesc}>
-            {`${w.hiring ? "An" : "A"} ${w.sitting} is one occasion, such as the March mock. Its circuits are built for you when you schedule it.`}
+            {hire
+              ? `Each ${w.sitting} is one day of ${w.circuits} for a group of ${w.trainees}, on one exam.`
+              : `A ${w.sitting} is one occasion, such as the March mock. Its circuits are built for you when you schedule it.`}
           </p>
         </div>
         {schedule ? (
@@ -164,7 +195,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
       {hasAny ? (
         <>
           <div role="tablist" className={boardTabs}>
-            {TABS.map(([status, label]) => (
+            {hire ? <HirePills sittings={loaded ?? []} rows={decisionRows} pill={pill} onPick={setPill} /> : TABS.map(([status, label]) => (
               <button
                 key={label}
                 type="button"
@@ -191,10 +222,17 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
         {(sittings) =>
           sittings.length === 0 && !filtersActive(filters) ? (
             <div className={boardPad}>
-              <h2 className="text-base font-semibold leading-normal">{`No ${w.sittings} yet`}</h2>
+              <h2 className="text-base font-semibold leading-normal">{noExam ? noExamWords.title : `No ${w.sittings} yet`}</h2>
               <p className={`m-0 ${t.assessMeta}`}>
-                {sittingsEmptyDescription(canSchedule, w)}
+                {noExam ? noExamWords.body : hire && canSchedule ? `Schedule one when you have an exam and at least one ${w.trainee}.` : sittingsEmptyDescription(canSchedule, w)}
               </p>
+              {noExam ? (
+                <div className="flex self-start">
+                  <Link href={hrefFor("/authoring/exams/new")} className={boardBtn("primary")}>
+                    {noExamWords.action}
+                  </Link>
+                </div>
+              ) : null}
               {schedule ? (
                 <div className="flex self-start">{schedule}</div>
               ) : null}
@@ -207,7 +245,8 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                 </p>
               ) : null}
               <SittingRows
-                sittings={sittings}
+                sittings={hire ? assessmentBuckets(sittings, decisionRows)[pill] : sittings}
+                rows={decisionRows}
                 pages={pages}
                 hrefFor={hrefFor}
                 words={w}
@@ -222,11 +261,13 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
 
 function SittingRows({
   sittings,
+  rows,
   pages,
   hrefFor,
   words,
 }: {
   sittings: Sitting[];
+  rows: Record<string, DecisionRow>;
   pages: {
     hasMore: boolean;
     loadingMore: boolean;
@@ -236,6 +277,7 @@ function SittingRows({
   hrefFor: (path: string) => string;
   words: AssessWords;
 }) {
+  const w = useAssessWords();
   if (sittings.length === 0) {
     return (
       <div className={boardPad}>
@@ -248,13 +290,41 @@ function SittingRows({
     <div className={`${boardCard} overflow-hidden`}>
       <div className={boardHeadRow}>
         <span className="flex-[1_1_240px]">{words.Sitting}</span>
-        <span className="w-[110px]">Kind</span>
-        <span className="w-[140px]">Exam</span>
-        <span className="w-[110px]">Date</span>
-        <span className="w-[120px]">Status</span>
+        {words.hiring ? (
+          <>
+            <span className="w-[150px]">Date</span>
+            <span className="w-[110px]">{words.Trainees}</span>
+            <span className="w-[170px]">Next step</span>
+          </>
+        ) : (
+          <>
+            <span className="w-[110px]">Kind</span>
+            <span className="w-[140px]">Exam</span>
+            <span className="w-[110px]">Date</span>
+            <span className="w-[120px]">Status</span>
+          </>
+        )}
       </div>
       {sittings.map((sitting) => {
         const needs = sittingNeedsCircuits(sitting);
+        if (words.hiring) {
+          const step = sittingNextStep(sitting, words, rows[sitting.id]);
+          return (
+            <Link key={sitting.id} href={hrefFor(`/sittings/${sitting.id}`)} className={`${boardRow} hover:bg-osce-surface-inset`}>
+              <div className="flex-[1_1_240px]">
+                <div className="font-medium">{sitting.name}</div>
+                <div className={t.assessMeta}>
+                  {[sitting.programme_name, sitting.mode === "exam" ? words.formalExam : words.training].filter(Boolean).join(" · ")}
+                </div>
+              </div>
+              <span className="w-[150px]">{sittingWhenAt(sitting.scheduled_for)}</span>
+              <span className="w-[110px]">{sitting.candidate_count}</span>
+              <span className="w-[170px]">
+                <span className={boardChip(step.tone)}>{step.label}</span>
+              </span>
+            </Link>
+          );
+        }
         return (
           <Link
             key={sitting.id}
@@ -283,13 +353,18 @@ function SittingRows({
                 className={boardChip(sittingChipTone(sitting.status, needs))}
               >
                 {needs
-                  ? "Needs circuits"
+                  ? `Needs ${w.circuits}`
                   : (statusWords[sitting.status] ?? sitting.status)}
               </span>
             </span>
           </Link>
         );
       })}
+      {words.hiring ? (
+        <div className={`${boardRow} ${t.assessMeta}`}>
+          Training {words.sittings} give feedback only. Hiring decisions are made on {words.formalExam} {words.sittings}.
+        </div>
+      ) : null}
       {pages.hasMore || pages.moreError ? (
         <div className={`${boardRow} justify-center`}>
           {pages.moreError ? (
@@ -314,5 +389,35 @@ function SittingRows({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function HirePills({
+  sittings,
+  rows,
+  pill,
+  onPick,
+}: {
+  sittings: Sitting[];
+  rows: Record<string, DecisionRow>;
+  pill: AssessmentBucket;
+  onPick: (next: AssessmentBucket) => void;
+}) {
+  const buckets = assessmentBuckets(sittings, rows);
+  return (
+    <>
+      {(["upcoming", "waiting", "past"] as const).map((bucket) => (
+        <button
+          key={bucket}
+          type="button"
+          role="tab"
+          aria-selected={pill === bucket}
+          className={boardTab(pill === bucket)}
+          onClick={() => onPick(bucket)}
+        >
+          {bucketLabel(bucket, buckets)}
+        </button>
+      ))}
+    </>
   );
 }

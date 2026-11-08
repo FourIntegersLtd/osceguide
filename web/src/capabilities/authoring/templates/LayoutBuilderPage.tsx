@@ -18,7 +18,7 @@ export function LayoutBuilderPage({
   children: ReactNode;
 }) {
   return (
-    <div className="flex w-full max-w-assess-page flex-col gap-6 pb-8" data-testid="layout-builder-page">
+    <div className="flex w-full flex-col gap-6 pb-8" data-testid="layout-builder-page">
       <B2CPageHeader
         board
         action={<span aria-hidden />}

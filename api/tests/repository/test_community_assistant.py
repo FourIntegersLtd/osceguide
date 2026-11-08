@@ -146,3 +146,19 @@ def _stub(monkeypatch, db_session: AsyncSession, drafter: Any = draft) -> None: 
 
     monkeypatch.setattr("app.core.db.job_session", opener)
     monkeypatch.setattr("app.features.community.jobs.draft_reply", lambda _settings: drafter)
+
+
+async def test_the_assistant_lifts_the_idle_timeout_before_it_drafts(db_session: AsyncSession) -> None:
+    from sqlalchemy import text
+
+    asker = await a_world(db_session)
+    question = await a_question(db_session, asker, category="general")
+    seen: list[str] = []
+
+    async def drafting(title: str, body: str) -> str | None:
+        seen.append((await db_session.execute(text("show idle_in_transaction_session_timeout"))).scalar_one())
+        return None
+
+    await service.reply_as_assistant(db_session, question.id, draft=drafting)
+
+    assert seen == ["25min"]

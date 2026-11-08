@@ -161,6 +161,7 @@ export const PERMISSION_ADMITS = {
   schedule_sittings: ORG_ADMIN,
   export_results: ORG_ADMIN,
   author_content: [...ORG_ADMIN, "platform_admin"],
+  lead_review: [...ORG_STAFF, "lead_reviewer"],
   sign_off_results: [...ORG_ADMIN, "institution_admin"],
   administer_platform: ["platform_admin"],
 };

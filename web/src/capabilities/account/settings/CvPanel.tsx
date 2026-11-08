@@ -239,8 +239,8 @@ function Upload({ onUploaded }: { onUploaded: (cvId: string) => void }) {
       code === "file-too-large"
         ? "That file is larger than 10MB."
         : code === "file-invalid-type"
-          ? "Only a PDF can be read."
-          : "We could not take that file.",
+          ? "Only a PDF can be read. Choose a PDF and try again."
+          : "We could not read that file. Use a PDF under 10MB.",
     );
   }, [fileRejections]);
 

@@ -19,7 +19,17 @@ from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep, RoomAgents, VoiceTokens
 from app.core.settings import SettingsDep
 from app.core.tenancy import OrgStaff, OrgStaffRunning, OrgSuspended
-from app.features.sittings import errors, schemas, service_brief, service_circuit, service_join, service_run
+from app.features.sittings import (
+    errors,
+    schemas,
+    service_brief,
+    service_circuit,
+    service_floor,
+    service_join,
+    service_peer,
+    service_run,
+    service_scheme,
+)
 from app.features.sittings import service_control as control
 from app.features.sittings import service_overrides as overrides
 
@@ -199,3 +209,165 @@ async def read_slot_brief(
     before the patient is dispatched — the attempt's brief exists only after.
     """
     return await service_brief.brief_for_trainee(session, slot_id, user_id=principal.user_id)
+
+
+_ROOM = (
+    Forbidden,
+    errors.CircuitNotFound,
+    errors.NotATrainingCircuit,
+    errors.CircuitNotLive,
+    errors.VoiceUnavailable,
+)
+
+
+@router.post(
+    "/orgs/{org_slug}/circuits/{circuit_id}/floor",
+    response_model=schemas.CircuitRead,
+    responses=error_responses(*_ROOM),
+)
+async def set_floor(
+    circuit_id: uuid.UUID,
+    body: schemas.FloorChange,
+    workspace: OrgStaffRunning,
+    session: Session,
+    clock: ClockDep,
+    agents: Agents,
+) -> schemas.CircuitRead:
+    """Training: open the floor (everyone may speak) or close it (the turn and the supervisor only)."""
+    return await service_floor.set_floor(
+        session,
+        workspace.org_id,
+        circuit_id,
+        open_floor=body.open,
+        agents=agents,
+        actor=workspace.principal,
+        now=clock.now(),
+    )
+
+
+@router.post(
+    "/orgs/{org_slug}/circuits/{circuit_id}/participants/{identity}/mic",
+    response_model=schemas.CircuitRead,
+    responses=error_responses(*_ROOM),
+)
+async def set_participant_mic(
+    circuit_id: uuid.UUID,
+    identity: str,
+    body: schemas.MicChange,
+    workspace: OrgStaffRunning,
+    session: Session,
+    clock: ClockDep,
+    agents: Agents,
+) -> schemas.CircuitRead:
+    """Training: switch one person's microphone on or off while they stay in the room."""
+    return await service_floor.set_participant_mic(
+        session,
+        workspace.org_id,
+        circuit_id,
+        identity=identity,
+        allowed=body.allowed,
+        agents=agents,
+        actor=workspace.principal,
+        now=clock.now(),
+    )
+
+
+@router.post(
+    "/orgs/{org_slug}/circuits/{circuit_id}/room/close",
+    response_model=schemas.CircuitRead,
+    responses=error_responses(*_ROOM, errors.CircuitNotEnded),
+)
+async def close_room(
+    circuit_id: uuid.UUID, workspace: OrgStaffRunning, session: Session, clock: ClockDep, agents: Agents
+) -> schemas.CircuitRead:
+    """Training: after End, close the room and disconnect everyone."""
+    return await service_floor.close_room(
+        session,
+        workspace.org_id,
+        circuit_id,
+        agents=agents,
+        actor=workspace.principal,
+        now=clock.now(),
+    )
+
+
+@router.get(
+    "/orgs/{org_slug}/circuits/{circuit_id}/scheme",
+    response_model=schemas.SchemeRead,
+    responses=error_responses(
+        Forbidden, errors.CircuitNotFound, errors.SchemeNotShown, errors.NoActiveStation
+    ),
+)
+async def circuit_scheme(circuit_id: uuid.UUID, workspace: OrgStaff, session: Session) -> schemas.SchemeRead:
+    """Training: the marking scheme of the station running now, for the supervisor's rail."""
+    return await service_scheme.scheme_for_staff(session, workspace.org_id, circuit_id)
+
+
+@router.get(
+    "/me/circuits/{circuit_id}/scheme",
+    response_model=schemas.SchemeRead,
+    responses=error_responses(
+        Unauthenticated,
+        errors.CircuitNotFound,
+        errors.SchemeNotShown,
+        errors.NoActiveStation,
+        errors.TraineeRevokedError,
+    ),
+)
+async def my_circuit_scheme(
+    circuit_id: uuid.UUID, principal: CurrentPrincipal, session: Session
+) -> schemas.SchemeRead:
+    """Training: the scheme for a trainee waiting their turn (never the one with the turn)."""
+    return await service_scheme.scheme_for_trainee(session, circuit_id, user_id=principal.user_id)
+
+
+@router.get(
+    "/me/slots/{slot_id}/peer-marks",
+    response_model=schemas.PeerMarksRead,
+    responses=error_responses(Unauthenticated, errors.SlotNotFound),
+)
+async def read_my_peer_marks(
+    slot_id: uuid.UUID, principal: CurrentPrincipal, session: Session
+) -> schemas.PeerMarksRead:
+    """What the trainees who watched my practice turn marked; empty until its feedback is shared."""
+    return await service_peer.read_my_peer_marks(session, slot_id=slot_id, user_id=principal.user_id)
+
+
+@router.put(
+    "/me/circuits/{circuit_id}/slots/{slot_id}/peer-marks",
+    response_model=schemas.PeerMarksRead,
+    responses=error_responses(
+        Unauthenticated,
+        errors.CircuitNotFound,
+        errors.SlotNotFound,
+        errors.PeerMarksNotAllowed,
+        errors.PeerMarksOwnTurn,
+        errors.PeerMarksClosed,
+        errors.PeerMarkItemUnknown,
+        errors.PeerMarkRatingUnknown,
+        errors.TraineeRevokedError,
+    ),
+)
+async def save_peer_marks(
+    circuit_id: uuid.UUID,
+    slot_id: uuid.UUID,
+    body: schemas.SavePeerMarks,
+    principal: CurrentPrincipal,
+    session: Session,
+) -> schemas.PeerMarksRead:
+    """A trainee watching another's turn saves their marks on it; yours only, per item."""
+    return await service_peer.save_peer_marks(
+        session, circuit_id, slot_id, user_id=principal.user_id, marks=body.marks
+    )
+
+
+@router.get(
+    "/orgs/{org_slug}/circuits/{circuit_id}/slots/{slot_id}/peer-marks",
+    response_model=schemas.PeerMarksRead,
+    responses=error_responses(Forbidden, errors.CircuitNotFound, errors.SlotNotFound),
+)
+async def circuit_peer_marks(
+    circuit_id: uuid.UUID, slot_id: uuid.UUID, workspace: OrgStaff, session: Session
+) -> schemas.PeerMarksRead:
+    """Every watching trainee's marks on one turn, live, for the supervisor's panel."""
+    return await service_peer.peer_marks_for_staff(session, workspace.org_id, circuit_id, slot_id)

@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Input, Modal, Select } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { provisionOrganization, type Organization } from "@/domains/platform/api";
-import { ORG_TYPES, provisionFieldErrors, slugError, slugify } from "@/domains/platform/support";
+import { hasCode } from "@/foundation/platform-client";
+import { ORG_TYPES, provisionFieldErrors, retryOnConflict, slugCandidate } from "@/domains/platform/support";
 
 /**
- * Provisioning a tenant: a name, a slug and which console its members land in.
+ * Provisioning a tenant: a name and which console its members land in.
  *
  * Three fields where the retiring form had five. The other two were an admin
  * email and a temporary password generated in the browser, displayed for an
@@ -25,46 +26,48 @@ export function ProvisionForm({
 }) {
   const toast = useToast();
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [slugEdited, setSlugEdited] = useState(false);
   const [orgType, setOrgType] = useState<string>(ORG_TYPES[0].value);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [serverFields, setServerFields] = useState<Record<string, string>>({});
-  const slugProblem = slugError(slug) ?? serverFields.slug ?? null;
   const nameProblem = serverFields.name ?? null;
 
   const submit = useCallback(
     async (event: React.FormEvent) => {
       event.preventDefault();
-      // The same rule the API applies; checked here so a bad slug never leaves the form.
-      if (slugError(slug)) return;
       setBusy(true);
       setError(null);
       setServerFields({});
       try {
-        const organization = await provisionOrganization({
-          name: name.trim(),
-          slug: slug.trim(),
-          orgType,
-        });
+        // The web address is generated; a taken one is retried with a fresh suffix.
+        const organization = await retryOnConflict(
+          (attempt) =>
+            provisionOrganization({
+              name: name.trim(),
+              slug: slugCandidate(name, attempt > 0),
+              orgType,
+            }),
+          (cause) => hasCode(cause, "org_slug_taken"),
+        );
         toast.success(`Created ${organization.slug}`, "Next, add its first admin.");
         setName("");
-        setSlug("");
-        setSlugEdited(false);
         onProvisioned(organization);
       } catch (cause) {
+        if (hasCode(cause, "org_slug_taken")) {
+          setError(new Error("Could not find a free web address for this organisation. Try a slightly different name."));
+          return;
+        }
         const fields = provisionFieldErrors(cause);
         setServerFields(fields);
-        // A refusal about one field is shown under it; anything else above the form.
-        if (Object.keys(fields).length === 0) {
+        // A refusal about the name is shown under it; anything else above the form.
+        if (!fields.name) {
           setError(cause instanceof Error ? cause : new Error(String(cause)));
         }
       } finally {
         setBusy(false);
       }
     },
-    [name, slug, orgType, onProvisioned, toast],
+    [name, orgType, onProvisioned, toast],
   );
 
   return (
@@ -80,21 +83,7 @@ export function ProvisionForm({
           const next = event.target.value;
           setName(next);
           setServerFields({});
-          if (!slugEdited) setSlug(slugify(next));
         }}
-      />
-
-      <Input
-        label="Slug"
-        required
-        value={slug}
-        error={slugProblem}
-        onChange={(event) => {
-          setSlugEdited(true);
-          setSlug(event.target.value);
-          setServerFields({});
-        }}
-        hint="Lowercase letters, numbers and hyphens. Used in every web address for this organisation; it cannot be changed afterwards."
       />
 
       <Select
@@ -115,7 +104,7 @@ export function ProvisionForm({
             Cancel
           </Button>
         ) : null}
-        <Button type="submit" variant="commit" disabled={busy || !name.trim() || !slug.trim() || slugProblem !== null}>
+        <Button type="submit" variant="commit" disabled={busy || !name.trim()}>
           {busy ? "Creating…" : "Create organisation"}
         </Button>
       </div>

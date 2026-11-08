@@ -45,13 +45,13 @@ const GENERIC_GROUPS = [
     [
       "content_too_long", "contract_end_in_past", "draft_exists", "empty_content",
       "empty_plan_update", "empty_query",
-      "exam_code_taken", "invalid_attempt_state", "invalid_audience", "invalid_author_filter",
+      "invalid_attempt_state", "invalid_audience", "invalid_author_filter",
       "invalid_avatar_file", "invalid_bucket", "invalid_cv_file", "invalid_date_range",
-      "invalid_email_change_token", "invalid_exam_code", "invalid_exam_settings", "invalid_input",
+      "invalid_email_change_token", "invalid_exam_code", "invalid_exam_settings",
       "invalid_invoice_line", "invalid_legacy_token", "invalid_media_status", "invalid_message",
       "invalid_photo", "invalid_refresh_token", "invalid_saml_connection", "invalid_signature",
       "invalid_sso_binding", "invalid_trial_transcript", "invalid_webhook",
-      "payout_account_number_required", "plan_code_taken", "platform_admin_exists",
+      "payout_account_number_required", "platform_admin_exists",
       "practice_access_exists", "referral_code_taken", "request_too_large", "slug_taken", "sso_binding_taken",
       "tag_too_long", "too_many_tags", "tool_arguments_invalid", "unknown_assistant_type",
       "unknown_media_kind", "unknown_partner", "unknown_plan", "unknown_sso_provider",
@@ -66,7 +66,7 @@ const GENERIC_GROUPS = [
       "attempt_not_ready", "audience_not_yours", "av_already_running", "av_not_running",
       "av_unavailable", "candidate_did_not_sit", "cannot_claim_own_post",
       "cannot_revoke_own_console_access", "circuit_review_finalized", "claim_outside_item",
-      "conflict", "decision_outside_exam", "exam_in_use", "exam_not_in_pilot",
+      "conflict", "decision_outside_exam", "exam_not_in_pilot",
       "exam_not_publishable", "fact_check_running", "generation_empty", "generation_unavailable",
       "import_not_ready", "invitation_pending", "job_not_cancellable",
       "job_not_retryable", "knowledge_unavailable", "lead_cannot_run",
@@ -102,7 +102,7 @@ const KNOWN_GAPS = allowList(
 
 const GENERIC = allowList(
   Object.fromEntries(GENERIC_GROUPS.flatMap(([reason, list]) => list.map((c) => [c, reason]))),
-  169, // lower only
+  165, // lower only
 );
 
 const codes = spec().components.schemas.ErrorResponse.properties.code.enum;

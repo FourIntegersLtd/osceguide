@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { AsyncBoundary, b2bTokens as t } from "@/foundation/ui";
+import { ActionMenu, AsyncBoundary, LinkedStepper, b2bTokens as t, type ActionMenuItem, type LinkedStep } from "@/foundation/ui";
 import { useAsync, type AsyncState } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { can, useSession } from "@/foundation/session";
@@ -24,20 +24,27 @@ import {
 } from "@/domains/assess/results/api";
 import { readAllCohorts, resendInvitation } from "@/domains/assess/roster/api";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
-import { boardCard, boardPad, boardRow, boardTab, boardTabs, boardChip, boardAvatar, boardBtn, boardButtonSmall } from "@/foundation/ui/boardKit";
-import { sittingChipTone, sittingWhenAt } from "@/domains/assess/sittingWords";
+import { boardCard, boardHeadRow, boardPad, boardRow, boardTab, boardTabs, boardChip, boardAvatar, boardBtn, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { sittingChipTone, sittingHeadPrimary, sittingWhenAt } from "@/domains/assess/sittingWords";
 import {
   circuitToOpen,
   countsFromReport,
   sittingNext,
   sittingSteps,
-  type SittingNextId,
+  type SittingStepId,
   type SittingStepsInput,
 } from "@/domains/assess/sittingSteps";
 import { sittingStatusLabel } from "@/domains/assess/support";
 import { plural } from "@/foundation/format";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
-import { boardRailStep } from "@/domains/assess/chrome";
+import {
+  cancelMenuLabel,
+  candidatesEmptyBody,
+  circuitsEmpty,
+  editLabel,
+  moreCircuitsLine,
+} from "@/domains/assess/sittingCopy";
+import { rotationAssessors, rotationChip, rotationTime } from "@/domains/assess/sittingWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /** One sitting and its circuits, with the way into each console. */
 export function SittingDetail({
@@ -70,7 +77,7 @@ export function SittingDetail({
   );
 
   return (
-    <section aria-label="Sitting" className={t.assessPage}>
+    <section aria-label={w.Sitting} className={t.assessPage}>
       <AsyncBoundary state={state}>
         {(sitting) => {
           const runCircuit = circuitToOpen(sitting.circuits ?? []);
@@ -86,49 +93,61 @@ export function SittingDetail({
             signOff: can(session, "sign_off_results"),
           };
           const input = report.data
-            ? stepsInput(sitting, report.data, stepCan)
+            ? stepsInput(sitting, report.data, stepCan, w)
             : null;
           const nextStep = input ? sittingNext(input) : null;
-          const actions: Partial<Record<SittingNextId, ReactNode>> = {
-            schedule: (
-              <button
-                type="button"
-                className={PRIMARY}
-                onClick={() => setEditing(true)}
-              >
-                Set a date
-              </button>
-            ),
-            circuits: (
-              <Link
-                className={PRIMARY}
-                href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}
-              >
-                Add a circuit
-              </Link>
-            ),
-            run: runCircuit ? (
-              <Link
-                className={PRIMARY}
-                href={hrefFor(`/circuits/${runCircuit.id}`)}
-              >
-                Open the console
-              </Link>
-            ) : null,
-            mark: (
-              <OpenResults href={hrefFor(`/sittings/${sitting.id}/results`)} />
-            ),
-            decide: (
-              <OpenResults href={hrefFor(`/sittings/${sitting.id}/results`)} />
-            ),
-            release: (
-              <OpenResults href={hrefFor(`/sittings/${sitting.id}/results`)} />
-            ),
+          const headAction = Boolean(nextStep?.actionable) && sitting.status !== "cancelled";
+          const primaryKind = sittingHeadPrimary(sitting);
+          const resultsHref = hrefFor(`/sittings/${sitting.id}/results`);
+          const primary =
+            primaryKind === "results" ? (
+              <Link className={PRIMARY} href={resultsHref}>Results</Link>
+            ) : primaryKind === "schedule" && manage ? (
+              <button type="button" className={PRIMARY} onClick={() => setEditing(true)}>Set a date</button>
+            ) : manage ? (
+              <button type="button" className={PRIMARY} onClick={() => setEditing(true)}>{editLabel(w)}</button>
+            ) : null;
+          const inlineKind = primary ? primaryKind : null;
+          const items: ActionMenuItem[] = [];
+          if (manage && inlineKind !== "edit") items.push({ label: editLabel(w), onSelect: () => setEditing(true) });
+          if (inlineKind !== "results") items.push({ label: "Results", href: resultsHref });
+          if (manage) {
+            items.push({
+              label: cancelMenuLabel(w),
+              tone: "danger",
+              disabled: begun,
+              hint: begun ? "Locked after start" : undefined,
+              onSelect: () => setPending({ kind: "cancel" }),
+            });
+          }
+          const headMenu = { primary, items };
+          const targets: Partial<Record<SittingStepId, Pick<LinkedStep, "href" | "onSelect">>> = {
+            schedule: manage ? { onSelect: () => setEditing(true) } : {},
+            circuits: { onSelect: () => setTab("circuits") },
+            run: runCircuit ? { href: hrefFor(`/circuits/${runCircuit.id}`) } : { onSelect: () => setTab("circuits") },
+            mark: { href: resultsHref },
+            decide: { href: resultsHref },
+            release: { href: resultsHref },
           };
-          const headAction =
-            nextStep?.actionable && sitting.status !== "cancelled"
-              ? actions[nextStep.id]
-              : null;
+          const nextId = nextStep?.id;
+          const heroTarget = nextStep?.hero?.target;
+          const runHref =
+            heroTarget?.kind === "live"
+              ? "/live"
+              : heroTarget?.kind === "edit"
+                ? `/circuits/${heroTarget.circuitId}/edit`
+                : runCircuit
+                  ? `/circuits/${runCircuit.id}`
+                  : "/live";
+          const stepperAction = !headAction ? null : nextId === "schedule" ? (
+            inlineKind === "schedule" ? null : <button type="button" className={PRIMARY} onClick={() => setEditing(true)}>Set a date</button>
+          ) : nextId === "circuits" ? (
+            <Link className={PRIMARY} href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}>{nextStep?.hero?.label ?? `Add a ${w.circuit}`}</Link>
+          ) : nextId === "run" && runCircuit ? (
+            <Link className={PRIMARY} href={hrefFor(runHref)}>{nextStep?.hero?.label ?? "Open the console"}</Link>
+          ) : nextId === "mark" || nextId === "decide" || nextId === "release" ? (
+            <Link className={PRIMARY} href={resultsHref}>{nextStep?.hero?.label ?? "Open results"}</Link>
+          ) : null;
           return (
             <>
               <PendingCircuitsNotice
@@ -157,7 +176,7 @@ export function SittingDetail({
                         : "No date set",
                       sitting.programme_name,
                       sitting.cohort_id
-                        ? `Year group: ${cohorts.data?.find((cohort) => cohort.id === sitting.cohort_id)?.name ?? "…"}`
+                        ? `${w.YearGroup}: ${cohorts.data?.find((cohort) => cohort.id === sitting.cohort_id)?.name ?? "…"}`
                         : null,
                     ]
                       .filter(Boolean)
@@ -172,31 +191,8 @@ export function SittingDetail({
                   >
                     {sittingStatusLabel(sitting.status, sitting.scheduled_for)}
                   </span>
-                  {manage ? (
-                    <button
-                      type="button"
-                      className={SECONDARY}
-                      onClick={() => setEditing(true)}
-                    >
-                      Edit
-                    </button>
-                  ) : null}
-                  {manage && !begun ? (
-                    <button
-                      type="button"
-                      className={boardBtn("danger")}
-                      onClick={() => setPending({ kind: "cancel" })}
-                    >
-                      Cancel sitting
-                    </button>
-                  ) : null}
-                  <Link
-                    className={SECONDARY}
-                    href={hrefFor(`/sittings/${sitting.id}/results`)}
-                  >
-                    Results
-                  </Link>
-                  {headAction}
+                  {headMenu.primary}
+                  <ActionMenu label={`${w.Sitting} actions`} items={headMenu.items} />
                 </div>
               </div>
 
@@ -204,6 +200,8 @@ export function SittingDetail({
                 input={input}
                 report={report}
                 cancelled={sitting.status === "cancelled"}
+                targets={targets}
+                action={stepperAction}
               />
 
               {editing ? (
@@ -217,12 +215,12 @@ export function SittingDetail({
 
               <div
                 role="tablist"
-                aria-label="Sitting sections"
+                aria-label={`${w.Sitting} sections`}
                 className={boardTabs}
               >
                 {(
                   [
-                    ["circuits", "Circuits"],
+                    ["circuits", w.Circuits],
                     ["candidates", "Candidates"],
                     ["results", "Results so far"],
                   ] as const
@@ -257,28 +255,32 @@ export function SittingDetail({
                 0 ? (
                 <div className={boardPad}>
                   <h2 className="text-base font-semibold leading-normal">
-                    No circuits yet
+                    {circuitsEmpty(w).title}
                   </h2>
-                  <p className={`m-0 ${t.assessMeta}`}>
-                    Add at least one circuit so candidates can take this
-                    sitting.
-                  </p>
+                  <p className={`m-0 ${t.assessMeta}`}>{circuitsEmpty(w).body}</p>
                 </div>
               ) : (
                 <div className={`${boardCard} overflow-hidden`}>
                   <div className={`${boardRow} justify-between border-t-0`}>
                     <h2 className="text-base font-semibold leading-normal">
-                      Circuits
+                      {w.Circuits}
                     </h2>
                     {manage ? (
                       <Link
                         className={SMALL}
                         href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}
                       >
-                        Add a circuit
+                        {`Add a ${w.circuit}`}
                       </Link>
                     ) : null}
                   </div>
+                  {w.hiring ? (
+                    <div className={boardHeadRow}>
+                      <span className="flex-[1_1_240px]">{w.Circuit}</span>
+                      <span className="w-36">Time</span>
+                      <span className="w-48">Status</span>
+                    </div>
+                  ) : null}
                   {orderedCircuits(sitting, manage ? null : userId).map(
                     (circuit) => {
                       const mine =
@@ -298,19 +300,28 @@ export function SittingDetail({
                             <div className="font-medium">{circuit.name}</div>
                             <div className={t.assessMeta}>
                               {[
-                                circuitState(circuit),
+                                ...(w.hiring ? [] : [circuitState(circuit)]),
                                 ...(stations > 0
                                   ? [plural(stations, "station")]
                                   : []),
+                                ...rotationAssessors(circuit.assessor_names ?? [], w.hiring),
                                 circuit.supervisor_user_id
-                                  ? `Supervisor ${circuit.supervisor_name ?? "another supervisor"}`
-                                  : "No supervisor assigned",
+                                  ? `${w.hiring ? "" : `${w.Supervisor} `}${circuit.supervisor_name ?? `another ${w.supervisor}`}`
+                                  : `No ${w.supervisor} assigned`,
                               ].join(" · ")}
                             </div>
                           </Link>
-                          {mine ? (
+                          {w.hiring ? (
+                            <>
+                              <span className="w-36">{rotationTime(sitting.scheduled_for, stations, circuit.timing)}</span>
+                              <span className="w-48">
+                                <span className={boardChip(rotationChip(circuit).tone)}>{rotationChip(circuit).label}</span>
+                                {mine ? <span className={`${boardChip("info")} ml-2`}>{`Your ${w.circuit}`}</span> : null}
+                              </span>
+                            </>
+                          ) : mine ? (
                             <span className={boardChip("info")}>
-                              Your circuit
+                              {`Your ${w.circuit}`}
                             </span>
                           ) : circuit.started_at && !circuit.ended_at ? (
                             <span className={boardChip("live")}>Running</span>
@@ -319,24 +330,14 @@ export function SittingDetail({
                             circuit.trainee_count > 0 ? (
                             <span className={boardChip("info")}>Ready</span>
                           ) : null}
-                          {manage && !circuit.started_at ? (
-                            <>
-                              <Link
-                                className={SMALL}
-                                href={hrefFor(`/circuits/${circuit.id}/edit`)}
-                              >
-                                Edit
-                              </Link>
-                              <button
-                                type="button"
-                                className={boardBtn("danger", true)}
-                                onClick={() =>
-                                  setPending({ kind: "delete", circuit })
-                                }
-                              >
-                                Delete
-                              </button>
-                            </>
+                          {manage ? (
+                            <ActionMenu
+                              label={`Actions for ${circuit.name}`}
+                              items={[
+                                { label: "Edit", href: hrefFor(`/circuits/${circuit.id}/edit`), disabled: Boolean(circuit.started_at), hint: circuit.started_at ? "Locked after start" : undefined },
+                                { label: "Delete", tone: "danger", disabled: Boolean(circuit.started_at), hint: circuit.started_at ? "Locked after start" : undefined, onSelect: () => setPending({ kind: "delete", circuit }) },
+                              ]}
+                            />
                           ) : null}
                         </div>
                       );
@@ -344,8 +345,7 @@ export function SittingDetail({
                   )}
                   {(sitting.circuits ?? []).length > 1 ? (
                     <div className={boardRow}>
-                      {(sitting.circuits ?? []).length - 1} more circuits ·
-                      supervisors see their own circuit first
+                      {moreCircuitsLine((sitting.circuits ?? []).length - 1, w)}
                     </div>
                   ) : null}
                 </div>
@@ -395,6 +395,7 @@ function CandidatesTab({
   sitting: Sitting;
   report: AsyncState<SittingReport>;
 }) {
+  const w = useAssessWords();
   const roster = useAsync(
     async (signal) => ({
       trainees: await listActiveTrainees(orgSlug, signal),
@@ -410,7 +411,7 @@ function CandidatesTab({
     } catch (cause) {
       setSent((current) => ({
         ...current,
-        [traineeId]: assessErrorMessage(cause),
+        [traineeId]: assessErrorMessage(cause, w),
       }));
     }
   };
@@ -443,7 +444,7 @@ function CandidatesTab({
                     No candidates yet
                   </h2>
                   <p className={`m-0 ${t.assessMeta}`}>
-                    Add a circuit to put people on this sitting.
+                    {candidatesEmptyBody(w)}
                   </p>
                 </div>
               );
@@ -510,7 +511,7 @@ function CandidatesTab({
                         : null
                     }
                     note={sent[trainee.id]}
-                    circuits="Not on a circuit yet"
+                    circuits={`Not on a ${w.circuit} yet`}
                   />
                 ))}
               </div>
@@ -635,6 +636,7 @@ function stepsInput(
   sitting: Sitting,
   data: SittingReport,
   can: SittingStepsInput["can"],
+  words: SittingStepsInput["words"],
 ): SittingStepsInput {
   return {
     scheduledFor: sitting.scheduled_for,
@@ -642,53 +644,40 @@ function stepsInput(
     counts: countsFromReport(data),
     training: sitting.mode !== "exam",
     can,
+    words,
   };
 }
 
-/** The step rail and the line under it; the step's own action is the head's primary button. */
+/** The linked steps and the one next action; each step links to where it is done. */
 function SittingNextStep({
   input,
   report,
   cancelled,
+  targets,
+  action,
 }: {
   input: SittingStepsInput | null;
   report: AsyncState<SittingReport>;
   cancelled: boolean;
+  targets: Partial<Record<SittingStepId, Pick<LinkedStep, "href" | "onSelect">>>;
+  action: ReactNode;
 }) {
   if (cancelled) return null;
   return (
     <AsyncBoundary state={report}>
       {() => {
         if (!input) return null;
-        const steps = sittingSteps(input);
-        const nowId = steps.find((step) => step.state !== "done")?.id;
+        const next = sittingNext(input);
+        const steps = sittingSteps(input).map((step) => ({ ...step, ...targets[step.id] }));
         return (
           <div className={boardPad}>
-            <ol aria-label="Steps" className="flex flex-wrap gap-2">
-              {steps.map((step) => (
-                <li
-                  key={step.id}
-                  className={boardRailStep(step.state, step.id === nowId)}
-                >
-                  <b className="block text-assess-label font-medium">
-                    {step.label}
-                  </b>
-                  {step.note}
-                </li>
-              ))}
-            </ol>
-            <div className="text-assess-label">{sittingNext(input).line}</div>
+            {next.hero ? <h2 className="mb-1 text-assess-section font-semibold text-osce-ink-900">{next.hero.title}</h2> : null}
+            <LinkedStepper steps={steps} hint={next.line}>
+              {action}
+            </LinkedStepper>
           </div>
         );
       }}
     </AsyncBoundary>
-  );
-}
-
-function OpenResults({ href }: { href: string }) {
-  return (
-    <Link className={PRIMARY} href={href}>
-      Open results
-    </Link>
   );
 }

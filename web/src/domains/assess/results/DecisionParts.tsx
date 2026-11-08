@@ -1,26 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { AsyncBoundary, b2bTokens as t } from "@/foundation/ui";
 import { PeopleDialog } from "@/domains/assess/ui";
 import { boardPill } from "@/domains/assess/results/resultsChrome";
 import { useAsync } from "@/foundation/hooks";
 import { ResultView } from "@/domains/assess/trainee/ResultView";
-import { readResultPreview } from "@/domains/assess/results/api";
+import { downloadCandidateResult, readResultPreview } from "@/domains/assess/results/api";
+import { errorMessage } from "@/foundation/hooks";
+import { saveBlob } from "@/foundation/platform-client";
 import { formatShortDateTime } from "@/foundation/format";
 import type { Decision } from "@/domains/assess/results/api";
 import {
   ASSESSMENT_OUTCOMES,
-  OUTCOME_HINT,
+  outcomeHint,
   OUTCOME_LABEL,
   RECRUITMENT_LABEL,
-  RECRUITMENT_OUTCOMES,
+  RECRUITMENT_PILLS,
   recruitmentLabel,
   type AssessmentOutcome,
 } from "@/domains/assess/results/support";
-import { boardInput, boardLabel , boardBtn, boardAlert } from "@/foundation/ui/boardKit";
+import { boardLabel, boardBtn, boardAlert } from "@/foundation/ui/boardKit";
 
-/** The employer's call on an exam-mode (hire) sitting. The candidate's own view never shows it. */
+/** The employer's call on an exam-mode (hire) sitting, as pills. Only the team sees it; the candidate's own view never does. */
 export function RecruitmentField({
   value,
   disabled,
@@ -31,26 +34,23 @@ export function RecruitmentField({
   onChange: (value: string) => void;
 }) {
   return (
-    <div>
-      <label htmlFor="recruitment-outcome" className={`${boardLabel} mb-2`}>
-        Recruitment outcome (hire only)
-      </label>
-      <select
-        id="recruitment-outcome"
-        className={boardInput}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        <option value="">Not recorded</option>
-        {RECRUITMENT_OUTCOMES.map((outcome) => (
-          <option key={outcome} value={outcome}>
+    <fieldset className="m-0 min-w-0 border-0 p-0" disabled={disabled}>
+      <legend className={`${boardLabel} mb-2 p-0`}>2. Hiring decision</legend>
+      <div className="grid grid-cols-2 gap-3 min-[901px]:grid-cols-4">
+        {RECRUITMENT_PILLS.map((outcome) => (
+          <button
+            key={outcome}
+            type="button"
+            aria-pressed={value === outcome}
+            onClick={() => onChange(value === outcome ? "" : outcome)}
+            className={`${boardPill(value === outcome)} disabled:opacity-60`}
+          >
             {RECRUITMENT_LABEL[outcome]}
-          </option>
+          </button>
         ))}
-      </select>
-      <div className={`mt-2 ${t.assessMeta}`}>Whether you are taking this candidate on. The candidate does not see it.</div>
-    </div>
+      </div>
+      <div className={`mt-2 ${t.assessMeta}`}>Only your team sees this. Candidates never do.</div>
+    </fieldset>
   );
 }
 
@@ -64,7 +64,7 @@ export function ReleasedDecision({ decision }: { decision: Decision | null }) {
         Once released, a decision cannot be edited. Any correction is saved as a new version.
       </p>
       {decision?.recruitment_outcome ? (
-        <p className="m-0 text-assess-label">Recruitment outcome: {recruitmentLabel(decision.recruitment_outcome)}</p>
+        <p className="m-0 text-assess-label">Hiring decision: {recruitmentLabel(decision.recruitment_outcome)}</p>
       ) : null}
       {decision?.rationale ? <p className="m-0 text-assess-label text-osce-ink-700">{decision.rationale}</p> : null}
     </div>
@@ -72,12 +72,12 @@ export function ReleasedDecision({ decision }: { decision: Decision | null }) {
 }
 
 /** Shows staff what the candidate will see of this decision, released or not. Read only, never emails. */
-export function ResultPreviewButton({ orgSlug, sittingId, traineeId }: { orgSlug: string; sittingId: string; traineeId: string }) {
+export function ResultPreviewButton({ orgSlug, sittingId, traineeId, label = "Preview what they'll see" }: { orgSlug: string; sittingId: string; traineeId: string; label?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button type="button" className={boardBtn()} onClick={() => setOpen(true)}>
-        Preview what they&apos;ll see
+        {label}
       </button>
       <PeopleDialog open={open} title="Result preview" onClose={() => setOpen(false)}>
         <ResultPreview orgSlug={orgSlug} sittingId={sittingId} traineeId={traineeId} />
@@ -103,6 +103,32 @@ function ResultPreview({ orgSlug, sittingId, traineeId }: { orgSlug: string; sit
         )}
       </AsyncBoundary>
     </div>
+  );
+}
+
+/** A released candidate's result as a PDF (the route refuses one that is not released). */
+export function ResultPdfButton({ orgSlug, sittingId, traineeId, label = "Download result PDF" }: { orgSlug: string; sittingId: string; traineeId: string; label?: string }) {
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  async function download() {
+    setBusy(true);
+    setFailure(null);
+    try {
+      const file = await downloadCandidateResult(orgSlug, sittingId, traineeId);
+      saveBlob(file.blob, file.filename);
+    } catch (cause) {
+      setFailure(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <button type="button" className={boardBtn()} disabled={busy} onClick={() => void download()}>
+        {label}
+      </button>
+      {failure ? <div role="alert" className={boardAlert("bad")}>{failure}</div> : null}
+    </>
   );
 }
 
@@ -169,10 +195,11 @@ export function ReleaseButton({
 }
 
 /** The assessment outcome choices; locked once the decision is signed off. */
-export function OutcomePicker({ value, disabled, onChange }: { value: AssessmentOutcome | ""; disabled: boolean; onChange: (outcome: AssessmentOutcome) => void }) {
+export function OutcomePicker({ value, disabled, numbered = false, onChange }: { value: AssessmentOutcome | ""; disabled: boolean; /** On a hire exam the result is step 1 of 2. */ numbered?: boolean; onChange: (outcome: AssessmentOutcome) => void }) {
+  const w = useAssessWords();
   return (
     <fieldset className="m-0 min-w-0 border-0 p-0" disabled={disabled}>
-      <legend className={`${boardLabel} mb-2 p-0`}>Outcome</legend>
+      <legend className={`${boardLabel} mb-2 p-0`}>{numbered ? "1. Result" : "Outcome"}</legend>
       <div className="grid grid-cols-1 gap-4 min-[901px]:grid-cols-2">
         {ASSESSMENT_OUTCOMES.map((option: AssessmentOutcome) => (
           <button
@@ -182,7 +209,7 @@ export function OutcomePicker({ value, disabled, onChange }: { value: Assessment
             onClick={() => onChange(option)}
             className={`${boardPill(value === option)} disabled:opacity-60`}
           >
-            {`${OUTCOME_LABEL[option]} · ${OUTCOME_HINT[option]}`}
+            {`${OUTCOME_LABEL[option]} · ${outcomeHint(option, w)}`}
           </button>
         ))}
       </div>

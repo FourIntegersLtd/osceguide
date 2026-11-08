@@ -114,7 +114,7 @@ export function useCreateStationForm({
         setStructure(null);
         setExamCode("");
         setContent({});
-        setError("Could not load template.");
+        setError("We could not load the template. Reload the page to try again.");
         return;
       }
       if (!resolved.examCode) {
@@ -147,7 +147,7 @@ export function useCreateStationForm({
      * the author to say which exam, because there is no template to read it from.
      */
     if (!templateVersionId && !examCode) {
-      setError("Choose a template, or say which exam this is for.");
+      setError("Choose a template, or choose the exam the station is for.");
       return;
     }
     /*
@@ -185,7 +185,7 @@ export function useCreateStationForm({
         setContent(r.content ?? {});
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to generate content.");
+      setError(e instanceof Error ? e.message : "We could not write the draft. Check your connection and try again.");
     } finally {
       setGenerating(false);
     }
@@ -198,7 +198,7 @@ export function useCreateStationForm({
       return;
     }
     if (!examCode) {
-      setError("Choose a template, or say which exam this is for.");
+      setError("Choose a template, or choose the exam the station is for.");
       return;
     }
     /*
@@ -228,7 +228,7 @@ export function useCreateStationForm({
       reset();
       onCreated(created);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to create station.");
+      setError(e instanceof Error ? e.message : "We could not create the station. Check your connection and try again.");
     } finally {
       setSaving(false);
     }

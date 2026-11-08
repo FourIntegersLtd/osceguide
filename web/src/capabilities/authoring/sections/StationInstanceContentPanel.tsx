@@ -7,6 +7,9 @@ import {
   contentSliceForSection,
   mergeSectionIntoContent,
 } from "@/capabilities/authoring/lib/b2cStationContentScope";
+import { sectionAudience } from "@/capabilities/authoring/structure/b2b/lib/stations/blockRoles";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { examinerSectionNote } from "@/capabilities/authoring/lib/authoringCopy";
 import { FoldSection } from "@/foundation/ui";
 
 /** Template-shaped station content — B2C admin-style sections + list fields. */
@@ -29,6 +32,7 @@ export function StationInstanceContentPanel({
   /** Space the board's folds apart (the create screen's cards; the builder stacks them flush). */
   gap?: boolean;
 }) {
+  const w = useAssessWords();
   // The boards draw photos as one card under the folds, so a media block leaves its section there.
   const isMedia = (type: string) => board && type === "media";
   const sections = structure.sections
@@ -48,18 +52,21 @@ export function StationInstanceContentPanel({
   );
   return (
     <div className={board ? `flex flex-col${gap ? " gap-6" : ""}` : "space-y-3"}>
-      {sections.map(({ sec, blocks }, index) => (
+      {sections.map(({ sec, blocks }, index) => {
+        const note = sectionAudience(sec) === "examiner" ? examinerSectionNote(sec.title, w) : null;
+        return (
         <FoldSection
           key={sec.id}
           number={index + 1}
-          title={sec.title}
-          description={sec.description || undefined}
+          title={note?.title ?? sec.title}
+          description={sec.description || note?.help || undefined}
           defaultOpen={index === 0}
           board={board}
         >
           {blocksFor(sec, blocks)}
         </FoldSection>
-      ))}
+        );
+      })}
       {photoSections.map((sec) => blocksFor(sec, sec.blocks.filter((block) => isMedia(block.type))))}
     </div>
   );

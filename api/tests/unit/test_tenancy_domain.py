@@ -185,3 +185,34 @@ def test_an_administrator_with_a_colleague_can_be_removed() -> None:
 
 def test_removing_a_non_administrator_never_needs_another_admin() -> None:
     assert domain.an_admin_remains(role="supervisor", other_admins=0) is True
+
+
+# --------------------------------------------------------------------------
+# The lead assessor (`gp_lead`): hire's reviewer above the assessors
+# --------------------------------------------------------------------------
+
+
+def test_a_lead_assessor_is_assigned_staff_who_may_run_a_circuit_but_not_administer() -> None:
+    assert domain.is_known_role("gp_lead")
+    assert domain.is_assigned_staff("gp_lead")
+    assert domain.may_run_circuit("gp_lead")
+    assert domain.may_read_org("gp_lead")
+    assert not domain.is_org_admin("gp_lead")
+    assert not domain.is_institution_admin("gp_lead")
+    assert not domain.is_trainee("gp_lead")
+
+
+@pytest.mark.parametrize(
+    ("role", "expected"),
+    [("gp_lead", True), ("owner", True), ("admin", True), ("institution_admin", True)]
+    + [("partner_admin", False), ("supervisor", False), ("trainee", False), (None, False)],
+)
+def test_who_may_write_the_lead_review(role: str | None, expected: bool) -> None:
+    assert domain.may_lead_review(role) is expected
+
+
+def test_a_lead_assessor_is_granted_by_an_admin_and_grants_nothing_above_itself() -> None:
+    assert domain.may_grant_role("admin", "gp_lead")
+    assert domain.may_grant_role("partner_admin", "gp_lead")
+    assert not domain.may_grant_role("gp_lead", "admin")
+    assert domain.role_rank("gp_lead") == domain.role_rank("supervisor")

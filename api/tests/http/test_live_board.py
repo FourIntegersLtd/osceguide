@@ -21,9 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Membership
 from app.core.ports import get_clock
 from app.features.voice.service import get_room_agents
-from tests.http.test_sittings_routes import a_template_version
 from tests.support.fakes import FakeClock, FakeRoomAgents
-from tests.support.sittings import a_trainee, org_with_admin, published_station
+from tests.support.sittings import started_circuit
 from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db
@@ -42,36 +41,17 @@ def clock(client: AsyncClient) -> FakeClock:
 
 
 async def a_running_morning(
-    client: AsyncClient,
-    make_actor,
-    db_session: AsyncSession,
-    *,
-    stations: int = 2,  # type: ignore[no-untyped-def]
-) -> tuple[str, str, uuid.UUID]:
-    org_id, admin = await org_with_admin(client, make_actor)
-    template = await a_template_version(client, admin)
-    sitting = (
-        await client.post(
-            "/api/v1/orgs/kings/sittings",
-            json={"name": "Finals", "programme_id": str(template), "mode": "exam"},
-            headers=bearer(admin),
-        )
-    ).json()
-    versions = [await published_station(client, admin, "kings", f"Station {i}") for i in range(stations)]
-    trainee_id = await a_trainee(db_session, f"p-{uuid.uuid4().hex[:8]}@example.com")
-    circuit = (
-        await client.post(
-            f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
-            json={
-                "name": "Circuit A",
-                "trainee_ids": [str(trainee_id)],
-                "station_version_ids": versions,
-            },
-            headers=bearer(admin),
-        )
-    ).json()
-    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
-    return admin, circuit["id"], trainee_id
+    client: AsyncClient, make_actor, db_session: AsyncSession, *, stations: int = 2
+) -> tuple[str, str, uuid.UUID]:  # type: ignore[no-untyped-def]
+    run = await started_circuit(
+        client,
+        make_actor,
+        db_session,
+        stations=stations,
+        sitting_name="Finals",
+        circuit_name="Circuit A",
+    )
+    return run.admin, run.circuit_id, run.trainees[0]
 
 
 async def test_the_board_lists_every_running_circuit_with_its_clock(
@@ -260,6 +240,124 @@ async def test_a_circuit_that_has_ended_is_kept_in_the_boards_history(
     await client.post(f"/api/v1/orgs/kings/circuits/{circuit_id}/end", headers=bearer(admin))
     again = await client.get("/api/v1/orgs/kings/live/history", headers=bearer(admin))
     assert len(again.json()["items"]) == 1
+
+
+async def test_an_empty_board_names_the_next_sitting_still_to_come(
+    client: AsyncClient, make_actor, db_session: AsyncSession, clock: FakeClock
+) -> None:  # type: ignore[no-untyped-def]
+    from tests.support.sittings import add_programme, org_with_admin
+
+    _, admin = await org_with_admin(client, make_actor)
+    board = (await client.get("/api/v1/orgs/kings/live", headers=bearer(admin))).json()
+    assert board["next_sitting"] is None
+
+    programme = await add_programme(client, admin, org_slug="kings")
+    for name, when in [
+        ("Past intake", "2026-09-01T09:00:00Z"),
+        ("December intake", "2026-12-04T09:00:00Z"),
+        ("October intake", "2026-10-02T14:30:00Z"),
+    ]:
+        made = await client.post(
+            "/api/v1/orgs/kings/sittings",
+            json={"name": name, "programme_id": str(programme), "mode": "exam", "scheduled_for": when},
+            headers=bearer(admin),
+        )
+        assert made.status_code == 201, made.text
+
+    board = (await client.get("/api/v1/orgs/kings/live", headers=bearer(admin))).json()
+    assert board["circuits"] == []
+    assert board["next_sitting"]["name"] == "October intake"
+    assert board["next_sitting"]["scheduled_for"] == "2026-10-02T14:30:00Z"
+
+
+async def test_the_history_names_the_candidate_of_an_ended_circuit(
+    client: AsyncClient, make_actor, db_session: AsyncSession, clock: FakeClock
+) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import text
+
+    admin, circuit_id, candidate = await a_running_morning(client, make_actor, db_session)
+    await db_session.execute(text("update users set name = 'Leah Ward' where id = :id"), {"id": candidate})
+    await db_session.flush()
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit_id}/end", headers=bearer(admin))
+
+    (run,) = (await client.get("/api/v1/orgs/kings/live/history", headers=bearer(admin))).json()["items"]
+    assert [person["name"] for person in run["candidates"]] == ["Leah Ward"]
+    assert run["candidate_count"] == 1
+
+    # The circuit is gone: the count stays, the names do not.
+    await db_session.execute(text("update circuit_run_history set circuit_id = null"))
+    await db_session.flush()
+    (run,) = (await client.get("/api/v1/orgs/kings/live/history", headers=bearer(admin))).json()["items"]
+    assert run["candidates"] == []
+    assert run["candidate_count"] == 1
+
+
+async def test_another_organisations_sitting_and_history_never_reach_this_board(
+    client: AsyncClient, make_actor, db_session: AsyncSession, clock: FakeClock
+) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import text
+
+    from tests.support.sittings import add_programme, org_with_admin
+
+    admin, circuit_id, candidate = await a_running_morning(client, make_actor, db_session)
+    await db_session.execute(text("update users set name = 'Leah Ward' where id = :id"), {"id": candidate})
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit_id}/end", headers=bearer(admin))
+    programmes = (await client.get("/api/v1/orgs/kings/programmes", headers=bearer(admin))).json()
+    programme = (programmes["items"] if isinstance(programmes, dict) else programmes)[0]["id"]
+    later = await client.post(
+        "/api/v1/orgs/kings/sittings",
+        json={
+            "name": "Kings later",
+            "programme_id": str(programme),
+            "mode": "exam",
+            "scheduled_for": "2026-10-20T09:00:00Z",
+        },
+        headers=bearer(admin),
+    )
+    assert later.status_code == 201, later.text
+
+    # A second organisation: a sitting sooner than Kings' own, and a history row that
+    # points at the Kings circuit (so its candidates are reachable by circuit id).
+    other_id, other_admin = await org_with_admin(client, make_actor, slug="other")
+    other_programme = await add_programme(client, other_admin, org_slug="other")
+    sooner = await client.post(
+        "/api/v1/orgs/other/sittings",
+        json={
+            "name": "Other sooner",
+            "programme_id": str(other_programme),
+            "mode": "exam",
+            "scheduled_for": "2026-09-20T09:00:00Z",
+        },
+        headers=bearer(other_admin),
+    )
+    assert sooner.status_code == 201, sooner.text
+    await db_session.execute(
+        text(
+            "insert into circuit_run_history (id, org_id, circuit_id, sitting_id, circuit_name,"
+            " sitting_name, mode, started_at, ended_at, candidate_count,"
+            " stations_total, stations_completed, status)"
+            " select gen_random_uuid(), :other, circuit_id, null, 'Other circuit', 'Other sitting', mode,"
+            " started_at, ended_at + interval '1 hour', candidate_count, stations_total,"
+            " stations_completed, status"
+            " from circuit_run_history"
+        ),
+        {"other": other_id},
+    )
+    await db_session.flush()
+
+    board = (await client.get("/api/v1/orgs/kings/live", headers=bearer(admin))).json()
+    assert board["next_sitting"]["name"] == "Kings later"
+    history = (await client.get("/api/v1/orgs/kings/live/history", headers=bearer(admin))).json()["items"]
+    assert [run["circuit_name"] for run in history] == ["Circuit A"]
+    assert [person["name"] for person in history[0]["candidates"]] == ["Leah Ward"]
+    other = (await client.get("/api/v1/orgs/other/live", headers=bearer(other_admin))).json()
+    assert other["next_sitting"]["name"] == "Other sooner"
+    # The other org's row points at the Kings circuit, yet names nobody from it.
+    other_history = (await client.get("/api/v1/orgs/other/live/history", headers=bearer(other_admin))).json()[
+        "items"
+    ]
+    assert [run["circuit_name"] for run in other_history] == ["Other circuit"]
+    assert other_history[0]["candidates"] == []
 
 
 async def test_a_candidate_cannot_read_the_boards_history(

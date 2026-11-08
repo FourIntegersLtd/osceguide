@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /* Section heading, mono eyebrow and icon tile on the `.site-root` tokens. */
-export function SectionHead({ title, sub, eyebrow, onNavy = false, center = true, as: Title = "h2" }: { title: ReactNode; sub?: string; eyebrow?: string; onNavy?: boolean; center?: boolean; as?: "h1" | "h2" }) {
+export function SectionHead({ title, sub, eyebrow, onNavy = false, center = true, as: Title = "h2" }: { title: ReactNode; sub?: ReactNode; eyebrow?: string; onNavy?: boolean; center?: boolean; as?: "h1" | "h2" }) {
   return (
     <div className={center ? "mx-auto max-w-3xl text-center" : "max-w-2xl"}>
       {eyebrow && (

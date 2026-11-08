@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { examConfirmMessage } from "@/capabilities/authoring/lib/authoringCopy";
 import { AuthoringConfirm } from "@/capabilities/authoring/parts/AuthoringConfirm";
 import { deleteExam, retireExam, type Exam } from "@/capabilities/authoring/api";
 import type { AuthoringScope } from "@/capabilities/authoring/api/scope";
@@ -8,14 +10,10 @@ import type { ActionState } from "@/capabilities/authoring/parts/useAction";
 const KINDS = {
   retire: {
     confirmText: "Retire exam",
-    message:
-      "It stops being offered for new practice and sittings, and cannot be published again. What was already attempted against it stays as it is.",
     write: retireExam,
   },
   delete: {
     confirmText: "Delete exam",
-    message:
-      "Only a draft nothing was ever built on can be deleted this way. Anything with a station, a sitting or an attempt against it cannot be deleted. Retire it instead.",
     write: deleteExam,
   },
 } as const;
@@ -37,7 +35,8 @@ export function ExamConfirm({
   /** Runs once the write took, after the modal's own state is cleared. */
   onDone?: () => void;
 }) {
-  const { confirmText, message, write } = KINDS[kind];
+  const w = useAssessWords();
+  const { confirmText, write } = KINDS[kind];
   const key = exam ? `${kind}:${exam.id}` : null;
   const confirm = () => {
     if (!exam || !key) return;
@@ -59,7 +58,7 @@ export function ExamConfirm({
       title={heading}
       confirmText={confirmText}
       error={action.error}
-      message={message}
+      message={examConfirmMessage(kind, w)}
     />
   );
 }

@@ -9,7 +9,7 @@ class ItemNotFound(NotFound):
     """Raised when a media item id or slug does not match anything stored."""
 
     code = "media_not_found"
-    default_message = "No such item"
+    default_message = "We couldn't find that item"
 
 
 class UnknownMediaKindError(InvalidInput):
@@ -30,7 +30,7 @@ class NotEditableError(Conflict):
     """Raised when someone tries to change a published item's content in place, rather than replacing it."""
 
     code = "media_not_editable"
-    default_message = "A published item's content is replaced, not edited in place"
+    default_message = "A published item can't be edited. Replace its content instead."
 
 
 class AlreadyPublishedError(Conflict):
@@ -51,7 +51,7 @@ class UnusableTitleError(InvalidInput):
     """Raised when a title has no characters a URL slug can be built from."""
 
     code = "unusable_title"
-    default_message = "That title has nothing a URL can be made from"
+    default_message = "Use letters or numbers in the title so a web address can be made from it."
 
 
 class EmptyQueryError(InvalidInput):
@@ -65,7 +65,7 @@ class InvalidListStatusError(InvalidInput):
     """Raised when a list request's status filter is not draft, published, or all."""
 
     code = "invalid_media_status"
-    default_message = "Status must be draft, published, or all"
+    default_message = "Choose draft, published or all."
 
 
 class NotDeletableError(Conflict):
@@ -90,4 +90,4 @@ class UnknownExamError(NotFound):
     """
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"

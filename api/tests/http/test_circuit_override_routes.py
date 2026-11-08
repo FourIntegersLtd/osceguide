@@ -97,6 +97,28 @@ async def test_an_admin_may_run_the_examination(
     assert response.status_code == 200, response.text
 
 
+async def test_an_exam_cannot_jump_back_to_a_station_it_passed_over(
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,
+) -> None:
+    """Jumping ahead skips station 1; an exam goes back by redo, never by a jump."""
+    _, admin, circuit_id, first_slot, _ = await a_running_circuit(client, make_actor, db_session)
+    console = (
+        await client.get(f"/api/v1/orgs/kings/circuits/{circuit_id}/console", headers=bearer(admin))
+    ).json()
+    second_slot = sorted(console["slots"], key=lambda slot: slot["slot_index"])[1]["id"]
+    base = f"/api/v1/orgs/kings/circuits/{circuit_id}"
+
+    ahead = await client.post(f"{base}/jump-to", json={"slot_id": second_slot}, headers=bearer(admin))
+    back = await client.post(f"{base}/jump-to", json={"slot_id": first_slot}, headers=bearer(admin))
+
+    assert ahead.status_code == 200, ahead.text
+    assert back.status_code == 409, back.text
+    assert back.json()["message"] == "That station is already finished. Redo it instead."
+
+
 @pytest.mark.parametrize(("action", "body"), OVERRIDES)
 async def test_the_candidate_sitting_the_circuit_may_not_override_it(
     client: AsyncClient,

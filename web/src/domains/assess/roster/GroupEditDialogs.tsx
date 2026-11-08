@@ -1,5 +1,7 @@
 "use client";
 
+import { say } from "@/domains/assess/roster/rosterWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { useCallback, useState } from "react";
 import { hasCode } from "@/foundation/platform-client";
 import { errorMessage } from "@/foundation/hooks";
@@ -152,6 +154,7 @@ function DeleteForm({
   onClose: () => void;
   onDeleted: () => void;
 }) {
+  const w = useAssessWords();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -168,7 +171,7 @@ function DeleteForm({
          have filled the group since, and this answer is the live one. */
       setError(
         hasCode(cause, "group_not_empty")
-          ? `${errorMessage(cause)} Open People, untick everybody and save, then delete it.`
+          ? `${errorMessage(cause)} Open ${w.People}, untick everybody and save, then delete it.`
           : errorMessage(cause),
       );
     } finally {
@@ -176,7 +179,7 @@ function DeleteForm({
     }
   }, [orgSlug, group.id, onDeleted, onClose]);
 
-  const people = `${group.member_count} ${group.member_count === 1 ? "person" : "people"}`;
+  const people = `${group.member_count} ${say(w, group.member_count === 1 ? "person" : "people")}`;
 
   return (
     <Dialog
@@ -186,7 +189,7 @@ function DeleteForm({
       lead={
         group.member_count === 0
           ? `Delete “${group.label}”? It has nobody in it, so nothing else changes. This cannot be undone.`
-          : `Delete “${group.label}”? It still has ${people} in it, and a group is not deleted while it does. Empty it from People first.`
+          : `Delete “${group.label}”? It still has ${people} in it, and a group is not deleted while it does. Empty it from ${w.People} first.`
       }
       error={error}
       busy={busy}

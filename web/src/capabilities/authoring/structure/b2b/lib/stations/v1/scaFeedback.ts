@@ -102,7 +102,7 @@ export function scaFeedbackTemplateV1(): StationStructure {
             id: "actionable_feedback_overall_priorities",
             type: "list",
             label: "Overall priorities",
-            placeholder: "Area, current level, steps, expected outcome",
+            placeholder: "Topic, current level, steps, expected outcome",
           },
         ],
       },

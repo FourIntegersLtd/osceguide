@@ -153,8 +153,8 @@ export function saveDecision(
   traineeId: string,
   input: {
     assessmentOutcome: string | null;
-    /** Only an exam-mode sitting takes one; the server refuses it on a training sitting. */
-    recruitmentOutcome: string | null;
+    /** Only an exam-mode sitting takes one; the server refuses it on a training sitting. Omit it when the form does not show the field: null clears a stored outcome. */
+    recruitmentOutcome?: string | null;
     rationale: string | null;
     expectedRevision: number;
   },
@@ -180,6 +180,19 @@ export function signOffDecision(
     {
       method: "POST",
     },
+  );
+}
+
+export type BulkSignOffResult = components["schemas"]["BulkSignOffResult"];
+
+/**
+ * Signs off every decided candidate of a sitting in one transaction. Refused as a whole with
+ * `decisions_incomplete` while anyone has no decision, so nobody is half signed.
+ */
+export function signOffDecisions(slug: string, sittingId: string): Promise<BulkSignOffResult> {
+  return platformRequest<BulkSignOffResult>(
+    `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/decisions/sign-off`,
+    { method: "POST" },
   );
 }
 

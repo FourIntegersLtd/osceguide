@@ -55,7 +55,7 @@ export function rubricNextAction(state: RubricState): RubricNextAction {
   }
   if (state.checking) return { id: "wait", line: "Checking the latest edit…" };
   if (state.problems > 0) {
-    return { id: "fix", line: `Fix ${state.problems} ${state.problems === 1 ? "problem" : "problems"} to publish.` };
+    return { id: "fix", line: `Fix ${state.problems} ${state.problems === 1 ? "problem" : "problems"} below to publish.` };
   }
   if (state.promptMissing) {
     return { id: "instructions", line: "Add marking instructions on the Advanced tab to publish." };

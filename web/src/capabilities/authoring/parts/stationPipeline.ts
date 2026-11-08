@@ -79,7 +79,7 @@ export function stationNext(
     return {
       id: "wait",
       step: "draft",
-      line: "The agent is working on this version.",
+      line: "The AI is writing this version. This can take a minute.",
     };
   }
   if (state.checking) return { id: "wait", step: "facts", line: checkingLine(facts) };

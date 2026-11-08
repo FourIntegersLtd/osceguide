@@ -1,21 +1,19 @@
 /** The ways to start a station, as the New station chooser offers them. */
 
+import { INSTITUTION_WORDS, type AssessWords } from "@/capabilities/assess-words/vocabulary";
+import { generateDraftHelp, stationLayoutNext } from "@/capabilities/authoring/lib/authoringCopy";
 import { matchesExamFilter } from "@/capabilities/authoring/parts/examCatalogFilter";
 
 export type StationStartWay = "layout" | "import" | "ai" | "library" | "blank";
 
-export const STATION_START_WAYS: readonly {
-  id: StationStartWay;
-  title: string;
-  body: string;
-  next: string;
-  cta: string;
-}[] = [
+type StartWay = { id: StationStartWay; title: string; body: string; next: string; cta: string };
+
+const BASE_WAYS: readonly StartWay[] = [
   {
     id: "layout",
     title: "From a layout",
     body: "Yours, or one of OSCE Guide’s. Sections are set out for you.",
-    next: "Pick a layout, then write the station in the builder: patient, examiner, marking, photos, preview and versions.",
+    next: "",
     cta: "Choose a layout",
   },
   {
@@ -47,6 +45,17 @@ export const STATION_START_WAYS: readonly {
     cta: "Open the builder",
   },
 ];
+
+/** The ways to start, in the workspace's words: an employer imports a document and has a draft written for it. */
+export function stationStartWays(w: AssessWords = INSTITUTION_WORDS): readonly StartWay[] {
+  return BASE_WAYS.map((way) => {
+    if (way.id === "layout") return { ...way, next: stationLayoutNext(w) };
+    if (!w.hiring) return way;
+    if (way.id === "import") return { ...way, title: "Import a document", body: "Upload a Word or PDF station you already use. We turn it into a draft station." };
+    if (way.id === "ai") return { ...way, title: "Draft it for me", body: generateDraftHelp(w) };
+    return way;
+  });
+}
 
 /** The create form, opened on the way the author chose, with the exam already picked. */
 export function stationStartHref(newPath: string, way: StationStartWay, examCode: string): string {

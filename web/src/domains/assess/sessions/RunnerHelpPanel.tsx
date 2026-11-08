@@ -3,32 +3,33 @@
 import { useId, useState } from "react";
 import { HiOutlineInformationCircle } from "react-icons/hi2";
 import { b2bTokens, cn, Modal } from "@/foundation/ui";
-import { acts } from "@/domains/assess/ui";
+import { acts, PEOPLE_DIALOG_SIZE } from "@/domains/assess/ui";
 import { boardBtn } from "@/foundation/ui/boardKit";
 import { cardTitle } from "@/domains/assess/chrome";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 const COPY = {
-  training: {
-    title: "Running a practice circuit",
+  training: (circuit: string) => ({
+    title: `How this ${circuit} works`,
     intro:
-      "The circuit runs itself on the clock you set. You watch it, and step in when something needs a human.",
+      `The ${circuit} runs itself on the timings you set. You watch it and step in when needed.`,
     points: [
-      "Start the circuit to open the room; everybody joins from their own screen.",
-      "Reading time and the patient follow the server's clock, not this browser.",
-      "Pause, extend, resend or jump when you need to. Each one asks why, and your answer is saved.",
+      `Start the ${circuit}. Everyone joins from their own screen.`,
+      "One shared timer drives every screen, not this browser.",
+      "Pause, add time, resend the patient or move on when needed. Each asks you why.",
     ],
-  },
-  exam: {
-    title: "Observing an examination",
+  }),
+  exam: () => ({
+    title: "Watching an exam",
     intro:
-      "One candidate, every station, on the examination's own clock. You are here to watch it and to mark it.",
+      "One candidate, every station, on the exam's own timer. You watch and mark.",
     points: [
-      "Station progress updates as the candidate finishes each one.",
-      "Listening in is subscribe-only.",
-      "Mark a station from its row as soon as it has been sat.",
+      "The list updates as the candidate finishes each station.",
+      "You can listen in. The candidate cannot hear you.",
+      "Mark a station from its row once it is done.",
     ],
-  },
-} as const;
+  }),
+};
 
 /**
  * What this screen is for, on the screen itself.
@@ -40,7 +41,8 @@ const COPY = {
 export function RunnerHelpPanel({ kind }: { kind: "training" | "exam" }) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
-  const copy = COPY[kind];
+  const w = useAssessWords();
+  const copy = COPY[kind](w.circuit);
 
   return (
     <div className="shrink-0">
@@ -55,7 +57,7 @@ export function RunnerHelpPanel({ kind }: { kind: "training" | "exam" }) {
       </button>
 
       {open ? (
-        <Modal onClose={() => setOpen(false)} labelledBy={titleId} hideCloseButton width="35.5rem" panelClassName="max-w-[35.5rem]" bodyClassName="p-6">
+        <Modal onClose={() => setOpen(false)} labelledBy={titleId} hideCloseButton {...PEOPLE_DIALOG_SIZE} bodyClassName="p-6">
           <div className="flex flex-col gap-3.5">
             <h2 id={titleId} className={`${cardTitle} !leading-tight`}>{copy.title}</h2>
             <p className="m-0 text-assess-label leading-normal text-osce-ink-500">{copy.intro}</p>

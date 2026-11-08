@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { errorMessage } from "@/foundation/hooks";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { authoringErrorMessage } from "@/capabilities/authoring/lib/authoringError";
 
 export interface ActionState {
   /** The key of the row currently running, or null. */
@@ -24,6 +25,7 @@ export interface ActionState {
  * second click start the work again.
  */
 export function useAction(onDone?: () => void, { holdOnSuccess = false }: { holdOnSuccess?: boolean } = {}): ActionState {
+  const w = useAssessWords();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,12 +39,12 @@ export function useAction(onDone?: () => void, { holdOnSuccess = false }: { hold
         if (!holdOnSuccess) setBusy(null);
         return true;
       } catch (cause) {
-        setError(errorMessage(cause));
+        setError(authoringErrorMessage(cause, w));
         setBusy(null);
         return false;
       }
     },
-    [onDone, holdOnSuccess],
+    [onDone, holdOnSuccess, w],
   );
 
   return { busy, error, clearError: () => setError(null), run };

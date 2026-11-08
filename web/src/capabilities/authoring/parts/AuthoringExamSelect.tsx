@@ -4,6 +4,7 @@ import { Select } from "@/foundation/ui";
 import { LoadError } from "@/capabilities/authoring/parts/LoadError";
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 
+/** The exam picker. `className` lays out its wrapper only; the control itself is styled by `Select`. */
 export function AuthoringExamSelect({
   id,
   value,
@@ -30,7 +31,7 @@ export function AuthoringExamSelect({
         value={value}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className={className ?? "mt-1"}
+        className={className}
       >
         {allowEmpty ? (
           <option value="">

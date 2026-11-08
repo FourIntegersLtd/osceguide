@@ -35,7 +35,7 @@ export function readSsoCallback(params: URLSearchParams, { signedIn = false } = 
     return {
       ok: false,
       message:
-        "Your organisation's sign-in could not be confirmed. Try again, and if it keeps happening, ask your IT team to check the single sign-on set-up.",
+        "We could not confirm your work sign-in. Try again. If it still fails, ask your IT team to check the sign-in settings.",
     };
   }
   // Entra says why it sent somebody back without a code, e.g. they cancelled.

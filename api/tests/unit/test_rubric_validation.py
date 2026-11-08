@@ -85,25 +85,32 @@ def test_the_valid_structure_has_no_problems() -> None:
 
 
 RULES: list[tuple[str, Mutation, str, str]] = [
-    ("schema version", _set(("schemaVersion",), 1), "schemaVersion", "This rubric must say schemaVersion 2."),
+    (
+        "schema version",
+        _set(("schemaVersion",), 1),
+        "schemaVersion",
+        "This marking scheme is in an old or unknown format. Open it in the marking scheme builder and "
+        "save it again.",
+    ),
     (
         "rating missing",
         _set(("rating",), None),
         "rating",
-        "A rubric needs a rating: how each competency is rated.",
+        "Add a rating scale so markers know how to rate each Competency, for example Good, Fair and Poor.",
     ),
     (
         "rating kind",
         _set(("rating", "kind"), "stars"),
         "rating.kind",
-        "The rating kind must be one of rag, scale, range, boolean.",
+        "Choose how Competencies are rated: red, amber and green; named levels such as Good and Fair; a "
+        "number range; or yes and no.",
     ),
     ("rating field id", _set(("rating", "field"), "Score"), "rating.field", IDENTIFIER_MESSAGE),
     (
         "rag scale",
         _set(("rating", "scale"), ["G", "A"]),
         "rating.scale",
-        "An R/A/G rating's scale is G, A and R, each once.",
+        "A red, amber and green rating must use Green, Amber and Red (G, A and R), each once.",
     ),
     (
         "empty scale",
@@ -112,7 +119,7 @@ RULES: list[tuple[str, Mutation, str, str]] = [
             _set(("sections", 0, "competencies", 0, "descriptors"), {}),
         ),
         "rating.scale",
-        "A scale rating needs at least one value.",
+        "A rating scale needs at least one level, such as Good.",
     ),
     (
         "repeated scale value",
@@ -121,7 +128,7 @@ RULES: list[tuple[str, Mutation, str, str]] = [
             _set(("sections", 0, "competencies", 0, "descriptors"), {}),
         ),
         "rating.scale",
-        "The scale repeats a value; each must appear once.",
+        "A level appears twice on the rating scale. Each level can appear only once.",
     ),
     (
         "range bounds",
@@ -130,7 +137,7 @@ RULES: list[tuple[str, Mutation, str, str]] = [
             _set(("sections", 0, "competencies", 0, "descriptors"), {}),
         ),
         "rating",
-        "A range rating needs a minimum below its maximum.",
+        "A number range needs a lowest number that is smaller than the highest, for example 1 to 5.",
     ),
     (
         "range step",
@@ -139,25 +146,25 @@ RULES: list[tuple[str, Mutation, str, str]] = [
             _set(("sections", 0, "competencies", 0, "descriptors"), {}),
         ),
         "rating.step",
-        "A range's step must be number or integer.",
+        "Choose whether markers give any number, including decimals, or whole numbers only.",
     ),
     (
         "no sections",
         _set(("sections",), []),
         "sections",
-        "A rubric needs at least one section: it would ask the marker for nothing.",
+        "Add at least one Domain or section, otherwise the marker has nothing to mark.",
     ),
     (
         "section not an object",
         _set(("sections", 1), "feedback"),
         "sections[1]",
-        "Each section must be an object.",
+        "This section is not set up correctly. Remove it and add it again.",
     ),
     (
         "section kind",
         _set(("sections", 1, "kind"), "essay"),
         "sections[1].kind",
-        "A section's kind must be one of domain, section, field.",
+        "Each part of the marking scheme must be a Domain, a written section or a single question.",
     ),
     (
         "section id",
@@ -169,31 +176,31 @@ RULES: list[tuple[str, Mutation, str, str]] = [
         "top-level id repeated",
         _set(("sections", 1, "id"), "consulting"),
         "sections[1].id",
-        "'consulting' is already used by sections[0]; ids must differ.",
+        "The name 'consulting' is already used in this list. Give each item its own name.",
     ),
     (
         "written section with no fields",
         _feedback_fields([]),
         "sections[1].fields",
-        "A written section needs at least one field.",
+        "A written section needs at least one question for the marker to answer.",
     ),
     (
         "domain with no competencies",
         _set(("sections", 0, "competencies"), []),
         "sections[0].competencies",
-        "A domain needs at least one competency to rate.",
+        "Add at least one Competency to this Domain.",
     ),
     (
         "domain with no rating field",
         _set(("sections", 0, "competencyFields"), [{"id": "evidence", "type": "longText"}]),
         "sections[0].competencyFields",
-        "A domain rates each competency in exactly one rating field; this one has 0.",
+        "Each Domain needs exactly one rating for its Competencies; this one has 0.",
     ),
     (
         "rating field named otherwise",
         _set(("sections", 0, "competencyFields", 0, "id"), "grade"),
         "sections[0].competencyFields[0].id",
-        "The rating field must be called 'score', as the rubric's rating says.",
+        "The rating in this Domain must use the same name as the marking scheme's rating, which is 'score'.",
     ),
     (
         "competency id repeated",
@@ -202,134 +209,134 @@ RULES: list[tuple[str, Mutation, str, str]] = [
             [{"id": "opens", "label": "Opens"}, {"id": "opens", "label": "Again"}],
         ),
         "sections[0].competencies[1].id",
-        "'opens' is already used by sections[0].competencies[0]; ids must differ.",
+        "The name 'opens' is already used in this list. Give each item its own name.",
     ),
     (
         "competency not an object",
         _set(("sections", 0, "competencies"), ["opens"]),
         "sections[0].competencies[0]",
-        "Each competency must be an object.",
+        "This Competency is not set up correctly. Remove it and add it again.",
     ),
     (
         "descriptors not an object",
         _set(("sections", 0, "competencies", 0, "descriptors"), ["G"]),
         "sections[0].competencies[0].descriptors",
-        "Descriptors must be an object of rating value to text.",
+        "The descriptions for each level are not set up correctly. Write one short description per level.",
     ),
     (
         "descriptor off the scale",
         _set(("sections", 0, "competencies", 0, "descriptors"), {"EXCELLENT": "..."}),
         "sections[0].competencies[0].descriptors.EXCELLENT",
-        "'EXCELLENT' is not on the rating scale (G, A, R).",
+        "The description for 'EXCELLENT' does not match a level on the rating scale (G, A, R). Use one of "
+        "those levels, or remove it.",
     ),
     (
         "field not an object",
         _feedback_fields(["strengths"]),  # type: ignore[list-item]
         "sections[1].fields[0]",
-        "Each field must be an object.",
+        "This question is not set up correctly. Remove it and add it again.",
     ),
     (
         "field id repeated",
         _feedback_fields([{"id": "strengths", "type": "list"}, {"id": "strengths", "type": "list"}]),
         "sections[1].fields[1].id",
-        "'strengths' is already used by sections[1].fields[0]; ids must differ.",
+        "The name 'strengths' is already used in this list. Give each item its own name.",
     ),
     (
         "field type",
         _feedback_fields([{"id": "strengths", "type": "raw"}]),
         "sections[1].fields[0].type",
-        "A field's type must be one of rating, shortText, longText, list, singleSelect, group, records.",
+        "Choose what kind of answer this question needs, such as short text, long text, a list or a choice.",
     ),
     (
         "field role",
         _feedback_fields([{"id": "strengths", "type": "list", "role": "praise"}]),
         "sections[1].fields[0].role",
-        "A field's role must be one of rating, evidence, explanation, strength, improvement, action, flag, "
-        "summary, selector, other.",
+        "Choose what this question is used for.",
     ),
     (
         "field source",
         _feedback_fields([{"id": "strengths", "type": "list", "source": "examiner"}]),
         "sections[1].fields[0].source",
-        "A field's source must be marker or system.",
+        "Choose who fills this in: the marker or the system.",
     ),
     (
         "rating outside a domain's competency fields",
         _feedback_fields([{"id": "score", "type": "rating"}]),
         "sections[1].fields[0].type",
-        "A rating field belongs only in a domain's competency fields.",
+        "A rating can only be added to a Competency inside a Domain.",
     ),
     (
         "lone field that is a rating",
         _set(("sections", 1), {"kind": "field", "field": {"id": "overall", "type": "rating"}}),
         "sections[1].field.type",
-        "A rating field belongs only in a domain's competency fields.",
+        "A rating can only be added to a Competency inside a Domain.",
     ),
     (
         "minItems",
         _feedback_fields([{"id": "strengths", "type": "list", "minItems": -1}]),
         "sections[1].fields[0].minItems",
-        "minItems must be a whole number, zero or more.",
+        "The minimum number of entries must be a whole number, 0 or more.",
     ),
     (
         "single select with no options",
         _feedback_fields([{"id": "station", "type": "singleSelect", "options": []}]),
         "sections[1].fields[0].options",
-        "A single select needs at least one option.",
+        "A question with a list of choices needs at least one choice.",
     ),
     (
         "group with no fields",
         _feedback_fields([{"id": "summary", "type": "group", "fields": []}]),
         "sections[1].fields[0].fields",
-        "A group needs at least one field of its own.",
+        "A grouped question needs at least one question inside it.",
     ),
     (
         "display not an object",
         _set(("display",), "compact"),
         "display",
-        "The display settings must be an object.",
+        "The feedback display settings are not set up correctly.",
     ),
     (
         "display parts not objects",
         _set(("display",), {"domain": "sum"}),
         "display",
-        "display.domain and display.total must be objects.",
+        "The Domain and total display settings are not set up correctly.",
     ),
     (
         "domain aggregate",
         _set(("display",), {"domain": {"aggregate": "median"}}),
         "display.domain.aggregate",
-        "A domain aggregate is one of ragCounts, sum, mean, percentAchieved.",
+        "Choose how each Domain's score is worked out: add up, average, percentage or count of ratings.",
     ),
     (
         "total aggregate",
         _set(("display",), {"total": {"aggregate": "ragCounts"}}),
         "display.total.aggregate",
-        "A total aggregate is one of ragShare, sum, mean, percentAchieved.",
+        "Choose how the total score is worked out: add up, average, percentage or share of ratings.",
     ),
     (
         "domain pass line",
         _set(("display",), {"domain": {"passAtLeast": -1}}),
         "display.domain.passAtLeast",
-        "A domain pass line must be a number, zero or more.",
+        "A Domain's pass mark must be a number, 0 or more.",
     ),
     (
         "total maximum",
         _set(("display",), {"total": {"max": "twelve"}}),
         "display.total.max",
-        "A total's max and pass line must be numbers, zero or more.",
+        "The total marks and the overall pass mark must be numbers, 0 or more.",
     ),
     (
         "pass line above the maximum",
         _set(("display",), {"total": {"max": 12, "passAtLeast": 13}}),
         "display.total.passAtLeast",
-        "The pass line sits above the total's maximum.",
+        "The overall pass mark is higher than the most marks anyone can get. Lower it.",
     ),
     (
         "every domain with no domain pass line",
         _set(("display",), {"total": {"requireEveryDomain": True}}),
         "display.total.requireEveryDomain",
-        "Requiring every domain to pass needs a domain pass line (display.domain.passAtLeast).",
+        "To require every Domain to pass, set a pass mark for each Domain first.",
     ),
     (
         "mean pass line above the rating",
@@ -339,13 +346,13 @@ RULES: list[tuple[str, Mutation, str, str]] = [
             _set(("display",), {"domain": {"aggregate": "mean", "passAtLeast": 11}}),
         ),
         "display.domain.passAtLeast",
-        "The domain pass line sits above the rating's maximum (10).",
+        "A Domain's pass mark is higher than the highest rating (10). Lower it.",
     ),
     (
         "tones on a scale rating",
         _set(("display",), {"tones": [{"atLeast": 0.8, "tone": "good"}]}),
         "display.tones",
-        "A scale rating is coloured by each value's place on the scale; remove tones.",
+        "Named levels are coloured automatically by their place on the scale, so remove the custom colours.",
     ),
     (
         "tones not a list",
@@ -355,7 +362,7 @@ RULES: list[tuple[str, Mutation, str, str]] = [
             _set(("display",), {"tones": {}}),
         ),
         "display.tones",
-        "Tones must be a list.",
+        "The score colours are not set up correctly. Remove them and add them again.",
     ),
     (
         "tone not an object",
@@ -365,7 +372,7 @@ RULES: list[tuple[str, Mutation, str, str]] = [
             _set(("display",), {"tones": ["good"]}),
         ),
         "display.tones[0]",
-        "Each tone must be an object.",
+        "This score colour is not set up correctly. Remove it and add it again.",
     ),
     (
         "tone threshold outside 0 to 1",
@@ -375,7 +382,7 @@ RULES: list[tuple[str, Mutation, str, str]] = [
             _set(("display",), {"tones": [{"atLeast": 7, "tone": "good"}]}),
         ),
         "display.tones[0].atLeast",
-        "atLeast is a fraction of the rating's maximum, from 0 to 1.",
+        "A colour starts at a share of the highest rating, from 0 (none of it) to 1 (all of it).",
     ),
     (
         "tone name",
@@ -385,57 +392,61 @@ RULES: list[tuple[str, Mutation, str, str]] = [
             _set(("display",), {"tones": [{"atLeast": 0.5, "tone": "success"}]}),
         ),
         "display.tones[0].tone",
-        "A tone is one of excellent, good, fair, weak, poor.",
+        "Choose a colour: excellent, good, fair, weak, poor.",
     ),
-    ("bands not a list", _set(("display",), {"bands": {}}), "display.bands", "Bands must be a list."),
+    (
+        "bands not a list",
+        _set(("display",), {"bands": {}}),
+        "display.bands",
+        "The score bands are not set up correctly. Remove them and add them again.",
+    ),
     (
         "band not an object",
         _set(("display",), {"bands": [17]}),
         "display.bands[0]",
-        "Each band must be an object.",
+        "This score band is not set up correctly. Remove it and add it again.",
     ),
     (
         "band backwards",
         _set(("display",), {"bands": [{"from": 18, "to": 17, "tone": "poor"}]}),
         "display.bands[0]",
-        "A band needs a from no greater than its to.",
+        "A score band must start at or below the number where it ends.",
     ),
     (
         "band above the maximum",
         _set(("display",), {"total": {"max": 50}, "bands": [{"from": 43, "to": 51, "tone": "good"}]}),
         "display.bands[0].to",
-        "A band ends above the total's maximum.",
+        "A score band ends above the highest possible total. Lower it.",
     ),
     (
         "band label",
         _set(("display",), {"bands": [{"from": 0, "to": 17, "label": 3, "tone": "poor"}]}),
         "display.bands[0].label",
-        "A band's label must be text.",
+        "A score band's name must be text.",
     ),
     (
         "labels not an object",
         _set(("display",), {"labels": []}),
         "display.labels",
-        "Labels must be an object of name to text.",
+        "The custom wording is not set up correctly.",
     ),
     (
         "unknown label",
         _set(("display",), {"labels": {"subtitle": "Overview"}}),
         "display.labels.subtitle",
-        "Unknown label; the labels are title, domainSubtitle, domainPassLabel, totalTitle, "
-        "trendSubtitle, passLabel.",
+        "This wording cannot be changed.",
     ),
     (
         "label not text",
         _set(("display",), {"labels": {"title": 7}}),
         "display.labels.title",
-        "A label must be text.",
+        "Custom wording must be text.",
     ),
     (
         "nesting depth",
         _feedback_fields([_nested_groups(8)]),
         "sections",
-        "Fields nest 11 levels deep; the most a marker can fill is 10.",
+        "Questions sit 11 levels deep inside each other; the most allowed is 10. Move some questions out.",
     ),
     (
         "enum values",
@@ -443,20 +454,22 @@ RULES: list[tuple[str, Mutation, str, str]] = [
             [{"id": "station", "type": "singleSelect", "options": [f"o{index}" for index in range(1001)]}]
         ),
         "sections",
-        "The result has 1004 choice values; the most allowed is 1000.",
+        "This marking scheme has too many choices (1004; the most allowed is 1000). Remove some choices or "
+        "levels.",
     ),
     (
         "name characters",
         _feedback_fields([{"id": "station", "type": "singleSelect", "options": ["x" * 120_001]}]),
         "sections",
-        "Ids and choices add up to 120044 characters; the most allowed is 120000.",
+        "The names and choices are too long in total (120044 characters; the most allowed is 120000). "
+        "Shorten some or remove some.",
     ),
     (
         "marked answers",
         _feedback_fields([{"id": f"note_{index}", "type": "shortText"} for index in range(401)]),
         "sections",
-        "The marker would write 403 answers; the most allowed is 400. "
-        "Remove 3 (fewer competencies, or fewer fields per competency).",
+        "The marker would have to give 403 answers; the most allowed is 400. "
+        "Remove 3 (use fewer Competencies, or fewer questions per Competency).",
     ),
 ]
 
@@ -476,23 +489,31 @@ def test_too_many_properties_is_refused() -> None:
     structure = copy.deepcopy(VALID)
     _feedback_fields([{"id": f"note_{index}", "type": "shortText"} for index in range(5001)])(structure)
 
-    assert {"path": "sections", "message": "The result has 5006 properties; the most allowed is 5000."} in (
-        validate_structure(structure)
-    )
+    assert {
+        "path": "sections",
+        "message": (
+            "This marking scheme has too many items (5006; the most allowed is 5000). Remove "
+            "some Competencies or questions."
+        ),
+    } in (validate_structure(structure))
 
 
 def test_fields_that_are_not_a_list_are_refused() -> None:
     structure = copy.deepcopy(VALID)
     structure["sections"][1]["fields"] = {"id": "strengths"}
 
-    assert {"path": "sections[1].fields", "message": "Fields must be a list."} in validate_structure(
-        structure
-    )
+    assert {
+        "path": "sections[1].fields",
+        "message": "The questions in this part are not set up correctly. Remove them and add them again.",
+    } in validate_structure(structure)
 
 
 def test_a_structure_that_is_not_an_object_is_refused() -> None:
     assert validate_structure(["not", "a", "rubric"]) == [
-        {"path": "", "message": "A rubric structure must be an object."}
+        {
+            "path": "",
+            "message": "This marking scheme could not be read, so it cannot be used. Check it and try again.",
+        }
     ]
 
 
@@ -523,13 +544,15 @@ SCHEME_RULES: list[tuple[str, Mutation, str, str]] = [
         "unknown_scale",
         _set(("outline", 0, "scale"), "nope"),
         "outline[0].scale",
-        "This domain uses a scale the scheme does not have.",
+        "This Domain uses a rating scale that is not in the marking scheme. Choose one of the scales you "
+        "have added.",
     ),
     (
         "rising_points",
         _set(("scales", 0, "levels", 1, "points"), 9),
         "scales[0].levels[1].points",
-        "Points must not rise down the list: put the best level first.",
+        "A lower level cannot earn more points than the one above it. List the best level first, for "
+        "example Good, then Fair, then Poor.",
     ),
     (
         "rule_missing_level",
@@ -543,32 +566,32 @@ SCHEME_RULES: list[tuple[str, Mutation, str, str]] = [
             },
         ),
         "pass.domain.rule.value",
-        "The rule names a level the scale does not have.",
+        "The pass mark uses a level that is not on the rating scale. Choose one of its levels, such as "
+        "Good or Fair.",
     ),
     (
         "mixed_scales",
         _second_domain_on_marks,
         "outline[1].scale",
-        "Domains use different scales. Use one scale for every domain for now.",
+        "Every Domain must use the same rating scale for now. Choose one scale for all of them.",
     ),
     (
         "no_outline",
         _set(("outline",), []),
         "outline",
-        "Add a domain: the scheme would ask the marker for nothing.",
+        "Add at least one Domain, otherwise the marker has nothing to mark.",
     ),
     (
         "every_domain_without_rule",
         _set(("pass",), {"overall": {"score": "labels", "everyDomainPasses": True}}),
         "pass.overall.everyDomainPasses",
-        "Every domain must pass needs a domain pass rule.",
+        "To require every Domain to pass, set a pass mark for each Domain first.",
     ),
     (
         "bad_kind",
         _set(("competencyFeedback", 0, "kind"), "evidence"),
         "competencyFeedback[0].kind",
-        "Pick what this feedback is: one of strengths, improvements, actions, quotes, "
-        "summary, flags, reason, note.",
+        "Choose what kind of feedback this is.",
     ),
 ]
 
@@ -602,7 +625,10 @@ def test_points_and_rule_in_the_compiled_form() -> None:
     wrong_length = copy.deepcopy(VALID)
     wrong_length["rating"] = {"kind": "rag", "field": "score", "points": [3, 2]}
     assert validate_structure(wrong_length) == [
-        {"path": "rating.points", "message": "Points must give one number for each scale value."}
+        {
+            "path": "rating.points",
+            "message": "Give each level on the rating scale its own points, as a number.",
+        }
     ]
     ruled = copy.deepcopy(VALID)
     ruled["display"] = {

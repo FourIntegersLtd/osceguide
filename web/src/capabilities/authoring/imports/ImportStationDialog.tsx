@@ -493,5 +493,5 @@ function rejectionMessage(code: string | undefined): string {
   if (code === "file-too-large") return "That file is larger than 10MB.";
   if (code === "file-invalid-type") return "Only PDF and Word (.docx) files can be imported.";
   if (code === "too-many-files") return "A new template is made from one file. Choose one.";
-  return "We could not take that file.";
+  return "That file could not be used. Upload a PDF or Word (.docx) file under 10 MB.";
 }

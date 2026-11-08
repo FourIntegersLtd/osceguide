@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords, type AssessWords } from "@/capabilities/assess-words";
+import { authoringLead, examEmptyBody, programmeEmptyBody, programmeEmptyTitle } from "@/capabilities/authoring/lib/authoringCopy";
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { PlatformTabbedScreen, b2bTokens as t, cn } from "@/foundation/ui";
@@ -29,27 +31,28 @@ const STATES_LABEL = "Empty and read-only states";
 const BOARD_STATES = process.env.NODE_ENV !== "production";
 
 /** The board's sixth tab: the words every list shows when it is empty, read-only or failed. */
-const EMPTY_STATES: { title: string; body: string }[] = [
-  { title: "No exams yet", body: "Create an exam, attach a marking scheme version, then publish it to run sittings against it." },
+const emptyStates = (w: AssessWords): { title: string; body: string }[] => [
+  { title: "No exams yet", body: examEmptyBody(w) },
   { title: "No draft exams", body: "Everything here is published. Clear the filter to see the whole catalogue." },
   { title: "No stations yet", body: "Create one with New station, from a template or straight from a prompt." },
   { title: "No matching stations", body: "Try a different name, or clear the exam filter." },
   { title: "No marking schemes", body: "Create a marking scheme, publish a version, then build exams and templates on it." },
-  { title: "No saved templates yet", body: "The layouts on New template are starting points only. They are not added here until you finish the wizard (Save draft), then Publish from this list." },
-  { title: "No programmes yet", body: "Add a programme for each exam you run sittings against." },
+  { title: "No saved templates yet", body: w.hiring ? "Layouts are only starting points. A template shows here once you Save draft. Publish it from this list to use it for stations." : "The layouts on New template are starting points only. They are not added here until you finish the wizard (Save draft), then Publish from this list." },
+  { title: programmeEmptyTitle(w), body: programmeEmptyBody(w) },
 ];
 
 function StatesPanel() {
+  const w = useAssessWords();
   return (
     <div id={`authoring-panel-${STATES_ID}`} role="tabpanel" className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      {EMPTY_STATES.map((state) => (
+      {emptyStates(w).map((state) => (
         <div key={state.title} className={boardStateCard}>
           <h2 className="m-0 text-assess-desc font-semibold !leading-[normal] text-ink">{state.title}</h2>
           <p className={`m-0 ${boardMeta}`}>{state.body}</p>
         </div>
       ))}
       <div className={boardStateCard}>
-        <div className={boardMeta}>Supervisor (no authoring rights)</div>
+        <div className={boardMeta}>{w.Supervisor} (no authoring rights)</div>
         <div>Lists show with no create or write buttons. Empty lists read &ldquo;Nothing here yet.&rdquo;</div>
       </div>
       <div className={boardStateCard}>
@@ -67,6 +70,7 @@ function StatesPanel() {
 
 export function AuthoringHome({ section: sectionSlug }: { section?: string }) {
   const scope = useAuthoringScope();
+  const w = useAssessWords();
   const { surface, hrefFor } = useSurface();
   const router = useRouter();
   // The staff console keeps its own page name; every organisation arm reads "Exams".
@@ -74,7 +78,7 @@ export function AuthoringHome({ section: sectionSlug }: { section?: string }) {
   const lead =
     surface === "platform"
       ? "Marking schemes, exams, programmes, templates and stations."
-      : "Everything you examine with: the exams themselves, their stations, how they are marked, the layout a station follows, and which exams are offered for scheduling.";
+      : authoringLead(w);
 
   const items = useMemo(
     () => authoringTabItems(supportsProgrammes(scope)),

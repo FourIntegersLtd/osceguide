@@ -200,7 +200,7 @@ async def test_a_draft_that_cannot_mark_yet_is_refused_with_its_problems(  # typ
     assert response.json()["details"]["errors"] == [
         {
             "path": "sections",
-            "message": "A rubric needs at least one section: it would ask the marker for nothing.",
+            "message": "Add at least one Domain or section, otherwise the marker has nothing to mark.",
         }
     ]
 

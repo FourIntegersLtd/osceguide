@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Alert, AsyncBoundary, B2CPageHeader, Button } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CPageHeader, Button, ButtonLink } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
@@ -23,12 +23,14 @@ import {
   type CircuitDraft,
   type PickedStation,
 } from "@/domains/assess/CircuitBuilder";
+import { circuitEditBlock, circuitSaveLabel } from "@/domains/assess/circuitEditCopy";
 import { editLockNotice } from "@/domains/assess/sessions/support";
 import {
   DEFAULT_BREAK_MINUTES,
   DEFAULT_READING_MINUTES,
   DEFAULT_SIMULATION_MINUTES,
 } from "@/domains/assess/timing";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * Change a circuit that has already been built.
@@ -57,6 +59,7 @@ export function EditCircuit({
   orgSlug: string;
   circuitId: string;
 }) {
+  const w = useAssessWords();
   const router = useRouter();
   const { hrefFor } = useSurface();
   // The lock is read at load; a save can find it taken since (a 409), and then the page is stale.
@@ -90,15 +93,16 @@ export function EditCircuit({
       <AsyncBoundary state={context}>
         {({ console: data, trainees, staff, scope }) => {
           const blocked = editLockNotice(data.circuit);
+          const hireBlock = circuitEditBlock(data.circuit, w);
           const staleLock = blocked === null && lockedOnSave;
           return (
             <>
               <B2CPageHeader
                 back={{
                   href: hrefFor(`/circuits/${circuitId}`),
-                  label: "Circuit",
+                  label: w.Circuit,
                 }}
-                title="Edit circuit"
+                title={`Edit ${w.circuit}`}
                 subtitle={`${data.sitting.name} · ${data.sitting.mode}`}
               />
               <CircuitBuilder
@@ -108,12 +112,24 @@ export function EditCircuit({
                 trainees={trainees}
                 staff={staff}
                 initial={draftFrom(data)}
-                submitLabel={blocked ? "Save changes · locked" : "Save changes"}
+                submitLabel={circuitSaveLabel(blocked !== null, w)}
                 disabled={blocked !== null}
                 above={
-                  blocked ? (
+                  hireBlock ? (
                     <>
-                      <Alert tone="warning" title="This circuit cannot be changed right now">
+                      <Alert tone={hireBlock.tone} title={hireBlock.title}>
+                        {hireBlock.body}
+                      </Alert>
+                      {hireBlock.note ? <p className="m-0 text-sm text-ink-muted">{hireBlock.note}</p> : null}
+                      {hireBlock.console ? (
+                        <ButtonLink href={hrefFor(`/circuits/${circuitId}`)} themeType="b2b" variant="primary" className="self-start">
+                          {hireBlock.console}
+                        </ButtonLink>
+                      ) : null}
+                    </>
+                  ) : blocked ? (
+                    <>
+                      <Alert tone="warning" title={`This ${w.circuit} cannot be changed right now`}>
                         {blocked}
                       </Alert>
                       <section className="rounded-panel bg-canvas p-5">
@@ -194,6 +210,9 @@ function draftFrom(console_: CircuitConsole): CircuitDraft {
     stationVersionIds: stations.map((station) => station.version_id),
     traineeIds: people.map((person) => person.user_id ?? ""),
     supervisorUserId: console_.circuit.supervisor?.user_id ?? null,
+    stationAssessors: Object.fromEntries(
+      slots.flatMap((slot) => (slot.station && slot.assessor?.user_id ? [[slot.station.version_id, slot.assessor.user_id]] : [])),
+    ),
     timing: {
       readingMinutes:
         console_.circuit.timing?.reading_minutes ?? DEFAULT_READING_MINUTES,
@@ -220,11 +239,11 @@ function dedupe<T>(rows: T[], key: (row: T) => string): T[] {
 
 /** A save found the circuit locked since the page loaded: nothing was saved, and a reload is the way on. */
 function StaleCircuitNotice({ onReload }: { onReload: () => void }) {
+  const w = useAssessWords();
   return (
-    <Alert tone="warning" title="This circuit changed while you were editing">
+    <Alert tone="warning" title={`This ${w.circuit} changed while you were editing`}>
       <p>
-        Nothing was saved. Reload to see its current state; your changes on this
-        form will be lost.
+        {`Nothing was saved because someone else changed this ${w.circuit} first.`} Reload the page to see the latest version, then make your change again. Anything you typed here will be lost.
       </p>
       <div className="mt-2">
         <Button themeType="b2b" variant="secondary" onClick={onReload}>

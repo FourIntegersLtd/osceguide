@@ -24,6 +24,8 @@ class OrganizationRead(BaseModel):
     created_at: datetime
     contract_starts_at: datetime | None = None
     contract_ends_at: datetime | None = None
+    # Candidate seats the contract covers; null until platform staff set it.
+    candidate_seats: int | None = None
     require_staff_mfa: bool = False
     contact_name: str | None = None
     contact_email: str | None = None
@@ -39,6 +41,7 @@ class UpdateOrganization(BaseModel):
     org_type: str | None = Field(default=None, max_length=32)
     contract_starts_at: datetime | None = None
     contract_ends_at: datetime | None = None
+    candidate_seats: int | None = Field(default=None, ge=0, le=1_000_000)
     require_staff_mfa: bool | None = None
     contact_name: str | None = Field(default=None, max_length=200)
     contact_email: EmailStr | None = None
@@ -251,7 +254,7 @@ class BulkMembershipRevokeResponse(BaseModel):
 
 class BulkMembershipInvitationResult(BaseModel):
     membership_id: uuid.UUID
-    outcome: str  # "sent" | "already_accepted" | "not_found"
+    outcome: str  # "sent" | "already_accepted" | "revoked" | "not_found"
 
 
 class BulkMembershipInvitationResponse(BaseModel):

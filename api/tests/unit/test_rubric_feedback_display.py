@@ -71,13 +71,13 @@ def test_a_hidden_field_and_a_tone_come_through_resolved_display() -> None:
         (
             {"feedbackTone": "chatty"},
             "display.feedbackTone",
-            "A feedback tone is one of supportive, formal, brief.",
+            "Choose a tone for the feedback: supportive, formal or brief.",
         ),
-        ({"show": {"quotes": "no"}}, "display.show.quotes", "Shown or hidden must be true or false."),
+        ({"show": {"quotes": "no"}}, "display.show.quotes", "Choose Shown or Hidden."),
         (
             {"show": {"jokes": True}},
             "display.show.jokes",
-            "Unknown field; the fields are overall, areaScores, wentWell, workOn, quotes.",
+            "This part of the feedback cannot be shown or hidden.",
         ),
     ],
 )

@@ -23,14 +23,14 @@ class SetNotFound(NotFound):
     """A practice set that does not exist, or does not belong to the caller."""
 
     code = "set_not_found"
-    default_message = "No such practice set"
+    default_message = "We couldn't find that practice set"
 
 
 class EntryNotFound(NotFound):
     """A station id that is not one of this set's entries."""
 
     code = "set_entry_not_found"
-    default_message = "No such station in this set"
+    default_message = "We couldn't find that station in this set"
 
 
 class AttemptLimitReachedError(Conflict):
@@ -120,7 +120,7 @@ class UnknownExamError(NotFound):
     """
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"
 
 
 class StationNotFound(NotFound):
@@ -128,4 +128,4 @@ class StationNotFound(NotFound):
     console routes that name a station by id."""
 
     code = "station_not_found"
-    default_message = "No such station"
+    default_message = "We couldn't find that station"

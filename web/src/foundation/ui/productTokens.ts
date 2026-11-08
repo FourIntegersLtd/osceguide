@@ -261,9 +261,9 @@ export const b2cNavTooltipChip =
   "pointer-events-none z-[100] whitespace-nowrap rounded-osce-md border border-transparent bg-osce-ink-900 px-3 py-1.5 text-osce-meta font-medium text-osce-surface";
 export const b2cNavTooltipArrow =
   "absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-b2c-text-primary";
-/** The page column (canvas: max 1200, centred, 24px between blocks). */
+/** The page column: the full width between the shell gutters, 24px between blocks. */
 export const b2cPageColumn =
-  "mx-auto w-full min-w-0 max-w-osce-page space-y-6 overflow-x-hidden";
+  "w-full min-w-0 space-y-6 overflow-x-hidden";
 export const b2cScrollY = "overflow-y-auto overflow-x-hidden";
 
 /**

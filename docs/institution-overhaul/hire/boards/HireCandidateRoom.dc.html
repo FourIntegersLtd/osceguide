@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Station room</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Candidate</div></div></div>
+<a class="nav on" href="HireCandidateHome.dc.html">My assessments</a><a class="nav" href="HireCandidateResult.dc.html">Results</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="4"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><div class="eyebrow">Station 1 of 5</div><h1>Deteriorating patient</h1><p class="desc">Talk to Mr Hughes as you would on the ward. Your assessor is listening.</p></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="hero"><div><div class="eyebrow">Check your microphone</div><h2>Say a few words</h2><div class="meta">The bar moves when we can hear you.</div></div><button class="btn pri" onClick="{{go1}}">I am ready</button></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="hero live"><div><div class="eyebrow">Live · your assessor is listening</div><h2 class="clock">07:48</h2><div class="meta">Mr Hughes: "I just feel a bit muddled, nurse…"</div></div><button class="btn">Mute</button></div>
+<div class="card pad"><h2>Your brief</h2><p class="desc" style="font-size:15px">You are the nurse in charge of a surgical ward. Mr Hughes, 68, is on day 2 after bowel surgery. Assess him and act on what you find.</p><div class="acts"><span class="chip">obs_chart.png</span></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="al warn"><b>Your assessor has paused the station</b>The clock has stopped. Stay on this page; it carries on when they resume.</div>
+</sc-if>
+<sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+<div class="al ok"><b>Station 1 finished</b>Take a breath. The next brief is ready.</div>
+<a class="btn pri" href="HireCandidateAssessment.dc.html" style="align-self:flex-start">Read the station 2 brief</a>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">POST</span><code>/attempts</code></div>
+<div class="call"><span class="m">GET</span><code>/attempts/{id}</code></div>
+<div class="call"><span class="m">SSE</span><code>/attempts/{id}/stream</code></div>
+<div class="call"><span class="m">GET</span><code>/attempts/{id}/brief</code></div>
+<div class="call"><span class="m">POST</span><code>/auth/stream-ticket</code></div>
+<div class="meta">The shared runner, unchanged. Pause, resume and end arrive on the stream.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>attempt_not_joinable</code><code>attempt_in_progress</code><code>attempt_not_ready</code><code>attempt_not_yours</code><code>invalid_attempt_state</code><code>voice_unavailable</code><code>circuit_paused</code></div>
+<div class="note">Route <code>attempts/[id]</code> (runner) · candidate · owner attempt-engine-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Mic check', 'Live', 'Paused', 'Station done'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2, s3: t === 3, go1: () => this.setState({ t: 1 }) };
+  }
+}
+</script>
+</body>
+</html>

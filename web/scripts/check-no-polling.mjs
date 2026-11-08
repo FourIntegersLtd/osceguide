@@ -27,8 +27,6 @@ const ALLOW = allowList(
     "src/capabilities/peer-practice/marketplace/UpcomingSessions.tsx": "30 s display clock for the join window",
     "src/capabilities/peer-practice/queue/MatchNotificationModal.tsx": "1 s countdown to the accept deadline; the one auto-decline at zero is a single call, not a loop",
     "src/capabilities/peer-practice/support/usePeerSession.ts": "1 s display clock; the single-shot reloads at the server's phase deadline are not a loop",
-    "src/domains/marketing/home/HeroPhrase.tsx": "public page phrase rotation, display only",
-    "src/domains/marketing/home/HomeClock.tsx": "public page decorative clock, display only",
     "src/foundation/ui/Timer.tsx": "display tick against the server deadline",
     // false positives: a timer within 400 characters of an api call that it does not make
     "src/capabilities/authoring/rubrics/useSchemeDraft.ts": "typing debounce: one preview after a pause, not a loop",
@@ -41,7 +39,7 @@ const ALLOW = allowList(
     // KNOWN POLLING outside Lane E: replace with an SSE wait, then delete this entry
     "src/capabilities/account/PaymentReturn.tsx": "KNOWN POLLING: confirmPayment sleeps and re-reads receipts after Stripe returns; owner access-owner to move to SSE",
   },
-  17,
+  15,
 );
 
 /** Names this file imports from a module path containing "/api" or "platform". */

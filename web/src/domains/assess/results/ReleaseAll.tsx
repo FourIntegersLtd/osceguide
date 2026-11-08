@@ -6,6 +6,7 @@ import { b2bTokens as t } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { releaseDecisions } from "@/domains/assess/results/api";
 import type { CandidateReport } from "@/domains/assess/results/api";
+import { RELEASE_HELPER, releaseResultsLabel } from "@/domains/assess/results/hireDecisions";
 import { ReleaseButton } from "@/domains/assess/results/DecisionParts";
 import { boardCard, boardRow, boardAlert } from "@/foundation/ui/boardKit";
 import { boardCheck } from "@/domains/assess/results/resultsChrome";
@@ -42,6 +43,7 @@ export function ReleaseAll({
   progress: SittingStepsInput;
 }) {
   const next = sittingNext(progress);
+  const hire = progress.words?.hiring === true && !progress.training;
   const [busy, setBusy] = useState(false);
   const [failures, setFailures] = useState<string[]>([]);
   const [released, setReleased] = useState<number | null>(null);
@@ -86,7 +88,7 @@ export function ReleaseAll({
       <div className={boardCard}>
         <div className={`${boardRow} justify-between border-t-0`}>
           <h2 className="text-base font-semibold leading-normal">Candidates to release</h2>
-          <span className={t.assessMeta}>Untick anyone to hold their result back.</span>
+          <span className={t.assessMeta}>Untick a person to keep their result private for now. You can release it later.</span>
         </div>
         <fieldset className="m-0 min-w-0 border-0 p-0">
           <legend className="sr-only">Candidates to release</legend>
@@ -124,9 +126,10 @@ export function ReleaseAll({
             busy={busy}
             disabled={busy || chosen.length === 0}
             count={chosen.length}
-            label={`Release ${chosen.length} signed-off ${chosen.length === 1 ? "result" : "results"}`}
+            label={hire ? releaseResultsLabel(chosen.length) : `Release ${chosen.length} signed-off ${chosen.length === 1 ? "result" : "results"}`}
             onConfirm={() => void release()}
           />
+          {hire ? <span className={t.assessMeta}>{RELEASE_HELPER}</span> : null}
         </div>
       ) : null}
       {released !== null ? (

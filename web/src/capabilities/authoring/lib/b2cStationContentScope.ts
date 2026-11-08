@@ -89,3 +89,47 @@ export function validateStationContentScoped(
   }
   return errors.length === 0 ? { ok: true } : { ok: false, errors };
 }
+
+/** The server's `_is_empty` (`stations/domain_audience.py`): only null, blank text and empty lists or objects are unwritten. */
+function isWritten(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim() !== "";
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return true;
+}
+
+/** Roles `domain_audience._visible` holds off the candidate (`_ROLE_AUDIENCE` plus `_HIDDEN_ROLE`), wherever the block is filed. */
+const NOT_CANDIDATE_ROLES = new Set(["examiner", "faculty", "debrief", "hidden"]);
+
+/**
+ * One block's stored value as platform-api's `content_for_template` reads it: a section whose id holds a
+ * mapping (any id, not just the b2c ones) is opened for the block's own id or its id without the section's
+ * prefix, and a block not found there falls back to the top-level `content[block_id]`.
+ * (The server drops only the section ids it opened; here that is this section's id.)
+ */
+function templateValue(content: Record<string, unknown>, section: SectionRef, blockId: string): unknown {
+  const nested = content[section.id];
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    const fields = nested as Record<string, unknown>;
+    const bare = blockId.replace(new RegExp(`^${section.id.split("_")[0]}_`), "");
+    if (blockId in fields) return fields[blockId];
+    if (bare in fields) return fields[bare];
+  }
+  return blockId === section.id ? undefined : content[blockId];
+}
+
+/** Whether the section holds something the candidate would read: the server's `sections_for` rule, so a blank section is told from a filled one. */
+export function sectionHasContent(content: Record<string, unknown>, section: SectionRef): boolean {
+  return section.blocks.some(
+    (block) => !NOT_CANDIDATE_ROLES.has(block.role ?? "") && isWritten(templateValue(content, section, block.id)),
+  );
+}
+
+/** The first section filed as candidate (explicitly, as the server decides) with something written, or null so the flat reading brief is still the candidate's. */
+export function filledCandidateSection(
+  sections: readonly StationSection[],
+  content: Record<string, unknown>,
+): StationSection | null {
+  return sections.find((section) => section.audience === "candidate" && sectionHasContent(content, section)) ?? null;
+}

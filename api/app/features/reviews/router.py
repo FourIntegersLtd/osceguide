@@ -11,7 +11,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep
-from app.core.tenancy import OrgInstitutionAdmin, OrgStaff
+from app.core.tenancy import OrgLeadReviewer, OrgStaff
 from app.features.reviews import errors, schemas, service, service_summary
 
 router = APIRouter(tags=["reviews"])
@@ -86,6 +86,7 @@ async def read_my_review(
         errors.ReviewIncompleteError,
         errors.NothingToReviewError,
         errors.ReviewLockedError,
+        errors.ReviewAlreadyCompletedError,
         errors.NotReviewerError,
         errors.TraineeNotFound,
     ),
@@ -109,6 +110,7 @@ async def submit_my_review(
         status=body.status,
         observer_trainee_id=body.observer_trainee_id,
         now=clock.now(),
+        partial=body.partial,
     )
 
 
@@ -151,7 +153,7 @@ async def withdraw_review(
     ),
 )
 async def withdraw_gp_lead_review(
-    slot_id: uuid.UUID, workspace: OrgInstitutionAdmin, session: Session
+    slot_id: uuid.UUID, workspace: OrgLeadReviewer, session: Session
 ) -> Response:
     """Withdraw the GP lead's draft review of a slot."""
     await service.withdraw_gp_lead_review(session, workspace.org_id, slot_id)
@@ -165,7 +167,7 @@ async def withdraw_gp_lead_review(
     responses=error_responses(Forbidden),
 )
 async def read_gp_lead_review(
-    slot_id: uuid.UUID, workspace: OrgInstitutionAdmin, session: Session
+    slot_id: uuid.UUID, workspace: OrgLeadReviewer, session: Session
 ) -> schemas.GpLeadReviewRead | None:
     return await service.read_gp_lead_review(session, workspace.org_id, slot_id)
 
@@ -186,7 +188,7 @@ async def read_gp_lead_review(
 async def save_gp_lead_review(
     slot_id: uuid.UUID,
     body: schemas.SaveGpLeadReview,
-    workspace: OrgInstitutionAdmin,
+    workspace: OrgLeadReviewer,
     session: Session,
     clock: ClockDep,
 ) -> schemas.GpLeadReviewRead:

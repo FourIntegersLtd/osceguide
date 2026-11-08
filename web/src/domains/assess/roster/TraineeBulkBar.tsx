@@ -1,5 +1,7 @@
 "use client";
 
+import { say } from "@/domains/assess/roster/rosterWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { card, row } from "@/domains/assess/ui";
 import { cn } from "@/foundation/ui";
 import type { Cohort, TraineeGroup } from "@/domains/assess/roster/api";
@@ -47,6 +49,7 @@ export function TraineeBulkBar({
   onAddToGroup: (groupId: string) => void;
   onRevoke: () => void;
 }) {
+  const w = useAssessWords();
   const allPicked = rowIds.length > 0 && rowIds.every((id) => selected.has(id));
   return (
     <div className={cn(card, selected.size > 0 && "border-assess-chip-info-bg")}>
@@ -68,7 +71,7 @@ export function TraineeBulkBar({
               Resend invitations
             </button>
             <select
-              aria-label="Move to year group"
+              aria-label={say(w, "Move to year group")}
               className={cn(SELECT_CLASS, "max-w-[200px]")}
               value=""
               disabled={busy}
@@ -77,8 +80,8 @@ export function TraineeBulkBar({
                 if (choice) onMove(choice === NO_GROUP ? null : choice);
               }}
             >
-              <option value="">{MOVE_TO_YEAR_GROUP_LABEL}</option>
-              <option value={NO_GROUP}>{NO_YEAR_GROUP_LABEL}</option>
+              <option value="">{say(w, MOVE_TO_YEAR_GROUP_LABEL)}</option>
+              <option value={NO_GROUP}>{say(w, NO_YEAR_GROUP_LABEL)}</option>
               {cohorts.map((cohort) => (
                 <option key={cohort.id} value={cohort.id}>
                   {cohort.name}

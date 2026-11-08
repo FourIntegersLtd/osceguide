@@ -77,7 +77,7 @@ class InvalidInput(AppError):
 
     status = 422
     code = "invalid_input"
-    default_message = "The request was not valid"
+    default_message = "Something in that request isn't right. Check what you entered and try again."
 
 
 class Unauthenticated(AppError):
@@ -85,7 +85,7 @@ class Unauthenticated(AppError):
 
     status = 401
     code = "unauthenticated"
-    default_message = "Authentication required"
+    default_message = "Please sign in to continue."
 
 
 class Forbidden(AppError):
@@ -93,7 +93,7 @@ class Forbidden(AppError):
 
     status = 403
     code = "forbidden"
-    default_message = "You do not have access to this resource"
+    default_message = "You don't have permission to do that."
 
 
 class NotFound(AppError):
@@ -101,7 +101,7 @@ class NotFound(AppError):
 
     status = 404
     code = "not_found"
-    default_message = "Resource not found"
+    default_message = "We couldn't find what you asked for."
 
 
 class Conflict(AppError):
@@ -109,7 +109,7 @@ class Conflict(AppError):
 
     status = 409
     code = "conflict"
-    default_message = "The request conflicts with the current state"
+    default_message = "That can't be done right now because something has changed. Reload and try again."
 
 
 class Gone(AppError):
@@ -117,7 +117,7 @@ class Gone(AppError):
 
     status = 410
     code = "gone"
-    default_message = "This resource is no longer available"
+    default_message = "This is no longer available."
 
 
 class Unavailable(AppError):
@@ -125,7 +125,7 @@ class Unavailable(AppError):
 
     status = 503
     code = "unavailable"
-    default_message = "A dependency is unavailable"
+    default_message = "A service we rely on isn't responding. Try again in a moment."
 
 
 def error_codes() -> list[str]:

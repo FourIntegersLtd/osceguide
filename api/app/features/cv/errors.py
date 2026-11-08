@@ -23,4 +23,4 @@ class CvNotFound(NotFound):
     """
 
     code = "cv_not_found"
-    default_message = "No such CV"
+    default_message = "We couldn't find that CV"

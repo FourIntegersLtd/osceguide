@@ -16,7 +16,16 @@ import {
   readMyResult,
 } from "@/domains/assess/trainee/api";
 import { ResultView } from "@/domains/assess/trainee/ResultView";
+import Link from "next/link";
 import { useSurface } from "@/capabilities";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { activeMembership, useSession } from "@/foundation/session";
+import { HireResult } from "@/domains/assess/trainee/HireResult";
+import {
+  acknowledgedCopy,
+  resultDesc,
+} from "@/domains/assess/trainee/hireCopy";
+import { readMySittings } from "@/domains/assess/trainee/api";
 
 /**
  * A candidate's own result, once it has been released and not before.
@@ -31,7 +40,19 @@ import { useSurface } from "@/capabilities";
  * Acknowledging is the candidate's, and it is one-way: there is no unread.
  */
 export function MyResult({ sittingId }: { sittingId: string }) {
-  const { hrefFor } = useSurface();
+  const { hrefFor, orgSlug } = useSurface();
+  const w = useAssessWords();
+  const { session } = useSession();
+  const org = activeMembership(session)?.org_name ?? "your employer";
+  // An employer's page is headed by the assessment's name, which only the sittings feed carries.
+  const feed = useAsync(
+    (signal) =>
+      w.hiring ? readMySittings(orgSlug, signal) : Promise.resolve(null),
+    [orgSlug, w.hiring],
+  );
+  const name = feed.data?.items?.find(
+    (sitting) => sitting.id === sittingId,
+  )?.name;
   const state = useAsync(
     (signal) => readMyResult(sittingId, signal),
     [sittingId],
@@ -67,15 +88,34 @@ export function MyResult({ sittingId }: { sittingId: string }) {
     }
   }, [sittingId, reload]);
 
+  const ack = acknowledgedCopy(org);
+
   return (
     <TraineePage label="Assessment outcome">
+      {w.hiring ? (
+        <div>
+          <Link
+            href={hrefFor("/trainee")}
+            className="text-assess-label text-osce-accent"
+          >
+            {w.MyTraining}
+          </Link>
+        </div>
+      ) : null}
       <TraineeHead
         eyebrow={
-          state.data?.released_at
-            ? `Released ${whenWords(state.data.released_at)}`
-            : "Your result"
+          w.hiring
+            ? undefined
+            : state.data?.released_at
+              ? `Released ${whenWords(state.data.released_at)}`
+              : "Your result"
         }
-        title="Assessment outcome"
+        title={w.hiring ? (name ?? "Your result") : "Assessment outcome"}
+        desc={
+          w.hiring && state.data?.released_at
+            ? resultDesc(state.data.released_at, org)
+            : undefined
+        }
         acts={
           state.data?.released_at ? (
             <Button
@@ -92,57 +132,87 @@ export function MyResult({ sittingId }: { sittingId: string }) {
 
       {!state.loading && !state.error && state.data === null ? (
         <Alert tone="info" title="Not released yet">
-          Your organisation has not released this result. When it is, we email
-          you at the address your organisation holds for you.
+          {w.hiring ? org : "Your organisation"} has not released this result.
+          When it is, we email you at the address{" "}
+          {w.hiring ? org : "your organisation"} holds for you.
         </Alert>
       ) : null}
       <AsyncBoundary state={state}>
         {(result) =>
           result.released_at === null ? (
             <Alert tone="info" title="Not released yet">
-              Your organisation has not released this result. When it is, we
-              email you at the address your organisation holds for you.
+              {w.hiring ? org : "Your organisation"} has not released this
+              result. When it is, we email you at the address{" "}
+              {w.hiring ? org : "your organisation"} holds for you.
             </Alert>
           ) : (
             <>
               {error ? (
                 <Alert tone="danger">{errorMessage(error)}</Alert>
               ) : null}
-              <ResultView
-                result={result}
-                actions={
-                  result.acknowledged_at ? (
-                    <p className="text-osce-meta text-b2c-text-muted">
-                      You read this on{" "}
-                      {new Date(result.acknowledged_at).toLocaleDateString()}.
-                    </p>
-                  ) : (
-                    <Button
+              {w.hiring ? (
+                <>
+                  {result.acknowledged_at ? (
+                    <Alert tone="success" title={ack.title}>
+                      {ack.body}
+                    </Alert>
+                  ) : null}
+                  <HireResult
+                    result={result}
+                    org={org}
+                    action={
+                      result.acknowledged_at ? null : (
+                        <Button
+                          themeType="b2b"
+                          variant="commit"
+                          isLoading={acknowledging}
+                          onClick={() => acknowledge()}
+                        >
+                          I have read this
+                        </Button>
+                      )
+                    }
+                  />
+                </>
+              ) : (
+                <ResultView
+                  result={result}
+                  actions={
+                    result.acknowledged_at ? (
+                      <p className="text-osce-meta text-b2c-text-muted">
+                        You read this on{" "}
+                        {new Date(result.acknowledged_at).toLocaleDateString()}.
+                      </p>
+                    ) : (
+                      <Button
+                        themeType="b2b"
+                        variant="commit"
+                        isLoading={acknowledging}
+                        onClick={() => acknowledge()}
+                      >
+                        I have read this
+                      </Button>
+                    )
+                  }
+                />
+              )}
+              {w.hiring ? null : (
+                <TraineeHero
+                  eyebrow="Keep practising"
+                  title="Practise on your own"
+                  action={
+                    <ButtonLink
                       themeType="b2b"
-                      variant="commit"
-                      isLoading={acknowledging}
-                      onClick={() => acknowledge()}
+                      variant="secondary"
+                      href={hrefFor("/trainee/practice")}
                     >
-                      I have read this
-                    </Button>
-                  )
-                }
-              />
-              <TraineeHero
-                eyebrow="Keep practising"
-                title="Practise on your own"
-                action={
-                  <ButtonLink
-                    themeType="b2b"
-                    variant="secondary"
-                    href={hrefFor("/trainee/practice")}
-                  >
-                    Self practice
-                  </ButtonLink>
-                }
-              >
-                Nothing you do here is marked for the record.
-              </TraineeHero>
+                      Self practice
+                    </ButtonLink>
+                  }
+                >
+                  Nothing you do here is marked for the record.
+                </TraineeHero>
+              )}
             </>
           )
         }

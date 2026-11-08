@@ -5,8 +5,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import SessionOpenerDep
+from app.core.db import SessionDep, SessionOpenerDep
 from app.core.errors import NotFound, Unauthenticated, error_responses
+from app.core.jobs import allow_long_idle
 from app.core.ports import ClockDep, GuidelineIndex
 from app.core.rate_limit import AI_SPEND, TooManyRequests, per_user
 from app.core.settings import SettingsDep
@@ -68,11 +69,14 @@ async def knowledge_chat(
     body: schemas.KnowledgeChat,
     principal: CurrentPrincipal,
     opener: SessionOpenerDep,
+    session: SessionDep,
     clock: ClockDep,
     settings: SettingsDep,
     index: Annotated[service_knowledge.MaterialSearch | None, Depends(service_knowledge.get_material_index)],
     guidelines: Annotated[GuidelineIndex | None, Depends(service_knowledge.get_guideline_index)],
 ) -> schemas.KnowledgeReply:
+    # The request session (opened by the sign-in check) may hold a transaction across the model call.
+    await allow_long_idle(session)
     return await service_knowledge.answer(
         opener,
         body,

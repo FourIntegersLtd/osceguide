@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -13,7 +14,7 @@ from tests.support.llm_fakes import install_fake_sdks
 
 
 async def _ask(settings: Settings) -> dict[str, Any]:
-    return await generation._json_completion(settings=settings, system="S", user="U")
+    return await generation._json_completion(settings=settings, system="S", user="U", session=AsyncMock())
 
 
 @pytest.mark.asyncio
@@ -63,7 +64,7 @@ async def test_no_key_at_all_says_generation_is_not_configured(monkeypatch: pyte
     install_fake_sdks(monkeypatch)
     with pytest.raises(GenerationUnavailable) as raised:
         await _ask(Settings())
-    assert raised.value.message == "Content generation is not configured on this environment"
+    assert raised.value.message == "Content generation isn't available right now."
 
 
 @pytest.mark.asyncio

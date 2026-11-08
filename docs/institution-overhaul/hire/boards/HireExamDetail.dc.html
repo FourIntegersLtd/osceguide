@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Exam detail</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav on" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="head"><div><a class="meta" href="HireExams.dc.html">Exams</a><h1>Band 6 nurse OSCE</h1><p class="desc">Formal exam · 6 stations · Marking scheme v3</p></div><div class="acts"><a class="btn pri" href="HireScheduleAssessment.dc.html">Schedule an assessment</a></div></div>
+<div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="2"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="al ok">Ready. You can schedule assessments on this exam.</div>
+<div class="card"><div class="th"><span class="f">Stations</span><span style="width:140px">Minutes</span><span style="width:140px">Status</span></div>
+<a class="row" href="HireStationBuilder.dc.html"><span class="f">Deteriorating patient (NEWS2)</span><span style="width:140px">10</span><span style="width:140px"><span class="chip ok">Published</span></span></a>
+<a class="row" href="HireStationBuilder.dc.html"><span class="f">Medicines round and a drug error</span><span style="width:140px">10</span><span style="width:140px"><span class="chip ok">Published</span></span></a>
+<a class="row" href="HireStationBuilder.dc.html"><span class="f">Breaking difficult news to a relative</span><span style="width:140px">10</span><span style="width:140px"><span class="chip ok">Published</span></span></a>
+<div class="row"><a href="HireStations.dc.html">Add a station</a></div></div>
+<div class="card"><div class="th"><span class="f">Marking scheme</span></div><a class="row" href="HireMarkingScheme.dc.html"><span class="f">Band 6 nurse scheme · version 3 · 4 domains</span><span class="chip ok">Published</span></a></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card pad">
+<div><label for="n">Exam name</label><input class="input" id="n" value="Band 6 nurse OSCE"></div>
+<div><label>Kind</label><div class="acts"><button class="pill on">Formal exam</button><button class="pill">Training</button></div><div class="hint">Switching to Training removes the hiring decision from new assessments on this exam.</div></div>
+<div class="fields"><div><label for="m">Minutes per station</label><input class="input" id="m" value="10"></div><div><label for="r">Reading time (minutes)</label><input class="input" id="r" value="2"></div></div>
+<label class="check"><input type="checkbox" checked> Available for scheduling</label>
+<div class="acts"><button class="btn pri">Save changes</button><button class="btn bad">Retire exam</button></div>
+</div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/exams</code></div>
+<div class="call"><span class="m">PATCH</span><code>{o}/exams/{exam_id}</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/programmes</code></div>
+<div class="call"><span class="m">PATCH</span><code>{o}/programmes/{id}</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/rubrics</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/stations</code></div>
+<h2>Refusals it shows</h2><div class="codes"><code>exam_rubric_not_ready</code><code>invalid_exam_settings</code><code>programme_not_active</code><code>programme_not_found</code><code>exam_in_use</code></div>
+<div class="note">Routes <code>/app/[w]/authoring/exams/[id]</code> and its settings · admin · owner content-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['What it is made of', 'Settings'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1 };
+  }
+}
+</script>
+</body>
+</html>

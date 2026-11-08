@@ -15,6 +15,7 @@ lease, a claim table or a second lock. The mechanics of one step live in
 
 from __future__ import annotations
 
+import contextlib
 import uuid
 from contextlib import nullcontext
 from datetime import datetime, timedelta
@@ -32,7 +33,9 @@ from app.features.sittings import (
     domain,
     domain_run,
     errors,
+    floor,
     repository,
+    service_floor,
     service_steps,
 )
 from app.features.sittings.models import Circuit
@@ -61,6 +64,8 @@ get_room_agents = voice.get_room_agents
 
 # How long a running circuit's clock may sit with nothing to count before the reaper closes it.
 STALE_AFTER = timedelta(hours=12)
+# How long a training room may stay open after End before the reaper closes it.
+ROOM_KEPT_FOR = timedelta(hours=6)
 _AUTO_END_REASON = (
     f"Ended automatically: the clock had nothing to count for {STALE_AFTER.total_seconds() / 3600:g} hours"
 )
@@ -92,7 +97,7 @@ async def start_circuit(
     # R-41: a lead who lost the role since the circuit was built cannot run it.
     await ensure_lead_may_run(session, org_id, circuit.supervisor_user_id)
 
-    room = f"circuit_{circuit.id}"
+    room = floor.room_name_for(circuit.id)
     await repository.update_circuit(
         session, org_id, circuit_id, room_name=room, started_at=now, ended_at=None
     )
@@ -170,6 +175,7 @@ async def advance(
     if circuit.voice_fault_at is not None:
         await repository.update_circuit(session, org_id, circuit_id, voice_fault_at=None)
         circuit.voice_fault_at = None
+    await service_floor.sync_mics(session, org_id, circuit, agents=agents)
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.PHASE_ADVANCED)
     return True
 
@@ -206,6 +212,9 @@ async def _end_if_open(
     ):
         await service_steps.clear_patient_later(session, circuit)
     await service_steps.finish(session, org_id, circuit, now=now)
+    # A training room stays open after End for the conversation (the supervisor closes it), so only
+    # the turn's microphone goes. An exam's room was never held open.
+    await service_floor.sync_mics(session, org_id, circuit, agents=agents)
     await announcements.circuit_changed(session, org_id, circuit.id, name=announcements.ENDED)
     return True
 
@@ -260,7 +269,33 @@ async def end_abandoned(
             before=circuit.phase_seq,
             now=now,
         )
-    return await end_circuit(session, org_id, circuit_id, agents=agents, now=now)
+    result = await end_circuit(session, org_id, circuit_id, agents=agents, now=now)
+    await _close_kept_room(session, org_id, circuit, agents=agents, now=now)
+    return result
+
+
+async def close_forgotten_room(
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, *, agents: RoomAgents, now: datetime
+) -> bool:
+    """The reaper's second sweep: close a training room left open after End. Whether this call closed it."""
+    circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
+    if circuit.ended_at is None:
+        return False
+    return await _close_kept_room(session, org_id, circuit, agents=agents, now=now)
+
+
+async def _close_kept_room(
+    session: AsyncSession, org_id: uuid.UUID, circuit: Circuit, *, agents: RoomAgents, now: datetime
+) -> bool:
+    """Nobody is coming back to a training room kept open after End: close it, best effort, and say so."""
+    if circuit.room_closed_at is not None or not await service_floor.is_training(session, circuit.id):
+        return False
+    with contextlib.suppress(VoiceUnavailable):
+        await agents.close_room(floor.room_name_for(circuit.id), force=True)
+    await repository.update_circuit(session, org_id, circuit.id, room_closed_at=now)
+    circuit.room_closed_at = now
+    await announcements.circuit_changed(session, org_id, circuit.id, name=announcements.ROOM_CLOSED)
+    return True
 
 
 async def _step_forward(
@@ -303,3 +338,28 @@ async def require_live(session: AsyncSession, org_id: uuid.UUID, circuit_id: uui
     if circuit.started_at is None or circuit.ended_at is not None or not circuit.room_name:
         raise errors.CircuitNotLive()
     return circuit
+
+
+def ensure_room_open(circuit: Circuit, *, training: bool) -> None:
+    """Refuse unless people may still join: the circuit runs, or it is a training room kept after End."""
+    if not floor.room_is_open(
+        started=circuit.started_at is not None,
+        ended=circuit.ended_at is not None,
+        has_room=bool(circuit.room_name),
+        closed=circuit.room_closed_at is not None,
+        training=training,
+    ):
+        raise errors.CircuitNotLive()
+
+
+async def require_room_open(
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
+) -> tuple[Circuit, bool]:
+    """`require_live`, widened for training: the circuit and whether its sitting is training.
+
+    The supervisor of a training circuit may still join after End, until they close the room.
+    """
+    circuit = await _require_circuit(session, org_id, circuit_id)
+    training = await service_floor.is_training(session, circuit_id)
+    ensure_room_open(circuit, training=training)
+    return circuit, training

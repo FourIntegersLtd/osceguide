@@ -87,7 +87,8 @@ async def my_sittings(
                 circuit_name=trainee_slot.circuit.name,
                 released=trainee_slot.sitting.mode == "exam" and trainee_slot.sitting.id not in sealed,
                 live=_circuit_live(trainee_slot.circuit),
-                can_join=open_to_join and bool(trainee_slot.circuit.room_name),
+                can_join=(open_to_join and bool(trainee_slot.circuit.room_name))
+                or _training_room_kept_open(trainee_slot.circuit, trainee_slot.sitting.mode),
                 phase=trainee_slot.circuit.phase,
                 phase_started_at=trainee_slot.circuit.phase_started_at,
                 phase_ends_at=trainee_slot.circuit.phase_ends_at,
@@ -131,6 +132,16 @@ async def my_sittings(
             )
         )
     return MySittings(items=list(grouped.values()))
+
+
+def _training_room_kept_open(circuit: sittings.CircuitRef, mode: str) -> bool:
+    """A training room stays joinable after End, for the conversation, until the supervisor closes it."""
+    return (
+        mode == "training"
+        and circuit.started_at is not None
+        and circuit.ended_at is not None
+        and circuit.room_closed_at is None
+    )
 
 
 def _circuit_live(circuit: sittings.CircuitRef) -> bool:

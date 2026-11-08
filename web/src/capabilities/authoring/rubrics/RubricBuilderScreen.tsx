@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { schemeSubtitle } from "@/capabilities/authoring/lib/authoringCopy";
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useId, useState } from "react";
 import Link from "next/link";
@@ -37,6 +39,7 @@ export function RubricBuilderScreen({
   dashboardPreview?: RubricDashboardPreview;
 }) {
   const scope = useAuthoringScope();
+  const w = useAssessWords();
   const { hrefFor } = useSurface();
   const rubric = useAsync((signal) => readRubric(scope, rubricId, signal), [scope.base, rubricId]);
   const canAuthor = useCanAuthor();
@@ -61,7 +64,7 @@ export function RubricBuilderScreen({
             <>
               <B2CPageHeader
                 title={editable ? <RubricTitle rubric={data} onRenamed={rubric.reload} /> : data.title}
-                subtitle={`Exams › Marking schemes · version ${version}${owned ? "" : " · OSCE Guide catalogue"}. How a station is marked, and what the candidate's feedback looks like. Publishing makes a new version; sittings already marked keep the version they used.`}
+                subtitle={schemeSubtitle(version, owned, w)}
                 back={{ href: rubricsListPath(hrefFor), label: "Marking schemes" }}
                 action={found ? <VersionActions rubric={data} version={version} status={found.status} owned={owned} examId={examId} /> : undefined}
                 className="mb-0"

@@ -15,6 +15,8 @@ class DecisionRead(BaseModel):
     recruitment_outcome: str | None
     rationale: str | None
     signed_off_at: datetime | None
+    # Display name of whoever signed it off (their email if they have no name); null before sign-off.
+    signed_off_by_name: str | None = None
     released_at: datetime | None
 
 
@@ -71,6 +73,17 @@ class BulkReleaseResult(BaseModel):
 
     released: list[ReleasedCandidate] = Field(default_factory=list)
     skipped: list[SkippedRelease] = Field(default_factory=list)
+
+
+class SignedOffCandidate(BaseModel):
+    trainee_id: uuid.UUID
+    decision: DecisionRead
+
+
+class BulkSignOffResult(BaseModel):
+    """Who the sheet-level sign-off signed, in roster order."""
+
+    signed_off: list[SignedOffCandidate] = Field(default_factory=list)
 
 
 class TraineeStationResult(BaseModel):

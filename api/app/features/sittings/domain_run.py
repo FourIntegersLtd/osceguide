@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
 
-from app.features.sittings.domain import InvalidCircuit, Timing
+from app.features.sittings.domain import FINISHED_SLOT_STATUSES, InvalidCircuit, Mode, SlotStatus, Timing
 
 
 class RunPhase(StrEnum):
@@ -224,10 +224,16 @@ def ensure_paused(paused_at: datetime | None) -> None:
         raise CircuitNotPaused("The clock is running; there is nothing to resume.")
 
 
-def ensure_jump_target(slot_index: int, *, slot_count: int) -> None:
-    """Refuse to jump to a station that is not on this circuit."""
+def ensure_jump_target(slot_index: int, *, slot_count: int, slot_status: str, mode: str) -> None:
+    """Refuse to jump to a station that is not on this circuit, or, in an exam, one already finished.
+
+    A training circuit may go back to a passed-over or finished turn; an exam redoes a finished
+    station through `redo_station`, which keeps the first attempt on the record.
+    """
     if not 0 <= slot_index < slot_count:
         raise InvalidCircuit("That station is not on this circuit.")
+    if mode == Mode.EXAM and SlotStatus(slot_status) in FINISHED_SLOT_STATUSES:
+        raise InvalidCircuit("That station is already finished. Redo it instead.")
 
 
 def sitting_is_over(circuit_ended: Iterable[bool]) -> bool:

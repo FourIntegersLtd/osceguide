@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Now running</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav on" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="3"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><div class="eyebrow">Acme Health Trust</div><h1>Now running</h1><p class="desc">Every rotation running right now. This page updates by itself.</p></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="al warn"><b>Tom Reid has not joined station 2</b>The station started 3 minutes ago. Open the rotation to resend the patient or pause.</div>
+<div class="card"><div class="th"><span class="f">Rotation</span><span style="width:220px">Station</span><span style="width:100px">Clock</span><span style="width:120px"></span></div>
+<a class="row" href="HireConsole.dc.html"><span class="f">Priya Shah<div class="meta">Band 6 nurse, November intake</div></span><span style="width:220px">3 of 5 · Discharge planning</span><span style="width:100px" class="clock">06:12</span><span style="width:120px"><span class="chip live">Live</span></span></a>
+<a class="row" href="HireConsole.dc.html"><span class="f">Tom Reid<div class="meta">Band 6 nurse, November intake</div></span><span style="width:220px">2 of 5 · Medicines round</span><span style="width:100px" class="clock">03:04</span><span style="width:120px"><span class="chip warn">Not joined</span></span></a>
+<a class="row" href="HireConsole.dc.html"><span class="f">Ama Mensah<div class="meta">Band 6 nurse, November intake</div></span><span style="width:220px">Between stations</span><span style="width:100px" class="clock">00:45</span><span style="width:120px"><span class="chip">Paused</span></span></a></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="empty"><h2>Nothing is running</h2>The next rotation is Band 5 nurse, December intake, on 4 Dec at 09:00.<a class="btn pri" href="HireAssessment.dc.html">Open that assessment</a></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="th"><span class="f">Earlier today</span><span style="width:160px">Ended</span></div>
+<a class="row" href="HireConsole.dc.html"><span class="f">Leah Ward · 5 of 5 stations</span><span style="width:160px" class="meta">08:55</span></a>
+<a class="row" href="HireConsole.dc.html"><span class="f">Omar Said · ended early at station 4</span><span style="width:160px" class="meta">08:40</span></a></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/live</code></div>
+<div class="call"><span class="m">SSE</span><code>{o}/live/stream</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/live/history</code></div>
+<div class="meta">Updates arrive on the stream; the page never polls.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>forbidden</code><code>unavailable</code></div>
+<div class="note">Route <code>/app/[w]/live</code> · admin and assessor (own rotations) · owner institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Running', 'Nothing running', 'Earlier today'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2 };
+  }
+}
+</script>
+</body>
+</html>

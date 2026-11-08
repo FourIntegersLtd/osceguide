@@ -75,7 +75,7 @@ export function SetStation({
               <p>
                 {state === "unknown_entry"
                   ? "The link may be out of date. Open the session to see its stations."
-                  : "It has been withdrawn since this session was built. You can still review any attempt you already sat."}
+                  : "It has been removed since this session was built. You can still review any attempt you already sat."}
               </p>
               <Link href={hrefFor(`/mocks/${setId}`)} className="mt-3 inline-block font-semibold underline">
                 Back to the session

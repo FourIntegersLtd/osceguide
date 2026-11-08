@@ -22,6 +22,7 @@ import {
   readGroupMembers,
 } from "@/domains/assess/roster/api";
 import type { PickerSet, TraineeRow } from "@/domains/assess/scheduleSitting";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * Put a circuit on a sitting: who sits it, at which stations, for how long.
@@ -43,6 +44,7 @@ export function NewCircuit({
   orgSlug: string;
   sittingId: string;
 }) {
+  const w = useAssessWords();
   const router = useRouter();
   const { hrefFor } = useSurface();
 
@@ -96,7 +98,7 @@ export function NewCircuit({
                 href: hrefFor(`/sittings/${sittingId}`),
                 label: data.sitting.name,
               }}
-              title="Add a circuit"
+              title={`Add a ${w.circuit}`}
               subtitle={`${data.sitting.name} · ${data.sitting.mode}`}
             />
             <Builder
@@ -138,6 +140,7 @@ function Builder({
   staff: StaffRow[];
   onCreated: () => void;
 }) {
+  const w = useAssessWords();
   const submit = useCallback(
     async (shape: Parameters<typeof createCircuit>[2], bulk: boolean) => {
       if (bulk) {
@@ -146,6 +149,7 @@ function Builder({
           candidate_user_ids: shape.traineeIds,
           station_version_ids: shape.stationVersionIds,
           supervisor_user_id: shape.supervisorUserId,
+          station_assessor_ids: shape.stationAssessorIds,
           timing: timingBody(shape.timing),
         });
       } else {
@@ -166,7 +170,7 @@ function Builder({
       cohorts={cohorts}
       allowManyCandidates
       staff={staff}
-      submitLabel="Create circuit"
+      submitLabel={`Create ${w.circuit}`}
       onSubmit={submit}
     />
   );

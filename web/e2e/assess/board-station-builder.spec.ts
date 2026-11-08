@@ -69,6 +69,7 @@ for (const viewport of VIEWPORTS) {
   }
 }
 
+// The seeded stations hold no text in their candidate section, so the flat reading brief is still the candidate's.
 test("an unsaved rename keeps the typed reading brief", async ({ browser }) => {
   test.setTimeout(120_000);
   const context = await browser.newContext({ viewport: VIEWPORTS[0] });
@@ -85,5 +86,18 @@ test("an unsaved rename keeps the typed reading brief", async ({ browser }) => {
   await title.fill("Breaking bad news");
   await expect(brief).toBeVisible();
   await expect(brief).toHaveValue("Typed but not yet saved");
+  await context.close();
+});
+
+// Approval gates the platform library only: an organisation's own published station is never "Awaiting approval".
+test("an org workspace lists its published station without an approval label", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({ viewport: VIEWPORTS[0] });
+  await signedInAs(context, world.org.account);
+  const app = await context.newPage();
+  await openPage(app, `/app/${world.org.slug}/authoring/stations?status=all`);
+  await expect(app.getByText("Published").first()).toBeVisible();
+  await expect(app.getByText("Awaiting approval")).toHaveCount(0);
+  await expect(app.getByRole("button", { name: /^Approve$/ })).toHaveCount(0);
   await context.close();
 });

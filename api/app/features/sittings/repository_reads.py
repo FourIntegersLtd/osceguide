@@ -325,6 +325,19 @@ async def circuit_trainee_ids(
     return list((await session.execute(stmt)).scalars())
 
 
+async def next_scheduled_sitting(
+    session: AsyncSession, org_id: uuid.UUID, *, after: datetime
+) -> Sitting | None:
+    """The soonest sitting not yet started, scheduled after `after`."""
+    stmt = (
+        select(Sitting)
+        .where(Sitting.org_id == org_id, Sitting.status == "scheduled", Sitting.scheduled_for > after)
+        .order_by(Sitting.scheduled_for, Sitting.id)
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalars().first()
+
+
 async def list_run_history(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[CircuitRunHistory], str | None]:

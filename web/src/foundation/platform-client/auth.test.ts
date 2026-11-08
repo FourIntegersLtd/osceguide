@@ -3,7 +3,7 @@ import { afterEach, beforeEach, test } from "node:test";
 
 import {
   changePassword,
-  invitationOrganisation,
+  readInvitation,
   logout,
   PasswordChangedNotStored,
   clearPlatformSession,
@@ -370,17 +370,26 @@ test("a password changed but not stored says the change happened and to sign in 
   });
 });
 
-test("an invitation lookup returns the organisation's name", async () => {
-  const calls = respond(() => json({ organisation_name: "Ashford Medical School" }));
-  assert.equal(await invitationOrganisation("tok/en"), "Ashford Medical School");
+test("an invitation lookup returns the organisation's name, kind and role when the api says them", async () => {
+  const calls = respond(() => json({ organisation_name: "Acme Health Trust", org_type: "employer", role: "supervisor" }));
+  assert.deepEqual(await readInvitation("tok/en"), {
+    organisationName: "Acme Health Trust",
+    orgType: "employer",
+    role: "supervisor",
+  });
   assert.ok(calls()[0]?.url.endsWith("/api/v1/auth/invitation/tok%2Fen"));
+});
+
+test("an institution invitation lookup returns its kind and role as the api says them", async () => {
+  respond(() => json({ organisation_name: "Ashford Medical School", org_type: "institution", role: "trainee" }));
+  assert.deepEqual(await readInvitation("tok"), { organisationName: "Ashford Medical School", orgType: "institution", role: "trainee" });
 });
 
 test("a refused or failed invitation lookup is null, so the page keeps its plain wording", async () => {
   respond(() => json({ code: "invalid_reset_token", message: "x" }, 422));
-  assert.equal(await invitationOrganisation("spent"), null);
+  assert.equal(await readInvitation("spent"), null);
   globalThis.fetch = (async () => {
     throw new TypeError("offline");
   }) as typeof fetch;
-  assert.equal(await invitationOrganisation("any"), null);
+  assert.equal(await readInvitation("any"), null);
 });

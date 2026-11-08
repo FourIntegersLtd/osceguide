@@ -406,3 +406,24 @@ async def test_a_suspended_organisation_withdraws_its_practice_access(
     await tenancy_repo.set_organization_status(db_session, org_id, status="active")
     await db_session.commit()
     assert await may_open(client, student) == 200
+
+
+async def test_a_practice_access_link_still_names_the_organisation_with_no_role(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The accept page reads `/auth/invitation/{token}`; this link seats nobody, so it has no role."""
+    _, admin, exam_id = await partner_with_admin(client, make_actor)
+    granted = await client.post(
+        "/api/v1/orgs/medrev/practice-access",
+        json={"email": "new.doctor@example.com", "exam_id": exam_id},
+        headers=bearer(admin),
+    )
+    assert granted.status_code == 201, granted.text
+    token = (await queued(db_session, "practice_access_invitation"))[0].payload["token"]
+    found = await client.get(f"/api/v1/auth/invitation/{token}")
+    assert found.status_code == 200, found.text
+    assert found.json() == {
+        "organisation_name": "MedRevise Partners",
+        "org_type": "institution",
+        "role": None,
+    }

@@ -43,6 +43,7 @@ NOBODY = "00000000-0000-0000-0000-000000000001"
 ONE_BELOW = {
     "org_member": "stranger",
     "org_staff": "trainee",
+    "lead_reviewer": "supervisor",
     "org_admin": "supervisor",
     "institution_admin": "partner_admin",
     "platform_admin": "owner",

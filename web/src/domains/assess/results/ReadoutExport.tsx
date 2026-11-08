@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { Alert } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { hasCode, saveBlob } from "@/foundation/platform-client";
@@ -25,6 +26,7 @@ import { boardBtn } from "@/foundation/ui/boardKit";
  */
 export function ReadoutExport({ orgSlug, sittingId }: { orgSlug: string; sittingId: string }) {
   const { session } = useSession();
+  const w = useAssessWords();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -35,14 +37,14 @@ export function ReadoutExport({ orgSlug, sittingId }: { orgSlug: string; sitting
     setNote(null);
     try {
       const readout = await readSittingReadout(orgSlug, sittingId);
-      const markdown = readoutAsMarkdown(readout);
+      const markdown = readoutAsMarkdown(readout, w);
       saveBlob(new Blob([markdown], { type: "text/markdown;charset=utf-8" }), readoutFilename(readout));
     } catch (cause) {
       // Not an examination is not a failure to export — there is simply nothing
       // to export, which is what the cohort screen already says about the same
       // refusal.
       if (hasCode(cause, "not_an_exam_sitting")) {
-        setNote("This sitting has no read-out to export.");
+        setNote(`This ${w.sitting} has no read-out to export.`);
       } else {
         setFailure(errorMessage(cause));
       }

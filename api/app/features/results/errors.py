@@ -22,14 +22,14 @@ class IncompatibleOutcomesError(InvalidInput):
     """The assessment and recruitment outcome given cannot both be true."""
 
     code = "incompatible_outcomes"
-    default_message = "Those assessment and recruitment outcomes cannot go together"
+    default_message = "Those two outcomes can't be recorded together. Choose a different combination."
 
 
 class RecruitmentOutsideExamError(InvalidInput):
     """A recruitment outcome was given for a training sitting; only exam mode records one."""
 
     code = "recruitment_outside_exam"
-    default_message = "A recruitment outcome is recorded only for an exam-mode sitting"
+    default_message = "A hiring outcome can only be recorded for an exam sitting."
 
 
 class DecisionOutsideExamError(Conflict):
@@ -57,7 +57,7 @@ class InvalidWorkflowError(Conflict):
     """The requested step is not reachable from where this decision is now."""
 
     code = "invalid_workflow"
-    default_message = "That is not a step this decision can take"
+    default_message = "This decision can't move to that step from where it is now."
 
 
 class EvidenceChangedError(Conflict):
@@ -67,7 +67,7 @@ class EvidenceChangedError(Conflict):
     """
 
     code = "evidence_changed"
-    default_message = "The evidence has changed since sign-off; review and sign off again"
+    default_message = "The marks have changed since sign-off. Review them and sign off again."
 
 
 class NotReleasableError(Conflict):
@@ -85,7 +85,7 @@ class DecisionRevisedError(Conflict):
     """
 
     code = "decision_revised"
-    default_message = "This decision has changed since you loaded it"
+    default_message = "This decision has changed since you opened it. Reload and try again."
 
 
 class NotReleased(NotFound):
@@ -100,3 +100,10 @@ class ReviewsPendingError(Conflict):
 
     code = "reviews_pending"
     default_message = "A review of this candidate is still in progress; complete it before signing off"
+
+
+class DecisionsIncompleteError(Conflict):
+    """The sheet cannot be signed off while any candidate has no decision."""
+
+    code = "decisions_incomplete"
+    default_message = "Every candidate needs a decision before the results can be signed off"

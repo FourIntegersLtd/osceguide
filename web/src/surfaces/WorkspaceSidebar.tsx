@@ -20,7 +20,7 @@ export interface WorkspaceSidebarProps {
   detail: string | null;
   /** Train only: the upgrade button and exam countdown at the foot. */
   consumer: boolean;
-  /** The staff console: a fixed name instead of the workspace switcher. */
+  /** The staff console: the switcher stands on "Platform console". */
   staff?: boolean;
   basePath: string;
   groups: NavRailGroups;
@@ -128,20 +128,7 @@ export function WorkspaceSidebar({
             </div>
           )}
           <div className={cn("mb-1.5 md:hidden", navCollapsed ? "lg:hidden" : "lg:block")}>
-            {staff ? (
-              <div className="hidden min-h-11 items-center px-2.5 lg:flex">
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block truncate text-[13.5px] font-semibold leading-[18px] text-osce-ink-900">
-                    Platform console
-                  </span>
-                  <span className="block truncate text-osce-caption font-normal text-b2c-text-muted">
-                    OSCE Guide staff
-                  </span>
-                </span>
-              </div>
-            ) : (
-              <WorkspaceSwitcher current={workspace} detail={detail} />
-            )}
+            <WorkspaceSwitcher current={staff ? null : workspace} detail={staff ? "OSCE Guide staff" : detail} />
           </div>
         </div>
 

@@ -57,7 +57,10 @@ test.describe.serial("ASSESS-4 review, decide, release", () => {
   test("the admin decides, signs off and releases; the candidate then reads the outcome", async () => {
     const w = world();
     await openPage(admin, `/app/${w.slug}/sittings/${sitting.id}/results`);
+    // An institution exam has no hiring decision: not in the table, not in the open candidate.
+    await expect(admin.getByText("Hiring decision")).toHaveCount(0);
     await admin.getByRole("button", { name: "Open Tess Trainee" }).click();
+    await expect(admin.getByText("Hiring decision")).toHaveCount(0);
     await admin.getByRole("button", { name: /^Pass/ }).click();
     await admin.getByRole("textbox", { name: /rationale/i }).fill("Journey: met the standard.");
     await admin.getByRole("button", { name: "Sign off" }).click();

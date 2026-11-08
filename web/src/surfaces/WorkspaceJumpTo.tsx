@@ -129,7 +129,8 @@ export function WorkspaceJumpTo({
       title="Search"
       hideCloseButton
       initialFocusRef={inputRef}
-      width={{ mobile: "92vw", desktop: "480px" }}
+      width="30rem"
+      panelClassName="max-w-[92vw]"
       bodyClassName="!p-0"
     >
       <div className="flex items-center gap-2.5 border-b border-osce-border-light px-4">

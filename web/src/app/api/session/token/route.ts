@@ -8,6 +8,7 @@ import {
   REFRESH_MARGIN_MS,
   clearSessionCookies,
   readSessionCookies,
+  readTokenClaims,
   writeSessionCookies,
 } from "@/foundation/platform-client/sessionCookies";
 
@@ -55,6 +56,17 @@ async function refusedEarlier(request: NextRequest): Promise<string | null> {
   }
 }
 
+/**
+ * The workspace the expired access token was in, read without verifying it: it is only a request
+ * to platform-api, which keeps it if the person still holds that membership. `undefined` when the
+ * token is missing or unreadable, which gives the default workspace.
+ */
+function lastWorkspace(accessToken: string | undefined): string | null | undefined {
+  const active = readTokenClaims(accessToken)?.active_org;
+  if (active === null) return null;
+  return typeof active === "string" ? active : undefined;
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const { accessToken, refreshToken, expiresAt } = readSessionCookies(request);
   const refused = await refusedEarlier(request);
@@ -72,7 +84,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   let pair: RefreshedPair | null;
   try {
-    pair = await refreshTokenPair(platformApiUrl(), refreshToken);
+    pair = await refreshTokenPair(platformApiUrl(), refreshToken, lastWorkspace(accessToken));
   } catch {
     // platform-api unreachable. The chain is probably fine, so the cookies
     // stay and the caller can try again rather than being signed out by a

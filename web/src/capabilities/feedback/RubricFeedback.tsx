@@ -75,7 +75,7 @@ export function RubricFeedback({
       <B2CEmptyState
         icon={HiOutlineFaceFrown}
         title="No feedback recorded"
-        description="This marking has no answers the marking scheme recognises."
+        description="We could not match your answers to this station's marking scheme, so there is no mark. Try the station again."
       />
     );
   }

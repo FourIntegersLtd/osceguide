@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { importLabel, layoutKindLabel, layoutsLead, newLayoutLabel } from "@/capabilities/authoring/lib/authoringCopy";
 import { AuthoringConfirm } from "@/capabilities/authoring/parts/AuthoringConfirm";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -23,6 +25,7 @@ import {
   AuthoringIconAction,
   AuthoringRowActions,
 } from "@/capabilities/authoring/parts/AuthoringIconAction";
+import { AuthoringActionMenu } from "@/capabilities/authoring/parts/AuthoringActionMenu";
 import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRow";
 import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";
 import { AuthoringSectionLead } from "@/capabilities/authoring/parts/AuthoringSectionLead";
@@ -77,6 +80,7 @@ export function StationTemplatesSection() {
   const org = !useAuthoringChrome().b2c;
   const { hrefFor } = useSurface();
   const router = useRouter();
+  const w = useAssessWords();
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
@@ -108,16 +112,15 @@ export function StationTemplatesSection() {
         action={
           <>
             <AuthoringLeadButton icon={HiOutlineCloudArrowUp} onClick={() => setImporting(true)}>
-              Import from PDF or Word
+              {importLabel(w)}
             </AuthoringLeadButton>
             <AuthoringLeadButton primary icon={HiOutlinePlusCircle} onClick={() => router.push(newHref)}>
-              Create station template
+              {newLayoutLabel(w)}
             </AuthoringLeadButton>
           </>
         }
       >
-        Define layout and fields for clinical stations. Saved drafts and published
-        versions appear below, but not the starting layouts on the new-template wizard.
+        {layoutsLead(w)}
       </AuthoringSectionLead>
 
       <AuthoringCatalogFilterBar
@@ -139,7 +142,7 @@ export function StationTemplatesSection() {
         onDismissError={templates.reload}
         empty={{
           title: "No saved templates yet",
-          description: "The layouts on New template are starting points only. They are not added here until you finish the wizard (Save draft), then Publish from this list.",
+          description: w.hiring ? "Layouts are only starting points. A template shows here once you Save draft. Publish it from this list to use it for stations." : "The layouts on New template are starting points only. They are not added here until you finish the wizard (Save draft), then Publish from this list.",
         }}
       >
         {items.map((template) => {
@@ -287,7 +290,7 @@ export function StationTemplatesSection() {
         }
         message={
           pendingConfirm?.kind === "archive-live" ? (
-            "Stations already built on it keep that shape; nothing new may bind to it."
+            w.hiring ? "Stations already made from it are not affected. New stations can no longer use it." : "Stations already built on it keep that shape; nothing new may bind to it."
           ) : pendingConfirm?.kind === "delete-draft" ? (
             pendingConfirm.liveVersion != null ? (
               <>
@@ -338,7 +341,7 @@ function TemplateRow({
   const archiveBusy = busy === `archive:${template.id}`;
   const deleteBusy = busy === `delete:${template.id}`;
   const router = useRouter();
-  const org = !useAuthoringChrome().b2c;
+  const w = useAssessWords();
 
   return (
     <AuthoringListRow
@@ -347,7 +350,7 @@ function TemplateRow({
       linkTitle
       detail={
         <PublishStatusLine
-          kindLabel={onCopy ? [template.exam_code, "Platform template"].filter(Boolean).join(" · ") : template.exam_code}
+          kindLabel={onCopy ? [template.exam_code, "Platform template"].filter(Boolean).join(" · ") : layoutKindLabel(template.exam_code, template.copied_from_id, w)}
           published={published}
           draft={draft}
           archivedOnly={archivedOnly}
@@ -355,6 +358,7 @@ function TemplateRow({
       }
     >
       <AuthoringRowActions write>
+        {/* One inline primary by status; the rest live in the menu. */}
         {onCopy ? (
           <AuthoringIconAction
             text="Copy to my organisation"
@@ -367,8 +371,11 @@ function TemplateRow({
           >
             <HiOutlineDocumentPlus className="h-4 w-4" aria-hidden />
           </AuthoringIconAction>
-        ) : null}
-        {onAddVersion ? (
+        ) : editHref ? (
+          <AuthoringIconAction label="Edit draft" text="Edit draft" href={editHref}>
+            <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
+          </AuthoringIconAction>
+        ) : onAddVersion ? (
           <AuthoringIconAction
             text="New draft"
             label="New draft"
@@ -380,50 +387,36 @@ function TemplateRow({
             <HiOutlineDocumentDuplicate className="h-4 w-4" aria-hidden />
           </AuthoringIconAction>
         ) : null}
-        {editHref ? (
-          <AuthoringIconAction label="Edit draft" text="Edit draft" href={editHref}>
-            <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
-          </AuthoringIconAction>
-        ) : null}
-        {draft && onPublish ? (
-          <AuthoringIconAction
-            variant="primary"
-            text="Publish draft"
-            label="Publish draft"
-            busy={publishBusy}
-            busyLabel="Publishing…"
-            disabled={busy !== null}
-            onClick={onPublish}
-          >
-            <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
-          </AuthoringIconAction>
-        ) : null}
-        {onArchivePublished ? (
-          <AuthoringIconAction
-            variant={org ? "default" : "warning"}
-            text="Archive live"
-            label="Archive live"
-            busy={archiveBusy}
-            busyLabel="Archiving…"
-            disabled={busy !== null}
-            onClick={onArchivePublished}
-          >
-            <HiOutlineArchiveBox className="h-4 w-4" aria-hidden />
-          </AuthoringIconAction>
-        ) : null}
-        {onDeleteDraft ? (
-          <AuthoringIconAction
-            variant="danger"
-            text="Delete draft"
-            label="Delete draft"
-            busy={deleteBusy}
-            busyLabel="Deleting…"
-            disabled={busy !== null}
-            onClick={onDeleteDraft}
-          >
-            <HiOutlineTrash className="h-4 w-4" aria-hidden />
-          </AuthoringIconAction>
-        ) : null}
+        <AuthoringActionMenu
+          label={`Actions for ${template.title}`}
+          items={[
+            !onCopy && !!editHref && onAddVersion && {
+              label: addBusy ? "Creating…" : "New draft",
+              icon: <HiOutlineDocumentDuplicate className="h-4 w-4" />,
+              disabled: busy !== null,
+              onSelect: onAddVersion,
+            },
+            draft && onPublish && {
+              label: publishBusy ? "Publishing…" : "Publish draft",
+              icon: <HiOutlineArrowUpTray className="h-4 w-4" />,
+              disabled: busy !== null,
+              onSelect: onPublish,
+            },
+            onArchivePublished && {
+              label: archiveBusy ? "Archiving…" : "Archive live",
+              icon: <HiOutlineArchiveBox className="h-4 w-4" />,
+              disabled: busy !== null,
+              onSelect: onArchivePublished,
+            },
+            onDeleteDraft && {
+              label: deleteBusy ? "Deleting…" : "Delete draft",
+              icon: <HiOutlineTrash className="h-4 w-4" />,
+              tone: "danger" as const,
+              disabled: busy !== null,
+              onSelect: onDeleteDraft,
+            },
+          ]}
+        />
       </AuthoringRowActions>
     </AuthoringListRow>
   );

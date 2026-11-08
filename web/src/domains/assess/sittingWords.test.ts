@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { sittingChipTone, sittingWhen, sittingWhenAt } from "@/domains/assess/sittingWords";
+import { sittingChipTone, sittingDayLong, sittingHeadPrimary, sittingWhen, sittingWhenAt, sittingWhenLong } from "@/domains/assess/sittingWords";
 
 const now = new Date(2026, 10, 5, 12, 0);
 
@@ -20,4 +20,17 @@ test("status chip tones follow the board", () => {
   assert.equal(sittingChipTone("scheduled", false), "info");
   assert.equal(sittingChipTone("scheduled", true), "warn");
   assert.equal(sittingChipTone("completed", false), "neutral");
+});
+
+test("sittingWhenLong and sittingDayLong print the long date, and say nothing for a bad one", () => {
+  const at = new Date(2026, 10, 20, 9, 0).toISOString();
+  assert.equal(sittingWhenLong(at), "Friday 20 November, 09:00");
+  assert.equal(sittingDayLong(at), "20 November");
+  assert.equal(sittingWhenLong(null, "Date to be confirmed"), "Date to be confirmed");
+  assert.equal(sittingDayLong("nope"), "");
+});
+
+test("no institution noun is printed by these words, so hire reads them unchanged", () => {
+  const printed = [sittingWhen(null), sittingWhenAt(null), sittingWhenLong(null), sittingChipTone("scheduled", false), sittingHeadPrimary({ status: "scheduled", scheduled_for: null })].join(" ");
+  assert.equal(/sitting|trainee|supervisor|circuit|practi/i.test(printed.replace("schedule", "")), false);
 });

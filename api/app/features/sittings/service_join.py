@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ports import VoiceTokens
 from app.core.settings import Settings
 from app.features.roster import service as roster
-from app.features.sittings import errors, repository_run, service_run
+from app.features.sittings import errors, floor, repository_run, service_floor, service_run
 from app.features.sittings.schemas import RoomGrant
 from app.features.voice import service as voice
 
@@ -31,7 +31,7 @@ get_voice_tokens = voice.get_voice_tokens
 # The examiner's LiveKit identity. Prefixed so it is legible in a participant
 # list, and deliberately not `agent-*`: the sweep that clears stale patients
 # from a room matches on that prefix and would throw the examiner out with them.
-OBSERVER_PREFIX = "observer-"
+OBSERVER_PREFIX = floor.OBSERVER_PREFIX
 
 
 async def join_token_for_trainee(
@@ -63,14 +63,24 @@ async def join_token_for_trainee(
     # they were scheduled (S-1). A suspension does not stop a circuit already running (S-17):
     # nothing new starts, so a circuit that is not live is refused below.
     await roster.ensure_rosterable(session, circuit.org_id, [user_id])
-    if circuit.started_at is None or circuit.ended_at is not None or not circuit.room_name:
-        raise errors.CircuitNotLive()
+    training = await service_floor.is_training(session, circuit.id)
+    service_run.ensure_room_open(circuit, training=training)
 
+    # A training trainee always has a camera; the microphone is the turn's (and the floor's).
+    sources = None
+    display_name = None  # training only: a person's name on their tile; exam tokens stay anonymous
+    if training:
+        display_name = (await roster.names_for_users(session, circuit.org_id, [user_id])).get(user_id)
+        active = await service_floor.active_trainee_id(session, circuit.org_id, circuit)
+        sources = floor.publish_sources(floor.mic_allowed(circuit, active, str(user_id), training=True))
     return _grant(
         voice.grant_for_room(
-            room=circuit.room_name,
+            room=floor.room_name_for(circuit.id),
             identity=str(user_id),
             can_publish=True,
+            can_publish_sources=sources,
+            display_name=display_name,
+            ttl_seconds=settings.livekit_training_token_ttl_seconds if training else None,
             tokens=tokens,
             settings=settings,
         )
@@ -96,15 +106,16 @@ async def observer_token(
     returning `None` (circuit vanished mid-request) is treated as exam-strict,
     the safer default.
     """
-    circuit = await service_run.require_live(session, org_id, circuit_id)
-    assert circuit.room_name is not None  # require_live
-    mode = await repository_run.sitting_mode_for_circuit(session, circuit_id)
-    can_publish = mode == "training"
+    circuit, can_publish = await service_run.require_room_open(session, org_id, circuit_id)
     return _grant(
         voice.grant_for_room(
-            room=circuit.room_name,
+            room=floor.room_name_for(circuit.id),
             identity=f"{OBSERVER_PREFIX}{user_id}",
             can_publish=can_publish,
+            # The supervisor is always heard, so a training grant is both sources.
+            can_publish_sources=floor.publish_sources(True) if can_publish else None,
+            # A training token carries the mic right: short, so a saved one cannot outlive a mute or close.
+            ttl_seconds=settings.livekit_training_token_ttl_seconds if can_publish else None,
             tokens=tokens,
             settings=settings,
         ),

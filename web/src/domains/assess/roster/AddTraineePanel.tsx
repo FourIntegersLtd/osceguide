@@ -1,5 +1,6 @@
 "use client";
 
+import { say } from "@/domains/assess/roster/rosterWords";
 import { useState } from "react";
 import { b2bTokens as t, cn } from "@/foundation/ui";
 import { Note, PasswordFields, h2, hint } from "@/domains/assess/ui";
@@ -7,7 +8,7 @@ import { IssuedPassword } from "@/foundation/ui/TemporaryPassword";
 import { useTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
 import { rosterErrorMessage } from "@/domains/assess/roster/support";
 import { addTrainee, type Cohort } from "@/domains/assess/roster/api";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { boardBtn, boardPadWide, boardInput, boardLabel } from "@/foundation/ui/boardKit";
 
 /** "Amina Khan" → first "Amina", last "Khan"; one word is a first name. */
@@ -69,15 +70,15 @@ export function AddTraineePanel({
       const applied = trainee.temporary_password_applied === true;
       setNotice(
         password.typed && !applied
-          ? `${trainee.email} is on the roster. They already had an account, so the password you typed was not used.`
-          : `${trainee.email} is on the roster.`,
+          ? say(w, `${trainee.email} is on the roster. They already had an account, so the password you typed was not used.`)
+          : say(w, `${trainee.email} is on the roster.`),
       );
       password.finish(trainee.email, applied);
       setName("");
       setEmail("");
       onAdded();
     } catch (cause) {
-      setError(rosterErrorMessage(cause, address));
+      setError(rosterErrorMessage(cause, address, w));
     } finally {
       setBusy(false);
     }
@@ -87,7 +88,7 @@ export function AddTraineePanel({
     return (
       <Note tone="info">
         <b className="block">Only an owner or admin can add {w.trainees}</b>
-        Ask one of them to add the people you need on the roster.
+        {say(w, "Ask one of them to add the people you need on the roster.")}
       </Note>
     );
   }
@@ -101,7 +102,7 @@ export function AddTraineePanel({
           void submit();
         }}
       >
-        <h2 className={h2}>Add one person</h2>
+        <h2 className={h2}>{say(w, "Add one person")}</h2>
         <p className={cn(t.assessMeta, "m-0")}>
           They are invited by email. If they have no account yet, we create one and send them a link to choose a password. If that email cannot reach them, set a temporary password to relay by hand.
         </p>
@@ -114,9 +115,9 @@ export function AddTraineePanel({
           <input id="assess-trainee-email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} className={boardInput} placeholder="amina@hospital.nhs.uk" autoComplete="off" />
         </div>
         <div>
-          <label htmlFor="assess-trainee-cohort" className={boardLabel}>Year group (optional)</label>
+          <label htmlFor="assess-trainee-cohort" className={boardLabel}>{say(w, "Year group (optional)")}</label>
           <select id="assess-trainee-cohort" value={cohortId} onChange={(event) => setCohortId(event.target.value)} className={boardInput}>
-            <option value="">No year group</option>
+            <option value="">{say(w, "No year group")}</option>
             {cohorts.map((cohort) => (
               <option key={cohort.id} value={cohort.id}>
                 {cohort.name}
@@ -124,7 +125,7 @@ export function AddTraineePanel({
             ))}
           </select>
           <div className={hint}>
-            An intake, such as &quot;June 2026&quot;. Year groups are created under People › Groups and year groups.
+            {say(w, `An intake, such as "June 2026". Year groups are created under ${w.People} › Groups and year groups.`)}
           </div>
         </div>
 

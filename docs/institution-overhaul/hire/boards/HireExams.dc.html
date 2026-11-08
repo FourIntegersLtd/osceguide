@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Exams</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav on" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="3"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><div class="eyebrow">Acme Health Trust</div><h1>Exams</h1><p class="desc">What you assess candidates on: the stations and how they are marked.</p></div><div class="acts"><a class="btn" href="HireSchemeVersions.dc.html">Marking schemes</a><a class="btn" href="HireStations.dc.html">Stations</a><a class="btn pri" href="HireNewExam.dc.html">New exam</a></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="card"><div class="th"><span class="f">Exam</span><span style="width:110px">Stations</span><span style="width:150px">Status</span></div>
+<a class="row" href="HireExamDetail.dc.html"><span class="f"><b style="font-weight:500">Band 6 nurse OSCE</b><div class="meta">Formal exam · Marking scheme v3</div></span><span style="width:110px">6</span><span style="width:150px"><span class="chip ok">Available</span></span></a>
+<a class="row" href="HireExamDetail.dc.html"><span class="f"><b style="font-weight:500">Healthcare assistant skills check</b><div class="meta">Training · Marking scheme v1</div></span><span style="width:110px">4</span><span style="width:150px"><span class="chip warn">Draft</span></span></a>
+<a class="row" href="HireExamDetail.dc.html"><span class="f"><b style="font-weight:500">Band 5 recruitment day 2025</b><div class="meta">Formal exam</div></span><span style="width:110px">5</span><span style="width:150px"><span class="chip">Retired</span></span></a></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="empty"><h2>No exams yet</h2>Start from one of ours, or build your own. You need one before you can schedule an assessment.<a class="btn pri" href="HireNewExam.dc.html">New exam</a></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="dlg" style="box-shadow:none;border:1px solid #E3E3E8;max-width:none"><h2>Retire Band 6 nurse OSCE?</h2><p class="desc" style="font-size:14px">You will not be able to schedule new assessments on it. Past results stay as they are.</p><div class="acts"><button class="btn">Keep it</button><button class="btn pri">Retire exam</button></div></div>
+<div class="al bad"><b>This exam is in use</b>An assessment scheduled for 12 November uses it. Cancel or finish that assessment first.</div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/exams</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/exams</code></div>
+<div class="call"><span class="m">PATCH</span><code>{o}/exams/{exam_id}</code></div>
+<div class="call"><span class="m">DELETE</span><code>{o}/exams/{exam_id}</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/exams/{exam_id}/publish</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/exams/{exam_id}/retire</code></div>
+<h2>Refusals it shows</h2><div class="codes"><code>exam_in_use</code><code>exam_not_publishable</code><code>exam_code_taken</code><code>invalid_exam_code</code><code>invalid_exam_settings</code></div>
+<div class="note">Route <code>/app/[w]/authoring/exams</code> · admin · <code>capabilities/authoring</code> · owner content-owner (words come from <code>capabilities/</code> after M5)</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['List', 'Empty', 'Retire / in use'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2 };
+  }
+}
+</script>
+</body>
+</html>

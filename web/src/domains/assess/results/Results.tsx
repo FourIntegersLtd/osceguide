@@ -8,15 +8,18 @@ import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { downloadSittingResults, readSittingReport } from "@/domains/assess/results/api";
 import type { CandidateReport, SittingReport } from "@/domains/assess/results/api";
+import { decidable, hireResultsSubtitle, nextUndecided, releasedSummary, sheetSignature, showsHiringDecision, signOffGate, trainingNotice } from "@/domains/assess/results/hireDecisions";
 import { CandidateDetail, CandidateRow } from "@/domains/assess/results/CandidateCard";
 import { ReleaseAll } from "@/domains/assess/results/ReleaseAll";
+import { SignOffSheet } from "@/domains/assess/results/SignOffSheet";
 import { CohortRanking } from "@/domains/assess/results/CohortRanking";
 import { countsFromReport, sittingNext, sittingSteps, type SittingStepsInput } from "@/domains/assess/sittingSteps";
 import { can, useSession } from "@/foundation/session";
-import { releasable } from "@/domains/assess/results/support";
+import { hiringTally, releasable } from "@/domains/assess/results/support";
 import { boardCard, boardHeadRow, boardPad, boardTile , boardBtn, boardAlert } from "@/foundation/ui/boardKit";
 import { boardTile6, boardTileNumber } from "@/domains/assess/results/resultsChrome";
 import { boardRailStep } from "@/domains/assess/chrome";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * What a course lead reads back after an examination.
@@ -59,6 +62,10 @@ function Report({
   sittingId: string;
   onChanged: () => void;
 }) {
+  const w = useAssessWords();
+  // The hiring decision belongs to an exam only; a training run never shows it.
+  const hire = showsHiringDecision(report.sitting.mode, w);
+  const notice = trainingNotice(report.sitting.mode, w);
   const { hrefFor } = useSurface();
   const { session } = useSession();
   const progress: SittingStepsInput = {
@@ -67,10 +74,16 @@ function Report({
     counts: countsFromReport(report),
     training: report.sitting.mode !== "exam",
     can: { schedule: can(session, "schedule_sittings"), signOff: can(session, "sign_off_results") },
+    words: w,
   };
   const candidates = report.candidates ?? [];
   // Only someone who may release is offered the list to release from; everyone else reads the steps.
   const waiting = progress.can.signOff && !progress.training ? candidates.filter(releasable) : [];
+  const tally = hiringTally(candidates);
+  // The same people nextUndecided can reach: a candidate with no trainee row cannot be decided.
+  const decidableCandidates = decidable(candidates);
+  const gate = hire ? signOffGate(decidableCandidates.length, hiringTally(decidableCandidates).stillToDecide) : null;
+  const allReleased = hire && decidableCandidates.length > 0 && decidableCandidates.every((candidate) => candidate.decision?.released_at != null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   // One candidate's decision is open at a time, below the table, as on the board.
@@ -96,16 +109,18 @@ function Report({
   return (
     <>
       <div>
-        <Link href={hrefFor(`/sittings/${sittingId}`)} className="text-assess-label text-osce-accent">
-          ‹ Sitting
+        <Link href={hrefFor(hire ? "/results" : `/sittings/${sittingId}`)} className="text-assess-label text-osce-accent">
+          {hire ? "‹ Results" : `‹ ${w.sitting.charAt(0).toUpperCase()}${w.sitting.slice(1)}`}
         </Link>
       </div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className={t.assessEyebrow}>{report.sitting.name}</div>
-          <h1 className={t.assessTitle}>Results</h1>
+          {hire ? null : <div className={t.assessEyebrow}>{report.sitting.name}</div>}
+          <h1 className={t.assessTitle}>{hire ? report.sitting.name : "Results"}</h1>
           <p className={t.assessDesc}>
-            {`${report.totals.stations_marked} of ${report.totals.stations} stations marked · ${report.totals.decisions_released} of ${report.totals.candidates} released`}
+            {hire
+              ? hireResultsSubtitle(report.sitting.scheduled_for, candidates.length)
+              : `${report.totals.stations_marked} of ${report.totals.stations} stations marked · ${report.totals.decisions_released} of ${report.totals.candidates} released`}
           </p>
         </div>
         {can(session, "export_results") ? (
@@ -118,7 +133,19 @@ function Report({
       </div>
       {downloadError ? <div role="alert" className={boardAlert("bad")}>{downloadError}</div> : null}
 
-      <OutcomeTiles candidates={candidates} awaitingMarking={report.totals.awaiting_marking} />
+      {notice ? (
+        <div role="status" className={boardAlert("info")}>
+          <b className="block font-semibold">{notice.title}</b>
+          {notice.body}
+        </div>
+      ) : null}
+      {hire ? <HiringTiles candidates={candidates} /> : <OutcomeTiles candidates={candidates} awaitingMarking={report.totals.awaiting_marking} />}
+      {allReleased ? (
+        <div role="status" className={boardAlert("ok")}>
+          <b className="block font-semibold">Results released</b>
+          {releasedSummary(candidates.length, tally)}
+        </div>
+      ) : null}
       {candidates.length === 0 ? (
         <div className={boardPad}>
           <h2 className="text-base font-semibold leading-normal">Nobody has sat this yet.</h2>
@@ -151,9 +178,10 @@ function Report({
           <section aria-label="Candidates" className={`${boardCard} overflow-hidden`}>
             <div className={boardHeadRow}>
               <span className="w-8" />
-              <span className="flex-[1_1_220px]">Candidate</span>
+              <span className="flex-[1_1_220px]">{w.hiring ? w.Trainee : "Candidate"}</span>
               <span className="w-[90px]">Score</span>
-              <span className="w-[110px]">Outcome</span>
+              <span className="w-[110px]">{hire ? "Result" : "Outcome"}</span>
+              {hire ? <span className="w-[110px]">Hiring decision</span> : null}
               <span className="w-[100px]">Status</span>
               <span className="w-[60px]" />
             </div>
@@ -164,11 +192,22 @@ function Report({
                 sittingId={sittingId}
                 candidate={candidate}
                 rating={report.rating ?? null}
+                hire={hire}
                 open={candidate.user_id === openId}
                 onToggle={() => setOpenId(candidate.user_id === openId ? null : candidate.user_id)}
               />
             ))}
           </section>
+          {hire ? (
+            <SignOffSheet
+              orgSlug={orgSlug}
+              sittingId={sittingId}
+              gate={gate}
+              signature={sheetSignature(candidates)}
+              canSign={progress.can.signOff && !allReleased}
+              onChanged={onChanged}
+            />
+          ) : null}
           {opened ? (
             <CandidateDetail
               key={opened.user_id}
@@ -176,7 +215,11 @@ function Report({
               sittingId={sittingId}
               candidate={opened}
               rating={report.rating ?? null}
-              hire={report.sitting.mode === "exam"}
+              hire={hire}
+              exam={report.sitting.mode === "exam"}
+              onBack={hire ? () => setOpenId(null) : undefined}
+              onNext={hire ? () => setOpenId(nextUndecided(candidates, opened.user_id)?.user_id ?? null) : undefined}
+              hasNext={hire && nextUndecided(candidates, opened.user_id) !== null}
               onChanged={onChanged}
             />
           ) : null}
@@ -209,6 +252,27 @@ function OutcomeTiles({
   ];
   return (
     <div role="group" aria-label="Outcomes" className={boardTile6}>
+      {tiles.map((tile) => (
+        <div key={tile.label} className={boardTile}>
+          {tile.label}
+          <b className={boardTileNumber}>{tile.value}</b>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The hiring decisions so far: who is hired, on the reserve list, not hired, and still to decide. */
+function HiringTiles({ candidates }: { candidates: CandidateReport[] }) {
+  const tally = hiringTally(candidates);
+  const tiles = [
+    { label: "Hired", value: tally.hired },
+    { label: "Reserve list", value: tally.reserve },
+    { label: "Not hired", value: tally.notHired },
+    { label: "Still to decide", value: tally.stillToDecide },
+  ];
+  return (
+    <div role="group" aria-label="Hiring decisions" className={boardTile6}>
       {tiles.map((tile) => (
         <div key={tile.label} className={boardTile}>
           {tile.label}

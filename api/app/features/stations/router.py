@@ -5,7 +5,7 @@ editing, publishing and archiving its versions, and correcting a published versi
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
 
@@ -112,7 +112,13 @@ async def list_stations(
     responses=error_responses(Forbidden, errors.VersionNotFound),
 )
 async def read_staff_sections(
-    workspace: OrgStaff, session: Session, version_id: uuid.UUID
+    workspace: OrgStaff,
+    session: Session,
+    version_id: uuid.UUID,
+    audience: Annotated[
+        Literal["candidate", "patient", "examiner", "faculty"] | None,
+        Query(description="Read one audience's sections only. `candidate` never carries hidden material."),
+    ] = None,
 ) -> list[schemas.AudienceSectionRead]:
     """A station version as the staff running a sitting read it: every audience's sections.
 
@@ -120,7 +126,7 @@ async def read_staff_sections(
     examiner's notes and the faculty's own material. Empty for a station bound
     to no template.
     """
-    return await service.staff_sections(session, workspace.org_id, version_id)
+    return await service.staff_sections(session, workspace.org_id, version_id, audience)
 
 
 # Author a new station on this org's own template version.

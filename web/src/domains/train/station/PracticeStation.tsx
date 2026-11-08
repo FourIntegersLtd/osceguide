@@ -74,7 +74,7 @@ export function PracticeStation({
           <StationNotInPlanGate />
         ) : (
           <Alert tone="danger" title="That did not load">
-            <p>{error.message || "Something went wrong."}</p>
+            <p>We could not open this station. Reload the page. If it keeps happening, contact support.</p>
             <Button variant="secondary" size="sm" className="mt-3" onClick={retry}>
               Try again
             </Button>

@@ -105,7 +105,7 @@ export function WorkspaceNavFooter({
           href={workspaceBasePath(PERSONAL_WORKSPACE)}
           className="block px-3 pb-2 text-osce-meta font-medium text-osce-accent hover:text-osce-accent-hover"
         >
-          My practice
+          Training
         </Link>
       ) : isPlatformAdmin(session) ? (
         <Link

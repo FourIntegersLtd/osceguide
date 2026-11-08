@@ -22,6 +22,8 @@ from app.features.tenancy.schemas import AuditRead, OrganizationRead
 is_org_admin = domain.is_org_admin
 is_institution_admin = domain.is_institution_admin
 is_assigned_staff = domain.is_assigned_staff
+may_lead_review = domain.may_lead_review
+TRAINEE_ROLE = domain.TRAINEE_ROLE
 may_read_org = domain.may_read_org
 may_run_circuit = domain.may_run_circuit
 
@@ -60,7 +62,7 @@ async def workspace_org(session: AsyncSession, slug: str, *, now: datetime) -> O
 async def org_ref_by_slug(session: AsyncSession, slug: str) -> OrgSummary | None:
     """The minimal organisation reference other slices use, by slug."""
     org = await repository.organization_by_slug(session, slug)
-    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name)
+    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name, org_type=org.org_type)
 
 
 async def is_partner_org(session: AsyncSession, slug: str) -> bool:
@@ -118,6 +120,7 @@ class OrgSummary:
     id: uuid.UUID
     slug: str
     name: str
+    org_type: str
 
 
 async def password_was_relayed(session: AsyncSession, *, user_id: uuid.UUID, email: str) -> bool:
@@ -128,13 +131,13 @@ async def password_was_relayed(session: AsyncSession, *, user_id: uuid.UUID, ema
 async def org_ref_by_id(session: AsyncSession, org_id: uuid.UUID) -> OrgSummary | None:
     """An organisation's name, for another slice to display."""
     org = await repository.organization_by_id(session, org_id)
-    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name)
+    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name, org_type=org.org_type)
 
 
 async def org_refs_by_ids(session: AsyncSession, org_ids: set[uuid.UUID]) -> dict[uuid.UUID, OrgSummary]:
     """Several organisations' names, in one query."""
     return {
-        org.id: OrgSummary(id=org.id, slug=org.slug, name=org.name)
+        org.id: OrgSummary(id=org.id, slug=org.slug, name=org.name, org_type=org.org_type)
         for org in await repository.organizations_by_ids(session, org_ids)
     }
 
@@ -242,7 +245,8 @@ async def update_organization_details(
     The one write behind the org admin's settings screen and the platform console's edit. A
     name sent as null is not a rename; a contact sent as null clears it.
     """
-    values = {key: value for key, value in values.items() if value is not None or key.startswith("contact_")}
+    clearable = ("contact_", "candidate_seats")
+    values = {key: value for key, value in values.items() if value is not None or key.startswith(clearable)}
     if not values:
         return
     await repository.update_organization(session, org_id, **values)
@@ -364,6 +368,7 @@ def _org_read(org: Any) -> OrganizationRead:
         created_at=org.created_at,
         contract_starts_at=org.contract_starts_at,
         contract_ends_at=org.contract_ends_at,
+        candidate_seats=org.candidate_seats,
         require_staff_mfa=org.require_staff_mfa,
         contact_name=org.contact_name,
         contact_email=org.contact_email,
@@ -399,19 +404,6 @@ async def grant_trainee_membership(session: AsyncSession, org_id: uuid.UUID, use
         return False
     await repository.add_membership(session, org_id=org_id, user_id=user_id, role=domain.TRAINEE_ROLE)
     return True
-
-
-async def revoke_trainee_membership(
-    session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID | None, *, at: datetime
-) -> None:
-    """Revoke only the `trainee` membership; a staff role the same person holds stays."""
-    if user_id is None:
-        return
-    membership = await repository.membership_for_user_in_org(
-        session, org_id, user_id, role=domain.TRAINEE_ROLE
-    )
-    if membership is not None and membership.revoked_at is None:
-        await repository.set_membership_revoked(session, org_id, membership.id, at=at)
 
 
 async def member_user_ids(

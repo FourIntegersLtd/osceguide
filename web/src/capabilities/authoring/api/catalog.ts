@@ -1,3 +1,4 @@
+import { collectPages } from "@/capabilities/authoring/exams/examKind";
 import { platformRequest, type components } from "@/foundation/platform-client";
 import type { AuthoringScope } from "@/capabilities/authoring/api/scope";
 import type { Exam, ExamSettings, Programme } from "@/capabilities/authoring/api/scope";
@@ -118,7 +119,14 @@ export function updateProgramme(
   });
 }
 
-/** One page of an exam's programme's sittings: only the count is read, so one row is asked for. */
+/** Every sitting of the organisation, following the cursor so a long history is not cut at one page. */
+export function listAllSittings(scope: AuthoringScope, signal?: AbortSignal): Promise<S["SittingRead"][]> {
+  return collectPages((cursor) =>
+    platformRequest<S["Page_SittingRead_"]>(`${scope.base}/sittings`, { query: { limit: 100, cursor }, signal }),
+  );
+}
+
+/** One page of a programme's sittings. */
 export function countProgrammeSittings(
   scope: AuthoringScope,
   programmeId: string,

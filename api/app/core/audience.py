@@ -42,7 +42,7 @@ class InvalidAudience(InvalidInput):
     """The visibility and the org/group ids given do not make a coherent audience."""
 
     code = "invalid_audience"
-    default_message = "That audience is not a coherent one"
+    default_message = "Those choices don't work together. Change your selection and try again."
 
 
 class AudienceNotYours(Forbidden):
@@ -54,7 +54,7 @@ class AudienceNotYours(Forbidden):
     """
 
     code = "audience_not_yours"
-    default_message = "You are not a member of that audience"
+    default_message = "You aren't part of that group, so you can't do this."
 
 
 @dataclass(frozen=True)

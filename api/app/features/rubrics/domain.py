@@ -110,7 +110,9 @@ def parse_structure(raw: Mapping[str, Any] | None) -> RubricStructure:
     have would be an instruction the model cannot follow.
     """
     if raw is not None and not isinstance(raw, Mapping):
-        raise InvalidRubric("A rubric structure must be an object.")
+        raise InvalidRubric(
+            "This marking scheme could not be read, so it cannot be used. Check it and try again."
+        )
     if (raw or {}).get("schemaVersion") == validation.SCHEME_VERSION:
         # Compile once; `validate_scheme` also checks the compiled form, so it is not checked again.
         structure = upgrade_structure(raw or {})
@@ -195,13 +197,17 @@ def upgrade_structure(raw: Mapping[str, Any]) -> dict[str, Any]:
     if raw.get("schemaVersion") == validation.SCHEME_VERSION:
         compiled = scheme.compile_v3(raw)
         if compiled.get("schemaVersion") != validation.SCHEMA_VERSION:
-            raise InvalidRubric("This marking scheme could not be read.")
+            raise InvalidRubric(
+                "This marking scheme could not be read, so it cannot be used. Check it and try again."
+            )
         return compiled
     if raw.get("schemaVersion") == validation.SCHEMA_VERSION:
         return dict(raw)
     scale = [str(value) for value in raw.get("scale") or ()]
     if not scale:
-        raise InvalidRubric("A rubric needs a scale: the scores a competency may be given.")
+        raise InvalidRubric(
+            "Add a rating scale so markers know how to rate each Competency, for example Good, Fair and Poor."
+        )
     rating: dict[str, Any] = (
         {"kind": "rag", "field": "score", "scale": list(validation.RAG_SCALE)}
         if sorted(scale) == sorted(validation.RAG_SCALE)
@@ -210,7 +216,7 @@ def upgrade_structure(raw: Mapping[str, Any]) -> dict[str, Any]:
     sections: list[dict[str, Any]] = []
     for raw_domain in _sequence(raw.get("domains"), "domains"):
         if not isinstance(raw_domain, Mapping):
-            raise InvalidRubric("Each domain must be an object.")
+            raise InvalidRubric("This Domain is not set up correctly. Remove it and add it again.")
         sections.append(
             {
                 "kind": "domain",
@@ -227,7 +233,7 @@ def upgrade_structure(raw: Mapping[str, Any]) -> dict[str, Any]:
         )
     for raw_section in _sequence(raw.get("sections"), "sections"):
         if not isinstance(raw_section, Mapping):
-            raise InvalidRubric("Each section must be an object.")
+            raise InvalidRubric("This section is not set up correctly. Remove it and add it again.")
         sections.append({"kind": "field", "field": _v1_section_field(raw_section)})
     return {"schemaVersion": validation.SCHEMA_VERSION, "rating": rating, "sections": sections}
 
@@ -235,10 +241,13 @@ def upgrade_structure(raw: Mapping[str, Any]) -> dict[str, Any]:
 def _v1_competency(raw_competency: Any) -> dict[str, Any]:
     """A v1 competency: its guidance (if the uncommitted v1.5 wording had any) becomes instructions."""
     if not isinstance(raw_competency, Mapping):
-        raise InvalidRubric("Each competency must be an object.")
+        raise InvalidRubric("This Competency is not set up correctly. Remove it and add it again.")
     descriptors = raw_competency.get("descriptors") or {}
     if not isinstance(descriptors, Mapping):
-        raise InvalidRubric(f"Competency {raw_competency.get('id')!r}'s descriptors must be an object.")
+        raise InvalidRubric(
+            f"The descriptions for Competency {raw_competency.get('id')!r} are not set up correctly. Write "
+            f"one short description per level."
+        )
     return {
         "id": raw_competency.get("id"),
         "label": raw_competency.get("label") or raw_competency.get("id"),
@@ -253,7 +262,8 @@ def _v1_section_field(raw_section: Mapping[str, Any]) -> dict[str, Any]:
     section_id = str(raw_section.get("id") or "")
     if kind not in _V1_SECTION_KINDS:
         raise InvalidRubric(
-            f"Section {section_id!r} is a {kind!r}; expected one of {list(_V1_SECTION_KINDS)}."
+            f"Section {section_id!r} has a type we do not recognise ({kind!r}). "
+            f"Use one of: {', '.join(_V1_SECTION_KINDS)}."
         )
     label = str(raw_section.get("label") or section_id)
     if kind == "list":
@@ -262,7 +272,7 @@ def _v1_section_field(raw_section: Mapping[str, Any]) -> dict[str, Any]:
         return {"id": section_id, "label": label, "type": "longText", "role": "summary"}
     schema = raw_section.get("schema")
     if not isinstance(schema, Mapping):
-        raise InvalidRubric(f"Section {section_id!r} is an object and needs a schema describing it.")
+        raise InvalidRubric(f"Section {section_id!r} needs a description of the answers it should collect.")
     upgraded = field_from_schema(section_id, schema, required=True)
     upgraded["label"] = label
     return upgraded
@@ -401,7 +411,7 @@ def _sequence(raw: Any, what: str) -> list[Any]:
     if raw is None:
         return []
     if not isinstance(raw, list | tuple):
-        raise InvalidRubric(f"{what} must be a list.")
+        raise InvalidRubric(f"{what} is not set up correctly. It must be a list.")
     return list(raw)
 
 
@@ -424,16 +434,18 @@ def validate_pacing(raw: Mapping[str, Any] | None) -> dict[str, int]:
         }
     except (KeyError, TypeError, ValueError) as exc:
         raise InvalidRubric(
-            "Pacing needs four whole numbers of seconds: total_seconds, history_seconds, "
-            f"introduction_seconds, safety_net_seconds ({exc})."
+            "The timings need four whole numbers of seconds: total time, history taking, introduction and "
+            "safety netting."
         ) from exc
     if pacing["total_seconds"] <= 0:
-        raise InvalidRubric("A consultation with no time cannot be run.")
+        raise InvalidRubric("The consultation needs a total time of more than 0 seconds.")
     if not 0 < pacing["introduction_seconds"] < pacing["history_seconds"]:
-        raise InvalidRubric("The introduction must end before history taking does.")
+        raise InvalidRubric("The introduction must finish before history taking ends.")
     safety_net_starts_at = pacing["total_seconds"] - pacing["safety_net_seconds"]
     if not pacing["history_seconds"] < safety_net_starts_at < pacing["total_seconds"]:
-        raise InvalidRubric("Safety netting must start after history taking and before the end.")
+        raise InvalidRubric(
+            "Safety netting must begin after history taking ends and before the consultation ends."
+        )
     return pacing
 
 
@@ -475,7 +487,7 @@ def narrow_structure(
         return structure
     unknown = sorted(wanted - {domain.id for domain in structure.domains})
     if unknown:
-        raise InvalidRubric(f"The selection names {unknown}, which this rubric does not define.")
+        raise InvalidRubric(f"The selection includes {unknown}, which this marking scheme does not have.")
     return replace(
         structure,
         sections=tuple(

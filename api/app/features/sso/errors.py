@@ -11,7 +11,7 @@ class SsoNotConfigured(NotFound):
     switched off — the two look identical to an anonymous caller."""
 
     code = "sso_not_configured"
-    default_message = "That organisation does not sign in through an identity provider"
+    default_message = "That organisation doesn't use single sign-on."
 
 
 class SsoLoginUnavailable(Unavailable):
@@ -22,7 +22,7 @@ class SsoLoginUnavailable(Unavailable):
     """
 
     code = "sso_login_unavailable"
-    default_message = "Sign-in through an identity provider is not available here"
+    default_message = "Single sign-on isn't available here."
 
 
 class SsoProviderUnsupported(Unavailable):
@@ -34,7 +34,7 @@ class SsoProviderUnsupported(Unavailable):
     """
 
     code = "sso_provider_unsupported"
-    default_message = "That organisation's sign-in provider is not enabled here"
+    default_message = "Single sign-on isn't switched on for that organisation here."
 
 
 class SsoVerificationFailed(InvalidInput):
@@ -54,7 +54,7 @@ class InvalidSsoBinding(InvalidInput):
     sign-in request with neither a host nor an email given."""
 
     code = "invalid_sso_binding"
-    default_message = "That is not a usable hostname or email domain"
+    default_message = "Enter a website address or email domain, such as example.com."
 
 
 class UnknownSsoProvider(InvalidInput):
@@ -62,7 +62,7 @@ class UnknownSsoProvider(InvalidInput):
     saving a configuration."""
 
     code = "unknown_sso_provider"
-    default_message = "That is not an identity provider this platform knows"
+    default_message = "That sign-in provider isn't supported."
 
 
 class SsoNotConfigurableError(InvalidInput):
@@ -70,7 +70,7 @@ class SsoNotConfigurableError(InvalidInput):
     no issuer — refused before it can lock an institution out."""
 
     code = "sso_not_configurable"
-    default_message = "That combination of settings would leave nobody a way in"
+    default_message = "Those settings would lock everyone out. Keep at least one way to sign in."
 
 
 class SsoOnlyLocksOutPasswordMembers(Conflict):
@@ -78,7 +78,7 @@ class SsoOnlyLocksOutPasswordMembers(Conflict):
     `details` carries how many and which, and the save is repeated with the confirmation."""
 
     code = "sso_only_password_members"
-    default_message = "Some members sign in with a password and would be locked out"
+    default_message = "Some members sign in with a password and would be locked out by this change."
 
 
 class SsoBindingTaken(Conflict):
@@ -87,18 +87,18 @@ class SsoBindingTaken(Conflict):
     as a constraint violation after."""
 
     code = "sso_binding_taken"
-    default_message = "Another organisation already claims that host or email domain"
+    default_message = "Another organisation already uses that website address or email domain."
 
 
 class SamlConnectionNotFound(NotFound):
     """No SAML connection by that id, or one that is switched off."""
 
     code = "saml_connection_not_found"
-    default_message = "No such SAML connection"
+    default_message = "We couldn't find that SAML connection"
 
 
 class InvalidSamlConnection(InvalidInput):
     """A SAML connection that cannot work: a missing URL, or a certificate that is not one."""
 
     code = "invalid_saml_connection"
-    default_message = "That SAML connection is not usable"
+    default_message = "That single sign-on connection isn't working. Check its settings."

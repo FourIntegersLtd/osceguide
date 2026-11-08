@@ -1,5 +1,6 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
 import { Select, Textarea, FoldSection } from "@/foundation/ui";
 import { useEffect, useState } from "react";
 import {
@@ -30,6 +31,7 @@ export function TemplateGenerationPanel({
   profileGuidesLoading?: boolean;
   profileGuidesError?: string | null;
 }) {
+  const w = useAssessWords();
   const [profiles, setProfiles] = useState<StationGenerationProfileSummary[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -124,7 +126,7 @@ export function TemplateGenerationPanel({
             }
           >
             <option value="patient">the patient</option>
-            <option value="examiner">the examiner (viva)</option>
+            <option value="examiner">the {w.examiner} (viva)</option>
           </Select>
         </div>
         {profileKey !== "custom" && (systemPrompt?.trim() || profileGuidesLoading) ? (

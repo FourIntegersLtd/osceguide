@@ -12,7 +12,7 @@ test("one sentence pair separates feedback from a debrief", () => {
 test("the debrief explainer is British English and says what Athena reads", () => {
   assert.equal(
     DEBRIEF_INTRO.default,
-    "Athena analyses your consultation transcript and your feedback, then talks it through with you in a spoken session focused on what to change.",
+    "Athena (our AI examiner) reads what you said and the feedback you got, then talks it through with you in a spoken session focused on what to change.",
   );
   assert.doesNotMatch(Object.values(DEBRIEF_INTRO).join(" "), /analyz/i);
 });

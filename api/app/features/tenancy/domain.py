@@ -27,11 +27,18 @@ END_USER_ROLES = frozenset({TRAINEE_ROLE, "practice_user"})
 
 ASSIGNED_STAFF_ROLE = "supervisor"
 
+# Hire's lead assessor: an assessor (`supervisor`) who also writes the lead review that settles a
+# station's marks. The screen says "Lead assessor" on hire and "GP lead" on an institution; only an
+# employer organisation may seat one (`EMPLOYER_ONLY_ROLES`), so an institution's roles are unchanged.
+LEAD_ASSESSOR_ROLE = "gp_lead"
+ASSIGNED_STAFF_ROLES = frozenset({ASSIGNED_STAFF_ROLE, LEAD_ASSESSOR_ROLE})
+EMPLOYER_ONLY_ROLES = frozenset({LEAD_ASSESSOR_ROLE})
+
 # Every role that may legitimately be written to a membership row. A role
 # outside this set is not a permission the product has — it is a typo or an
 # attempt to invent one — and is refused rather than stored. `platform_admin`
 # is deliberately absent: it is a property of the user, never an org role.
-GRANTABLE_ROLES = ORG_ADMIN_ROLES | END_USER_ROLES | {ASSIGNED_STAFF_ROLE}
+GRANTABLE_ROLES = ORG_ADMIN_ROLES | END_USER_ROLES | ASSIGNED_STAFF_ROLES
 
 # How far a role reaches, so a grant can be checked against the granter's own
 # standing. An org admin may seat people at or below their own tier and no
@@ -45,6 +52,7 @@ _ROLE_RANK: dict[str, int] = {
     "institution_admin": 3,
     "partner_admin": 2,
     ASSIGNED_STAFF_ROLE: 1,
+    LEAD_ASSESSOR_ROLE: 1,
     "trainee": 0,
     "practice_user": 0,
 }
@@ -99,7 +107,12 @@ def is_institution_admin(role: str | None) -> bool:
 
 
 def is_assigned_staff(role: str | None) -> bool:
-    return normalize_role(role) == ASSIGNED_STAFF_ROLE
+    return normalize_role(role) in ASSIGNED_STAFF_ROLES
+
+
+def may_lead_review(role: str | None) -> bool:
+    """Who writes the lead review of a station: an institution administrator or a lead assessor."""
+    return is_institution_admin(role) or normalize_role(role) == LEAD_ASSESSOR_ROLE
 
 
 def is_trainee(role: str | None) -> bool:

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Alert, AsyncBoundary, EmptyState } from "@/foundation/ui";
+import { Alert, AsyncBoundary, ButtonLink, EmptyState } from "@/foundation/ui";
 import { useAsync, useEventStream } from "@/foundation/hooks";
 import { activeMembership, useSession } from "@/foundation/session";
 import { capabilitiesFor, useSurface } from "@/capabilities";
@@ -9,6 +9,7 @@ import { LiveTurnBanner } from "@/domains/assess/trainee/LiveTurnBanner";
 import { boardChip } from "@/foundation/ui/boardKit";
 import {
   mySittingsStreamPath,
+  readMyResult,
   readMySittings,
   type MySitting,
   type MySittings,
@@ -26,11 +27,21 @@ import {
 } from "@/domains/assess/trainee/support";
 import {
   TraineeHead,
+  TraineeHero,
   TraineeList,
   TraineePage,
   TraineeRowLink,
 } from "@/domains/assess/trainee/traineeBoard";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { sittingWhen } from "@/domains/assess/sittingWords";
+import {
+  BROWSER_NOTICE,
+  homeDesc,
+  homeEmpty,
+  homeHero,
+  releasedEyebrow,
+} from "@/domains/assess/trainee/hireCopy";
+import { isOver } from "@/domains/assess/trainee/support";
 
 /**
  * What a rostered person sees: everything they are down to sit, pushed live.
@@ -45,6 +56,7 @@ import { useAssessWords } from "@/domains/assess/useAssessWords";
  */
 export function TraineeHome({ slotId = null }: { slotId?: string | null }) {
   const { session } = useSession();
+  const w = useAssessWords();
   const { orgSlug } = useSurface();
   const initial = useAsync(
     (signal) => readMySittings(orgSlug, signal),
@@ -53,12 +65,14 @@ export function TraineeHome({ slotId = null }: { slotId?: string | null }) {
   const stream = useEventStream<MySittings>(mySittingsStreamPath(orgSlug));
   const data = stream.data ?? initial.data;
   const name = firstName(session?.user.name);
+  const org = activeMembership(session)?.org_name ?? null;
 
   return (
-    <TraineePage label="My training">
+    <TraineePage label={w.MyTraining}>
       <TraineeHead
-        eyebrow={activeMembership(session)?.org_name ?? greeting(new Date())}
-        title={name ? `Hello, ${name}.` : "Hello."}
+        eyebrow={org ?? greeting(new Date())}
+        title={w.hiring ? w.MyTraining : name ? `Hello, ${name}.` : "Hello."}
+        desc={w.hiring ? homeDesc(org ?? "your employer") : undefined}
         acts={
           <span className={boardChip(stream.connected ? "ok" : "neutral")}>
             {stream.connected ? "Live" : "Updating"}
@@ -67,7 +81,7 @@ export function TraineeHome({ slotId = null }: { slotId?: string | null }) {
       />
 
       <AsyncBoundary state={initial}>
-        {() => <Overview sittings={data?.items ?? []} slotId={slotId} />}
+        {() => <Overview sittings={data?.items ?? []} slotId={slotId} org={org ?? "your employer"} />}
       </AsyncBoundary>
     </TraineePage>
   );
@@ -76,15 +90,30 @@ export function TraineeHome({ slotId = null }: { slotId?: string | null }) {
 function Overview({
   sittings,
   slotId,
+  org,
 }: {
   sittings: readonly MySitting[];
   slotId: string | null;
+  org: string;
 }) {
   const w = useAssessWords();
   const { hrefFor } = useSurface();
   const { surface } = useSurface();
   const live = liveSittings(sittings);
-  const { current, past } = splitFinished(sortSittings(sittings));
+  const split = splitFinished(sortSittings(sittings));
+  const { past } = split;
+  // An employer's candidate gets one hero for what is next; the list keeps only what the hero does not name.
+  const hero = w.hiring ? homeHero(sittings) : null;
+  // The released result's own date says "Released today" or just "Released".
+  const releasedOn = useAsync(
+    (signal) => (hero?.kind === "result" ? readMyResult(hero.path.split("/").pop() ?? "", signal) : Promise.resolve(null)),
+    [hero?.kind, hero?.path],
+  );
+  const current =
+    hero?.kind === "upcoming"
+      ? split.current.filter((s) => !hero.path.endsWith(`/${s.id}`))
+      : split.current;
+  const hasAny = split.current.length > 0 || past.length > 0;
   // An emailed join link named a slot, and only the list this person has
   // already loaded can say which sitting owns it. Not finding it is an answer
   // rather than a fault: the slot was taken off them, or the link was never
@@ -117,11 +146,32 @@ function Overview({
         )
       ) : null}
       <LiveTurnBanner sittings={live} />
+      {hero ? (
+        <TraineeHero
+          eyebrow={hero.kind === "result" ? releasedEyebrow(releasedOn.data?.released_at) : hero.eyebrow}
+          title={hero.title}
+          size="lg"
+          action={
+            <ButtonLink themeType="b2b" variant="commit" href={hrefFor(hero.path)}>
+              {hero.label}
+            </ButtonLink>
+          }
+        >
+          {hero.meta}
+        </TraineeHero>
+      ) : null}
+      {w.hiring && (hero?.kind === "upcoming" || live.length > 0) ? (
+        <Alert tone="info">{BROWSER_NOTICE}</Alert>
+      ) : null}
 
-      {current.length === 0 && past.length === 0 ? (
+      {!hasAny ? (
         <EmptyState
-          title="You are not booked on anything yet"
-          description={`When your organisation adds you, your ${w.sittings} appear here, and you are told when one opens.`}
+          {...(w.hiring
+            ? homeEmpty(org)
+            : {
+                title: "You are not booked on anything yet",
+                description: `When your organisation adds you, your ${w.sittings} appear here, and you are told when one opens.`,
+              })}
         />
       ) : (
         <>
@@ -158,12 +208,17 @@ function Overview({
 
 function SittingRow({ sitting }: { sitting: MySitting }) {
   const { hrefFor } = useSurface();
+  const w = useAssessWords();
 
   return (
     <TraineeRowLink
       href={hrefFor(`/trainee/sittings/${sitting.id}`)}
       title={sitting.name}
-      meta={`${summaryLine(sitting)} · ${continueLabel(sitting)}`}
+      meta={
+        w.hiring && isOver(sitting)
+          ? sittingWhen(sitting.scheduled_for)
+          : `${summaryLine(sitting, w)} · ${continueLabel(sitting, w)}`
+      }
     >
       {sitting.can_join ? (
         <span className={boardChip("ok")}>Open now</span>

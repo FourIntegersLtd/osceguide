@@ -15,28 +15,35 @@ import { humanise } from "@/foundation/format";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
-import { readOrgDashboard, readSupervisorCircuits, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
+import { readOrgDashboard, readSupervisorCircuits, type LiveCircuit, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
 import { BoardRow, BoardSection, RowChevron, RowText } from "@/domains/assess/dashboard/BoardParts";
-import { HireAttention, HireHeader } from "@/domains/assess/dashboard/HireParts";
+import { HireHome } from "@/domains/assess/dashboard/HireHome";
+import { ExamClock } from "@/capabilities/attempt-runner";
+import { HomeHero, SittingCard, StatTiles, WeekStrip } from "@/domains/assess/dashboard/HomeParts";
 import { LiveNow } from "@/domains/assess/dashboard/LiveNow";
 import { SetupAssistant } from "@/domains/assess/dashboard/SetupAssistant";
 import { NextCircuit, SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
 import {
   attentionFromResults,
+  circuitStatus,
   comingUp,
   dateEyebrow,
   dateTile,
+  homeFocus,
   modeLabel,
   notJoinedItem,
   sittingTally,
+  runningLine,
   todayGreeting,
   todaySentence,
+  weekDays,
   type AttentionItem,
 } from "@/domains/assess/dashboard/support";
 import { assistantSteps, NEW_EXAM_PATH, SCHEDULE_SITTING_PATH, setupComplete, setupTiles } from "@/domains/assess/dashboard/setupSteps";
 import { readResultsIndex } from "@/domains/assess/results/api";
-import { StationsToReview, useStationsToReview } from "@/domains/assess/results/StationsToReview";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { StationsToReview, StationsToReviewList, useStationsToReview } from "@/domains/assess/results/StationsToReview";
+import { slotReviewPath } from "@/domains/assess/sessions/support";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /**
  * The institution's home screen.
@@ -63,6 +70,7 @@ export function OrgDashboard({ orgSlug }: { orgSlug: string }) {
 function Body({ data, orgSlug, admin, runs }: { data: Data; orgSlug: string; admin: boolean; runs: boolean }) {
   const w = useAssessWords();
   const { session } = useSession();
+  if (w.hiring) return <HireHome data={data} orgSlug={orgSlug} admin={admin} />;
   const settingUp = admin && !setupComplete(assistantSteps(data.setup, w));
 
   if (settingUp) {
@@ -110,7 +118,6 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   const schedules = can(session, "schedule_sittings");
   const upcoming = comingUp(data.recent_sittings ?? []);
   const [running, setRunning] = useState(0);
-  const [statusHost, setStatusHost] = useState<HTMLElement | null>(null);
   const mayDecide = can(session, "sign_off_results");
   const results = useAsync((signal) => (mayDecide ? readResultsIndex(orgSlug, signal) : Promise.resolve(null)), [orgSlug, mayDecide]);
   const notJoined = can(session, "manage_team") ? notJoinedItem(data.counts.invited_not_joined, w) : null;
@@ -118,17 +125,15 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   const circuits = useAsync((signal) => (runs ? readSupervisorCircuits(orgSlug, signal) : Promise.resolve(null)), [orgSlug, runs]);
   const circuitRows = circuits.data?.items ?? [];
   const earlier = (data.recent_sittings ?? []).filter((sitting) => sitting.status !== "scheduled");
+  // The calm home (not a supervisor-only view): one hero, a week strip, linked tiles, rich rows.
+  const calm = !(runs && !mayDecide);
+  const [liveFirst, setLiveFirst] = useState<LiveCircuit | null>(null);
+  const review = useStationsToReview(calm && runs ? orgSlug : null);
 
   const scheduleAction = data.setup.ready_to_run ? (
-    w.hiring ? (
-      <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={boardBtn("primary")}>
-        {w.scheduleSitting}
-      </Link>
-    ) : (
-      <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={boardBtn("primary")}>
-        {w.scheduleSitting}
-      </Link>
-    )
+    <Link href={hrefFor(SCHEDULE_SITTING_PATH)} className={boardBtn("primary")}>
+      {w.scheduleSitting}
+    </Link>
   ) : (
     <div className="flex flex-col items-end gap-1">
       <Button themeType="b2b" variant="commit" disabled aria-describedby="schedule-blocked">
@@ -146,8 +151,6 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
   const header =
     runs && !mayDecide ? (
       <SupervisorHeader orgSlug={orgSlug} eyebrow={w.Supervisor} />
-    ) : w.hiring ? (
-      <HireHeader name={data.name} words={w} action={schedules ? scheduleAction : null} />
     ) : (
       <PageHead
         eyebrow={dateEyebrow(new Date())}
@@ -158,7 +161,7 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
     );
   // What is happening now comes before what exists: on an examination morning it is the
   // only thing anybody wants.
-  const live = runs ? <LiveNow orgSlug={orgSlug} onCount={setRunning} statusHost={statusHost} /> : null;
+  const live = runs ? <LiveNow orgSlug={orgSlug} onCount={setRunning} /> : null;
   const needs = mayDecide || notJoined ? <NeedsAttention loading={results.loading} error={results.error} items={attention} /> : null;
 
   const comingUpSection = (
@@ -201,28 +204,74 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
       {runs && !circuits.loading && !circuits.error ? <SupervisorCircuits rows={circuitRows} sayWhenEmpty={!admin} /> : null}
     </>
   );
-  const lists = (
-    <>
-      {mine}
-      {comingUpSection}
-      {recent}
-    </>
-  );
 
-  if (w.hiring && admin) {
-    // The hire overview board draws the header, the running hero, what needs a decision and three counts.
-    // Today's lists of assessments stay, under them.
+  if (calm) {
+    const first = review.stations[0];
+    const focus = homeFocus(
+      {
+        running: liveFirst ? { circuitId: liveFirst.circuit_id, sittingName: liveFirst.sitting_name, line: runningLine(liveFirst, w) } : null,
+        stationsToReview: review.stations.length,
+        firstReviewPath: first ? slotReviewPath(first) : null,
+        attention,
+        next: upcoming[0] ?? null,
+        canSchedule: schedules,
+        readyToRun: data.setup.ready_to_run,
+      },
+      w,
+      { schedule: SCHEDULE_SITTING_PATH, newExam: NEW_EXAM_PATH },
+    );
+    const quietLink =
+      !schedules || focus.kind === "schedule" || focus.kind === "setup"
+        ? null
+        : data.setup.ready_to_run
+          ? { label: w.scheduleSitting, href: SCHEDULE_SITTING_PATH }
+          : { label: `Set up an ${w.exam}`, href: NEW_EXAM_PATH };
+    const menu = [
+      { label: `All ${w.sittings}`, href: hrefFor("/sittings") },
+      ...(mayDecide ? [{ label: "Results", href: hrefFor("/results") }] : []),
+      ...(admin ? [{ label: w.Trainees, href: hrefFor("/trainees") }] : []),
+    ];
+    const rows = [...upcoming, ...earlier];
     return (
-      <>
-        <section aria-label="Overview" className={cn(b2bTokens.assessPage, "!w-auto")}>
-          {header}
-          {live}
-          {needs}
-          <Counts data={data} />
-        </section>
-        <div ref={setStatusHost} className="empty:hidden" />
-        <div className={cn(b2bTokens.assessPage, "!w-auto")}>{lists}</div>
-      </>
+      <div className={b2bTokens.assessPage}>
+        {runs ? <LiveNow orgSlug={orgSlug} bare onCount={setRunning} onFirst={setLiveFirst} /> : null}
+        <HomeHero
+          eyebrow={dateEyebrow(new Date())}
+          greeting={todayGreeting(name, new Date())}
+          focus={focus}
+          href={hrefFor}
+          clock={
+            liveFirst && liveFirst.remaining_seconds !== null && liveFirst.remaining_seconds !== undefined ? (
+              <>
+                <ExamClock plain secondsLeft={liveFirst.remaining_seconds} label={circuitStatus(liveFirst)} tick paused={liveFirst.paused} /> left
+              </>
+            ) : null
+          }
+          quietLink={quietLink}
+          menu={menu}
+        />
+        {attention.length > 0 || results.error ? <NeedsAttention loading={false} error={results.error} items={attention} /> : null}
+        <WeekStrip days={weekDays(new Date(), upcoming)} href={hrefFor} sittingsLabel={w.sittings} />
+        <StationsToReviewList circuits={review.circuits} />
+        {rows.length > 0 ? (
+          <BoardSection
+            title={w.Sittings}
+            aside={
+              <Link href={hrefFor("/sittings")} className={cn(b2bTokens.b2bLink, "text-assess-label")}>
+                {`All ${w.sittings}`}
+              </Link>
+            }
+          >
+            {rows.map((sitting, index) => (
+              <SittingCard key={sitting.id} sitting={sitting} w={w} href={hrefFor(`/sittings/${sitting.id}`)} last={index === rows.length - 1} />
+            ))}
+          </BoardSection>
+        ) : null}
+        {runs && circuits.error ? <Alert tone="danger">{errorMessage(circuits.error)}</Alert> : null}
+        {runs && !circuits.loading && !circuits.error ? <NextCircuit rows={circuitRows} /> : null}
+        {runs && !circuits.loading && !circuits.error ? <SupervisorCircuits rows={circuitRows} sayWhenEmpty={!admin} /> : null}
+        {admin ? <StatTiles tiles={statTiles(data, w)} /> : null}
+      </div>
     );
   }
   if (runs && !mayDecide) {
@@ -255,6 +304,16 @@ function Today({ data, orgSlug, admin, runs, name }: { data: Data; orgSlug: stri
       </div>
     </>
   );
+}
+
+function statTiles(data: Data, w: ReturnType<typeof useAssessWords>) {
+  return [
+    ...setupTiles(data.counts, w).map((tile) => ({
+      ...tile,
+      label: tile.label === `${w.Exams} ready` ? `${w.Exams} ready to schedule` : tile.path === "/team" ? w.Supervisors : tile.label,
+    })),
+    { label: w.Sittings, value: data.counts.sittings, path: "/sittings" },
+  ];
 }
 
 function SittingRow({ sitting, first }: { sitting: NonNullable<Data["recent_sittings"]>[number]; first: boolean }) {
@@ -290,11 +349,8 @@ function SittingRow({ sitting, first }: { sitting: NonNullable<Data["recent_sitt
  */
 function NeedsAttention({ loading, error, items }: { loading: boolean; error: unknown; items: AttentionItem[] }) {
   const { hrefFor } = useSurface();
-  const hiring = useAssessWords().hiring;
   if (loading) return <Spinner />;
   if (error) return <Alert tone="danger">{errorMessage(error)}</Alert>;
-  if (hiring) return <HireAttention items={items} />;
-
   return (
     <BoardSection title="Needs your attention" aside={<span className={b2bTokens.assessMeta}>Oldest first</span>}>
       {items.length === 0 ? (

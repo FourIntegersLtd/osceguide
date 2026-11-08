@@ -269,3 +269,30 @@ async def test_the_onboarding_scenes_are_offered_to_the_browser(client: AsyncCli
 
 async def test_the_scenes_route_needs_somebody_signed_in(client: AsyncClient) -> None:
     assert (await client.get("/api/v1/assistant/onboarding-scenes")).status_code == 401
+
+
+async def test_knowledge_chat_lifts_the_idle_timeout_for_its_model_call(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    from unittest.mock import patch
+
+    from sqlalchemy import text
+
+    from app.features.assistant.schemas import KnowledgeReply
+
+    learner = await make_actor("knowledge-idle@osceguide.com")
+    seen: list[str] = []
+
+    async def answer(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        seen.append((await db_session.execute(text("show idle_in_transaction_session_timeout"))).scalar_one())
+        return KnowledgeReply(reply="ok")
+
+    with patch("app.features.assistant.service_knowledge.answer", new=answer):
+        res = await client.post(
+            "/api/v1/help/knowledge-chat",
+            headers=bearer(learner),
+            json={"exam_code": "sca", "messages": [{"role": "user", "content": "Hypertension?"}]},
+        )
+
+    assert res.status_code == 200, res.text
+    assert seen == ["25min"]

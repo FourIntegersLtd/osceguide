@@ -7,7 +7,7 @@ class GenerationUnavailable(AppError):
     """Raised when no OpenAI API key is configured, so a platform admin cannot generate content here."""
 
     code = "generation_unavailable"
-    default_message = "Content generation is not configured on this environment"
+    default_message = "Content generation isn't available right now."
 
 
 class GenerationEmpty(AppError):

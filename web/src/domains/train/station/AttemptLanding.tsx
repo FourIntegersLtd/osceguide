@@ -53,8 +53,8 @@ export function AttemptLanding({ attemptId }: { attemptId: string }) {
 
   if (destination?.kind === "unknown") {
     return (
-      <Alert tone="warning" title="We could not find where this attempt was sat">
-        <p>Its practice session or station may have been removed. Your other attempts are in your history.</p>
+      <Alert tone="warning" title="We could not open this attempt">
+        <p>Its practice session or station may have been removed. Go back to your sessions and open it from there. Your other attempts are in your history.</p>
       </Alert>
     );
   }

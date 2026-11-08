@@ -6,22 +6,14 @@ import { VoiceRoom } from "@/foundation/livekit";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import type { ObserverRoom } from "@/domains/assess/sessions/useCircuitRun";
 import { assessMeta } from "@/foundation/ui/b2bTokens";
-import { boardPad, boardChip } from "@/foundation/ui/boardKit";
-import { ObserverVideoGrid } from "@/domains/assess/sessions/ObserverVideoGrid";
-import { cardTitle } from "@/domains/assess/chrome";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { RailSection } from "@/domains/assess/sessions/RailSection";
 
 /**
- * Listening in on a running station — subscribe-only in an **exam**, where the
- * backend token carries no publish permission at all: a candidate cannot be
- * prompted mid-consultation and the transcript stays a record of what they
- * said to the patient alone.
- *
- * A **training** circuit's grant relaxes that on purpose
- * (`sittings/service_join.py:observer_token`), and `RoomGrant.can_publish`
- * says so — the retiring runner let a supervisor demonstrate on camera while
- * a trainee practised, and a training circuit carries no result a prompted
- * answer could corrupt. `ObserverVideoGrid` renders only then; the text-only
- * occupant list below is what an exam circuit still gets.
+ * Listening in on a running **exam** station: subscribe-only, because the backend token carries no
+ * publish permission at all. A candidate cannot be prompted mid-consultation and the transcript stays
+ * a record of what they said to the patient alone. A training circuit has a room instead
+ * (`room/SupervisorRoom`).
  */
 export function ObserverPanel({
   data,
@@ -30,37 +22,21 @@ export function ObserverPanel({
   data: CircuitConsole;
   observer: ObserverRoom;
 }) {
+  const w = useAssessWords();
   const circuit = data.circuit;
   const live = circuit.started_at !== null && circuit.ended_at === null;
 
   return (
-    <div className={boardPad}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className={cardTitle}>The room</h2>
-        <span className={boardChip(observer.grant ? "ok" : "neutral")}>
-          {observer.grant ? "Listening" : "Not connected"}
-        </span>
-      </div>
+    <RailSection id="room" title="Listen in" hint={observer.grant ? "Listening" : undefined}>
       {observer.failure ? <Alert tone="danger">{observer.failure}</Alert> : null}
       <p className={assessMeta}>
-        Listening in is subscribe-only: you can hear the consultation and cannot be heard in it. Nothing you do here
-        reaches the candidate or the patient.
+        Hear the consultation live. The candidate and patient cannot hear you.
       </p>
-      {observer.grant
-        ? (() => {
-            const canPublish = observer.grant.can_publish === true;
-            return (
-              <VoiceRoom
-                grant={observer.grant}
-                audio={canPublish}
-                video={canPublish}
-                onDisconnected={() => observer.leave()}
-              >
-                {canPublish ? <ObserverVideoGrid /> : <Occupants />}
-              </VoiceRoom>
-            );
-          })()
-        : null}
+      {observer.grant ? (
+        <VoiceRoom grant={observer.grant} audio={false} video={false} onDisconnected={() => observer.leave()}>
+          <Occupants />
+        </VoiceRoom>
+      ) : null}
       {observer.grant ? (
         <Button themeType="b2b" variant="secondary" className="self-start" onClick={observer.leave}>
           Stop listening
@@ -72,13 +48,13 @@ export function ObserverPanel({
           className="self-start"
           isLoading={observer.joining}
           disabled={!live}
-          title={live ? undefined : "The circuit is not running"}
+          title={live ? undefined : `Available while the ${w.circuit} is running`}
           onClick={() => observer.join()}
         >
           Listen in
         </Button>
       )}
-    </div>
+    </RailSection>
   );
 }
 
@@ -95,17 +71,17 @@ function Occupants() {
     <ul>
       <Occupant
         label="The patient"
-        detail={agents.length > 0 ? "In the room" : "Not in the room yet"}
+        detail={agents.length > 0 ? "Here" : "Not here yet"}
         speaking={agents.some((agent) => agent.isSpeaking)}
       />
       {people.length === 0 ? (
-        <Occupant label="The candidate" detail="Not in the room yet" speaking={false} />
+        <Occupant label="The candidate" detail="Not here yet" speaking={false} />
       ) : (
         people.map((participant) => (
           <Occupant
             key={participant.sid}
             label={participant.name || "The candidate"}
-            detail="In the room"
+            detail="Here"
             speaking={participant.isSpeaking}
           />
         ))

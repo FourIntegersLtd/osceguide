@@ -1,3 +1,4 @@
+import { DEMO_MAILTO } from "@/foundation/support";
 import { FiArrowRight } from "react-icons/fi";
 import { LOGIN_PATH } from "@/foundation/attribution/partnerConstants";
 import { Eyebrow, IconTile, SectionHead, SiteButtonLink } from "@/foundation/ui";
@@ -8,7 +9,6 @@ import { B2bMarketingScreenshot } from "../components/B2bMarketingScreenshot";
 import { InstitutionsHeroCircuitShowcase } from "../components/InstitutionsHeroCircuitShowcase";
 import {
   BUYER_TYPES,
-  DEMO_MAILTO,
   EXAM_BULLETS,
   HOW_IT_WORKS_STEPS,
   PLATFORM_FEATURES,

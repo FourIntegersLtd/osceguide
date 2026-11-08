@@ -9,6 +9,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,6 +65,8 @@ def _circuit_ref(circuit: Circuit) -> CircuitRef:
         room_name=circuit.room_name,
         agent_dispatched_at=circuit.agent_dispatched_at,
         revision=circuit.revision,
+        room_closed_at=circuit.room_closed_at,
+        open_floor=circuit.open_floor,
         started_at=circuit.started_at,
         ended_at=circuit.ended_at,
         phase=circuit.phase,
@@ -90,6 +93,7 @@ def _slot_ref(slot: Slot) -> SlotRef:
         started_at=slot.started_at,
         ended_at=slot.ended_at,
         exam_completed_at=slot.exam_completed_at,
+        assessor_user_id=slot.assessor_user_id,
     )
 
 
@@ -330,6 +334,23 @@ async def live_circuits(session: AsyncSession, org_id: uuid.UUID) -> list[Circui
             )
         )
     return details
+
+
+async def next_sitting(session: AsyncSession, org_id: uuid.UUID, *, after: datetime) -> SittingRef | None:
+    """The soonest sitting still to come, for the board that has nothing running."""
+    sitting = await repository_reads.next_scheduled_sitting(session, org_id, after=after)
+    return _sitting_ref(sitting) if sitting else None
+
+
+async def candidates_by_circuit(
+    session: AsyncSession, org_id: uuid.UUID, circuit_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, list[uuid.UUID]]:
+    """Each circuit's candidates (users), once each, in the order their first station falls."""
+    grouped = await repository.slots_for_circuits(session, org_id, circuit_ids)
+    return {
+        circuit_id: list(dict.fromkeys(slot.trainee_id for slot in slots))
+        for circuit_id, slots in grouped.items()
+    }
 
 
 async def run_history(

@@ -19,6 +19,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
+from app.core.errors import InvalidInput
 from app.features.identity import service as identity
 from app.features.notifications import service as notifications
 from app.features.tenancy import domain, repository, repository_platform
@@ -79,6 +80,12 @@ async def update_organization(
         values.get("contract_ends_at", org.contract_ends_at),
     ):
         raise ContractDatesOutOfOrder()
+    new_type = values.get("org_type")
+    leaving_employer = new_type is not None and new_type != "employer" and org.org_type == "employer"
+    if leaving_employer and await repository.count_memberships(
+        session, org_id, roles=sorted(domain.EMPLOYER_ONLY_ROLES)
+    ):
+        raise InvalidInput("Remove this organisation's lead assessors before it stops being an employer.")
     if "require_staff_mfa" in values:
         required = bool(values.pop("require_staff_mfa"))
         await set_require_staff_mfa(session, org_id, required=required, actor=actor, now=now)

@@ -72,6 +72,8 @@ async function pages(browser: Browser, viewport: { width: number; height: number
 interface TabSpec {
   key: string;
   label: string;
+  /** The board's own tab name, when the app's differs. */
+  boardLabel?: string;
   hideBoard: string;
   hideApp: string;
   /** Board rows removed by their text (the board draws alternatives side by side). */
@@ -94,7 +96,8 @@ const TABS: TabSpec[] = [
   },
   {
     key: "provisioning",
-    label: "Provisioning",
+    label: "Automatic user sync",
+    boardLabel: "Provisioning",
     // Exception 4.
     hideBoard: ".al.warn,.card.pad>.meta:last-child{display:none!important}.card .row .meta{visibility:hidden}.row .chip{visibility:visible}",
     hideApp: "",
@@ -116,7 +119,7 @@ for (const tab of TABS) {
     test(`Settings ${tab.label} matches Settings, ${viewport.name}`, async ({ browser }) => {
       const { board, app } = await pages(browser, viewport);
       if (tab.hideBoard) await board.addStyleTag({ content: tab.hideBoard });
-      await board.locator(".tab", { hasText: new RegExp(`^${tab.label}$`) }).click();
+      await board.locator(".tab", { hasText: new RegExp(`^${tab.boardLabel ?? tab.label}$`) }).click();
       for (const text of tab.dropBoardText ?? []) await board.locator(".card.pad > .row", { hasText: text }).evaluateAll((rows) => rows.forEach((r) => r.remove()));
       if (tab.boardRowsAfterDrop !== undefined) expect(await board.locator(".card.pad > .row").count()).toBe(tab.boardRowsAfterDrop);
       if (tab.hideApp) await app.addStyleTag({ content: tab.hideApp });

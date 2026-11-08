@@ -2,7 +2,7 @@
 
 import { filtersActive, NO_SITTING_FILTERS, type SittingFilters } from "@/domains/assess/support";
 import { boardPad, boardInput, boardLabel } from "@/foundation/ui/boardKit";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 
 /** Kind, exam, dates and name search, applied by the server so they cover every page (status is the tab strip). */
 export function SittingFilterBar({

@@ -171,6 +171,29 @@ async def _entitle(session: AsyncSession, user_id) -> None:  # type: ignore[no-u
     await session.flush()
 
 
+async def test_the_recording_job_lifts_the_idle_timeout_before_transcribing(
+    client: AsyncClient, make_actor, db_session: AsyncSession, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import text
+
+    from app.features.peer_practice import service_feedback
+
+    row = await stopped_pair(client, make_actor, db_session, "rec-idle")
+    await _entitle(db_session, row.doctor_user_id)
+    _fake_recording_in_the_bucket(monkeypatch)
+    seen: list[str] = []
+
+    async def diarise(raw):  # type: ignore[no-untyped-def]
+        seen.append((await db_session.execute(text("show idle_in_transaction_session_timeout"))).scalar_one())
+        return await _two_turns(raw)
+
+    await service_feedback.build_feedback(
+        db_session, row.id, now=datetime.now(UTC), transcriber=FakeTranscriber(), diarise=diarise
+    )
+
+    assert seen == ["25min"]
+
+
 async def test_a_recorded_consultation_becomes_an_attempt_the_doctor_can_read(
     client: AsyncClient, make_actor, db_session: AsyncSession, monkeypatch
 ) -> None:  # type: ignore[no-untyped-def]

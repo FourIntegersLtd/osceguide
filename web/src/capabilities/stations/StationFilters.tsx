@@ -18,7 +18,13 @@ import type { StationLibraryState } from "@/capabilities/stations/useStationLibr
  * the browser happens to hold. That is the retiring list's own shape: its table
  * searched on submit and cleared the filter the moment the box was emptied.
  */
-export function StationFilters({ library }: { library: StationLibraryState }) {
+export function StationFilters({
+  library,
+  maxWidthClass = "max-w-md",
+}: {
+  library: StationLibraryState;
+  maxWidthClass?: string;
+}) {
   const typed = library.search.trim() !== "";
 
   return (
@@ -28,7 +34,7 @@ export function StationFilters({ library }: { library: StationLibraryState }) {
       onSubmit={library.applySearch}
       placeholder="Search stations by name..."
       ariaLabel="Search stations by name"
-      maxWidthClass="max-w-md"
+      maxWidthClass={maxWidthClass}
       trailing={
         typed ? (
           <>

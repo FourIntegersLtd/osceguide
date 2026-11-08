@@ -1,5 +1,8 @@
 "use client";
 
+import { say } from "@/domains/assess/roster/rosterWords";
+import { LuBan } from "react-icons/lu";
+import { RowAction, RowActions } from "@/foundation/ui";
 import { useCallback, useMemo, useState } from "react";
 import { AsyncBoundary, b2bTokens as t, cn } from "@/foundation/ui";
 import { Chip, Note, card, fields, h2, row, th } from "@/domains/assess/ui";
@@ -13,7 +16,7 @@ import {
   type Entitlement,
 } from "@/domains/assess/roster/api";
 import { displayName, shortDay, sortTrainees } from "@/domains/assess/roster/support";
-import { useAssessWords } from "@/domains/assess/useAssessWords";
+import { useAssessWords } from "@/capabilities/assess-words";
 import { boardBtn, boardPadWide, boardInput, boardLabel, boardButtonSmall } from "@/foundation/ui/boardKit";
 
 /**
@@ -105,7 +108,7 @@ export function AccessPanel({
             void grant();
           }}
         >
-          <h2 className={h2}>Grant exam access</h2>
+          <h2 className={h2}>Give exam access</h2>
           <p className={cn(t.assessMeta, "m-0")}>
             {`Lets ${w.trainees} practise between ${w.sittings}. They do not need it to take an exam they are booked on.`}
           </p>
@@ -157,7 +160,7 @@ export function AccessPanel({
         aria-label="Search grants"
         value={search}
         onChange={(event) => setSearch(event.target.value)}
-        placeholder="Search by person or exam…"
+        placeholder={say(w, "Search by person or exam…")}
         className={cn(boardInput, "max-w-[360px]")}
       />
 
@@ -203,6 +206,7 @@ function GrantsTable({
   canManage: boolean;
   onRevoke: (entitlement: Entitlement) => Promise<void>;
 }) {
+  const w = useAssessWords();
   /* A grant names a user account; the roster names a trainee. They meet at
      `Trainee.user_id`, which is null until the person has signed in — so a
      grant to somebody who has not yet accepted their invitation shows as the
@@ -218,8 +222,8 @@ function GrantsTable({
   );
 
   const whoLabel = useCallback(
-    (entitlement: Entitlement) => byUserId.get(entitlement.user_id)?.email ?? "Not on this roster",
-    [byUserId],
+    (entitlement: Entitlement) => byUserId.get(entitlement.user_id)?.email ?? say(w, "Not on this roster"),
+    [byUserId, w],
   );
 
   if (entitlements.length === 0) {
@@ -251,9 +255,11 @@ function GrantsTable({
           <span className="w-[90px]">{shortDay(entitlement.starts_at)}</span>
           <span className="w-[110px]">{entitlement.ends_at ? shortDay(entitlement.ends_at) : "No end date"}</span>
           {canManage && entitlement.live ? (
-            <button type="button" className={boardButtonSmall} onClick={() => void onRevoke(entitlement)}>
-              Revoke
-            </button>
+            <RowActions>
+              <RowAction label="Revoke" onClick={() => void onRevoke(entitlement)}>
+                <LuBan className="h-4 w-4" aria-hidden />
+              </RowAction>
+            </RowActions>
           ) : (
             <span className="w-20" />
           )}

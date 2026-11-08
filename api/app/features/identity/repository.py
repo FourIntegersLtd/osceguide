@@ -370,12 +370,18 @@ async def create_reset_token(
     token_hash: str,
     expires_at: datetime,
     organization_id: uuid.UUID | None = None,
+    membership_role: str | None = None,
 ) -> PasswordResetToken:
     """Mint a fresh reset link for this account. The caller is responsible
     for spending any earlier unused link first, so only the newest works.
-    `organization_id` is set only on an invitation, to say who sent it."""
+    `organization_id` is set only on an invitation, to say who sent it, and `membership_role`
+    to say which seat it was for."""
     token = PasswordResetToken(
-        user_id=user_id, token_hash=token_hash, expires_at=expires_at, organization_id=organization_id
+        user_id=user_id,
+        token_hash=token_hash,
+        expires_at=expires_at,
+        organization_id=organization_id,
+        membership_role=membership_role,
     )
     session.add(token)
     return token
@@ -383,15 +389,20 @@ async def create_reset_token(
 
 async def pending_invitations_expiring_between(
     session: AsyncSession, *, window_start: datetime, window_end: datetime
-) -> list[tuple[User, str, uuid.UUID | None]]:
+) -> list[tuple[User, str, uuid.UUID | None, str | None]]:
     """Each waiting invitee with the hash of the unused link that ends inside the window,
-    and the organisation that link names.
+    the organisation that link names and the seat it was for.
 
     Waiting means no password yet, password sign-in not switched off, and the account not
     closed. The hash is what the outbox remembers the original email under.
     """
     stmt = (
-        select(User, PasswordResetToken.token_hash, PasswordResetToken.organization_id)
+        select(
+            User,
+            PasswordResetToken.token_hash,
+            PasswordResetToken.organization_id,
+            PasswordResetToken.membership_role,
+        )
         .join(PasswordResetToken, PasswordResetToken.user_id == User.id)
         .where(
             PasswordResetToken.used_at.is_(None),
@@ -402,7 +413,7 @@ async def pending_invitations_expiring_between(
             User.closed_at.is_(None),
         )
     )
-    return [(user, token_hash, org_id) for user, token_hash, org_id in (await session.execute(stmt)).all()]
+    return [tuple(row) for row in (await session.execute(stmt)).all()]
 
 
 async def reset_token_by_hash(session: AsyncSession, token_hash: str) -> PasswordResetToken | None:
@@ -412,22 +423,29 @@ async def reset_token_by_hash(session: AsyncSession, token_hash: str) -> Passwor
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def mark_reset_token_used(session: AsyncSession, *, token_id: uuid.UUID, at: datetime) -> None:
-    """Spend this one reset link so it cannot be redeemed a second time."""
+async def mark_unused_reset_tokens_used(
+    session: AsyncSession, *, user_id: uuid.UUID, organization_id: uuid.UUID | None, at: datetime
+) -> None:
+    """Spend the links this account has not used yet that came from `organization_id`
+    (None: the ones that name no organisation).
+
+    Called when a fresh one is minted for the same person from that same source, so its last
+    email is the only live one. Another organisation's invitation is not the sender's to spend.
+    """
+    same_source = (
+        PasswordResetToken.organization_id.is_(None)
+        if organization_id is None
+        else PasswordResetToken.organization_id == organization_id
+    )
     await session.execute(
-        update(PasswordResetToken).where(PasswordResetToken.id == token_id).values(used_at=at)
+        update(PasswordResetToken)
+        .where(PasswordResetToken.user_id == user_id, PasswordResetToken.used_at.is_(None), same_source)
+        .values(used_at=at)
     )
 
 
-async def mark_unused_reset_tokens_used(session: AsyncSession, *, user_id: uuid.UUID, at: datetime) -> None:
-    """Spend every link this account has not used yet.
-
-    Called when a fresh one is minted for the same person, so the last email is
-    the only live one. The table does not record which link was an invitation
-    and which a reset — they are the same kind of credential — so this spends
-    them together, which is the safe direction: it can strand a link nobody has
-    clicked, never leave two ways into an account open at once.
-    """
+async def mark_all_reset_tokens_used(session: AsyncSession, *, user_id: uuid.UUID, at: datetime) -> None:
+    """Spend every link this account has not used yet, whichever organisation sent it."""
     await session.execute(
         update(PasswordResetToken)
         .where(PasswordResetToken.user_id == user_id, PasswordResetToken.used_at.is_(None))

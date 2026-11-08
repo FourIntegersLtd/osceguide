@@ -155,7 +155,7 @@ export function MockDetail({ setId }: { setId: string }) {
                 <B2CEmptyState
                   icon={HiOutlineLockClosed}
                   title="Nothing to review in this session"
-                  description="This session is from a past subscription. It was never attempted, so there is no feedback or transcript to review, and reattempts are not available."
+                  description="This session is from a plan that has ended, and you never started it. There is nothing to review. Renew your plan to practise again."
                 />
               ) : exam === null ? (
                 <B2CEmptyState

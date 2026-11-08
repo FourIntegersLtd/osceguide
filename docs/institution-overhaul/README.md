@@ -202,3 +202,4 @@ Ask few questions; record judgement calls below. Phase 6 (money) is merged after
 | 7 Docs | merged | product guide checked | guide republish pending |
 | Browser verification | partial | verify/RESULTS.md | re-run on final main; staff import and training retry not walked |
 | Final 41-board audit | fixes merged | audit table | invitation preview (migration 8d2f4b6a1c93) held for user security read |
+| Hire arm build (2026-11-08) | built, uncommitted | npm run ci green, ownership guard green, reviewers run | 32 boards; "Rotation" is the hire word for circuit; judgement calls and api-limited follow-ups in hire/INVENTORY.md |

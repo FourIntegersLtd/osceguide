@@ -223,7 +223,12 @@ class LegacyExchangeRequest(BaseModel):
 
 
 class RefreshRequest(BaseModel):
+    """`active_org_slug` is the workspace the caller was last in. Absent means the default;
+    null means the person's own practice. It is a request, not a claim: the server keeps it only
+    if the person still holds that membership."""
+
     refresh_token: str
+    active_org_slug: str | None = None
 
 
 class LogoutRequest(BaseModel):
@@ -242,9 +247,12 @@ class PasswordResetRequest(BaseModel):
 
 
 class InvitationLookup(BaseModel):
-    """What an invitation link may say before anyone signs in: who sent it, and nothing else."""
+    """What an invitation link may say before anyone signs in: who sent it, its kind, and the role
+    on offer (None if it seats nobody)."""
 
     organisation_name: str
+    org_type: str
+    role: str | None
 
 
 class PasswordResetConfirm(BaseModel):

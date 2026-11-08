@@ -6,6 +6,8 @@ import { revokeSession } from "@/foundation/platform-client/revokeSession";
 import {
   clearSessionCookies,
   readSessionCookies,
+  readTokenClaims,
+  writeAccessCookies,
   writeSessionCookies,
 } from "@/foundation/platform-client/sessionCookies";
 
@@ -26,8 +28,40 @@ interface StoreBody {
   expires_in?: unknown;
 }
 
-/** Store a pair the platform just issued. */
+/** Who a token names, or null. */
+function tokenSubject(token: string | undefined): string | null {
+  const sub = readTokenClaims(token)?.sub;
+  return typeof sub === "string" && sub ? sub : null;
+}
+
+/**
+ * Only this app's own script may store a session. A cross-site form can post
+ * text, urlencoded or multipart without a preflight and would log the victim
+ * into the attacker's account (login CSRF), so the body must be declared JSON
+ * and an Origin, when the browser sends one, must be this host. Callers with
+ * no Origin (server-side, test harnesses) are not a browser-CSRF vector.
+ */
+function isSameOriginJson(request: NextRequest): boolean {
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) return false;
+  const origin = request.headers.get("origin");
+  if (origin === null) return true;
+  try {
+    return new URL(origin).host === (request.headers.get("host") ?? request.nextUrl.host);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Store what the platform just issued: a full pair (sign-in, refresh chain
+ * start) or, from a workspace switch, an access token alone. The switch
+ * continues the refresh chain the cookie already holds, so it is refused when
+ * there is no such cookie rather than minting a session out of a bare token.
+ */
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  if (!isSameOriginJson(request)) {
+    return NextResponse.json({ code: "forbidden", message: "Cross-site session writes are refused" }, { status: 403 });
+  }
   let body: StoreBody;
   try {
     body = (await request.json()) as StoreBody;
@@ -38,18 +72,35 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const accessToken = typeof body.access_token === "string" ? body.access_token : null;
   const refreshToken = typeof body.refresh_token === "string" ? body.refresh_token : null;
   const expiresIn = typeof body.expires_in === "number" ? body.expires_in : null;
-  if (!accessToken || !refreshToken || expiresIn === null) {
+  if (!accessToken || expiresIn === null) {
     return NextResponse.json(
       { code: "invalid_request", message: "Expected a token pair" },
       { status: 400 },
     );
   }
 
-  return writeSessionCookies(new NextResponse(null, { status: 204 }), {
-    accessToken,
-    refreshToken,
-    expiresAt: Date.now() + expiresIn * 1000,
-  });
+  const expiresAt = Date.now() + expiresIn * 1000;
+  const reply = new NextResponse(null, { status: 204 });
+  if (refreshToken) return writeSessionCookies(reply, { accessToken, refreshToken, expiresAt });
+
+  const held = readSessionCookies(request);
+  if (!held.refreshToken) {
+    return NextResponse.json(
+      { code: "invalid_request", message: "No session to continue" },
+      { status: 400 },
+    );
+  }
+  // The switch must continue the chain it came from. Another tab may have
+  // signed in as somebody else since; storing this token would put one person's
+  // access beside another person's refresh chain.
+  const subject = tokenSubject(accessToken);
+  if (!subject || subject !== tokenSubject(held.accessToken)) {
+    return NextResponse.json(
+      { code: "session_changed", message: "The signed-in account changed" },
+      { status: 409 },
+    );
+  }
+  return writeAccessCookies(reply, { accessToken, expiresAt });
 }
 
 /**

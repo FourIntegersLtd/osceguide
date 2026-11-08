@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Station feedback</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Candidate</div></div></div>
+<a class="nav" href="HireCandidateHome.dc.html">My assessments</a><a class="nav on" href="HireCandidateResult.dc.html">Results</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="2"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><a class="meta" href="HireCandidateResult.dc.html">Band 6 nurse assessment</a><h1>Station 3: Discharge planning</h1><p class="desc">What your assessor saw, and what to work on.</p></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="card"><div class="th"><span class="f">Domain</span><span style="width:120px">Rating</span></div>
+<div class="row"><span class="f">Clinical assessment</span><span style="width:120px"><span class="chip ok">Green</span></span></div>
+<div class="row"><span class="f">Communication with the carer</span><span style="width:120px"><span class="chip live">Red</span></span></div>
+<div class="row"><span class="f">Safety and escalation</span><span style="width:120px"><span class="chip warn">Amber</span></span></div></div>
+<div class="card pad"><h2>Your assessor's feedback</h2><p class="desc" style="font-size:15px">You planned the medicines well. Check the carer understands each change: ask them to tell it back to you.</p></div>
+<div class="acts"><button class="btn">Read the transcript</button></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="empty"><h2>Feedback is not ready yet</h2>Acme Health Trust releases feedback with your result. You will get an email when it is ready.<a class="btn pri" href="HireCandidateHome.dc.html">Back to my assessments</a></div></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>/me/slots/{id}/review</code></div>
+<div class="call"><span class="m">GET</span><code>/attempts/{id}/transcript</code></div>
+<div class="meta">What shows follows the scheme's Feedback tab (Shown / Hidden, Tone). Never the hiring decision.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>result_not_released</code><code>review_not_found</code><code>slot_not_found</code><code>attempt_not_yours</code></div>
+<div class="note">Routes <code>/app/[w]/trainee/reviews/[id]</code>, <code>attempts/[id]</code> · candidate · owner institution-owner (feedback text: marking-owner)</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Released', 'Not released'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1 };
+  }
+}
+</script>
+</body>
+</html>

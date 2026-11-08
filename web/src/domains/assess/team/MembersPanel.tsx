@@ -1,6 +1,10 @@
 "use client";
 
-import { roleLabel } from "@/foundation/session/roles";
+import { LuBan, LuRotateCcw, LuSend, LuUserCog } from "react-icons/lu";
+import { ActionMenu, type ActionMenuItem } from "@/foundation/ui";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { hasCode } from "@/foundation/platform-client";
+import { shortDay } from "@/domains/assess/roster/support";
 import { useSession } from "@/foundation/session";
 import { useState } from "react";
 import { b2bTokens as t, cn } from "@/foundation/ui";
@@ -17,17 +21,18 @@ import {
   type Membership,
 } from "@/domains/assess/team/api";
 import {
-  ASSIGNABLE_ROLES,
-  ROLE_CHOICE_HELP,
+  assignableRoles,
   bulkRevokeFailure,
   isActive,
   isAwaitingInvite,
   isOwner,
   resendSummary,
   revokableStaff,
-  staffCountLabel,
-  revokeLead,
-  staffRevokeTitle,
+  assessorStatus,
+  lastAdminMessage,
+  roleHelp,
+  staffRoleLabel,
+  teamCopy,
 } from "@/domains/assess/team/support";
 import { boardBtn, boardPadWide, boardInput, boardLabel, boardButtonSmall } from "@/foundation/ui/boardKit";
 
@@ -59,6 +64,8 @@ export function MembersPanel({
   /** Opens the Add people sheet on Staff, from the empty state. */
   onInviteStaff: () => void;
 }) {
+  const w = useAssessWords();
+  const copy = teamCopy(w);
   const [pending, setPending] = useState<Pending>(null);
   const [role, setRole] = useState<string>("supervisor");
   const [busy, setBusy] = useState(false);
@@ -105,7 +112,7 @@ export function MembersPanel({
         revokable.map((member) => member.id),
       );
       const done = results.filter((result) => result.outcome === "revoked").length;
-      setNotice(`Revoked access for ${done} of ${results.length} staff.`);
+      setNotice(copy.bulkDone(done, results.length));
       setSelected(new Set());
       setConfirmingBulk(false);
       pages.state.reload();
@@ -167,10 +174,10 @@ export function MembersPanel({
     try {
       if (pending.kind === "role") {
         await changeMemberRole(orgSlug, pending.member.id, role);
-        setNotice(`${who} is now ${roleLabel(role)}.`);
+        setNotice(`${who} is now ${staffRoleLabel(role, w)}.`);
       } else if (pending.kind === "revoke") {
         await revokeMembership(orgSlug, pending.member.id);
-        setNotice(`Revoked access for ${who}.`);
+        setNotice(`Access removed for ${who}.`);
       } else {
         await restoreMembership(orgSlug, pending.member.id);
         setNotice(`Restored access for ${who}.`);
@@ -178,7 +185,7 @@ export function MembersPanel({
       setPending(null);
       pages.state.reload();
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(w.hiring && hasCode(cause, "last_admin") ? lastAdminMessage(w) : errorMessage(cause));
     } finally {
       setBusy(false);
     }
@@ -193,7 +200,7 @@ export function MembersPanel({
       <div className="flex flex-wrap items-center gap-3">
         {rows.length > 0 || query ? (
           <span className={t.assessEyebrow}>
-            {staffCountLabel(rows.length)}
+            {copy.count(rows.length)}
             {pages.hasMore ? "+" : ""}
           </span>
         ) : null}
@@ -202,8 +209,8 @@ export function MembersPanel({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search staff…"
-          aria-label="Search staff"
+          placeholder={copy.search}
+          aria-label={copy.searchAria}
         />
         {canManage && awaiting.length > 0 ? (
           <button type="button" className={boardBtn()} disabled={resendingAll} onClick={() => resendAll()}>
@@ -228,7 +235,7 @@ export function MembersPanel({
                 setConfirmingBulk(true);
               }}
             >
-              Revoke access
+              {w.hiring ? copy.revoke : "Revoke access"}
             </button>
             <button type="button" className="text-assess-label text-osce-accent hover:text-osce-accent-hover" onClick={() => setSelected(new Set())}>
               Clear
@@ -250,21 +257,21 @@ export function MembersPanel({
 
       {pages.state.loading && !pages.state.data ? (
         <p className="text-osce-body text-osce-ink-500" role="status">
-          Loading staff…
+          {copy.loading}
         </p>
       ) : rows.length === 0 ? (
         pages.state.error ? null : query ? (
           <div className={boardPadWide}>
             <div className={t.assessMeta}>Search with no match</div>
-            <div>No staff match &ldquo;{query}&rdquo;.</div>
+            <div>{copy.noMatch(query)}</div>
           </div>
         ) : (
           <div className={boardPadWide}>
-            <h2 className={h2}>No staff yet</h2>
-            <p className={cn(t.assessMeta, "m-0")}>Invite a supervisor so somebody can run a circuit.</p>
+            <h2 className={h2}>{copy.emptyTitle}</h2>
+            <p className={cn(t.assessMeta, "m-0")}>{copy.emptyBody}</p>
             {canManage ? (
               <button type="button" className={cn(boardBtn("primary"), "self-start")} onClick={onInviteStaff}>
-                Invite staff
+                {copy.invite}
               </button>
             ) : null}
           </div>
@@ -273,10 +280,10 @@ export function MembersPanel({
         <div role="table" className={card}>
           <div role="row" className={th}>
             {canManage ? <span className="w-4" /> : null}
-            <span className="flex-[1_1_220px]">Email</span>
+            <span className="flex-[1_1_220px]">{copy.person}</span>
             <span className="w-[100px]">Role</span>
-            <span className="w-[90px]">Circuits led</span>
-            <span className="w-[90px]">Access</span>
+            <span className="w-[90px]">{copy.led}</span>
+            <span className="w-[90px]">{copy.access}</span>
             {canManage ? <span>Actions</span> : null}
           </div>
           {rows.map((member) => (
@@ -293,15 +300,19 @@ export function MembersPanel({
               <span className="flex-[1_1_220px]">
                 {member.email ?? "No email address on file"}{" "}
                 {member.email ? null : <span className="font-mono text-assess-chip text-osce-ink-500">{member.user_id.slice(0, 8)}</span>}
-                {member.invited ? <Chip>Invited</Chip> : null}
+                {member.invited && !w.hiring ? <Chip>Invited</Chip> : null}
               </span>
-              <span className="w-[100px]">{roleLabel(member.role)}</span>
+              <span className="w-[100px]">{staffRoleLabel(member.role, w)}</span>
               <span className="w-[90px] tabular-nums">{member.circuits_led}</span>
               <span className="w-[90px]">
-                <Chip tone={isActive(member) ? "ok" : "warn"}>{isActive(member) ? "● Active" : "● Revoked"}</Chip>
+                {w.hiring ? (
+                  <HireStatus member={member} />
+                ) : (
+                  <Chip tone={isActive(member) ? "ok" : "warn"}>{isActive(member) ? "● Active" : "● Revoked"}</Chip>
+                )}
               </span>
               {canManage ? (
-                <RowActions member={member} onAction={open} onResend={resend} resending={resendingId === member.id} />
+                <MemberActions member={member} onAction={open} onResend={resend} resending={resendingId === member.id} />
               ) : null}
             </div>
           ))}
@@ -318,20 +329,20 @@ export function MembersPanel({
 
       {!canManage ? (
         <div className={boardPadWide}>
-          <div className={t.assessMeta}>Supervisor (read only)</div>
+          <div className={t.assessMeta}>{copy.readOnly}</div>
           <div>Contact an owner or admin to change who has access.</div>
         </div>
       ) : null}
 
       <Dialog
         open={confirmingBulk}
-        title={staffRevokeTitle(revokable.length)}
-        lead="They lose access to this organisation. Nothing they have marked is deleted. The owner, you and the last admin are left out of the selection; if a revoke would still leave no admin, nobody is revoked."
+        title={copy.revokeBulk(revokable.length)}
+        lead={copy.revokeBulkLead}
         error={error}
         busy={busy}
         tone="danger"
-        commitLabel="Revoke access"
-        busyLabel="Revoking…"
+        commitLabel={w.hiring ? copy.revoke : "Revoke access"}
+        busyLabel={copy.revoking}
         onClose={() => setConfirmingBulk(false)}
         onCommit={() => void revokeSelected()}
       />
@@ -357,29 +368,29 @@ export function MembersPanel({
             onChange={(event) => setRole(event.target.value)}
             className={boardInput}
           >
-            {ASSIGNABLE_ROLES.map((value) => (
+            {assignableRoles(w).map((value) => (
               <option key={value} value={value}>
-                {roleLabel(value)}
+                {staffRoleLabel(value, w)}
               </option>
             ))}
           </select>
-          <p className={hint}>{ROLE_CHOICE_HELP}</p>
+          <p className={hint}>{roleHelp(w, w.hiring ? role : undefined)}</p>
         </div>
       </Dialog>
 
       <Dialog
         open={pending?.kind === "revoke"}
-        title="Revoke access"
+        title={w.hiring ? copy.revoke : "Revoke access"}
         lead={
           pending
-            ? revokeLead(pending.member.email, pending.member.user_id === selfId)
+            ? copy.revokeOne(pending.member.email, pending.member.user_id === selfId)
             : ""
         }
         error={error}
         busy={busy}
         tone="danger"
-        commitLabel="Revoke access"
-        busyLabel="Revoking…"
+        commitLabel={w.hiring ? copy.revoke : "Revoke access"}
+        busyLabel={copy.revoking}
         onClose={() => setPending(null)}
         onCommit={() => void commit()}
       />
@@ -403,7 +414,18 @@ export function MembersPanel({
   );
 }
 
-function RowActions({
+/** The Assessors board's status cell: Active, Invited, or Removed with the day. */
+function HireStatus({ member }: { member: Membership }) {
+  const status = assessorStatus(member);
+  return (
+    <>
+      <Chip tone={status.tone === "neutral" ? "warn" : status.tone}>{status.label}</Chip>
+      {status.label === "Removed" && member.revoked_at ? <span className={t.assessMeta}> {shortDay(member.revoked_at)}</span> : null}
+    </>
+  );
+}
+
+function MemberActions({
   member,
   onAction,
   onResend,
@@ -414,43 +436,32 @@ function RowActions({
   onResend: (member: Membership) => void;
   resending: boolean;
 }) {
+  const w = useAssessWords();
   const owner = isOwner(member);
-  return (
-    <div className="flex flex-wrap items-center gap-2.5">
-      {!owner && isActive(member) && member.invited ? (
-        <button
-          type="button"
-          className={boardButtonSmall}
-          disabled={resending}
-          title="Only sent if that person has not set up their account yet."
-          onClick={() => onResend(member)}
-        >
-          {resending ? "Resending…" : "Resend invitation"}
-        </button>
-      ) : null}
-      {!owner ? (
-        <button type="button" className={boardButtonSmall} onClick={() => onAction({ kind: "role", member })}>
-          Change role
-        </button>
-      ) : null}
-      {isActive(member) ? (
-        <button
-          type="button"
-          className={boardButtonSmall}
-          disabled={owner}
-          // Whether this is the last administrator is the server's call (409
-          // `last_admin`), shown in the dialog: a count of the loaded page
-          // was wrong whenever the team ran past one page.
-          title={owner ? "An organisation's owner cannot be revoked here" : undefined}
-          onClick={() => onAction({ kind: "revoke", member })}
-        >
-          Revoke
-        </button>
-      ) : (
-        <button type="button" className={boardButtonSmall} onClick={() => onAction({ kind: "restore", member })}>
-          Restore
-        </button>
-      )}
-    </div>
+  const items: ActionMenuItem[] = [];
+  if (!owner && isActive(member) && member.invited) {
+    items.push({
+      label: "Resend invitation",
+      icon: <LuSend className="h-4 w-4" />,
+      hint: resending ? "Sending..." : "Only sent if that person has not set up their account yet.",
+      disabled: resending,
+      onSelect: () => onResend(member),
+    });
+  }
+  if (!owner) items.push({ label: "Change role", icon: <LuUserCog className="h-4 w-4" />, onSelect: () => onAction({ kind: "role", member }) });
+  // Whether this is the last administrator is the server's call (409 `last_admin`), shown in the dialog:
+  // a count of the loaded page was wrong whenever the team ran past one page.
+  items.push(
+    isActive(member)
+      ? {
+          label: w.hiring ? "Remove access" : "Revoke",
+          icon: <LuBan className="h-4 w-4" />,
+          tone: "danger",
+          hint: owner ? w.hiring ? "An organisation's owner cannot be removed here" : "An organisation's owner cannot be revoked here" : undefined,
+          disabled: owner,
+          onSelect: () => onAction({ kind: "revoke", member }),
+        }
+      : { label: "Restore", icon: <LuRotateCcw className="h-4 w-4" />, onSelect: () => onAction({ kind: "restore", member }) },
   );
+  return <ActionMenu label={`Actions for ${member.email ?? "this person"}`} items={items} />;
 }

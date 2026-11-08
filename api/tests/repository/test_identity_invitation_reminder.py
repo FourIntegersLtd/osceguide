@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity import repository as identity_repo
+from app.features.identity.models import PasswordResetToken
 from app.features.identity.service_invitations import invite_user, send_due_invitation_reminders
 from app.features.identity.tokens import _hash_sync
 from app.features.notifications.models import OutboundMessage
@@ -55,3 +56,16 @@ async def test_an_invitation_already_answered_or_expired_is_not_reminded(db_sess
     assert await send_due_invitation_reminders(db_session, now=NOW + timedelta(days=5)) == 1
     assert await send_due_invitation_reminders(db_session, now=NOW + timedelta(days=9)) == 0
     assert [m.recipient for m in await reminders(db_session)] == ["late@example.com"]
+
+
+async def test_a_reminder_carries_the_seat_the_invitation_was_for(db_session: AsyncSession) -> None:
+    await invite_user(
+        db_session, email="lead@example.com", name="Lead", invited_to="Acme", now=NOW, role="gp_lead"
+    )
+    assert await send_due_invitation_reminders(db_session, now=NOW + timedelta(days=5)) == 1
+    live = (
+        await db_session.execute(
+            select(PasswordResetToken.membership_role).where(PasswordResetToken.used_at.is_(None))
+        )
+    ).scalars()
+    assert list(live) == ["gp_lead"]

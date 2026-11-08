@@ -18,6 +18,7 @@ from app.core.db import savepoint
 from app.core.document_text import UnreadableDocument, extract_text
 from app.core.errors import AppError
 from app.core.events import publish_after_commit, user_topic
+from app.core.jobs import allow_long_idle
 from app.core.logging import get_logger
 from app.core.settings import Settings
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
@@ -153,6 +154,7 @@ async def run_template_job(session: AsyncSession, import_id: uuid.UUID, *, setti
 
     async def draft() -> dict[str, object]:
         """Ask the model for the template and store it as a draft."""
+        await allow_long_idle(session)
         drafted = await station_import_drafting.draft_template_structure(source_text, settings=settings)
         template = await templates.create_template(
             session, org_id, title=drafted.title, exam_code=exam_code, structure=drafted.structure
@@ -189,6 +191,7 @@ async def run_station_job(session: AsyncSession, import_id: uuid.UUID, *, settin
 
     async def draft() -> dict[str, object]:
         """Ask the model to copy the document into the template, and store the draft station."""
+        await allow_long_idle(session)
         template_version = await templates.bindable_version(session, org_id, template_version_id)
         structure = dict(template_version.structure)
         transcribed = await station_import_drafting.transcribe_station(

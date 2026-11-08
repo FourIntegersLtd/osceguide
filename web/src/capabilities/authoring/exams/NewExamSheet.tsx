@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssessWords, type AssessWords } from "@/capabilities/assess-words";
+import { newExamNameLead, newExamTimingsLead, schemeWayTitle, startFromOurs } from "@/capabilities/authoring/lib/authoringCopy";
 import type { ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -68,6 +70,9 @@ function ResumedSheet({ examId }: { examId: string }) {
 }
 
 function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: Programme | null }) {
+  const w = useAssessWords();
+  const HEADINGS = headings(w);
+  const ours = startFromOurs(w);
   const { hrefFor } = useSurface();
   const router = useRouter();
   const sheet = useNewExam(first, firstProgramme);
@@ -90,7 +95,7 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
         title="New exam"
         back={{ href: examsListPath(hrefFor), label: "Close" }}
       />
-      <div data-testid="new-exam-body" className="flex w-[calc(100%+2rem)] max-w-[792px] flex-col gap-6 self-center bg-osce-canvas px-4 pb-16 pt-8">
+      <div data-testid="new-exam-body" className="-mx-6 flex w-[calc(100%+3rem)] max-w-[792px] flex-col gap-6 self-start px-6 pb-16 pt-8">
       <Strip step={step} onPick={sheet.setStep} />
       <div>
         <div className={t.assessEyebrow}>{`Step ${step + 1} of 4`}</div>
@@ -100,6 +105,12 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
       <div className={step === 1 ? "flex flex-col gap-[18px]" : step === 3 ? `${boardCardClipped} p-7` : `${boardCardClipped} flex flex-col gap-[18px] p-7`}>
         {step === 0 ? (
           <>
+            {ours && !first ? (
+              <Link href={hrefFor("/programmes")} className="flex flex-col gap-1 rounded-board border border-osce-accent bg-assess-selected-bg px-[18px] py-4 text-left text-ink no-underline">
+                <span className="text-assess-desc font-medium !leading-[normal]">{ours.title}</span>
+                <span className="text-assess-meta text-ink-subtle">{ours.body}</span>
+              </Link>
+            ) : null}
             <BoardField label="Exam name">
               <input
                 value={draft.name}
@@ -107,18 +118,6 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
                 className={boardInput}
                 placeholder="Paediatrics block"
               />
-            </BoardField>
-            <BoardField label="Short code">
-              <input
-                value={draft.code}
-                disabled={exam !== null}
-                onChange={(e) => setDraft({ ...draft, code: e.target.value })}
-                className={boardInput}
-                placeholder="PAED"
-              />
-              <span className="block text-assess-meta text-ink-subtle">
-                Letters, numbers and dashes. It can&apos;t be the same as another of your exams.
-              </span>
             </BoardField>
           </>
         ) : null}
@@ -148,7 +147,7 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
                       )}
                     />
                     <span className="flex min-w-0 flex-col">
-                      <span className="text-assess-desc font-medium !leading-[normal]">{option.title}</span>
+                      <span className="text-assess-desc font-medium !leading-[normal]">{schemeWayTitle(option.id, option.title, w)}</span>
                       <span className="truncate text-assess-meta text-ink-subtle">
                         {option.id === "use"
                           ? versions.length > 0
@@ -221,7 +220,7 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
         {step === 3 ? (
           <>
             <dl className="text-assess-label">
-              <Row term="Exam" value={`${draft.name.trim()} · ${draft.code.trim()}`} first />
+              <Row term="Exam" value={draft.name.trim()} first />
               <Row term="Marking scheme" value={schemeLabel} />
               <Row term="Timings" value={timingsLine(minutes)} />
               <Row term="Available for scheduling" value="On after publishing" chip />
@@ -270,10 +269,10 @@ function Sheet({ first, firstProgramme }: { first: Exam | null; firstProgramme: 
   );
 }
 
-const HEADINGS = [
-  { title: "Name your exam", lead: "This is what supervisors and trainees will see on every sitting." },
+const headings = (w: AssessWords) => [
+  { title: "Name your exam", lead: newExamNameLead(w) },
   { title: "How will it be marked?", lead: "The marking scheme lists the domains reviewers rate and how. You can change it later as a new version." },
-  { title: "Timings and settings", lead: "These are the defaults for every circuit. You can change them per circuit when you schedule." },
+  { title: "Timings and settings", lead: newExamTimingsLead(w) },
   { title: "Ready to publish", lead: "Publishing makes the exam available for scheduling. Add stations next." },
 ] as const;
 

@@ -5,6 +5,7 @@ import {
   TraineeList,
   TraineeRow,
 } from "@/domains/assess/trainee/traineeBoard";
+import { outcomeLabel } from "@/domains/assess/trainee/hireCopy";
 import {
   stationScoreLabel,
   type TraineeResult,
@@ -63,11 +64,4 @@ export function ResultView({
       ) : null}
     </>
   );
-}
-
-function outcomeLabel(outcome: string | null | undefined): string {
-  if (!outcome) return "Recorded";
-  return outcome
-    .replace(/_/g, " ")
-    .replace(/^\w/, (letter) => letter.toUpperCase());
 }

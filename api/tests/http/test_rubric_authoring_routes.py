@@ -57,7 +57,7 @@ async def test_a_draft_is_saved_while_invalid_and_says_what_is_left(client: Asyn
     assert draft["problems"] == [
         {
             "path": "sections",
-            "message": "A rubric needs at least one section: it would ask the marker for nothing.",
+            "message": "Add at least one Domain or section, otherwise the marker has nothing to mark.",
         }
     ]
     assert draft["result_schema"] == {}

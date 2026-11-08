@@ -35,6 +35,10 @@ ADVANCE = "advance"
 AUTO_ADVANCE = "auto_advance"
 # The reaper ending a circuit nobody closed: no human, so the record is the only notice (R-15).
 AUTO_END = "auto_end"
+# Training room controls: they never move the clock, so the sequence does not change.
+FLOOR_CHANGED = "floor_changed"
+MIC_CHANGED = "mic_changed"
+ROOM_CLOSED = "room_closed"
 
 
 @dataclass(frozen=True)
@@ -72,6 +76,7 @@ async def write_intervention(
     before: int,
     now: datetime,
     slot_id: uuid.UUID | None = None,
+    clock_moved: bool = True,
 ) -> None:
     """Record what was done, against the sequence it displaced.
 
@@ -87,7 +92,7 @@ async def write_intervention(
         action=action,
         reason=actor.reason,
         phase_seq_before=before,
-        phase_seq_after=before + 1,
+        phase_seq_after=before + 1 if clock_moved else before,
         at=now,
     )
 

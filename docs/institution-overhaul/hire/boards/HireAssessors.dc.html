@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Assessors</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav on" href="HireAssessors.dc.html">Assessors</a><a class="nav" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="3"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><div class="eyebrow">Acme Health Trust</div><h1>Assessors</h1><p class="desc">The staff who mark candidates and run rotations, and who else can manage this account.</p></div><div class="acts"><button class="btn pri" onClick="{{open}}">Invite an assessor</button></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="card"><div class="th"><span class="f">Person</span><span style="width:160px">Role</span><span style="width:120px">Status</span></div>
+<div class="row"><div class="av">JO</div><span class="f">Joy Okafor<div class="meta">joy.okafor@acme.nhs.uk</div></span><span style="width:160px">Administrator</span><span style="width:120px"><span class="chip ok">Active</span></span></div>
+<div class="row"><div class="av">DL</div><span class="f">Dan Lowe<div class="meta">dan.lowe@acme.nhs.uk</div></span><span style="width:160px">Assessor</span><span style="width:120px"><span class="chip ok">Active</span></span></div>
+<div class="row"><div class="av">SK</div><span class="f">Sara Khan<div class="meta">sara.khan@acme.nhs.uk</div></span><span style="width:160px">Lead assessor</span><span style="width:120px"><span class="chip warn">Invited</span></span><button class="btn sm">Resend</button></div>
+<div class="row"><div class="av">MP</div><span class="f">Mark Price<div class="meta">Access removed 2 Oct</div></span><span style="width:160px">Assessor</span><span style="width:120px"><span class="chip">Removed</span></span><button class="btn sm">Restore</button></div></div>
+<div class="meta">A lead assessor settles disagreements between two assessors on the same station.</div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="al bad"><b>You are the only administrator</b>Make someone else an administrator before you change your own role.</div>
+<div class="card"><div class="row"><div class="av">JO</div><span class="f">Joy Okafor (you)</span><span style="width:160px">Administrator</span><button class="btn sm" disabled>Change role</button></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="th"><span class="f">Activity</span><span style="width:160px">When</span></div>
+<div class="row"><span class="f">Joy Okafor invited Sara Khan as Lead assessor</span><span style="width:160px" class="meta">Today 09:12</span></div>
+<div class="row"><span class="f">Joy Okafor removed Mark Price's access</span><span style="width:160px" class="meta">2 Oct</span></div></div>
+</sc-if>
+<sc-if value="{{dlg}}" hint-placeholder-val="{{false}}">
+<div class="ov"><div class="dlg" role="dialog" aria-label="Invite an assessor"><h2>Invite an assessor</h2>
+<div><label for="ae">Emails, one per line</label><textarea class="input" id="ae">sara.khan@acme.nhs.uk</textarea></div>
+<div><label>Role</label><div class="acts"><button class="pill on">Assessor</button><button class="pill">Lead assessor</button><button class="pill">Administrator</button></div><div class="hint">Assessors mark and run rotations. Administrators also manage exams, candidates and billing.</div></div>
+<div class="acts"><button class="btn" onClick="{{close}}">Cancel</button><button class="btn pri" onClick="{{close}}">Send invitation</button></div></div></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/memberships</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/memberships</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/memberships/bulk</code></div>
+<div class="call"><span class="m">PATCH</span><code>{o}/memberships/{id}</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/memberships/{id}/revoke</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/memberships/{id}/restore</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/memberships/{id}/resend-invitation</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/audit</code></div>
+<div class="meta">The api roles stay supervisor and gp_lead; the screen says Assessor and Lead assessor.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>membership_exists</code><code>membership_not_found</code><code>invitation_pending</code><code>invitation_not_pending</code><code>last_admin</code><code>cannot_revoke_own_console_access</code><code>not_a_member</code></div>
+<div class="note">Route <code>/app/[w]/team</code> · admin · owner institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0, d: false }; }
+  renderVals() {
+    const t = this.state.t, L = ['Team', 'Last administrator', 'Activity'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2, dlg: this.state.d, open: () => this.setState({ d: true }), close: () => this.setState({ d: false }) };
+  }
+}
+</script>
+</body>
+</html>

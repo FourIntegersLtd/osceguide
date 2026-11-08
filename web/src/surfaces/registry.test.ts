@@ -78,9 +78,13 @@ describe("surface registry", () => {
     // be a deliberate edit to this declaration, not a quiet copy.
     assert.equal(SURFACE_MANIFESTS.hire.screensFrom, "assess");
     assert.deepEqual(
-      [...SURFACE_MANIFESTS.hire.screenNames].sort(),
+      [...SURFACE_MANIFESTS.hire.screenNames, ...(SURFACE_MANIFESTS.hire.refusal?.screens ?? [])].sort(),
       [...SURFACE_MANIFESTS.assess.screenNames].sort(),
     );
+    assert.deepEqual(SURFACE_MANIFESTS.hire.refusal?.screens, [
+      "myPractice", "practiceStation", "mocks", "mockDetail", "mockStation", "mockComplete", "mockList", "mockUpdate",
+    ]);
+    assert.ok(!SURFACE_MANIFESTS.hire.screenNames.includes("mocks"));
   });
 
   it("points every borrowed screen map at an arm that exists", () => {

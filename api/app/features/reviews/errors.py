@@ -16,28 +16,28 @@ class InvalidRatingError(InvalidInput):
     """A rating was not one the sitting's rubric allows, or a GP lead's verdict was not G, A or R."""
 
     code = "invalid_rating"
-    default_message = "That is not a rating this rubric allows"
+    default_message = "That rating isn't one this marking scheme allows. Choose one from the scale."
 
 
 class InvalidStatusError(InvalidInput):
     """A review's status was neither draft nor completed."""
 
     code = "invalid_review_status"
-    default_message = "A review is either a draft or completed"
+    default_message = "A review must be saved as a draft or marked complete."
 
 
 class ReviewIncompleteError(Conflict):
     """A review was marked completed without scoring every required domain."""
 
     code = "review_incomplete"
-    default_message = "Score every domain before completing the review"
+    default_message = "Rate every Domain before completing the review."
 
 
 class NothingToReviewError(Conflict):
     """The station has no reviewable feedback domains, so there is nothing to complete."""
 
     code = "nothing_to_review"
-    default_message = "This station has no reviewable feedback domains yet"
+    default_message = "This station has nothing to review yet."
 
 
 class ReviewConflictError(Conflict):
@@ -45,6 +45,13 @@ class ReviewConflictError(Conflict):
 
     code = "review_conflict"
     default_message = "Someone else has changed this review since you opened it"
+
+
+class ReviewAlreadyCompletedError(Conflict):
+    """A draft write over a review that was already completed: it would quietly un-release it."""
+
+    code = "review_already_completed"
+    default_message = "This review is already complete, so a draft cannot overwrite it"
 
 
 class ReviewLockedError(Conflict):
@@ -60,7 +67,7 @@ class ReviewNotFound(NotFound):
     """No such review on this slot."""
 
     code = "review_not_found"
-    default_message = "No such review"
+    default_message = "We couldn't find that review"
 
 
 class ReviewNotDraftError(Conflict):
@@ -79,7 +86,7 @@ class SlotNotFound(NotFound):
     """
 
     code = "slot_not_found"
-    default_message = "No such slot"
+    default_message = "We couldn't find that slot"
 
 
 class NotReviewerError(Forbidden):

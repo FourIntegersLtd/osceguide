@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { ConfirmModal } from "@/foundation/ui";
+import type { AssessWords } from "@/capabilities/assess-words";
 import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { hasCode } from "@/foundation/platform-client";
 import { cancelSitting, deleteCircuit, type Circuit } from "@/domains/assess/api";
+import { useAssessWords } from "@/capabilities/assess-words";
+import { cancelMessage } from "@/domains/assess/sittingCopy";
 
 /** The write a sitting's admin has asked for and not yet confirmed. */
 export type PendingSittingAction = { kind: "cancel" } | { kind: "delete"; circuit: Circuit } | null;
@@ -23,6 +26,7 @@ export function SittingActionDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const w = useAssessWords();
   const [refused, setRefused] = useState<string | null>(null);
 
   const close = () => {
@@ -35,7 +39,7 @@ export function SittingActionDialog({
       close();
       onDone();
     } catch (cause) {
-      setRefused(refusal(cause));
+      setRefused(refusal(cause, w));
     }
   };
 
@@ -45,8 +49,8 @@ export function SittingActionDialog({
       <ConfirmModal
         isOpen
         title={`Delete ${circuit.name}?`}
-        message="Its candidates and stations come off this sitting. Nothing has been sat on it yet."
-        confirmText="Delete circuit"
+        message={`Its candidates and stations come off this ${w.sitting}. Nothing has been sat on it yet.`}
+        confirmText={`Delete ${w.circuit}`}
         tone="danger"
         error={refused}
         onCancel={close}
@@ -57,9 +61,9 @@ export function SittingActionDialog({
   return (
     <ConfirmModal
       isOpen={pending?.kind === "cancel"}
-      title="Cancel this sitting?"
-      message="Nobody can take it once it is cancelled. Nothing has started, so no attempt is lost."
-      confirmText="Cancel sitting"
+      title={`Cancel this ${w.sitting}?`}
+      message={cancelMessage(w)}
+      confirmText={`Cancel ${w.sitting}`}
       cancelText="Cancel"
       tone="danger"
       error={refused}
@@ -70,12 +74,14 @@ export function SittingActionDialog({
 }
 
 /** A cancel or delete refusal, by its code: something started since the page loaded. */
-function refusal(cause: unknown): string {
+function refusal(cause: unknown, w: AssessWords): string {
   if (hasCode(cause, "sitting_locked")) {
-    return "A circuit on this sitting has started, so it cannot be cancelled. End its circuits instead.";
+    return `A ${w.circuit} on this ${w.sitting} has started, so it cannot be cancelled. End its ${w.circuits} instead.`;
   }
   if (hasCode(cause, "circuit_locked")) {
-    return "This circuit has started, so it holds what was sat and cannot be deleted.";
+    return w.hiring
+      ? `This ${w.circuit} has started and holds candidates' work, so it cannot be deleted. You can end it instead.`
+      : "This circuit has started, so it holds what was sat and cannot be deleted.";
   }
-  return assessErrorMessage(cause);
+  return assessErrorMessage(cause, w);
 }

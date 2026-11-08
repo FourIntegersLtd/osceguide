@@ -133,8 +133,8 @@ export function OnboardingFlow({ onComplete, onSkip = onComplete }: { onComplete
         <ModalBody className="text-center">
           <p className="text-osce-meta text-ink-muted">
             {voice.scenesError
-              ? "We couldn't load the demo right now. Please try again."
-              : "The demo is not available for your exam yet."}
+              ? "We could not load the demo. Reload the page, or choose Skip to start practising."
+              : "There is no demo for your exam yet. Choose Skip to start practising."}
           </p>
           <Button onClick={() => setStep("invitation")}>
             Skip the demo <HiOutlineArrowRight className="h-3 w-3" aria-hidden />

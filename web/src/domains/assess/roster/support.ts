@@ -1,8 +1,9 @@
 import type { Trainee } from "@/domains/assess/api";
-import type { AssessWords } from "@/domains/assess/vocabulary";
+import type { AssessWords } from "@/capabilities/assess-words";
 import type { Cohort } from "@/domains/assess/roster/api";
 import { errorMessage } from "@/foundation/hooks/useAsync";
 import { hasCode } from "@/foundation/platform-client";
+import { say } from "@/domains/assess/roster/rosterWords";
 
 /** A trainee exists before they have ever signed in, so a name may be absent. */
 export function fullName(trainee: Pick<Trainee, "first_name" | "last_name">): string | null {
@@ -145,28 +146,33 @@ export function addToGroupIds(existing: string[], picked: string[]): string[] {
 }
 
 /** The cohort delete prompt: how many sittings it detaches (they are kept, with no cohort). */
-export function cohortDeleteLead(name: string, sittingCount: number): string {
+export function cohortDeleteLead(name: string, sittingCount: number, words?: AssessWords): string {
   const held =
     sittingCount <= 0
       ? "No sittings are held for it."
       : `The ${sittingCount} sitting${sittingCount === 1 ? "" : "s"} held for it ${sittingCount === 1 ? "is" : "are"} kept but no longer belong to any year group.`;
-  return (
+  const lead =
     `Delete “${name}”? Nobody can be put into it afterwards. This cannot be undone, and a year group ` +
-    `that still has trainees in it is not deleted. ${held}`
-  );
+    `that still has trainees in it is not deleted. `;
+  if (words?.hiring) {
+    const rotations = sittingCount <= 0 ? "No assessments are held for it." : `The ${sittingCount} assessment${sittingCount === 1 ? "" : "s"} held for it ${sittingCount === 1 ? "is" : "are"} kept but no longer belong to any intake.`;
+    return say(words, lead) + rotations;
+  }
+  return lead + held;
 }
 
 /** The delete prompt. Someone who has sat stations most likely has a decision, which delete refuses. */
-export function deleteLead(name: string, stationsSat: number): string {
+export function deleteLead(name: string, stationsSat: number, words?: AssessWords): string {
   const base = "You can only delete a trainee with no results recorded. If they have been examined, remove their access instead.";
-  if (stationsSat <= 0) return base;
+  const tell = (text: string) => (words ? say(words, text) : text);
+  if (stationsSat <= 0) return tell(base);
   const stations = `${stationsSat} station${stationsSat === 1 ? "" : "s"}`;
   return `${name} has sat ${stations}, so deleting is likely to be refused once a result is decided. Revoke their access instead to keep their records.`;
 }
 
 /** What to tell an admin whose add or resend was refused: the two answers they can act on, said plainly. */
-export function rosterErrorMessage(cause: unknown, email: string): string {
-  if (hasCode(cause, "trainee_exists")) return `${email} is already on this roster.`;
+export function rosterErrorMessage(cause: unknown, email: string, words?: AssessWords): string {
+  if (hasCode(cause, "trainee_exists")) return words ? say(words, `${email} is already on this roster.`) : `${email} is already on this roster.`;
   return errorMessage(cause);
 }
 
@@ -174,14 +180,15 @@ export function rosterErrorMessage(cause: unknown, email: string): string {
  * What an "Add to group" really did. The group is read, then replaced (last write wins), so
  * someone else's edit in between can drop a person: re-read afterwards and report who is in.
  */
-export function addToGroupSummary(requested: string[], after: string[]): string {
+export function addToGroupSummary(requested: string[], after: string[], words?: AssessWords): string {
   const inGroup = new Set(after);
   const missing = requested.filter((id) => !inGroup.has(id)).length;
   const added = requested.length - missing;
   const base = `Added ${added} of ${requested.length} people to the group.`;
-  return missing === 0
+  const text = missing === 0
     ? base
     : `${base} ${missing} ${missing === 1 ? "is" : "are"} not in it: the group changed while you were adding. Try again.`;
+  return words ? say(words, text) : text;
 }
 
 /** "1 Nov": the day and short month the People board writes for a grant's dates. */
@@ -190,4 +197,13 @@ export function shortDay(iso: string | null | undefined): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+/** The words on a trainee row's icon actions: accessible name, and the tooltip where it says more. */
+export function traineeActionLabels(trainee: Trainee): { invite: string; access: string } {
+  return {
+    /* A row the migration left with no account behind it has never been invited at all. */
+    invite: invitationNotAccepted(trainee) ? "Send invitation" : "Resend invitation",
+    access: accessActive(trainee) ? "Revoke" : "Restore",
+  };
 }

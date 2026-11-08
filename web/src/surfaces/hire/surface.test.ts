@@ -25,11 +25,28 @@ describe("hire navigation", () => {
     assert.ok(mounted.includes("/authoring"));
   });
 
-  it("has no Team or Programmes entry (Candidates and Exams hold them) and gives staff no My training or practice sessions", () => {
+  it("shows Assessors only to who manages the team, has no Programmes entry and gives staff no My training or practice sessions", () => {
     const admin = navFor(["run_circuits", "manage_team", "author_content"]);
-    assert.ok(!admin.some((href) => href.endsWith("/team") || href.endsWith("/programmes")));
+    assert.deepEqual(admin.filter((href) => href.endsWith("/team")), ["/app/acme/team"]);
+    assert.ok(!navFor(["run_circuits"]).some((href) => href.endsWith("/team")));
+    assert.ok(!admin.some((href) => href.endsWith("/programmes")));
     assert.ok(!navFor(["run_circuits"]).includes("/app/acme/authoring"));
     assert.ok(!admin.some((href) => href.endsWith("/trainee") || href.endsWith("/mocks")));
+  });
+
+  it("labels the staff menu with the employer words", () => {
+    const labels = hireSurface.nav({ workspace, can: () => true, href: (p) => p }).map((i) => i.label);
+    assert.deepEqual(labels, ["Overview", "Assessments", "Now running", "Results", "Candidates", "Assessors", "Exams", "Reporting"]);
+  });
+
+  it("refuses practice and mock screens instead of serving them", () => {
+    assert.ok(!hireSurface.screenNames.includes("myPractice"));
+    assert.equal(hireSurface.refusal?.title, "This is not part of your employer's account");
+    assert.equal(
+      hireSurface.refusal?.body("Acme Health Trust", false),
+      "Practice stations and mock exams are not included with Acme Health Trust. Your assessments are on your home page.",
+    );
+    assert.equal(hireSurface.refusal?.body("Acme Health Trust", true), "Practice stations and mock exams are not included with Acme Health Trust.");
   });
 
   it("sends a candidate to their own training, not the staff sittings list", () => {

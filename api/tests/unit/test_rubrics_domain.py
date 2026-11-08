@@ -193,17 +193,21 @@ def test_a_version_2_structure_is_read_as_it_is() -> None:
 @pytest.mark.parametrize(
     ("broken", "message"),
     [
-        ({"scale": [], "domains": []}, "A rubric needs a scale: the scores a competency may be given."),
+        (
+            {"scale": [], "domains": []},
+            "Add a rating scale so markers know how to rate each Competency, for example Good, Fair and "
+            "Poor.",
+        ),
         (
             {
                 "scale": ["R", "R"],
                 "domains": [{"id": "d", "label": "D", "competencies": [{"id": "c", "label": "C"}]}],
             },
-            "The scale repeats a value; each must appear once. (at rating.scale)",
+            "A level appears twice on the rating scale. Each level can appear only once. (at rating.scale)",
         ),
         (
             {"scale": ["R"], "domains": [], "sections": []},
-            "A rubric needs at least one section: it would ask the marker for nothing. (at sections)",
+            "Add at least one Domain or section, otherwise the marker has nothing to mark. (at sections)",
         ),
         (
             {
@@ -211,7 +215,7 @@ def test_a_version_2_structure_is_read_as_it_is() -> None:
                 "domains": [],
                 "sections": [{"id": "s", "label": "S", "kind": "object"}],
             },
-            "Section 's' is an object and needs a schema describing it.",
+            "Section 's' needs a description of the answers it should collect.",
         ),
     ],
 )
@@ -240,7 +244,10 @@ def test_a_refusal_carries_every_problem_not_just_the_first() -> None:
         {"path": "sections[0].id", "message": validation.IDENTIFIER_MESSAGE},
         {
             "path": "sections[0].competencies[0].descriptors.EXCELLENT",
-            "message": "'EXCELLENT' is not on the rating scale (G, A, R).",
+            "message": (
+                "The description for 'EXCELLENT' does not match a level on the rating scale (G, "
+                "A, R). Use one of those levels, or remove it."
+            ),
         },
     ]
     assert str(refused.value).endswith("1 more problem(s) listed.")
@@ -503,7 +510,7 @@ def test_an_empty_selection_means_the_whole_rubric() -> None:
 
 
 def test_a_selection_naming_a_domain_the_rubric_does_not_have_is_refused() -> None:
-    with pytest.raises(domain.InvalidRubric, match="does not define"):
+    with pytest.raises(domain.InvalidRubric, match="does not have"):
         domain.narrow_structure(domain.parse_structure(FULL_RUBRIC), {"domains": ["invented"]})
 
 

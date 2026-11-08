@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, it } from "node:test";
 import { importPlatformExam, listPlatformCatalogue } from "@/domains/assess/programmes/api";
-import { adoptRefusal } from "@/domains/assess/programmes/support";
+import { assessWordsFor } from "@/capabilities/assess-words/vocabulary";
+import { adoptRefusal, programmesCopy } from "@/domains/assess/programmes/support";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -35,4 +36,12 @@ it("a refusal for an exam the platform no longer offers says the list was refres
   globalThis.fetch = answer(404, { code: "unknown_exam", message: "gone" });
   const refused = await importPlatformExam("acme", "e1").then(() => null, (cause: unknown) => cause);
   assert.equal(adoptRefusal(refused), "The platform no longer offers that exam. The list has been refreshed.");
+});
+
+it("programmes page: an employer reads exams and assessments, an institution keeps its words", () => {
+  const hire = assessWordsFor("hire");
+  assert.equal(programmesCopy(hire).title, "Offered exams");
+  assert.equal(programmesCopy(hire).subtitle, "An exam you run assessments against. Adopt one the platform publishes or add your own, activate it, and it is offered when you schedule an assessment.");
+  assert.equal(programmesCopy(assessWordsFor("assess")).title, "Programmes");
+  assert.equal(programmesCopy(assessWordsFor("assess")).subtitle, "A programme is an exam you run sittings against. Adopt one the platform publishes or add your own, activate it, and it is offered when you schedule a sitting.");
 });

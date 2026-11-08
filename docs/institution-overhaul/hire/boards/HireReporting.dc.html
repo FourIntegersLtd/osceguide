@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reporting</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav on" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="2"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><div class="eyebrow">Acme Health Trust</div><h1>Reporting</h1><p class="desc">How candidates did across your released assessments, and where they struggle.</p></div><div class="acts"><button class="pill on">Last 6 months</button><button class="pill">All exams</button></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="g4"><div class="tile"><div class="meta">Candidates assessed</div><h2>58</h2></div><div class="tile"><div class="meta">Passed</div><h2>71%</h2></div><div class="tile"><div class="meta">Assessments</div><h2>7</h2></div><div class="tile"><div class="meta">Assessors marking</div><h2>6</h2></div></div>
+<div class="card"><div class="th"><span class="f">Station</span><span style="width:120px">Pass rate</span><span style="width:240px">Weakest competency</span></div>
+<div class="row"><span class="f">Deteriorating patient (NEWS2)</span><span style="width:120px">82%</span><span style="width:240px">Starts a sepsis screen</span></div>
+<div class="row"><span class="f">Medicines round and a drug error</span><span style="width:120px">64%</span><span style="width:240px">Reports the error on Datix</span></div>
+<div class="row"><span class="f">Discharge planning with a carer</span><span style="width:120px">59%</span><span style="width:240px">Checks the carer understands</span></div></div>
+<div class="meta">Built from results, so Training and Formal exam assessments both count. Hiring decisions are not part of this page.</div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="empty"><h2>Nothing to report yet</h2>Reporting starts once you release the results of an assessment.<a class="btn pri" href="HireResults.dc.html">Go to results</a></div></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/reporting</code></div>
+<div class="meta">reporting/api.ts:23 prints institution words today; it moves to the hire words.</div>
+<h2>Refusals it shows</h2><div class="codes"><code>forbidden</code><code>unavailable</code></div>
+<div class="note">Route <code>/app/[w]/reporting</code> · admin · owner institution-owner</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['Report', 'Empty'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1 };
+  }
+}
+</script>
+</body>
+</html>

@@ -41,7 +41,7 @@ class UnknownExamError(NotFound):
     """Mirrors `catalog.errors.UnknownExamError`; the code is the shared contract."""
 
     code = "unknown_exam"
-    default_message = "No such exam"
+    default_message = "We couldn't find that exam"
 
 
 class EntitlementNotFound(NotFound):
@@ -49,4 +49,4 @@ class EntitlementNotFound(NotFound):
     one that was never granted or has since gone."""
 
     code = "entitlement_not_found"
-    default_message = "No such entitlement in this organisation"
+    default_message = "We couldn't find that entitlement in this organisation"

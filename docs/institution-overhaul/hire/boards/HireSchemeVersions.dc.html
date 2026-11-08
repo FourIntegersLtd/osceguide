@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Marking schemes</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="hire.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div class="shell">
+<nav class="side" aria-label="Main"><div class="org"><div class="mark">AH</div><div><div style="font-size:14px;font-weight:600">Acme Health Trust</div><div class="meta">Administrator</div></div></div>
+<a class="nav" href="HireHome.dc.html">Overview</a><div class="sec">Run</div><a class="nav" href="HireAssessments.dc.html">Assessments</a><a class="nav" href="HireNowRunning.dc.html">Now running</a><a class="nav" href="HireResults.dc.html">Results</a><div class="sec">Organise</div><a class="nav" href="HireCandidates.dc.html">Candidates</a><a class="nav" href="HireAssessors.dc.html">Assessors</a><a class="nav on" href="HireExams.dc.html">Exams</a><div class="sec">Insight</div><a class="nav" href="HireReporting.dc.html">Reporting</a><div style="height:16px"></div><a class="nav" href="HireSettings.dc.html">Settings</a></nav>
+<main class="main"><div class="cols">
+<div class="colm">
+<div class="states">States <div class="tabs"><sc-for list="{{tabs}}" as="x" hint-placeholder-count="3"><button class="{{x.cls}}" onClick="{{x.pick}}">{{x.label}}</button></sc-for></div></div>
+<div class="head"><div><a class="meta" href="HireExams.dc.html">Exams</a><h1>Marking schemes</h1><p class="desc">How assessors rate each station. Publishing makes a new version; assessments already marked keep the version they used.</p></div><div class="acts"><button class="btn pri" onClick="{{go1}}">New marking scheme</button></div></div>
+<sc-if value="{{s0}}" hint-placeholder-val="{{true}}">
+<div class="card"><div class="th"><span class="f">Scheme</span><span style="width:120px">Version</span><span style="width:160px">Used by</span></div>
+<a class="row" href="HireMarkingScheme.dc.html"><span class="f"><b style="font-weight:500">Band 6 nurse scheme</b><div class="meta">4 domains · Red, Amber, Green</div></span><span style="width:120px"><span class="chip ok">v3 published</span></span><span style="width:160px" class="meta">Band 6 nurse OSCE</span></a>
+<a class="row" href="HireMarkingScheme.dc.html"><span class="f"><b style="font-weight:500">Healthcare assistant checklist</b><div class="meta">2 domains · Pass or fail</div></span><span style="width:120px"><span class="chip warn">v1 draft</span></span><span style="width:160px" class="meta">Not used yet</span></a></div>
+</sc-if>
+<sc-if value="{{s1}}" hint-placeholder-val="{{false}}">
+<div class="card pad"><h2>Start from</h2>
+<label class="check"><input type="radio" name="sp" checked> A ready-made global rating (4 domains, Red, Amber, Green)</label>
+<label class="check"><input type="radio" name="sp"> A copy of Band 6 nurse scheme v3</label>
+<label class="check"><input type="radio" name="sp"> Blank</label>
+<div><label for="n">Name</label><input class="input" id="n" value="Band 7 nurse scheme"></div>
+<div><a class="btn pri" href="HireMarkingScheme.dc.html">Create and open</a></div></div>
+</sc-if>
+<sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+<div class="card"><div class="empty"><h2>No marking schemes yet</h2>Every exam needs one before you can schedule it. Start from a ready-made one; you can change every word.<button class="btn pri" onClick="{{go1}}">New marking scheme</button></div></div>
+</sc-if>
+</div>
+<aside class="cola" style="max-width:340px">
+<div class="api"><h2>API this screen calls</h2>
+<div class="call"><span class="m">GET</span><code>{o}/rubrics</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/rubrics</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/rubrics/copy</code></div>
+<div class="call"><span class="m">GET</span><code>{o}/rubrics/starting-points</code></div>
+<div class="call"><span class="m">PATCH</span><code>{o}/rubrics/{rubric_id}</code></div>
+<div class="call"><span class="m">POST</span><code>{o}/rubrics/{id}/versions/{v}/archive</code></div>
+<h2>Refusals it shows</h2><div class="codes"><code>rubric_not_found</code><code>invalid_rubric</code><code>not_archivable</code></div>
+<div class="note">Routes <code>/app/[w]/authoring/rubrics</code>, <code>/new</code> · admin · owner content-owner (builder), marking-owner (scheme rules)</div></div>
+</aside>
+</div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 0 }; }
+  renderVals() {
+    const t = this.state.t, L = ['List', 'New', 'Empty'];
+    return { tabs: L.map((label, k) => ({ label, cls: k === t ? 'tab on' : 'tab', pick: () => this.setState({ t: k }) })),
+      s0: t === 0, s1: t === 1, s2: t === 2, go1: () => this.setState({ t: 1 }) };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,5 +1,9 @@
 "use client";
 
+import { useAssessWords } from "@/capabilities/assess-words";
+import { say } from "@/domains/assess/roster/rosterWords";
+import { LuPencil, LuTrash2, LuUsers } from "react-icons/lu";
+import { ActionMenu } from "@/foundation/ui";
 import { useCallback, useState } from "react";
 import { b2bTokens as t, cn } from "@/foundation/ui";
 import { Fold, Note, card, h2, row } from "@/domains/assess/ui";
@@ -12,7 +16,7 @@ import {
   DeleteGroupDialog,
   RenameGroupDialog,
 } from "@/domains/assess/roster/GroupEditDialogs";
-import { boardBtn, boardPadWide, boardInput, boardButtonSmall } from "@/foundation/ui/boardKit";
+import { boardBtn, boardPadWide, boardInput } from "@/foundation/ui/boardKit";
 
 type Pending =
   | { kind: "rename"; group: TraineeGroup }
@@ -47,6 +51,7 @@ export function GroupsPanel({
   canManage: boolean;
   onChanged: () => void;
 }) {
+  const w = useAssessWords();
   const [groupLabel, setGroupLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,33 +91,30 @@ export function GroupsPanel({
       <div className={boardPadWide}>
         <h2 className={h2}>Groups</h2>
         <p className={cn(t.assessMeta, "m-0")}>
-          A named list of people you can add to a circuit together, such as a rotation team or a resit group. A person can be in more than one.
+          {say(w, `A named list of people you can add to a circuit together, such as a rotation team or a resit group. A person can be in more than one.`)}
         </p>
         {error ? <Note tone="bad">{error}</Note> : null}
         {groups.length === 0 ? (
           <p className={cn(t.assessMeta, "m-0")}>No groups yet. Create one below and choose who is in it.</p>
         ) : (
-          <ul className={card} aria-label="Trainee groups">
+          <ul className={card} aria-label={`${w.Trainee} groups`}>
             {groups.map((group, index) => (
               <li key={group.id} className={cn(row, "gap-2", index === 0 && "border-t-0")}>
                 <span className="flex-1">
                   {group.label}
                   <div className={t.assessMeta}>
-                    {group.member_count} {group.member_count === 1 ? "person" : "people"}
+                    {group.member_count} {say(w, group.member_count === 1 ? "person" : "people")}
                   </div>
                 </span>
                 {canManage ? (
-                  <>
-                    <button type="button" className={boardButtonSmall} onClick={() => setEditing(group)}>
-                      People
-                    </button>
-                    <button type="button" className={boardButtonSmall} onClick={() => open({ kind: "rename", group })}>
-                      Rename
-                    </button>
-                    <button type="button" className={boardButtonSmall} onClick={() => open({ kind: "delete", group })}>
-                      Delete
-                    </button>
-                  </>
+                  <ActionMenu
+                    label={`Actions for ${group.label}`}
+                    items={[
+                      { label: w.People, icon: <LuUsers className="h-4 w-4" />, onSelect: () => setEditing(group) },
+                      { label: "Rename", icon: <LuPencil className="h-4 w-4" />, onSelect: () => open({ kind: "rename", group }) },
+                      { label: "Delete", icon: <LuTrash2 className="h-4 w-4" />, tone: "danger", onSelect: () => open({ kind: "delete", group }) },
+                    ]}
+                  />
                 ) : null}
               </li>
             ))}

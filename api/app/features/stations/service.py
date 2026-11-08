@@ -399,9 +399,11 @@ _STAFF_AUDIENCES = ("candidate", "patient", "examiner", "faculty")
 
 
 async def staff_sections(
-    session: AsyncSession, org_id: uuid.UUID, version_id: uuid.UUID
+    session: AsyncSession, org_id: uuid.UUID, version_id: uuid.UUID, audience: str | None = None
 ) -> list[AudienceSectionRead]:
     """A station version's whole document by audience, hidden material included, for the staff running it.
+
+    With `audience`, only that audience's sections; the candidate's never carry hidden material.
 
     Empty for a station bound to no template, which has no audiences to read it by.
     """
@@ -413,9 +415,9 @@ async def staff_sections(
         session,
         version.template_version_id,
         dict(version.content or {}),
-        _STAFF_AUDIENCES,
+        (audience,) if audience else _STAFF_AUDIENCES,
         station_id=version.station_id,
-        include_hidden=True,
+        include_hidden=audience != "candidate",
     )
 
 

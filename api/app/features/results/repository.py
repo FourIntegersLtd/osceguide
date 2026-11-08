@@ -219,6 +219,27 @@ async def released_outcomes(session: AsyncSession, org_id: uuid.UUID) -> list[tu
     return [(row.sitting_id, row.assessment_outcome) for row in await session.execute(stmt)]
 
 
+async def released_candidates(session: AsyncSession, org_id: uuid.UUID) -> list[tuple[uuid.UUID, uuid.UUID]]:
+    """(sitting id, roster id) of every candidate whose current revision has been released."""
+    current = (
+        select(
+            CandidateResultRevision.sitting_id,
+            CandidateResultRevision.trainee_id,
+            CandidateResultRevision.released_at,
+        )
+        .where(CandidateResultRevision.org_id == org_id)
+        .distinct(CandidateResultRevision.sitting_id, CandidateResultRevision.trainee_id)
+        .order_by(
+            CandidateResultRevision.sitting_id,
+            CandidateResultRevision.trainee_id,
+            CandidateResultRevision.revision.desc(),
+        )
+        .subquery()
+    )
+    stmt = select(current.c.sitting_id, current.c.trainee_id).where(current.c.released_at.is_not(None))
+    return [(row.sitting_id, row.trainee_id) for row in await session.execute(stmt)]
+
+
 async def current_decision_states(
     session: AsyncSession, org_id: uuid.UUID, sitting_ids: Sequence[uuid.UUID]
 ) -> list[tuple[uuid.UUID, uuid.UUID, str]]:
