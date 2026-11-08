@@ -33,10 +33,11 @@ export function RecruitmentField({
   disabled: boolean;
   onChange: (value: string) => void;
 }) {
+  const w = useAssessWords();
   return (
     <div>
       <label htmlFor="recruitment-outcome" className={`${boardLabel} mb-2`}>
-        2. Hiring decision
+        {w.hiring ? "2. Hiring decision" : "Recruitment outcome (hire only)"}
       </label>
       <select
         id="recruitment-outcome"
@@ -59,6 +60,7 @@ export function RecruitmentField({
 
 /** A released decision: final, so it is read rather than edited. */
 export function ReleasedDecision({ decision }: { decision: Decision | null }) {
+  const w = useAssessWords();
   return (
     <div className="flex flex-col gap-2">
       <h2 className="text-base font-semibold leading-normal">Released</h2>
@@ -67,7 +69,7 @@ export function ReleasedDecision({ decision }: { decision: Decision | null }) {
         Once released, a decision cannot be edited. Any correction is saved as a new version.
       </p>
       {decision?.recruitment_outcome ? (
-        <p className="m-0 text-assess-label">Hiring decision: {recruitmentLabel(decision.recruitment_outcome)}</p>
+        <p className="m-0 text-assess-label">{w.hiring ? "Hiring decision" : "Recruitment outcome"}: {recruitmentLabel(decision.recruitment_outcome)}</p>
       ) : null}
       {decision?.rationale ? <p className="m-0 text-assess-label text-osce-ink-700">{decision.rationale}</p> : null}
     </div>
