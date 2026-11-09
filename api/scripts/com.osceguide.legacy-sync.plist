@@ -11,7 +11,8 @@
     launchctl kickstart gui/$(id -u)/com.osceguide.legacy-sync
   Output: ~/Library/Logs/osce-legacy-sync.log
   Runs through /bin/bash on purpose: launchd exec'ing the script directly under ~/Documents exited 126
-  (never reached the log) on 2026-11-05 to 2026-11-08; the night-runner job runs the same way and works.
+  (never reached the log) on 2026-11-05 to 2026-11-08. The real cause is macOS privacy: a launchd job has
+  no access to ~/Documents until /bin/bash is granted Full Disk Access in System Settings.
 -->
 <plist version="1.0">
 <dict>
@@ -23,6 +24,11 @@
     <string>/Users/yahayakenny/Documents/Projects/osceguide/api/scripts/sync_b2c_nightly.sh</string>
     <string>production</string>
   </array>
+  <!-- launchd's own stderr, for failures that happen before the wrapper can write its log. -->
+  <key>StandardErrorPath</key>
+  <string>/Users/yahayakenny/Library/Logs/osce-legacy-sync.launchd.log</string>
+  <key>StandardOutPath</key>
+  <string>/Users/yahayakenny/Library/Logs/osce-legacy-sync.launchd.log</string>
   <key>StartCalendarInterval</key>
   <dict>
     <key>Hour</key>
