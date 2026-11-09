@@ -1,5 +1,14 @@
 import type { ReactNode } from "react";
 
+/** The shared page gutter and 1280px cap: the nav, every section and the footer line up on it. */
+export function SiteContainer({ className = "", innerClassName = "", children }: { className?: string; innerClassName?: string; children: ReactNode }) {
+  return (
+    <div className={`px-4 sm:px-5 ${className}`}>
+      <div className={`mx-auto max-w-[1280px] ${innerClassName}`}>{children}</div>
+    </div>
+  );
+}
+
 /* Section heading, mono eyebrow and icon tile on the `.site-root` tokens. */
 export function SectionHead({ title, sub, eyebrow, onNavy = false, center = true, as: Title = "h2" }: { title: ReactNode; sub?: ReactNode; eyebrow?: string; onNavy?: boolean; center?: boolean; as?: "h1" | "h2" }) {
   return (

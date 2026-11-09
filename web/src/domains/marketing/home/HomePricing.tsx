@@ -4,8 +4,8 @@ import { useState } from "react";
 import { FiCheck } from "react-icons/fi";
 import { REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
 import { PartnerLink } from "@/domains/marketing/home/PartnerLink";
-import { Section } from "@/domains/marketing/home/Section";
 import { SectionHead } from "@/foundation/ui";
+import { Section } from "@/domains/marketing/home/Section";
 import { ExamTabs } from "@/domains/marketing/ExamTabs";
 import { PricedExam, PricingComingSoon, type PricedConfig } from "@/domains/marketing/Pricing";
 import { PRICING } from "@/domains/marketing/landingCopy";
@@ -29,10 +29,10 @@ function PlanCards({ exam, config }: { exam: ExamName; config: PricedConfig }) {
             )}
             <h3 className="font-landing-heading text-lg font-bold text-site-ink">{plan.name}</h3>
             <div className="mt-3 font-landing-heading text-3xl font-bold text-site-ink">
-              {free ? "£0" : `£${plan.price.toFixed(2)}`}
+              {free ? "Free" : `£${plan.price.toFixed(2)}`}
               {plan.originalPrice ? <s className="ml-2 text-sm text-site-faint">£{plan.originalPrice.toFixed(2)}</s> : null}
             </div>
-            {plan.duration && <p className="mt-1 text-sm text-site-muted">{free ? "Two weeks. No card." : `${plan.duration} access`}</p>}
+            {plan.duration && <p className="mt-1 text-sm text-site-muted">{plan.duration} access</p>}
             <ul className="my-5 flex-1 space-y-2 text-sm">
               {getPlanCardFeatures(config, plan.features).map((f) => (
                 <li key={f} className="flex items-start gap-2 text-site-body">
@@ -42,7 +42,7 @@ function PlanCards({ exam, config }: { exam: ExamName; config: PricedConfig }) {
               ))}
             </ul>
             <PartnerLink path={REGISTER_PATH} exam={exam.toLowerCase()} variant={free ? "brand" : "line"}>
-              {free ? "Try a case free" : `Get ${plan.name.toLowerCase()}`}
+              {plan.cta}
             </PartnerLink>
           </div>
         );
@@ -63,7 +63,7 @@ export function HomePricing() {
         <div className="mt-8">
           <ExamTabs selected={exam} onSelect={setExam} />
         </div>
-        <div className="mt-10">
+        <div className="mt-14">
           {priced ? (
             <PricedExam examName={exam} config={priced}>
               {(plans) => <PlanCards exam={exam} config={plans} />}

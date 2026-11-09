@@ -46,3 +46,6 @@ generate_*.py
 # Huge lockfiles (low signal for most tasks; @mention if needed)
 **/package-lock.json
 **/poetry.lock
+
+# agent worktrees (full repo copies with node_modules)
+.claude/worktrees/

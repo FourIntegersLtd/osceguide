@@ -5,14 +5,14 @@ import { useEffect, useRef, useState } from "react";
 import { FiMenu, FiX } from "react-icons/fi";
 import { LOGIN_PATH, REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
 import { useMediaQuery } from "@/foundation/hooks";
-import { SiteButtonLink, LogoLink } from "@/foundation/ui";
+import { SiteButtonLink, LogoLink, SiteContainer } from "@/foundation/ui";
 import { usePartnerContext } from "@/domains/marketing/support/usePartnerContext";
 import { LANDING_NAV_LINKS, SITE_NAV_LINKS, type SiteLink } from "@/domains/marketing/site/siteLinks";
 import type { ExamKey } from "@/domains/marketing/landingExams";
 
 /**
  * The public site's nav. `landing` anchors to sections of `/` and offers
- * Institutions + Login; `site` links across pages and offers Login + Start free.
+ * Login + Start free; `site` links across pages and offers Login + Start free.
  * Under 960px the links fold into a disclosure menu. `exam` keeps an exam page's
  * attribution on Login and Start free; `links` replaces the centre links (an
  * institutions page anchors to its own sections).
@@ -30,8 +30,9 @@ export function SiteNav({ variant = "site", exam, links: custom }: { variant?: "
   const ctas =
     variant === "landing" ? (
       <>
-        <SiteButtonLink href={login} variant="text" size="sm">Log in</SiteButtonLink>
-        <SiteButtonLink href={register} variant="brand" size="sm">Try a case free</SiteButtonLink>
+        <SiteButtonLink href={login} variant="text" size="sm">Login</SiteButtonLink>
+        <SiteButtonLink href="/institutions" variant="line" size="sm">Institutions</SiteButtonLink>
+        <SiteButtonLink href={register} variant="brand" size="sm">Start free</SiteButtonLink>
       </>
     ) : (
       <>
@@ -88,7 +89,8 @@ export function SiteNav({ variant = "site", exam, links: custom }: { variant?: "
   return (
     <>
     <header className="sticky top-0 z-40 border-b border-site-line bg-site-ground/90 backdrop-blur">
-      <nav aria-label="Main" className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6">
+      <SiteContainer innerClassName="flex h-16 items-center justify-between gap-4">
+      <nav aria-label="Main" className="contents">
         <LogoLink />
         <ul className="hidden items-center gap-8 min-[960px]:flex">
           {links.map((l) => (
@@ -112,6 +114,7 @@ export function SiteNav({ variant = "site", exam, links: custom }: { variant?: "
           <FiMenu aria-hidden />
         </button>
       </nav>
+      </SiteContainer>
     </header>
     {open && (
       <div

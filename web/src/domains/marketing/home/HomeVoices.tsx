@@ -46,7 +46,7 @@ export function HomeTestimonials({ title = "What our doctors say", ctas }: { tit
   return (
     <Section id="testimonials" tone="card">
       <SectionHead title={title} />
-      <div className="site-marquee -mx-4 mt-12 overflow-hidden sm:-mx-6">
+      <div className="site-marquee -mx-4 mt-16 overflow-hidden sm:-mx-5">
         <div className="site-marquee-track flex gap-4 px-4">
           {MARQUEE_TESTIMONIALS.map((t) => (
             <Quote key={t.name} t={t} />
@@ -58,7 +58,7 @@ export function HomeTestimonials({ title = "What our doctors say", ctas }: { tit
           </div>
         </div>
       </div>
-      <div className="mt-10 flex flex-wrap justify-center gap-3">
+      <div className="mt-14 flex flex-wrap justify-center gap-3">
         {ctas ?? (
           <>
             <PartnerLink path={LOGIN_PATH} size="lg">Start practising</PartnerLink>

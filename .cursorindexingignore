@@ -5,3 +5,6 @@ frontend/public/**
 
 # Livekit logs already hard-blocked; this is backup for any log paths
 **/logs/**
+
+# agent worktrees (full repo copies with node_modules)
+.claude/worktrees/

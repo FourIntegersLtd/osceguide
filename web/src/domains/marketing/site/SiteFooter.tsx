@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { FaFacebook, FaLinkedin } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
-import { LogoLink } from "@/foundation/ui";
+import { LogoLink, SiteContainer } from "@/foundation/ui";
 import { FOOTER_COMPANY, FOOTER_EXAMS, FOOTER_LEGAL, FOOTER_PRODUCT, type SiteLink } from "@/domains/marketing/site/siteLinks";
 
 const SOCIAL = [
@@ -32,7 +32,7 @@ function Column({ title, links }: { title: string; links: readonly SiteLink[] })
 export function SiteFooter() {
   return (
     <footer className="site-root bg-site-navy font-landing-body text-site-on-navy">
-      <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6">
+      <SiteContainer innerClassName="py-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
           <div>
             <LogoLink onDark />
@@ -62,7 +62,7 @@ export function SiteFooter() {
         <p className="mt-12 border-t border-white/15 pt-6 text-sm text-site-on-navy-dim">
           &copy; {new Date().getFullYear()} Four Integers Ltd. All rights reserved.
         </p>
-      </div>
+      </SiteContainer>
     </footer>
   );
 }

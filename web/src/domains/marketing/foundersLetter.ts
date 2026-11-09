@@ -1,6 +1,7 @@
-/** The founders' note, shared by the home page and the exam landing pages. */
+/** The founders' letter, shared by the home page and the exam landing pages. */
 export const FOUNDERS_LETTER: readonly string[] = [
-  "OSCE Guide was built by doctors like you. We've sat in that exam room and felt like our whole future hung on those few minutes.",
-  "For most of us the hard part isn't the knowledge. It's saying it clearly, in the time you've got, to someone who's listening. So we built the thing we wished we'd had: a patient who's always free to practise with, and feedback that shows you exactly what the examiners are looking for.",
-  "We've stood where you're standing. We know what it takes to pass, and we're here to help you get there.",
+  "OSCE Guide was built by doctors like you. We understand the challenges you face because we've faced them ourselves. We know what it means to sit in that exam room and feel like your whole future depends on those few minutes.",
+  "When we created OSCE Guide, we wanted to build something that truly understands the struggles doctors face, where the main challenge isn't the knowledge, but communicating that knowledge clearly and concisely.",
+  "That's why we work hard every day on a platform that doesn't just help you practise, but shows you exactly what examiners are looking for.",
+  "We've stood where you're standing now. We know what it takes to pass these exams, and we're here to help you get there.",
 ];

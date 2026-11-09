@@ -10,6 +10,8 @@
   Test now:
     launchctl kickstart gui/$(id -u)/com.osceguide.legacy-sync
   Output: ~/Library/Logs/osce-legacy-sync.log
+  Runs through /bin/bash on purpose: launchd exec'ing the script directly under ~/Documents exited 126
+  (never reached the log) on 2026-11-05 to 2026-11-08; the night-runner job runs the same way and works.
 -->
 <plist version="1.0">
 <dict>
@@ -17,6 +19,7 @@
   <string>com.osceguide.legacy-sync</string>
   <key>ProgramArguments</key>
   <array>
+    <string>/bin/bash</string>
     <string>/Users/yahayakenny/Documents/Projects/osceguide/api/scripts/sync_b2c_nightly.sh</string>
     <string>production</string>
   </array>

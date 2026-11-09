@@ -14,7 +14,7 @@ export function FoundersNote() {
             <p key={text}>{text}</p>
           ))}
         </div>
-        <p className="mt-6 font-semibold text-site-ink">{FOUNDERS.signoff}</p>
+        <p className="mt-6"><b className="text-site-ink">{FOUNDERS.signoff.names}</b>, <span className="text-site-muted">{FOUNDERS.signoff.role}</span></p>
       </div>
     </Section>
   );

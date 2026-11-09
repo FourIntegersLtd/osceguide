@@ -9,7 +9,6 @@ const LANDING_ANCHORS = [
   { id: "exams", label: "Exams" },
   { id: "pricing", label: "Pricing" },
   { id: "faq", label: "FAQ" },
-  { id: "stories", label: "Stories" },
 ] as const;
 
 type AnchorId = (typeof LANDING_ANCHORS)[number]["id"];
@@ -20,7 +19,7 @@ function anchors(prefix: "" | "/", ids: readonly AnchorId[]): readonly SiteLink[
 }
 
 /** Centre links of the nav. On the landing they are anchors on the same page. */
-export const LANDING_NAV_LINKS = [...anchors("", ["exams", "pricing"]), { href: "/institutions", label: "Institutions" }];
+export const LANDING_NAV_LINKS = anchors("", ["feedback", "exams", "pricing", "faq"]);
 
 export const SITE_NAV_LINKS: readonly SiteLink[] = [
   { href: "/blogs", label: "Blogs" },
@@ -28,7 +27,7 @@ export const SITE_NAV_LINKS: readonly SiteLink[] = [
   { href: "/institutions", label: "Institutions" },
 ];
 
-export const FOOTER_PRODUCT = anchors("/", ["features", "pricing", "faq", "stories"]);
+export const FOOTER_PRODUCT = anchors("/", ["features", "pricing", "faq", "feedback"]);
 
 export const FOOTER_COMPANY: readonly SiteLink[] = [
   { href: "/institutions", label: "For universities and programmes" },

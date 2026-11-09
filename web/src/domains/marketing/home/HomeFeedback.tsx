@@ -12,8 +12,8 @@ type Panel = "truth" | "wish";
 
 type PanelDef = { id: Panel; tab: string; label: string; aside: string; prefix: string };
 
-const TRUTH: PanelDef = { id: "truth", tab: "Harsh truth", label: "Tell us what you really think", aside: "(we can take it)", prefix: "Harsh truth" };
-const WISH: PanelDef = { id: "wish", tab: "Wishlist", label: "Got a feature you wish existed?", aside: "No idea is too wild.", prefix: "Feature wishlist" };
+const TRUTH: PanelDef = { id: "truth", tab: "Harsh Truth", label: "Tell us what you really think about our product", aside: "(We promise we can take it…)", prefix: "Harsh truth" };
+const WISH: PanelDef = { id: "wish", tab: "Feature Wishlist", label: "Got a feature you wish existed? Share it with us!", aside: "No idea is too wild.", prefix: "Feature wishlist" };
 const PANELS = [TRUTH, WISH];
 
 const FIELD = "mt-3 block min-h-36 w-full rounded-xl border border-site-rule bg-site-card p-4 text-site-ink placeholder:text-site-faint focus-visible:outline focus-visible:outline-2 focus-visible:outline-site-brand";
@@ -46,8 +46,8 @@ export function HomeFeedback() {
 
   return (
     <Section id="feedback" tone="pale">
-      <SectionHead eyebrow="Help us improve" title="Tell us what's wrong with it." sub="Harsh truths welcome. The founders read every message." />
-      <form onSubmit={submit} className="mx-auto mt-10 max-w-2xl rounded-2xl border border-site-line bg-site-card p-5 text-left sm:p-8">
+      <SectionHead title="Your feedback shapes our platform. Be honest, be bold!" />
+      <form onSubmit={submit} className="mx-auto mt-14 max-w-2xl rounded-2xl border border-site-line bg-site-card p-5 text-left sm:p-8">
         <div role="tablist" aria-label="Kind of feedback" className="flex rounded-full bg-site-pale p-1">
           {PANELS.map((p) => (
             <button
@@ -75,7 +75,7 @@ export function HomeFeedback() {
         </label>
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <SiteButton type="submit" disabled={busy} size="lg">
-            {busy ? "Sending…" : "Send"}
+            {busy ? "Sending…" : "Submit feedback"}
           </SiteButton>
           <p role="status" aria-live="polite" className="text-sm text-site-body">
             {sent ? "Thank you for your feedback. Your insights help us improve." : ""}

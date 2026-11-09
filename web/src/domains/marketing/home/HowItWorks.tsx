@@ -5,13 +5,13 @@ import { LANDING_SHOTS } from "@/domains/marketing/home/landingShots";
 import { STEPS } from "@/domains/marketing/landingCopy";
 
 const SHOTS = [LANDING_SHOTS.choose, LANDING_SHOTS.consult, LANDING_SHOTS.marked] as const;
-const SIZES = "(min-width: 1200px) 384px, (min-width: 768px) 33vw, 100vw";
+const SIZES = "(min-width: 1280px) 400px, (min-width: 768px) 33vw, 100vw";
 
 export function HowItWorks() {
   return (
     <Section id="how" tone="ground" label="How it works">
-      <SectionHead eyebrow={STEPS.eyebrow} title={STEPS.title} sub={STEPS.sub} />
-      <ol className="mt-16 grid gap-10 md:grid-cols-3 md:gap-6">
+      <SectionHead eyebrow={STEPS.eyebrow} title={STEPS.title} />
+      <ol className="mt-20 grid gap-10 md:grid-cols-3 md:gap-6">
         {STEPS.items.map((step, i) => (
           <li key={step.title} className="min-w-0">
             <Shot shot={SHOTS[i]!} sizes={SIZES} />
@@ -19,7 +19,6 @@ export function HowItWorks() {
               <span className="mr-2 font-landing-mono text-sm font-medium text-site-brand">{i + 1}</span>
               {step.title}
             </h3>
-            <p className="mt-2 leading-relaxed text-site-body">{step.body}</p>
           </li>
         ))}
       </ol>

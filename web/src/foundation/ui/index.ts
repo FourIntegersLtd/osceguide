@@ -143,7 +143,7 @@ export {
 /* The public site's pill buttons and logo (blue palette, `.site-root` tokens). */
 export { SiteButton, SiteButtonLink } from "@/foundation/ui/site/SiteButton";
 export { LogoLink } from "@/foundation/ui/LogoLink";
-export { Eyebrow, IconTile, SectionHead } from "@/foundation/ui/site/SitePrimitives";
+export { Eyebrow, IconTile, SectionHead, SiteContainer } from "@/foundation/ui/site/SitePrimitives";
 export { PopupMenu } from "@/foundation/ui/PopupMenu";
 export { ActionMenu } from "@/foundation/ui/ActionMenu";
 export { RowActions, RowAction } from "@/foundation/ui/RowActions";
