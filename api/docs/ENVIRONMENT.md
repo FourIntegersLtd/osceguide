@@ -188,18 +188,18 @@ and `/health` reports the new commit.
 
 ### Database backup service
 
-`db-backup` (staging and production) is a cron service built from `api/infra/db-backup/`. Its settings
+`db-backup` (production only) is a cron service built from `api/infra/db-backup/`. Its settings
 live in Railway, not in a `railway.json`: the file was not read for this service (checked
 2026-11-04; Config as Code ends 2026-12-01), so the cron schedule is set on the service.
 
 | Setting | Value |
 |---|---|
-| Source | none yet: deployed with `railway up` from `api/infra/db-backup/` (`--service db-backup --environment <env>`). Connect the repo, root `/api/infra/db-backup`, when you want a push to redeploy it |
+| Source | none yet: deployed with `railway up` from `api/infra/db-backup/` (`--service db-backup --environment production`). Connect the repo, root `/api/infra/db-backup`, when you want a push to redeploy it |
 | Build → Dockerfile path | `Dockerfile` |
 | Deploy → Cron Schedule | `0 2 * * *` (UTC) |
 | Deploy → Restart policy | Never |
-| Variables | `DATABASE_URL=${{<postgres service>.DATABASE_URL}}` (`platform-postgres` / `platform-postgres-production`), `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` referenced from the api service (`platform-api-staging` / `platform-api`), `BACKUP_ENV=staging` or `production` |
+| Variables | `DATABASE_URL=${{platform-postgres-production.DATABASE_URL}}`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` referenced from `platform-api`, `BACKUP_ENV=production` |
 
-The bucket is versioned: a pruned nightly dump gets a delete marker and its bytes stay until a lifecycle
-rule expires old versions (the app's key cannot set one).
+The bucket is versioned: a pruned nightly dump gets a delete marker, and the lifecycle rule
+`expire-old-versions` (set in the AWS console) deletes noncurrent versions after 14 days.
 
