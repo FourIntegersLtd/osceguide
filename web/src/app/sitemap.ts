@@ -3,6 +3,7 @@ import { SITE_URL } from "@/app/metadata";
 import { blogPath } from "@/capabilities/media/blogs";
 import { listAllBlogs } from "@/capabilities/media/blogsServer";
 import { PUBLIC_MARKETING_PATHS } from "@/foundation/routing/pathVisibility";
+import { HIDDEN_EXAM_PATHS } from "@/domains/marketing/site/siteLinks";
 
 /**
  * The pages worth indexing.
@@ -25,7 +26,7 @@ export const revalidate = 3600;
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages = PUBLIC_MARKETING_PATHS
     // `/exams/classic` is the homepage again, and canonicalises to it.
-    .filter((path) => path !== "/exams/classic")
+    .filter((path) => path !== "/exams/classic" && !HIDDEN_EXAM_PATHS.includes(path))
     .map((path) => ({
       url: `${SITE_URL}${path}`,
       changeFrequency: "weekly" as const,

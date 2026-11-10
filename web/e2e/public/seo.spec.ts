@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { PUBLIC_MARKETING_PATHS } from "../../src/foundation/routing/pathVisibility";
+import { HIDDEN_EXAM_PATHS } from "../../src/domains/marketing/site/siteLinks";
 
 /**
  * What a crawler receives: the raw HTML of every public page, with no
@@ -48,6 +49,9 @@ test.describe("public pages as a crawler sees them", () => {
         expect(titles.get(title), `${path} repeats the title of ${titles.get(title)}`).toBeUndefined();
         titles.set(title, path || "/");
       }
+
+      // Hidden exams stay reachable but tell crawlers to leave them out; the rest are not asserted (staging is noindex at the root).
+      if (HIDDEN_EXAM_PATHS.includes(path)) expect(tag(html, /<meta[^>]*name="robots"[^>]*content="([^"]*)"/i)).toContain("noindex");
 
       expect((html.match(/<h1[\s>]/gi) ?? []).length).toBe(1);
       expect(visibleWords(html)).toBeGreaterThanOrEqual(WORD_FLOOR[path] ?? DEFAULT_WORD_FLOOR);

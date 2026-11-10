@@ -3,6 +3,7 @@ import { afterEach, describe, it } from "node:test";
 import sitemap from "@/app/sitemap";
 import { SITE_URL } from "@/app/metadata";
 import { PRIVATE_PATH_PREFIXES, PUBLIC_MARKETING_PATHS } from "@/foundation/routing/pathVisibility";
+import { HIDDEN_EXAM_PATHS } from "@/domains/marketing/site/siteLinks";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -32,10 +33,10 @@ describe("sitemap", () => {
     mockMediaApi();
     const urls = (await sitemap()).map((entry) => entry.url);
     for (const path of PUBLIC_MARKETING_PATHS) {
-      if (path === "/exams/classic") continue;
+      if (path === "/exams/classic" || HIDDEN_EXAM_PATHS.includes(path)) continue;
       assert.ok(urls.includes(`${SITE_URL}${path}`), `${path} is missing`);
     }
-    assert.ok(urls.includes(`${SITE_URL}/exams/casc`));
+    for (const path of HIDDEN_EXAM_PATHS) assert.ok(!urls.includes(`${SITE_URL}${path}`), `${path} is hidden`);
     assert.ok(!urls.includes(`${SITE_URL}/exams/classic`));
   });
 

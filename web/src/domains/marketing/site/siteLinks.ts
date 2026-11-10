@@ -1,4 +1,5 @@
 import { SUPPORT_EMAIL } from "@/foundation/support";
+import { VISIBLE_EXAMS, type ExamName } from "@/domains/marketing/pricingContent";
 import { COMPLIANCE_DOCS } from "@/domains/marketing/legal/legalDocs";
 
 export type SiteLink = { href: string; label: string };
@@ -36,12 +37,21 @@ export const FOOTER_COMPANY: readonly SiteLink[] = [
 ];
 
 /** Exam landings; `sca.osceguide.com` rewrites to the same pages. */
-export const FOOTER_EXAMS: readonly SiteLink[] = [
-  { href: "/exams/sca", label: "SCA (UK)" },
-  { href: "/exams/plab", label: "PLAB 2 (UK)" },
-  { href: "/exams/casc", label: "MRCPsych CASC" },
-  { href: "/exams/ortho", label: "Orthopaedic ST3" },
+export const EXAM_LINKS: readonly (SiteLink & { exam: ExamName })[] = [
+  { exam: "SCA", href: "/exams/sca", label: "SCA (UK)" },
+  { exam: "PLAB", href: "/exams/plab", label: "PLAB 2 (UK)" },
+  { exam: "CASC", href: "/exams/casc", label: "MRCPsych CASC" },
+  { exam: "ORTHO", href: "/exams/ortho", label: "Orthopaedic ST3" },
 ];
+
+/** Limited to `VISIBLE_EXAMS`: a hidden exam's page stays reachable but is linked from nowhere. */
+export const FOOTER_EXAMS: readonly SiteLink[] = EXAM_LINKS.filter((l) => VISIBLE_EXAMS.includes(l.exam));
+
+/**
+ * Exam pages that are reachable by URL but not offered (not in `VISIBLE_EXAMS`): noindex, out of the sitemap, linked from nowhere.
+ * Offer an exam again by adding it to `VISIBLE_EXAMS`.
+ */
+export const HIDDEN_EXAM_PATHS: readonly string[] = EXAM_LINKS.filter((l) => !VISIBLE_EXAMS.includes(l.exam)).map((l) => l.href);
 
 /** The Legal column; the accessibility statement is linked from Company. */
 export const FOOTER_LEGAL: readonly SiteLink[] = COMPLIANCE_DOCS.filter((d) => d.key !== "accessibility").map((d) => ({ href: d.href, label: d.footerLabel }));

@@ -55,9 +55,9 @@ function NavyShell({ children }: { children: ReactNode }) {
 
 function CardShell({ children }: { children: ReactNode }) {
   return (
-    <footer className="site-root relative -mt-32 pb-8 font-landing-body md:-mt-36">
+    <footer className="site-root relative pb-8 pt-12 font-landing-body md:-mt-36 md:pt-0">
       <SiteContainer>
-        <div className="rounded-3xl border border-site-line bg-site-card p-8 shadow-xl sm:p-10 lg:p-12">{children}</div>
+        <div className="md:rounded-3xl md:border md:border-site-line md:bg-site-card md:p-10 md:shadow-xl lg:p-12">{children}</div>
       </SiteContainer>
     </footer>
   );
@@ -69,8 +69,8 @@ export function SiteFooter({ variant = "navy" }: { variant?: Variant }) {
   const Shell = variant === "card" ? CardShell : NavyShell;
   return (
     <Shell>
-      <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
-        <div>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
+        <div className="col-span-2 lg:col-span-1">
           <LogoLink onDark={variant === "navy"} />
           <address className={`mt-4 text-sm not-italic leading-relaxed ${tone.dim}`}>
             82a James Carter Road<br />Mildenhall, IP28 7DE<br />England, UK

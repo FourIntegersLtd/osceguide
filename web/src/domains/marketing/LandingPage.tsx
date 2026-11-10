@@ -20,7 +20,7 @@ export function LandingPage() {
       <PricingSectionContent section={{ tone: "card", pad: "py-16 md:py-24" }} />
       <HomeTestimonials tone="ground" ctas={null} />
       <InstitutionsBand />
-      <HomeFaq split openFirst />
+      <HomeFaq />
       <ClosingBand />
     </SiteShell>
   );

@@ -8,7 +8,7 @@ export const metadata: Metadata = publicPageMetadata({
   path: "/pricing",
   title: "Pricing",
   description:
-    "Start with a free trial, then choose a 1, 3 or 6 month plan for SCA, PLAB 2, CASC or ortho interview practice with AI patients and structured feedback.",
+    "Start with a free trial, then choose a 1, 3 or 6 month plan for SCA or PLAB 2 practice with AI patients and structured feedback.",
 });
 
 /**

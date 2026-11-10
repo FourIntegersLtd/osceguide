@@ -10,6 +10,13 @@ export const LANDING_SHOTS = {
     ...BOX,
     alt: "The learner dashboard: 62% of assessed marks now meet the competent standard, Domain performance bars (Global skills 71%, Tasks 55%, Relating to others 64%), an eight-week trend and a What to work on list.",
   },
+  /** A phone capture of the same screen: 390 x 640 CSS px at 2x, signed in at 390 wide. */
+  markedMobile: {
+    src: `${DIR}/step-marked-mobile.png`,
+    width: 780,
+    height: 1280,
+    alt: "The learner dashboard on a phone: Welcome back, 2 stations attempted, and a Your next station card saying Global skills is where marks are waiting, with Practise a station and See what to work on buttons.",
+  },
   feedback: {
     src: `${DIR}/feedback.png`,
     ...BOX,

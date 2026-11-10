@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
 import { publicPageMetadata } from "@/app/metadata";
+import { HIDDEN_EXAM_PATHS } from "@/domains/marketing/site/siteLinks";
 import {
   BaseLandingPage,
   CascLandingPage,
@@ -56,7 +57,7 @@ const EXAM_HEADS: Record<string, { title: string; description: string }> = {
       "Match with GP trainees for structured CSA practice sessions. Session transcripts, AI cases, NHS-verified users.",
   },
   classic: {
-    title: "AI patient simulator for OSCE, SCA, PLAB 2 and CASC practice",
+    title: "AI patient simulator for OSCE, SCA and PLAB 2 practice",
     description:
       "OSCE Guide's AI platform simulates real patient interactions, helping doctors sharpen their clinical skills and enhance communication.",
   },
@@ -71,7 +72,9 @@ export async function generateMetadata({
   const head = EXAM_HEADS[exam];
   if (!head) return {};
   // `/exams/classic` is the homepage's own page, so it points search engines at `/`.
-  return publicPageMetadata({ path: exam === "classic" ? "/" : `/exams/${exam}`, ...head });
+  const metadata = publicPageMetadata({ path: exam === "classic" ? "/" : `/exams/${exam}`, ...head });
+  // A hidden exam stays reachable by URL, but search engines are told to leave it out.
+  return HIDDEN_EXAM_PATHS.includes(`/exams/${exam}`) ? { ...metadata, robots: { index: false, follow: false } } : metadata;
 }
 
 export default async function Page({ params }: { params: Promise<{ exam: string }> }) {

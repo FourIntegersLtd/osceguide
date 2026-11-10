@@ -66,7 +66,7 @@ export default function PlabLandingPage() {
       />
       <HomeNeurodiversity />
       <LandingPricingSection appType="plab" />
-      <HomeFaq openFirst />
+      <HomeFaq />
       <ExamBlogRail examCode="plab" />
     </SiteShell>
   );

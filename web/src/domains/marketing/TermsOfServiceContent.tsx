@@ -170,7 +170,7 @@ export default function TermsOfServiceContent() {
           </h3>
           <p className="text-osce-ink-700 leading-relaxed ml-6 mb-4">
             The number of stations you may access from our catalogue depends on
-            your subscription plan, exam product (e.g. SCA, PLAB, CASC, Ortho),
+            your subscription plan, exam product (e.g. SCA or PLAB),
             and your account status in the Service. Eligible stations may also
             be filtered by release date, approval status, and your own progress
             (for example, stations you have already attempted). The figures

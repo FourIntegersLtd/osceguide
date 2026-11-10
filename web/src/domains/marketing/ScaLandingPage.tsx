@@ -129,7 +129,7 @@ const ScaLandingPage = () => (
     />
 
     <LandingPricingSection appType="sca" />
-    <HomeFaq openFirst />
+    <HomeFaq />
     <LandingBlogSection />
   </SiteShell>
 );

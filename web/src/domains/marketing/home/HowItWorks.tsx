@@ -18,14 +18,14 @@ const pct = (x: number) => `${(x / HOW_PANEL.width) * 100}%`;
 /** A rising curve with three numbered steps on it from xl up (a stacked spine below, where the fixed-width callouts would not fit). Server-rendered; the `<ol>` carries the content, the rest is decoration. */
 export function HowItWorks() {
   return (
-    <section id="how" aria-labelledby="how-title" className="scroll-mt-16 bg-site-card pb-12 pt-[168px] md:pt-[360px] lg:pb-24">
+    <section id="how" aria-labelledby="how-title" className="scroll-mt-16 bg-site-card pb-12 pt-[176px] md:pt-[360px] lg:pb-24">
       <SiteContainer>
         <div className="max-w-[680px]">
           <Eyebrow>{HOW_IT_WORKS.eyebrow}</Eyebrow>
           <h2 id="how-title" className="mt-3 font-landing-heading text-[32px] font-semibold leading-[1.1] tracking-tight text-site-ink lg:text-[44px] lg:leading-[1.08]">{HOW_IT_WORKS.title}</h2>
         </div>
-        <div style={{ "--h": `${HOW_PANEL.height}px` } as CSSProperties} className="relative mt-8 overflow-hidden rounded-3xl border border-site-line bg-site-ground/50 px-4 pb-6 pt-5 lg:mt-14 xl:h-[var(--h)] xl:rounded-[28px] xl:p-0">
-          <span aria-hidden="true" className="absolute bottom-10 left-[35px] top-10 w-0.5 bg-gradient-to-b from-site-on-deep to-site-brand xl:hidden" />
+        <div style={{ "--h": `${HOW_PANEL.height}px` } as CSSProperties} className="relative mt-8 xl:mt-14 xl:h-[var(--h)] xl:overflow-hidden xl:rounded-[28px] xl:border xl:border-site-line xl:bg-site-ground/50">
+          <span aria-hidden="true" className="absolute bottom-10 left-[19px] top-10 w-0.5 bg-gradient-to-b from-site-on-deep to-site-brand xl:hidden" />
           <svg aria-hidden="true" viewBox={`0 0 ${HOW_PANEL.width} ${HOW_PANEL.height}`} preserveAspectRatio="none" className="absolute inset-0 hidden h-full w-full xl:block" fill="none">
             <defs>
               <linearGradient id="how-area" x1="0" y1="0" x2="0" y2="1">

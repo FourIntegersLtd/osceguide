@@ -12,7 +12,7 @@ const LINK = "font-landing-body text-sm font-medium text-white/85 underline-offs
 /** The deep-blue band that closes `/`; the card footer floats over its bottom edge. */
 export function ClosingBand() {
   return (
-    <section aria-labelledby="closing-title" className="relative overflow-hidden bg-site-deep pb-44 pt-16 text-center md:pb-52 md:pt-24">
+    <section aria-labelledby="closing-title" className="relative overflow-hidden bg-site-deep pb-16 pt-16 text-center md:pb-52 md:pt-24">
       <Rings rings={RINGS} />
       <SiteContainer className="relative" innerClassName="flex flex-col items-center">
         <h2 id="closing-title" className="max-w-3xl text-balance font-landing-heading text-3xl font-bold leading-tight tracking-tight text-white md:text-5xl">{CLOSING.title}</h2>

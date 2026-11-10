@@ -124,7 +124,7 @@ export default function CascLandingPage() {
       />
       <HomeNeurodiversity />
       <LandingPricingSection appType="casc" />
-      <HomeFaq openFirst />
+      <HomeFaq />
       <ExamBlogRail examCode="casc" />
     </SiteShell>
   );

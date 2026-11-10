@@ -97,7 +97,7 @@ export default function OrthoLandingPage() {
         attribution="Mark, ST3 Orthopaedic Registrar"
       />
 
-      <HomeFaq openFirst />
+      <HomeFaq />
       <LandingPricingSection appType="ortho" />
       <ExamBlogRail examCode="ortho" />
     </SiteShell>
