@@ -9,10 +9,10 @@ import { CLOSING, HERO } from "@/domains/marketing/landingCopy";
 const RINGS = ["top-1/2 h-[900px] w-[900px] -translate-y-1/2 border-white/10"];
 const LINK = "font-landing-body text-sm font-medium text-white/85 underline-offset-4 hover:text-white hover:underline";
 
-/** The deep-blue band that closes `/`; the card footer floats over its bottom edge. */
+/** The deep-blue band that closes `/`; the plain light footer follows it on the page ground. */
 export function ClosingBand() {
   return (
-    <section aria-labelledby="closing-title" className="relative overflow-hidden bg-site-deep pb-16 pt-16 text-center md:pb-52 md:pt-24">
+    <section aria-labelledby="closing-title" className="relative overflow-hidden bg-site-deep pb-16 pt-16 text-center md:pb-24 md:pt-24">
       <Rings rings={RINGS} />
       <SiteContainer className="relative" innerClassName="flex flex-col items-center">
         <h2 id="closing-title" className="max-w-3xl text-balance font-landing-heading text-3xl font-bold leading-tight tracking-tight text-white md:text-5xl">{CLOSING.title}</h2>

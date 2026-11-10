@@ -16,7 +16,7 @@
   --site-tint-colleagues: #ecebf7;
   --site-tint-timing: #e9f0ff;
   --site-device: #0e1a33;
-  --site-device-base: #1b2a4c;
+  --site-device-base: #cdd5e3;
   --site-brand: rgb(var(--brand));
   --site-brand-hover: rgb(var(--brand-hover));
   --site-pale: rgb(var(--brand-pale));
@@ -44,7 +44,7 @@
     --site-deep: #12295f;
     --site-on-deep: #bfd3ff;
     --site-device: #070d1c;
-    --site-device-base: #0e1730;
+    --site-device-base: #4b5772;
     --site-tint-feedback: #17233f;
     --site-tint-athena: #1c2230;
     --site-tint-colleagues: #1c1f3a;
@@ -72,7 +72,7 @@
   --site-deep: #12295f;
   --site-on-deep: #bfd3ff;
   --site-device: #070d1c;
-  --site-device-base: #0e1730;
+  --site-device-base: #4b5772;
   --site-tint-feedback: #17233f;
   --site-tint-athena: #1c2230;
   --site-tint-colleagues: #1c1f3a;

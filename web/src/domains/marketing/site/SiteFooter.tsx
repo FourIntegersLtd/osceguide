@@ -11,18 +11,22 @@ const SOCIAL = [
   { href: "https://www.facebook.com/osceguide", label: "OSCE Guide on Facebook", Icon: FaFacebook },
 ] as const;
 
-type Variant = "navy" | "card";
+type Variant = "navy" | "light";
 
-/** The class strings that differ between the navy footer and the white card. */
-const FOOTER_TONE: Record<Variant, { heading: string; link: string; dim: string; social: string; rule: string }> = {
+/** The class strings that differ between the navy footer and the light one, shell included. */
+const FOOTER_TONE: Record<Variant, { shell: string; inner: string; heading: string; link: string; dim: string; social: string; rule: string }> = {
   navy: {
+    shell: "bg-site-navy text-site-on-navy",
+    inner: "py-14",
     heading: "text-site-on-navy-dim",
     link: "text-site-on-navy hover:text-white",
     dim: "text-site-on-navy-dim",
     social: "border-white/25 text-white hover:bg-white/10",
     rule: "border-white/15",
   },
-  card: {
+  light: {
+    shell: "pb-10 pt-16 md:pt-20",
+    inner: "",
     heading: "text-site-muted",
     link: "text-site-body hover:text-site-brand",
     dim: "text-site-muted",
@@ -49,55 +53,42 @@ function Column({ title, links, variant }: { title: string; links: readonly Site
   );
 }
 
-function NavyShell({ children }: { children: ReactNode }) {
-  return <footer className="site-root bg-site-navy font-landing-body text-site-on-navy"><SiteContainer innerClassName="py-14">{children}</SiteContainer></footer>;
-}
-
-function CardShell({ children }: { children: ReactNode }) {
-  return (
-    <footer className="site-root relative pb-8 pt-12 font-landing-body md:-mt-36 md:pt-0">
-      <SiteContainer>
-        <div className="md:rounded-3xl md:border md:border-site-line md:bg-site-card md:p-10 md:shadow-xl lg:p-12">{children}</div>
-      </SiteContainer>
-    </footer>
-  );
-}
-
-/** The navy footer shared by the legal pages; `card` is the white one that floats over the landing's closing band. */
+/** The navy footer shared by the legal pages; `light` is the plain one on the landing's page ground. */
 export function SiteFooter({ variant = "navy" }: { variant?: Variant }) {
   const tone = FOOTER_TONE[variant];
-  const Shell = variant === "card" ? CardShell : NavyShell;
   return (
-    <Shell>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
-        <div className="col-span-2 lg:col-span-1">
-          <LogoLink onDark={variant === "navy"} />
-          <address className={`mt-4 text-sm not-italic leading-relaxed ${tone.dim}`}>
-            82a James Carter Road<br />Mildenhall, IP28 7DE<br />England, UK
-          </address>
-          <div className="mt-5 flex gap-2">
-            {SOCIAL.map(({ href, label, Icon }) => (
-              <a
-                key={href}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={label}
-                className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${tone.social}`}
-              >
-                <Icon aria-hidden />
-              </a>
-            ))}
+    <footer className={`site-root font-landing-body ${tone.shell}`}>
+      <SiteContainer innerClassName={tone.inner}>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:gap-10 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
+          <div className="col-span-2 lg:col-span-1">
+            <LogoLink onDark={variant === "navy"} />
+            <address className={`mt-4 text-sm not-italic leading-relaxed ${tone.dim}`}>
+              82a James Carter Road<br />Mildenhall, IP28 7DE<br />England, UK
+            </address>
+            <div className="mt-5 flex gap-2">
+              {SOCIAL.map(({ href, label, Icon }) => (
+                <a
+                  key={href}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${tone.social}`}
+                >
+                  <Icon aria-hidden />
+                </a>
+              ))}
+            </div>
           </div>
+          <Column title="Exams" links={FOOTER_EXAMS} variant={variant} />
+          <Column title="Product" links={FOOTER_PRODUCT} variant={variant} />
+          <Column title="Company" links={FOOTER_COMPANY} variant={variant} />
+          <Column title="Legal" links={FOOTER_LEGAL} variant={variant} />
         </div>
-        <Column title="Exams" links={FOOTER_EXAMS} variant={variant} />
-        <Column title="Product" links={FOOTER_PRODUCT} variant={variant} />
-        <Column title="Company" links={FOOTER_COMPANY} variant={variant} />
-        <Column title="Legal" links={FOOTER_LEGAL} variant={variant} />
-      </div>
-      <p className={`mt-12 border-t pt-6 text-sm ${tone.rule} ${tone.dim}`}>
-        &copy; {new Date().getFullYear()} Four Integers Ltd. All rights reserved.
-      </p>
-    </Shell>
+        <p className={`mt-12 border-t pt-6 text-sm ${tone.rule} ${tone.dim}`}>
+          &copy; {new Date().getFullYear()} Four Integers Ltd. All rights reserved.
+        </p>
+      </SiteContainer>
+    </footer>
   );
 }

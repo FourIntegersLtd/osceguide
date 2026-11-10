@@ -12,7 +12,7 @@ import { SiteShell } from "@/domains/marketing/site/SiteShell";
 /** The public landing page at `/`. Server-rendered; the interactive parts are small client islands. */
 export function LandingPage() {
   return (
-    <SiteShell nav="landing" footer="card">
+    <SiteShell nav="landing" footer="light">
       <LandingHero />
       <HowItWorks />
       <FeaturePanels />

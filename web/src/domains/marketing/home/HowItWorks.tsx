@@ -18,7 +18,7 @@ const pct = (x: number) => `${(x / HOW_PANEL.width) * 100}%`;
 /** A rising curve with three numbered steps on it from xl up (a stacked spine below, where the fixed-width callouts would not fit). Server-rendered; the `<ol>` carries the content, the rest is decoration. */
 export function HowItWorks() {
   return (
-    <section id="how" aria-labelledby="how-title" className="scroll-mt-16 bg-site-card pb-12 pt-[176px] md:pt-[360px] lg:pb-24">
+    <section id="how" aria-labelledby="how-title" className="scroll-mt-16 bg-site-card pb-12 pt-16 md:pt-[360px] lg:pb-24">
       <SiteContainer>
         <div className="max-w-[680px]">
           <Eyebrow>{HOW_IT_WORKS.eyebrow}</Eyebrow>

@@ -32,7 +32,31 @@ function PhoneStatusBar() {
   );
 }
 
-/** First screen: a deep-blue band, the headline and one button, and the learner dashboard in a device frame that hangs over the band's bottom edge. */
+/** Phone only: the camera island over the top of the capture. */
+function PhoneIsland() {
+  return <span aria-hidden="true" className="absolute left-1/2 top-4 h-[18px] w-[76px] -translate-x-1/2 rounded-full bg-site-device md:hidden" />;
+}
+
+/** Laptop only: the camera dot in the lid's bezel. */
+function LaptopCamera() {
+  return <span aria-hidden="true" className="absolute left-1/2 top-[7px] hidden h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-white/25 md:block" />;
+}
+
+/** Laptop only: a flat aluminium deck wider than the lid (`-mx-4 xl:-mx-10` stays inside the gutter) with a centred lip. */
+function LaptopBase() {
+  return (
+    <div aria-hidden="true" className="relative -mx-4 hidden h-[18px] rounded-b-[22px] rounded-t-[3px] bg-site-device-base shadow-2xl md:block xl:-mx-10">
+      <span className="absolute left-1/2 top-0 h-[7px] w-[16%] -translate-x-1/2 rounded-b-[10px] bg-site-rule" />
+    </div>
+  );
+}
+
+/** The `#how` section's `md:pt-[360px]` is the room for this figure's `md:-mb-[260px]` overhang: change them together. */
+const FIGURE = "relative z-10 mt-11 h-[290px] w-[280px] overflow-hidden md:-mb-[260px] md:mt-[72px] md:h-auto md:w-full md:max-w-[1020px] md:overflow-visible";
+const LID = "relative rounded-t-[40px] bg-site-device px-2.5 pt-2.5 md:rounded-b-[6px] md:rounded-t-[26px] md:p-3 md:pt-5 md:ring-1 md:ring-white/10";
+const SCREEN = "overflow-hidden rounded-t-[30px] bg-white md:h-[560px] md:rounded-[8px]";
+
+/** First screen: a deep-blue band, the headline and one button, and the learner dashboard in a device frame: a laptop that hangs over the band's bottom edge, and below md a phone cut off cleanly at it. */
 export function LandingHero() {
   // One <picture>, art-directed: a phone fetches only the phone capture and a laptop only the dashboard.
   const { props: { srcSet: desktopSrcSet } } = getImageProps({
@@ -65,18 +89,19 @@ export function LandingHero() {
           <SiteButtonLink href={`mailto:${SUPPORT_EMAIL}`} variant="ghost" size="lg">{HERO.contact}</SiteButtonLink>
         </div>
         <div className="mt-5 md:mt-[22px]"><HeroProof onDeep /></div>
-        <figure className="relative z-10 -mb-[150px] mt-11 w-[280px] md:-mb-[260px] md:mt-[72px] md:w-full md:max-w-[1020px]">
-          <div className="relative rounded-t-[40px] bg-site-device px-2.5 pt-2.5 [-webkit-mask-image:linear-gradient(to_bottom,black_55%,transparent)] [mask-image:linear-gradient(to_bottom,black_55%,transparent)] md:rounded-[22px] md:p-3.5 md:pb-[18px] md:shadow-2xl md:[-webkit-mask-image:none] md:[mask-image:none]">
-            <div className="overflow-hidden rounded-t-[30px] bg-white md:h-[560px] md:rounded-xl">
+        <figure className={FIGURE}>
+          <div className={LID}>
+            <div className={SCREEN}>
               <PhoneStatusBar />
               <picture>
                 <source media="(min-width: 768px)" sizes="992px" srcSet={desktopSrcSet} />
                 <img {...heroImg} alt={LANDING_SHOTS.marked.alt} className="block h-auto w-full object-cover object-top md:h-full" />
               </picture>
             </div>
-            <span aria-hidden="true" className="absolute left-1/2 top-4 h-[18px] w-[76px] -translate-x-1/2 rounded-full bg-site-device md:hidden" />
+            <PhoneIsland />
+            <LaptopCamera />
           </div>
-          <div aria-hidden="true" className="-mx-3 hidden h-4 rounded-b-[18px] bg-site-device-base md:block" />
+          <LaptopBase />
         </figure>
       </SiteContainer>
     </header>
