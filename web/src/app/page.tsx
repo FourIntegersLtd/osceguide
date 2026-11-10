@@ -5,7 +5,7 @@ import { publicPageMetadata } from "@/app/metadata";
 export const metadata: Metadata = publicPageMetadata({
   path: "/",
   // Same level as the root layout, so its `title.template` does not apply: say it in full.
-  title: "OSCE Guide - AI patient simulator for OSCE, SCA, PLAB 2 and CASC practice",
+  title: "OSCE Guide - AI patient simulator for OSCE, SCA and PLAB 2 practice",
   description:
     "OSCE Guide's AI platform simulates real patient interactions, helping doctors sharpen their clinical skills and enhance communication.",
 });
