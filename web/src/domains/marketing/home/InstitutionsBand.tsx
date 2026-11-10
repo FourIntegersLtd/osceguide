@@ -1,29 +1,24 @@
 import { DEMO_MAILTO } from "@/foundation/support";
 import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
-import { IconTile, SiteButtonLink } from "@/foundation/ui";
-import { Section } from "@/domains/marketing/home/Section";
-import { Shot } from "@/domains/marketing/home/Shot";
-import { LANDING_SHOTS } from "@/domains/marketing/home/landingShots";
+import { IconTile, SiteButtonLink, SiteContainer } from "@/foundation/ui";
 import { INSTITUTIONS } from "@/domains/marketing/landingCopy";
 
-/** The one place programmes and employers appear on `/`: a pale band, text links only. */
+/** The one place programmes and employers appear on `/`: a one-line card, text links only. */
 export function InstitutionsBand() {
   return (
-    <Section id="institutions" tone="pale" label="For institutions">
-      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-        <div className="min-w-0">
+    <section id="institutions" aria-label="For institutions" className="scroll-mt-16 py-6 md:py-10">
+      <SiteContainer>
+        <div className="flex flex-col gap-4 rounded-2xl border border-site-line bg-site-card p-5 md:flex-row md:items-center md:justify-between md:px-8 md:py-6">
           <div className="flex items-center gap-3">
             <IconTile><HiOutlineBuildingOffice2 /></IconTile>
-            <h2 className="text-balance font-landing-heading text-2xl font-bold leading-tight text-site-ink sm:text-3xl">{INSTITUTIONS.title}</h2>
+            <h2 className="text-balance font-landing-heading text-lg font-bold leading-tight text-site-ink md:text-xl">{INSTITUTIONS.title}</h2>
           </div>
-          <p className="mt-4 text-[17px] leading-relaxed text-site-body">{INSTITUTIONS.body}</p>
-          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
-            <SiteButtonLink href="/institutions" variant="text" className="px-0 font-semibold text-site-brand">{INSTITUTIONS.link} →</SiteButtonLink>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <SiteButtonLink href="/institutions" variant="text" className="px-0 font-semibold text-site-brand">{INSTITUTIONS.link} &rarr;</SiteButtonLink>
             <SiteButtonLink href={DEMO_MAILTO} variant="text" className="px-0">{INSTITUTIONS.demo}</SiteButtonLink>
           </div>
         </div>
-        <Shot shot={LANDING_SHOTS.institutions} sizes="(min-width: 1280px) 588px, (min-width: 1024px) 45vw, 100vw" />
-      </div>
-    </Section>
+      </SiteContainer>
+    </section>
   );
 }

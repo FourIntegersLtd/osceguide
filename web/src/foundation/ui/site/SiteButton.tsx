@@ -2,13 +2,14 @@ import Link from "next/link";
 import type { ButtonHTMLAttributes, ComponentProps } from "react";
 import { cn } from "@/foundation/ui/cn";
 
-type SiteButtonVariant = "brand" | "line" | "white" | "text";
+type SiteButtonVariant = "brand" | "line" | "white" | "ghost" | "text";
 type SiteButtonSize = "sm" | "md" | "lg";
 
 const VARIANT: Record<SiteButtonVariant, string> = {
   brand: "bg-site-brand text-site-on-brand hover:bg-site-brand-hover border border-transparent",
   line: "bg-transparent text-site-ink border border-site-rule hover:border-site-brand hover:text-site-brand",
-  white: "bg-white text-site-navy border border-transparent hover:bg-site-pale",
+  white: "bg-white text-site-deep border border-transparent hover:bg-site-pale",
+  ghost: "bg-transparent text-white border border-white/55 hover:border-white",
   text: "bg-transparent text-site-body border border-transparent hover:text-site-brand hover:underline underline-offset-4",
 };
 const SIZE: Record<SiteButtonSize, string> = {

@@ -1,24 +1,22 @@
-import { FiChevronDown } from "react-icons/fi";
 import { FAQ_ITEMS } from "@/domains/marketing/home/faqItems";
 import { SectionHead } from "@/foundation/ui";
+import { Accordion } from "@/domains/marketing/home/Accordion";
 import { Section } from "@/domains/marketing/home/Section";
 
-/** `openFirst` opens the first answer, as the exam pages do. */
-export function HomeFaq({ openFirst = false }: { openFirst?: boolean }) {
+const ITEMS = FAQ_ITEMS.map((item) => ({ title: item.question, body: item.answer }));
+
+/** `openFirst` opens the first answer. `split` lays the questions in two ruled columns from lg up; otherwise one boxed list. */
+export function HomeFaq({ openFirst = false, split = false }: { openFirst?: boolean; split?: boolean }) {
   return (
-    <Section id="faq" tone="card">
+    <Section id="faq" tone={split ? "ground" : "card"}>
       <SectionHead title="Frequently asked questions" />
-      <div className="mx-auto mt-14 max-w-3xl divide-y divide-site-line rounded-2xl border border-site-line bg-site-ground">
-        {FAQ_ITEMS.map((item, i) => (
-          <details key={item.question} open={openFirst && i === 0} className="group px-5 py-4">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-site-ink [&::-webkit-details-marker]:hidden">
-              {item.question}
-              <FiChevronDown aria-hidden className="shrink-0 transition-transform group-open:rotate-180" />
-            </summary>
-            <p className="mt-3 leading-relaxed text-site-body">{item.answer}</p>
-          </details>
-        ))}
-      </div>
+      <Accordion
+        items={ITEMS}
+        openFirst={openFirst}
+        className={split ? "mt-10 grid gap-x-10 lg:mt-14 lg:grid-cols-2" : "mx-auto mt-14 max-w-3xl divide-y divide-site-line rounded-2xl border border-site-line bg-site-ground"}
+        itemClassName={split ? "border-t border-site-line py-4 lg:[&:nth-last-child(-n+2)]:border-b" : "px-5 py-4"}
+        bodyClassName="mt-3"
+      />
     </Section>
   );
 }

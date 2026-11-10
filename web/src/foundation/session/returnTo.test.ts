@@ -22,6 +22,8 @@ describe("return-to sanitising", () => {
     assert.equal(sanitizeReturnTo("/login"), null);
     assert.equal(sanitizeReturnTo("/"), null);
     assert.equal(sanitizeReturnTo("/exams/sca"), null);
+    assert.equal(sanitizeReturnTo("/founders"), null);
+    assert.equal(sanitizeReturnTo("/feedback"), null);
   });
 
   it("refuses nothing at all", () => {

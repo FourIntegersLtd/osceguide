@@ -10,12 +10,13 @@ import { LetterCard } from "@/domains/marketing/home/Blocks";
 import { Section } from "@/domains/marketing/home/Section";
 import { MARQUEE_TESTIMONIALS, type MarqueeTestimonial } from "@/domains/marketing/support/testimonials";
 
-export function HomeFounders() {
+export function HomeFounders({ asPageTitle = false }: { asPageTitle?: boolean }) {
   return (
     <Section>
       <LetterCard
         eyebrow="A message from our founders"
         icon={<FiMessageSquare />}
+        asPageTitle={asPageTitle}
         paragraphs={FOUNDERS_LETTER}
         signoff={<><b className="text-site-ink">Kenny and Aisha</b>, <span className="text-site-muted">Co-founders</span></>}
       />
@@ -23,11 +24,11 @@ export function HomeFounders() {
   );
 }
 
-function Quote({ t }: { t: MarqueeTestimonial }) {
+function Quote({ t, tone }: { t: MarqueeTestimonial; tone: "card" | "ground" }) {
   const at = t.excerpt.indexOf(t.highlight);
   const parts = at < 0 ? [t.excerpt, "", ""] : [t.excerpt.slice(0, at), t.highlight, t.excerpt.slice(at + t.highlight.length)];
   return (
-    <figure className="w-[300px] shrink-0 rounded-2xl border border-site-line bg-site-ground p-5 text-left sm:w-[360px]">
+    <figure className={`w-[300px] shrink-0 rounded-2xl border border-site-line ${tone === "ground" ? "bg-site-card" : "bg-site-ground"} p-5 text-left sm:w-[360px]`}>
       <blockquote className="text-sm leading-relaxed text-site-body">
         &ldquo;{parts[0]}
         {parts[1] && <mark className="rounded bg-site-pale px-0.5 font-semibold text-site-brand">{parts[1]}</mark>}
@@ -42,23 +43,23 @@ function Quote({ t }: { t: MarqueeTestimonial }) {
 }
 
 /** Real quotes only, from `support/testimonials.ts`. The second copy of the row is hidden from assistive tech. */
-export function HomeTestimonials({ title = "What our doctors say", ctas }: { title?: ReactNode; ctas?: ReactNode }) {
+export function HomeTestimonials({ title = "What our doctors say", ctas, tone = "card" }: { title?: ReactNode; ctas?: ReactNode; tone?: "card" | "ground" }) {
   return (
-    <Section id="testimonials" tone="card">
+    <Section id="testimonials" tone={tone}>
       <SectionHead title={title} />
       <div className="site-marquee -mx-4 mt-16 overflow-hidden sm:-mx-5">
         <div className="site-marquee-track flex gap-4 px-4">
           {MARQUEE_TESTIMONIALS.map((t) => (
-            <Quote key={t.name} t={t} />
+            <Quote key={t.name} t={t} tone={tone} />
           ))}
           <div aria-hidden="true" className="flex gap-4">
             {MARQUEE_TESTIMONIALS.map((t) => (
-              <Quote key={t.name} t={t} />
+              <Quote key={t.name} t={t} tone={tone} />
             ))}
           </div>
         </div>
       </div>
-      <div className="mt-14 flex flex-wrap justify-center gap-3">
+      {ctas !== null && <div className="mt-14 flex flex-wrap justify-center gap-3">
         {ctas ?? (
           <>
             <PartnerLink path={LOGIN_PATH} size="lg">Start practising</PartnerLink>
@@ -71,7 +72,7 @@ export function HomeTestimonials({ title = "What our doctors say", ctas }: { tit
             </SiteButtonLink>
           </>
         )}
-      </div>
+      </div>}
     </Section>
   );
 }

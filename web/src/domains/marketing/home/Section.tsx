@@ -10,11 +10,11 @@ const TONE: Record<SectionTone, string> = {
   navy: "bg-site-navy",
 };
 
-/** A full-width landing band with the shared shell and vertical rhythm. */
-export function Section({ id, tone = "ground", label, children }: { id?: string; tone?: SectionTone; label?: string; children: ReactNode }) {
+/** A full-width landing band with the shared shell and vertical rhythm; `pad` replaces the default vertical padding where a band sits tighter against its neighbour. */
+export function Section({ id, tone = "ground", label, pad = "py-20 sm:py-32", children }: { id?: string; tone?: SectionTone; label?: string; pad?: string; children: ReactNode }) {
   return (
     <section id={id} aria-label={label} className={`scroll-mt-16 ${TONE[tone]}`}>
-      <SiteContainer className="py-20 sm:py-32">{children}</SiteContainer>
+      <SiteContainer className={pad}>{children}</SiteContainer>
     </section>
   );
 }

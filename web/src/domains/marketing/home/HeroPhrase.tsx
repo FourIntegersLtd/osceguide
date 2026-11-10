@@ -16,7 +16,7 @@ export const HERO_PHRASES = [
  * The hero's rotating phrase, the headline's second line (a screen reader gets the full sentence from the h1's hidden text). The first phrase is the server-rendered one and
  * the only one under reduced motion, so the headline is complete at rest.
  */
-export function HeroPhrase() {
+export function HeroPhrase({ className = "text-site-brand" }: { className?: string }) {
   const [index, setIndex] = useState(0);
   const [shown, setShown] = useState(true);
 
@@ -39,7 +39,7 @@ export function HeroPhrase() {
   return (
     <span
       aria-hidden="true"
-      className={`block h-[1.1em] whitespace-nowrap text-site-brand transition-all duration-300 motion-reduce:transition-none ${
+      className={`block h-[1.1em] whitespace-nowrap ${className} transition-all duration-300 motion-reduce:transition-none ${
         shown ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
       }`}
     >

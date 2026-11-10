@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { usePartnerContext } from "@/domains/marketing/support/usePartnerContext";
 import { AsyncBoundary } from "@/foundation/ui";
@@ -67,7 +67,7 @@ function PricingComparisonLayout({ examConfig, onSelectPlan }: PricingTableProps
 }
 
 /** `asPageTitle`: the section is the whole page (`/pricing`), so its heading is the h1. */
-export function PricingSectionContent({ asPageTitle = false }: { asPageTitle?: boolean }) {
+export function PricingSectionContent({ asPageTitle = false, section }: { asPageTitle?: boolean; section?: Pick<ComponentProps<typeof Section>, "tone" | "pad"> }) {
   const router = useRouter();
   const partner = usePartnerContext();
   const [selectedExam, setSelectedExam] = useState<ExamName>("SCA");
@@ -101,7 +101,7 @@ export function PricingSectionContent({ asPageTitle = false }: { asPageTitle?: b
   );
 
   return (
-    <Section id="pricing">
+    <Section id="pricing" {...section}>
       <SectionHead
         as={asPageTitle ? "h1" : "h2"}
         title={<>Simple, Transparent <span className="text-site-brand">Pricing</span></>}

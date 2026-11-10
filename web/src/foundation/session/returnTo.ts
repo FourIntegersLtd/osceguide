@@ -8,7 +8,7 @@
  */
 
 /** Paths that never need a session, and so are never worth returning to. */
-const PUBLIC_PREFIXES = ["/login", "/register", "/forgot-password", "/reset-password", "/confirm-email", "/accept-invitation", "/change-password", "/compliances", "/exams", "/institutions", "/blogs"];
+const PUBLIC_PREFIXES = ["/login", "/register", "/forgot-password", "/reset-password", "/confirm-email", "/accept-invitation", "/change-password", "/compliances", "/exams", "/institutions", "/blogs", "/founders", "/feedback"];
 
 export function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true;

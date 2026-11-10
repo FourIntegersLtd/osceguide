@@ -328,3 +328,9 @@ export type ExamConfig = {
 };
 
 export type ExamName = keyof typeof EXAM_CONFIGS;
+
+/**
+ * The exams offered on `/`, `/pricing` and the exam tabs for now. CASC and Orthopaedics keep their
+ * content, pages and plans; they are only left out of these lists until they are offered again.
+ */
+export const VISIBLE_EXAMS: readonly ExamName[] = ["SCA", "PLAB"];

@@ -83,12 +83,12 @@ export function HeroIntro({ title, lead, ctas, titleClass = "text-[clamp(1.75rem
 }
 
 /** A long note from the team in one card: eyebrow, paragraphs, signature. */
-export function LetterCard({ eyebrow, icon, title, paragraphs, signoff }: { eyebrow: string; icon?: ReactNode; title?: string; paragraphs: readonly string[]; signoff: ReactNode }) {
+export function LetterCard({ eyebrow, asPageTitle = false, icon, title, paragraphs, signoff }: { eyebrow: string; asPageTitle?: boolean; icon?: ReactNode; title?: string; paragraphs: readonly string[]; signoff: ReactNode }) {
   return (
     <article className="mx-auto max-w-3xl rounded-3xl border border-site-line bg-site-card p-6 sm:p-10">
       <div className="flex items-center gap-3">
         {icon && <IconTile>{icon}</IconTile>}
-        <Eyebrow>{eyebrow}</Eyebrow>
+        {asPageTitle ? <h1><Eyebrow>{eyebrow}</Eyebrow></h1> : <Eyebrow>{eyebrow}</Eyebrow>}
       </div>
       {title && <h2 className="mt-4 text-balance font-landing-heading text-3xl font-bold leading-tight text-site-ink">{title}</h2>}
       <div className="mt-6 space-y-4 text-[17px] leading-[1.7] text-site-body">

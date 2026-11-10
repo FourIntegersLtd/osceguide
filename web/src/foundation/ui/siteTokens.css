@@ -9,6 +9,14 @@
   --site-card: #ffffff;
   --site-ink: #141b2b;
   --site-navy: #0e2a5c;
+  --site-deep: #1e3a8a;
+  --site-on-deep: #bfd3ff;
+  --site-tint-feedback: #e6edfb;
+  --site-tint-athena: #f1efe9;
+  --site-tint-colleagues: #ecebf7;
+  --site-tint-timing: #e9f0ff;
+  --site-device: #0e1a33;
+  --site-device-base: #1b2a4c;
   --site-brand: rgb(var(--brand));
   --site-brand-hover: rgb(var(--brand-hover));
   --site-pale: rgb(var(--brand-pale));
@@ -33,6 +41,14 @@
     --site-card: #141c2c;
     --site-ink: #e8ecf4;
     --site-navy: #0a1a3a;
+    --site-deep: #12295f;
+    --site-on-deep: #bfd3ff;
+    --site-device: #070d1c;
+    --site-device-base: #0e1730;
+    --site-tint-feedback: #17233f;
+    --site-tint-athena: #1c2230;
+    --site-tint-colleagues: #1c1f3a;
+    --site-tint-timing: #172647;
     --site-brand: #7ea2ff;
     --site-brand-hover: #9ab8ff;
     --site-pale: #1a2744;
@@ -53,6 +69,14 @@
   --site-card: #141c2c;
   --site-ink: #e8ecf4;
   --site-navy: #0a1a3a;
+  --site-deep: #12295f;
+  --site-on-deep: #bfd3ff;
+  --site-device: #070d1c;
+  --site-device-base: #0e1730;
+  --site-tint-feedback: #17233f;
+  --site-tint-athena: #1c2230;
+  --site-tint-colleagues: #1c1f3a;
+  --site-tint-timing: #172647;
   --site-brand: #7ea2ff;
   --site-brand-hover: #9ab8ff;
   --site-pale: #1a2744;
@@ -132,10 +156,6 @@
   0%, 100% { transform: scaleY(0.35); }
   50% { transform: scaleY(1); }
 }
-@keyframes site-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
 @keyframes site-marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
@@ -145,7 +165,6 @@
   transform-origin: center;
   animation: site-wave 1.2s ease-in-out infinite;
 }
-.site-pulse { animation: site-pulse 1.6s ease-in-out infinite; }
 .site-marquee-track { animation: site-marquee 70s linear infinite; width: max-content; }
 .site-marquee:hover .site-marquee-track { animation-play-state: paused; }
 
@@ -166,7 +185,6 @@
   }
 
   .site-wave-bar,
-  .site-pulse,
   .site-marquee-track { animation: none; }
   .site-marquee { overflow-x: auto; }
   .site-marquee-track { width: auto; }

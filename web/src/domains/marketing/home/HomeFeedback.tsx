@@ -19,7 +19,7 @@ const PANELS = [TRUTH, WISH];
 const FIELD = "mt-3 block min-h-36 w-full rounded-xl border border-site-rule bg-site-card p-4 text-site-ink placeholder:text-site-faint focus-visible:outline focus-visible:outline-2 focus-visible:outline-site-brand";
 
 /** "Help us improve": files one `product_feedback` message carrying whichever boxes were filled. */
-export function HomeFeedback() {
+export function HomeFeedback({ asPageTitle = false }: { asPageTitle?: boolean }) {
   const toast = useToast();
   const [panel, setPanel] = useState<Panel>("truth");
   const [text, setText] = useState<Record<Panel, string>>({ truth: "", wish: "" });
@@ -46,7 +46,7 @@ export function HomeFeedback() {
 
   return (
     <Section id="feedback" tone="pale">
-      <SectionHead title="Your feedback shapes our platform. Be honest, be bold!" />
+      <SectionHead title="Your feedback shapes our platform. Be honest, be bold!" as={asPageTitle ? "h1" : "h2"} />
       <form onSubmit={submit} className="mx-auto mt-14 max-w-2xl rounded-2xl border border-site-line bg-site-card p-5 text-left sm:p-8">
         <div role="tablist" aria-label="Kind of feedback" className="flex rounded-full bg-site-pale p-1">
           {PANELS.map((p) => (

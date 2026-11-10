@@ -1,6 +1,6 @@
 "use client";
 
-import { EXAM_CONFIGS, type ExamName } from "./pricingContent";
+import { EXAM_CONFIGS, VISIBLE_EXAMS, type ExamName } from "./pricingContent";
 
 /** The exam toggle above the price cards; an exam with no plans yet says so. */
 export function ExamTabs({
@@ -12,8 +12,8 @@ export function ExamTabs({
 }) {
   return (
       <div className="mb-8 flex justify-center">
-        <div className="inline-flex max-w-full flex-wrap justify-center gap-1 rounded-full border border-site-line bg-site-pale p-1">
-          {(Object.keys(EXAM_CONFIGS) as ExamName[]).map((examName) => {
+        <div className="inline-flex max-w-full flex-wrap justify-center gap-1 rounded-full border border-site-line bg-site-ground p-1">
+          {VISIBLE_EXAMS.map((examName) => {
             const examData = EXAM_CONFIGS[examName];
             const hasPlans = "plans" in examData && !!examData.plans;
             const isActive = selected === examName;

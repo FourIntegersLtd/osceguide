@@ -120,9 +120,10 @@ Skip `schema.d.ts`, `openapi.json` and `_generated/`: they are generated.
 ## Landing `/` (rebuilt 2026-11)
 
 - Composition is `domains/marketing/LandingPage.tsx`; copy in `marketing/landingCopy.ts`, captures in `home/landingShots.ts`. Numbers in copy come from `foundation/config/copyNumbers.ts`.
-- Hero clip is `DemoVideo` with `poster`/`eager`/`sources`; it never plays under reduced motion or save-data, and `HeroClip` has a pause link.
-- The proof line (`HeroProofLine`) reads `all_feedback` and renders nothing when `/site/statistics` fails (e2e `layout.spec.ts`).
-- `SiteButton` variant `text` is the link-style action; only the nav and hero carry a filled button above pricing, the final CTA is the one navy band.
+- Hero is a deep-blue band (`bg-site-deep`, `HeroPhrase className`, `HeroProof onDeep`) with a device frame of `LANDING_SHOTS.marked` hanging over its edge; `HowItWorks` (`#how`: a rising chart panel on xl+ (1280px, narrower clips the fixed-width callouts), a spine below; text and figures in `home/howItWorksData.ts`, vignettes in `HowItWorksVignettes.tsx`; it owns the 168/360px top padding the laptop hangs into, so `FeaturePanels` starts at 0), four tinted `FeaturePanels` (`site-tint-*` tokens), then `ExamCards`, the old `Pricing` (`section` prop), `HomeTestimonials tone="ground"`, `InstitutionsBand` (one line), `HomeFaq split` and `ClosingBand`, which the `SiteShell footer="card"` footer overlaps with a negative margin.
+- Which exams show on `/` and in `ExamTabs` (and so `/pricing`) is `VISIBLE_EXAMS` in `pricingContent.ts`; `EXAMS`/`PRICES` data stays. The founders letter and feedback form are public routes `/founders` and `/feedback`, not home sections.
+- A hero-overflow trap: a device base bar wider than the gutter (`-mx-10`) scrolled the page at 768; keep decorations inside the 20px gutter.
+- Another owner's `next dev` can leave `.next/dev/types/*` truncated mid-write; `npm run types` then fails on generated files. Truncate the garbage tail (gitignored) rather than killing their server.
 - `site-wave*` CSS stays: `AuthQuotePanel` uses it. Exam pages share Blocks, HomeFaq, HomePractice, HomeFounders, `foundersLetter`, `faqItems`.
 
 - **Assess words live in `capabilities/assess-words`** (`useAssessWords`, `INSTITUTION_WORDS`, `EMPLOYER_WORDS`, `assessWordsFor(surface)`), not `domains/assess`. A node test imports `@/capabilities/assess-words/vocabulary`, never the barrel (it pulls TSX). A surface manifest may carry `refusal` (`screens`, `title`, `body(orgName)`): `app/app/[workspace]/screen.tsx` renders `RefusedScreen` for those screens before `notFound()`. Hire refuses practice and mock screens this way.

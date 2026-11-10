@@ -88,7 +88,7 @@ export function SiteNav({ variant = "site", exam, links: custom }: { variant?: "
 
   return (
     <>
-    <header className="sticky top-0 z-40 border-b border-site-line bg-site-ground/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-site-line bg-site-card/95 backdrop-blur">
       <SiteContainer innerClassName="flex h-16 items-center justify-between gap-4">
       <nav aria-label="Main" className="contents">
         <LogoLink />
@@ -102,6 +102,9 @@ export function SiteNav({ variant = "site", exam, links: custom }: { variant?: "
           ))}
         </ul>
         <div className="hidden items-center gap-2 min-[960px]:flex">{ctas}</div>
+        {variant === "landing" && (
+          <SiteButtonLink href={register} variant="brand" size="sm" className="ml-auto min-[960px]:hidden">Start free</SiteButtonLink>
+        )}
         <button
           ref={toggle}
           type="button"

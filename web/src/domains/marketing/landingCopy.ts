@@ -1,5 +1,4 @@
-import type { QuoteCardData } from "@/domains/marketing/home/QuoteCard";
-import { MARQUEE_TESTIMONIALS } from "@/domains/marketing/support/testimonials";
+import { VISIBLE_EXAMS } from "@/domains/marketing/pricingContent";
 
 /** The copy of `/`, as the page read before its redesign. */
 export const HERO = {
@@ -8,17 +7,8 @@ export const HERO = {
   contact: "Contact us",
 } as const;
 
-const byName = (names: readonly string[]): readonly QuoteCardData[] =>
-  names.map((name) => {
-    const t = MARQUEE_TESTIMONIALS.find((m) => m.name === name);
-    if (!t) throw new Error(`landing quote missing from MARQUEE_TESTIMONIALS: ${name}`);
-    return { name: t.name, role: t.role, text: t.excerpt, highlight: t.highlight };
-  });
-
-/** Under the hero. */
-export const PROOF_QUOTES = byName(["Dr C.O", "Dr R", "Dr Nazia Qadeer"]);
-
-export const STEPS = {
+/** The `#how` section's heading and three steps; `CLOSING.title` reuses its headline. */
+export const HOW_IT_WORKS = {
   eyebrow: "How it works",
   title: "Pick a case. Talk to the patient. See your marks.",
   items: [
@@ -28,15 +18,18 @@ export const STEPS = {
   ],
 } as const;
 
+/** The headline of the closing band. */
+export const CLOSING = { title: HOW_IT_WORKS.title } as const;
+
 export const FEATURES = {
   feedback: {
     eyebrow: "Your feedback",
-    title: "See exactly where you lost the mark.",
+    title: "Your transcript, marked line by line.",
     body: "Every case comes back marked on the same domains the examiners use, so you know what to change next time, not just your score.",
-    checks: [
-      "Marked on the domains your exam uses",
-      "Every mark points to a line in your transcript",
-      "Your scores over time, domain by domain",
+    items: [
+      { title: "Marked on the domains your exam uses", body: "Structured feedback aligned with your exam\u2019s marking domains." },
+      { title: "Every mark points to a line in your transcript", body: "Real-Time Speech Transcription." },
+      { title: "Your scores over time, domain by domain", body: "In-Depth Performance Analytics." },
     ],
   },
   athena: {
@@ -67,30 +60,22 @@ export const FEATURES = {
 export const EXAMS = {
   title: "Choose your exam",
   sub: "Select your exam pathway and start practising with our AI-powered stations.",
+  /** Every exam the page has copy for; `VISIBLE_EXAM_ITEMS` picks which show. */
   items: [
-    { href: "/exams/sca", code: "SCA", name: "Structured Clinical Assessment" },
-    { href: "/exams/plab", code: "PLAB 2", name: "Professional and Linguistic Assessment" },
-    { href: "/exams/casc", code: "CASC", name: "Clinical Assessment of Skills and Competencies" },
-    { href: "/exams/ortho", code: "Orthopaedics", name: "ST3 Interview" },
+    { key: "SCA", href: "/exams/sca", code: "SCA", name: "Structured Clinical Assessment" },
+    { key: "PLAB", href: "/exams/plab", code: "PLAB 2", name: "Professional and Linguistic Assessment" },
+    { key: "CASC", href: "/exams/casc", code: "CASC", name: "Clinical Assessment of Skills and Competencies" },
+    { key: "ORTHO", href: "/exams/ortho", code: "Orthopaedics", name: "ST3 Interview" },
   ],
   start: "Start practising →",
 } as const;
 
-export const PRICING = {
-  eyebrow: "Pricing",
-  title: "Try it free. Then pay for the months you need.",
-  sub: "Every paid plan has every case for your exam, three attempts at each, and Athena for the debrief.",
-} as const;
-
-/** From the institutions page: its hero and its closing call to action. */
+/** The institutions line on `/`. */
 export const INSTITUTIONS = {
   title: "Run training & exam days with virtual patients",
-  body: "OSCE Guide helps institutions run OSCE training sessions and full exam days with virtual patients. Candidates get more time to practise, faculty spend less time on setup, and sessions stay on schedule.",
   link: "Institutions",
   demo: "Book a demo",
 } as const;
 
-export const FOUNDERS = {
-  eyebrow: "A message from our founders",
-  signoff: { names: "Kenny and Aisha", role: "Co-founders" },
-} as const;
+/** The exam cards shown on `/`: `EXAMS.items` limited to `VISIBLE_EXAMS`. */
+export const VISIBLE_EXAM_ITEMS = EXAMS.items.filter((exam) => VISIBLE_EXAMS.includes(exam.key));

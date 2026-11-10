@@ -4,8 +4,8 @@ import type { ExamKey } from "@/domains/marketing/landingExams";
 import type { SiteLink } from "@/domains/marketing/site/siteLinks";
 import { SiteNav } from "@/domains/marketing/site/SiteNav";
 
-/** Nav, content and footer on the site tokens. Pages that adopt the new chrome wrap themselves in this. */
-export function SiteShell({ children, nav = "site", exam, links }: { children: ReactNode; nav?: "landing" | "site"; exam?: ExamKey; links?: readonly SiteLink[] }) {
+/** Nav, content and footer on the site tokens. `footer="card"` floats a white footer over the bottom of the closing band. */
+export function SiteShell({ children, nav = "site", footer = "navy", exam, links }: { children: ReactNode; nav?: "landing" | "site"; footer?: "navy" | "card"; exam?: ExamKey; links?: readonly SiteLink[] }) {
   return (
     <div className="site-root min-h-screen font-landing-body antialiased">
       <a
@@ -16,7 +16,7 @@ export function SiteShell({ children, nav = "site", exam, links }: { children: R
       </a>
       <SiteNav variant={nav} exam={exam} links={links} />
       <main id="site-main">{children}</main>
-      <SiteFooter />
+      <SiteFooter variant={footer} />
     </div>
   );
 }
