@@ -12,6 +12,7 @@ from app.features.attempts import domain, domain_definition, errors, repository
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.jobs import enqueue_scoring
 from app.features.attempts.jobs_coverage import enqueue_coverage
+from app.features.attempts.jobs_nonverbal import on_interaction_complete as queue_nonverbal_summary
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import TranscriptIn, TranscriptMessageIn, WorkerBootstrap
 from app.features.attempts.service import attempt_deadline, ensure_entitled_to_begin
@@ -279,3 +280,4 @@ async def complete_interaction(session: AsyncSession, attempt: Attempt, *, now: 
     # After the marking is queued, in the same transaction, so a debrief
     # summary lands with it or not at all.
     await tutor_jobs.on_interaction_complete(session, attempt)
+    await queue_nonverbal_summary(session, attempt)

@@ -49,7 +49,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-84 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
+87 tables across 26 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -341,6 +341,7 @@ they are regenerated. Only the argon2 hash is stored. No `created_at` or
 | `suspended_by` | `uuid null` → `users.id` SET NULL | |
 | `recording_retention_days` | `int null` | days after an attempt ends that its transcript is kept; null keeps it until a staff deletion. Enforced by the retention sweep that runs on the `compact_transcripts` schedule. Set by the organisation's admin, audited as `org.retention_changed` |
 | `require_staff_mfa` | `bool not null default false` | when set, a membership whose role is outside `END_USER_ROLES` must use a second factor. Same precedent as `organization_sso.sso_only`: the organisation states a sign-in rule. Takes effect at the next password sign-in; existing refresh chains continue |
+| `nonverbal_feedback_enabled` | `bool not null default false` | whether trainees may use camera-based non-verbal feedback in self-practice. Off until an admin allows it |
 
 ### `memberships`
 
@@ -840,6 +841,48 @@ this table has no separate `id` or timestamps.
 |---|---|---|
 | `attempt_id` | `uuid not null` → `attempts.id` CASCADE | primary key |
 | `snapshot` | `jsonb not null` | Engine-validated coverage items and last processed sequence; labels are read from the frozen rubric |
+
+### `nonverbal_consents`
+
+**Growth:** per-user. One row per person who answered the camera-feedback invitation. **Retention:** kept while the account
+exists; withdrawing sets `withdrawn_at` and deletes the person's batches and summaries.
+One person's consent to camera-based non-verbal feedback. No `id` or timestamps beyond those named.
+
+| Field | Type | Notes |
+|---|---|---|
+| `user_id` | `uuid not null` → `users.id` CASCADE | primary key |
+| `version` | `text not null` | the wording version the person agreed to |
+| `consented_at` | `timestamptz not null` | |
+| `withdrawn_at` | `timestamptz null` | set when they turn it off |
+
+### `attempt_nonverbal_batches`
+
+**Growth:** per-turn. About 6 rows a minute during an attempt that uses the feature. **Retention:** deleted when the summary is
+written; also removed by erasure, retention and withdrawn consent. `compact_transcripts` (every ten minutes) also
+deletes batches older than 24 hours whose attempt is not created or running, or already has a summary.
+Up to 30 one-second measurements (numbers only, never video) posted by the candidate's browser.
+
+| Field | Type | Notes |
+|---|---|---|
+| `attempt_id` | `uuid not null` → `attempts.id` CASCADE | composite primary key with `seq` |
+| `seq` | `int not null` | the browser's batch number; a repeat is ignored |
+| `skew_ms` | `bigint not null` | server clock minus the browser's, to line samples up with the transcript |
+| `samples` | `jsonb not null` | list of `{at_ms, face, away, yaw, pitch, smile, nod}` |
+| `received_at` | `timestamptz not null` | |
+
+### `attempt_nonverbal_summaries`
+
+**Growth:** per-attempt. One row per attempt that used the feature. **Retention:** removed by erasure, retention and withdrawn consent.
+The facts and the written non-verbal section for one attempt. Candidate-only; never part of a mark.
+
+| Field | Type | Notes |
+|---|---|---|
+| `attempt_id` | `uuid not null` → `attempts.id` CASCADE | primary key |
+| `state` | `text not null` | `ready`, `insufficient` or `failed` |
+| `facts` | `jsonb not null` | measured facts the section was written from |
+| `feedback` | `jsonb null` | the written section; null unless `ready` |
+| `model_used` | `text null` | |
+| `created_at` | `timestamptz not null default now()` | |
 
 Upserted by serialized `coverage` jobs. Coverage records observed behaviours,
 not grades; exam-slot attempts never receive this coaching feed.

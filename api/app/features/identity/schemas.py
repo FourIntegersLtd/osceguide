@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, time
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -317,6 +317,14 @@ class ExportedResult(BaseModel):
     scored_at: datetime
 
 
+class ExportedNonverbalConsent(BaseModel):
+    """The person's answer to the camera-based non-verbal feedback invitation."""
+
+    version: str
+    consented_at: datetime
+    withdrawn_at: datetime | None = None
+
+
 class ExportedAttempt(BaseModel):
     """One attempt this person ran, with its own transcript and marks."""
 
@@ -326,6 +334,7 @@ class ExportedAttempt(BaseModel):
     started_at: datetime | None = None
     completed_at: datetime | None = None
     transcript: ExportedTranscript
+    nonverbal: dict[str, Any] | None = None
     results: list[ExportedResult] = Field(default_factory=list)
 
 
@@ -356,4 +365,5 @@ class MyDataExport(BaseModel):
 
     profile: ExportedProfile
     attempts: list[ExportedAttempt] = Field(default_factory=list)
+    nonverbal_consent: ExportedNonverbalConsent | None = None
     payments: list[ExportedPayment] = Field(default_factory=list)

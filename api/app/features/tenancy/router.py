@@ -128,6 +128,24 @@ async def set_retention_policy(
     )
 
 
+# Whether trainees may use camera-based non-verbal feedback in self-practice. Off until an admin allows it.
+@router.patch(
+    "/orgs/{org_slug}/nonverbal-feedback",
+    response_model=schemas.OrganizationRead,
+    responses=error_responses(Forbidden, errors.OrgNotFound),
+)
+async def set_nonverbal_feedback(
+    body: schemas.NonverbalPolicy, workspace: OrgInstitutionAdmin, session: Session, clock: ClockDep
+) -> schemas.OrganizationRead:
+    return await service.set_nonverbal_feedback(
+        session,
+        workspace.org_id,
+        enabled=body.nonverbal_feedback_enabled,
+        actor=workspace.principal,
+        now=clock.now(),
+    )
+
+
 # A page of an organisation's memberships.
 @router.get(
     "/orgs/{org_slug}/memberships",

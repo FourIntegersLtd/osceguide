@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import CursorParams, Page
+from app.core.ports import TranscriptSummariser
 from app.features.assistant import service as assistant
 from app.features.attempts.service_debrief import debrief_attempt_ids_about, debrief_sources
 from app.features.catalog import service as catalog
@@ -33,6 +34,13 @@ from app.features.tutor_memory.schemas import (
 MAX_NOTES = 40
 MAX_EVENTS = 60
 MAX_DEBRIEFS = 20
+
+
+def transcript_summariser() -> TranscriptSummariser:
+    """The model-backed summariser, for a slice that summarises a conversation of its own."""
+    from app.features.tutor_memory.summariser import build_summariser
+
+    return build_summariser()
 
 
 async def record_activity(

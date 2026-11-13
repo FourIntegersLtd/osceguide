@@ -10,7 +10,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import repository, repository_transcript
+from app.features.attempts import repository, repository_nonverbal, repository_transcript
 
 
 async def erase_content_for_user(session: AsyncSession, user_id: uuid.UUID) -> int:
@@ -31,6 +31,7 @@ async def export_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[dic
         messages = await repository_transcript.chunks_for(session, attempt.id)
         transcript = await repository_transcript.transcript_for(session, attempt.id)
         results = await repository_transcript.results_for(session, attempt.id)
+        nonverbal = await repository_nonverbal.summary_for(session, attempt.id)
         exported.append(
             {
                 "id": attempt.id,
@@ -45,6 +46,9 @@ async def export_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[dic
                         for message in messages
                     ],
                 },
+                "nonverbal": {"facts": nonverbal.facts, "feedback": nonverbal.feedback}
+                if nonverbal
+                else None,
                 "results": [
                     {
                         "framework_id": result.framework_id,
@@ -57,3 +61,17 @@ async def export_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[dic
             }
         )
     return exported
+
+
+async def export_nonverbal_consent_for_user(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, Any] | None:
+    """The person's answer to the camera-feedback invitation, or None if they never answered."""
+    consent = await repository_nonverbal.consent_for(session, user_id)
+    if consent is None:
+        return None
+    return {
+        "version": consent.version,
+        "consented_at": consent.consented_at,
+        "withdrawn_at": consent.withdrawn_at,
+    }

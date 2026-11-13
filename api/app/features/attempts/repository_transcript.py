@@ -11,6 +11,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.attempts import repository_nonverbal
 from app.features.attempts.domain import Turn, from_document, to_document
 from app.features.attempts.models import AssessmentResult, Transcript, TranscriptMessage
 
@@ -316,6 +317,7 @@ async def erase_content_for_attempts(session: AsyncSession, attempt_ids: Sequenc
     # taking them the other way round lets each wait on the other and Postgres aborts the batch.
     await session.execute(delete(Transcript).where(Transcript.attempt_id.in_(attempt_ids)))
     await session.execute(delete(TranscriptMessage).where(TranscriptMessage.attempt_id.in_(attempt_ids)))
+    await repository_nonverbal.delete_all_for_attempts(session, attempt_ids)
     await session.execute(delete(AssessmentResult).where(AssessmentResult.attempt_id.in_(attempt_ids)))
 
 
@@ -360,3 +362,4 @@ async def erase_transcripts_for_attempts(session: AsyncSession, attempt_ids: Seq
     # The record first, then the rows, for the reason given there.
     await session.execute(delete(Transcript).where(Transcript.attempt_id.in_(attempt_ids)))
     await session.execute(delete(TranscriptMessage).where(TranscriptMessage.attempt_id.in_(attempt_ids)))
+    await repository_nonverbal.delete_all_for_attempts(session, attempt_ids)

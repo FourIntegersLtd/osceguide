@@ -47,9 +47,9 @@ SCORING_RETRY = procrastinate.RetryStrategy(max_attempts=4, exponential_wait=4)
 MARKABLE = frozenset({domain.Status.INTERACTION_COMPLETE, domain.Status.EVALUATED})
 
 
-def is_last_try(job: procrastinate.jobs.Job) -> bool:
-    """Whether the queue will not run this job again if it fails now."""
-    return SCORING_RETRY.get_retry_decision(exception=Exception(), job=job) is None
+def is_last_try(job: procrastinate.jobs.Job, retry: procrastinate.RetryStrategy = SCORING_RETRY) -> bool:
+    """Whether the queue will not run this job again if it fails now under `retry`."""
+    return retry.get_retry_decision(exception=Exception(), job=job) is None
 
 
 def can_mark(attempt: Attempt) -> bool:
@@ -335,8 +335,10 @@ def register() -> None:
     tests do — does not require a configured queue.
     """
     from app.features.attempts.jobs_coverage import register as register_coverage
+    from app.features.attempts.jobs_nonverbal import register as register_nonverbal
 
     register_coverage()
+    register_nonverbal()
     app = get_jobs_app()
 
     @app.task(
@@ -376,3 +378,7 @@ def register() -> None:
         await compact_ready_transcripts(job_session, limit=COMPACTION_BATCH)
         # Same schedule: the sweep is a cheap indexed read when nothing has expired.
         await sweep_retention(job_session, now=datetime.now(UTC))
+        # And the raw non-verbal batches no summary job will ever read (abandoned attempts, late batches).
+        from app.features.attempts.service_nonverbal import sweep_orphan_batches
+
+        await sweep_orphan_batches(job_session, now=datetime.now(UTC))

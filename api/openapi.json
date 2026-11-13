@@ -6325,6 +6325,9 @@
               "mfa_required_by_policy",
               "no_active_station",
               "no_stations_for_exam",
+              "nonverbal_consent_required",
+              "nonverbal_consent_version_stale",
+              "nonverbal_not_available",
               "not_a_media_block",
               "not_a_member",
               "not_a_partner_reporter",
@@ -10264,6 +10267,269 @@
         "title": "NextSitting",
         "type": "object"
       },
+      "NonverbalBatchIn": {
+        "description": "Up to 30 samples, numbered so a repeat post is ignored.",
+        "properties": {
+          "client_sent_at_ms": {
+            "title": "Client Sent At Ms",
+            "type": "integer"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/NonverbalSampleIn"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Samples",
+            "type": "array"
+          },
+          "seq": {
+            "maximum": 400.0,
+            "minimum": 0.0,
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seq",
+          "client_sent_at_ms",
+          "samples"
+        ],
+        "title": "NonverbalBatchIn",
+        "type": "object"
+      },
+      "NonverbalConsentIn": {
+        "description": "Turn non-verbal feedback on (with the wording version shown) or off.",
+        "properties": {
+          "consented": {
+            "title": "Consented",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "consented",
+          "version"
+        ],
+        "title": "NonverbalConsentIn",
+        "type": "object"
+      },
+      "NonverbalLingoRead": {
+        "description": "The exam's own words the cues are shown under.",
+        "properties": {
+          "attention_label": {
+            "title": "Attention Label",
+            "type": "string"
+          },
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "listening_label": {
+            "title": "Listening Label",
+            "type": "string"
+          },
+          "rapport_label": {
+            "title": "Rapport Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "heading",
+          "attention_label",
+          "listening_label",
+          "rapport_label"
+        ],
+        "title": "NonverbalLingoRead",
+        "type": "object"
+      },
+      "NonverbalObservationRead": {
+        "description": "One thing seen at one moment, in the words said then, with a suggestion.",
+        "properties": {
+          "at_seconds": {
+            "title": "At Seconds",
+            "type": "integer"
+          },
+          "behaviour": {
+            "title": "Behaviour",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "suggestion": {
+            "title": "Suggestion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at_seconds",
+          "quote",
+          "behaviour",
+          "suggestion"
+        ],
+        "title": "NonverbalObservationRead",
+        "type": "object"
+      },
+      "NonverbalPolicy": {
+        "description": "Whether trainees here may use non-verbal feedback in self-practice.",
+        "properties": {
+          "nonverbal_feedback_enabled": {
+            "title": "Nonverbal Feedback Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nonverbal_feedback_enabled"
+        ],
+        "title": "NonverbalPolicy",
+        "type": "object"
+      },
+      "NonverbalRead": {
+        "description": "What the candidate may see of non-verbal feedback for one attempt.",
+        "properties": {
+          "consent_version": {
+            "title": "Consent Version",
+            "type": "string"
+          },
+          "consented": {
+            "default": false,
+            "title": "Consented",
+            "type": "boolean"
+          },
+          "lingo": {
+            "$ref": "#/components/schemas/NonverbalLingoRead"
+          },
+          "state": {
+            "default": "none",
+            "enum": [
+              "none",
+              "pending",
+              "ready",
+              "insufficient",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NonverbalSummaryRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lingo",
+          "supported",
+          "consent_version"
+        ],
+        "title": "NonverbalRead",
+        "type": "object"
+      },
+      "NonverbalSampleIn": {
+        "description": "One second of capture, measured in the candidate's browser.",
+        "properties": {
+          "at_ms": {
+            "minimum": 0.0,
+            "title": "At Ms",
+            "type": "integer"
+          },
+          "away": {
+            "title": "Away",
+            "type": "boolean"
+          },
+          "face": {
+            "title": "Face",
+            "type": "boolean"
+          },
+          "nod": {
+            "title": "Nod",
+            "type": "boolean"
+          },
+          "pitch": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Pitch",
+            "type": "integer"
+          },
+          "smile": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Smile",
+            "type": "integer"
+          },
+          "yaw": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Yaw",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "at_ms",
+          "face",
+          "away",
+          "yaw",
+          "pitch",
+          "smile",
+          "nod"
+        ],
+        "title": "NonverbalSampleIn",
+        "type": "object"
+      },
+      "NonverbalSummaryRead": {
+        "description": "The written section shown on the feedback screen.",
+        "properties": {
+          "facing_percent": {
+            "title": "Facing Percent",
+            "type": "integer"
+          },
+          "nods": {
+            "title": "Nods",
+            "type": "integer"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/NonverbalObservationRead"
+            },
+            "title": "Observations",
+            "type": "array"
+          },
+          "strengths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Strengths",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary",
+          "strengths",
+          "observations",
+          "facing_percent",
+          "nods"
+        ],
+        "title": "NonverbalSummaryRead",
+        "type": "object"
+      },
       "NoteRead": {
         "properties": {
           "body": {
@@ -10679,6 +10945,11 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "nonverbal_feedback_enabled": {
+            "default": false,
+            "title": "Nonverbal Feedback Enabled",
+            "type": "boolean"
           },
           "org_type": {
             "title": "Org Type",
@@ -25397,6 +25668,190 @@
         "x-capability": "signed_in"
       }
     },
+    "/api/v1/attempts/{attempt_id}/nonverbal": {
+      "get": {
+        "operationId": "api_read_nonverbal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NonverbalRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Nonverbal",
+        "x-capability": "signed_in"
+      }
+    },
+    "/api/v1/attempts/{attempt_id}/nonverbal-batches": {
+      "post": {
+        "operationId": "api_post_nonverbal_batch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NonverbalBatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours, nonverbal_not_available, nonverbal_consent_required",
+            "x-codes": [
+              "attempt_not_yours",
+              "nonverbal_not_available",
+              "nonverbal_consent_required"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Nonverbal Batch",
+        "x-capability": "signed_in"
+      }
+    },
     "/api/v1/attempts/{attempt_id}/result": {
       "get": {
         "description": "A page rather than one result: re-scoring under a new policy adds beside\nthe old, so a candidate's history stays readable \u2014 to the same two people as\nthe transcript, which is `service_access.ensure_readable`.",
@@ -34938,6 +35393,67 @@
         "tags": [
           "identity"
         ],
+        "x-capability": "signed_in"
+      }
+    },
+    "/api/v1/me/nonverbal-consent": {
+      "put": {
+        "operationId": "api_put_nonverbal_consent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NonverbalConsentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NonverbalRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "nonverbal_consent_version_stale",
+            "x-codes": [
+              "nonverbal_consent_version_stale"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Put Nonverbal Consent",
         "x-capability": "signed_in"
       }
     },
@@ -48526,6 +49042,101 @@
         ],
         "x-capability": "institution_admin",
         "x-platform-admin": true
+      }
+    },
+    "/api/v1/orgs/{org_slug}/nonverbal-feedback": {
+      "patch": {
+        "operationId": "tenancy_set_nonverbal_feedback",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NonverbalPolicy"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "org_not_found",
+            "x-codes": [
+              "org_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Nonverbal Feedback",
+        "tags": [
+          "tenancy"
+        ],
+        "x-capability": "institution_admin",
+        "x-platform-admin": false
       }
     },
     "/api/v1/orgs/{org_slug}/practice-access": {

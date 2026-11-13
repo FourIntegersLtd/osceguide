@@ -44,6 +44,10 @@ class Organization(Base, UUIDPrimaryKey, Timestamps):
     # How long candidates' transcripts are kept after an attempt, in days; null keeps them. Enforced by the
     # transcript job (`attempts.service_retention`), so a change applies at its next run.
     recording_retention_days: Mapped[int | None] = mapped_column(Integer)
+    # Whether trainees may use camera-based non-verbal feedback in self-practice; off until allowed.
+    nonverbal_feedback_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
 
 class Membership(Base, UUIDPrimaryKey, Timestamps):

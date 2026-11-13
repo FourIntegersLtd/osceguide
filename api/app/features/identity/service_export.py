@@ -31,6 +31,7 @@ from app.features.identity import repository
 from app.features.identity.errors import AccountNotFound
 from app.features.identity.schemas import (
     ExportedAttempt,
+    ExportedNonverbalConsent,
     ExportedPayment,
     ExportedProfile,
     ExportedResult,
@@ -54,6 +55,7 @@ async def export_my_data(session: AsyncSession, *, user_id: uuid.UUID) -> MyData
         raise AccountNotFound()
 
     attempts = await attempts_privacy.export_for_user(session, user_id)
+    consent = await attempts_privacy.export_nonverbal_consent_for_user(session, user_id)
     payments = await billing_receipts.export_payments_for_user(session, user_id)
 
     return MyDataExport(
@@ -78,10 +80,12 @@ async def export_my_data(session: AsyncSession, *, user_id: uuid.UUID) -> MyData
                         ExportedTranscriptMessage(**message) for message in attempt["transcript"]["messages"]
                     ],
                 ),
+                nonverbal=attempt["nonverbal"],
                 results=[ExportedResult(**result) for result in attempt["results"]],
             )
             for attempt in attempts
         ],
+        nonverbal_consent=ExportedNonverbalConsent(**consent) if consent else None,
         payments=[ExportedPayment(**payment) for payment in payments],
     )
 

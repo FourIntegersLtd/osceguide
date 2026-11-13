@@ -10,6 +10,7 @@ import { HiOutlineFaceFrown } from "react-icons/hi2";
 import { AsyncBoundary, B2CEmptyState, cn, productTokens, Spinner } from "@/foundation/ui";
 import { RubricFeedback } from "@/capabilities/feedback/RubricFeedback";
 import { SavedLiveCoverage } from "./SavedLiveCoverage";
+import { NonverbalFeedback } from "./NonverbalFeedback";
 import { isTerminal, readFeedback, scoredAtLabel } from "@/capabilities/feedback/api";
 import type { MarkedResult, MarkingRubric } from "@/capabilities/feedback/rubric";
 
@@ -30,10 +31,13 @@ const { b2cPickerChipBase } = productTokens;
 export function AttemptFeedback({
   attemptId,
   showLiveCoverage = false,
+  showNonverbal = false,
   showAll = false,
 }: {
   attemptId: string;
   showLiveCoverage?: boolean;
+  /** The candidate's own non-verbal section; only the practice feedback step passes it. */
+  showNonverbal?: boolean;
   showAll?: boolean;
 }) {
   const state = useAsync((signal) => readFeedback(attemptId, signal), [attemptId]);
@@ -99,6 +103,7 @@ export function AttemptFeedback({
   return <AsyncBoundary state={state}>{(read) => <>
     <Markings rubric={read.rubric} results={read.results ?? []} showAll={showAll} />
     {showLiveCoverage && <SavedLiveCoverage attemptId={attemptId} />}
+    {showNonverbal && <NonverbalFeedback attemptId={attemptId} />}
   </>}</AsyncBoundary>;
 }
 

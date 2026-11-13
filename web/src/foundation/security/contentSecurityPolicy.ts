@@ -55,6 +55,9 @@ export function contentSecurityPolicyValue(nonce: string, options: { isDev: bool
     `'nonce-${nonce}'`,
     // Lets Next's nonced loader pull the chunks it needs without listing each.
     "'strict-dynamic'",
+    // Non-verbal camera feature: MediaPipe Face Landmarker compiles WebAssembly (served from
+    // /mediapipe/wasm on this origin). Lets wasm compile only, not eval() of strings.
+    "'wasm-unsafe-eval'",
     // Dev-only: Next's HMR/runtime uses eval. Never emitted in a production build.
     options.isDev ? "'unsafe-eval'" : "",
   ]

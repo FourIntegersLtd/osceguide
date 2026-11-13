@@ -47,6 +47,12 @@ async def organization_by_id(session: AsyncSession, org_id: uuid.UUID) -> Organi
     return (await session.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
 
 
+async def nonverbal_feedback_enabled(session: AsyncSession, org_id: uuid.UUID) -> bool:
+    """Whether this organisation lets trainees use non-verbal feedback; False for an unknown id."""
+    stmt = select(Organization.nonverbal_feedback_enabled).where(Organization.id == org_id)
+    return bool((await session.execute(stmt)).scalar_one_or_none())
+
+
 async def set_organization_status(
     session: AsyncSession,
     org_id: uuid.UUID,

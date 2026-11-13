@@ -43,6 +43,14 @@ export function setRecordingRetention(slug: string, days: number | null): Promis
   });
 }
 
+/** Whether trainees may use camera-based non-verbal feedback in self-practice. An organisation admin's call. */
+export function setNonverbalFeedback(slug: string, enabled: boolean): Promise<Organization> {
+  return platformRequest<Organization>(`${org(slug)}/nonverbal-feedback`, {
+    method: "PATCH",
+    body: { nonverbal_feedback_enabled: enabled },
+  });
+}
+
 /** The organisation itself: its name, type and sign-in rules. */
 export function readOrganization(
   slug: string,

@@ -17,6 +17,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 FEATURE_TASKS = {
     "update_attempt_coverage",
+    "summarise_attempt_nonverbal",
     "score_attempt",
     "deliver_outbound_messages",
     "match_practice_queue",

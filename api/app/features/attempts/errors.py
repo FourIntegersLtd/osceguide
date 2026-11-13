@@ -38,6 +38,27 @@ class StationExamMismatch(Conflict):
     default_message = "This station belongs to a different exam"
 
 
+class NonverbalNotAvailable(Forbidden):
+    """Non-verbal feedback is not offered for this attempt (an exam, or an organisation that has it off)."""
+
+    code = "nonverbal_not_available"
+    default_message = "Non-verbal feedback is not available for this attempt"
+
+
+class NonverbalConsentRequired(Forbidden):
+    """The person has not turned non-verbal feedback on, so no measurements are accepted."""
+
+    code = "nonverbal_consent_required"
+    default_message = "Turn on non-verbal feedback before sending measurements"
+
+
+class NonverbalConsentVersionStale(InvalidInput):
+    """The consent wording the client showed is not the current one, so the answer is not recorded."""
+
+    code = "nonverbal_consent_version_stale"
+    default_message = "The consent wording has changed. Reload the page and answer again"
+
+
 class NotEntitledToBegin(NotEntitled):
     """`not_entitled`, raised as an attempt begins: the attempt is failed with that reason, and the
     request still answers 403, so the failure has to be committed (`persist_effects`)."""

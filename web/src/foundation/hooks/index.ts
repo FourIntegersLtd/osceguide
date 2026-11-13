@@ -12,3 +12,4 @@ export { useHydrated } from "@/foundation/hooks/useHydrated";
 export { useDirtyGuard } from "@/foundation/hooks/useDirtyGuard";
 export { useMediaQuery } from "@/foundation/hooks/useMediaQuery";
 export { useDismissOnOutside } from "@/foundation/hooks/useDismissOnOutside";
+export { createLocalFlag, createLocalPreference, useLocalPreference } from "@/foundation/hooks/createLocalPreference";

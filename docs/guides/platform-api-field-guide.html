@@ -770,7 +770,8 @@ const SCHEMA = [
        ["suspended_at", "timestamptz null", ""],
        ["suspended_by", "uuid null → users.id SET NULL", ""],
        ["recording_retention_days", "int null", "days after an attempt ends that its transcript is kept; null keeps it until a staff deletion. Enforced by the retention sweep that runs on the <em>compact_transcripts</em> schedule. Set by the organisation's admin, audited as <em>org.retention_changed</em>"],
-       ["require_staff_mfa", "bool not null default false", "when set, a membership whose role is outside <em>END_USER_ROLES</em> must use a second factor. Same precedent as <em>organization_sso.sso_only</em>: the organisation states a sign-in rule. Takes effect at the next password sign-in; existing refresh chains continue"]]},
+       ["require_staff_mfa", "bool not null default false", "when set, a membership whose role is outside <em>END_USER_ROLES</em> must use a second factor. Same precedent as <em>organization_sso.sso_only</em>: the organisation states a sign-in rule. Takes effect at the next password sign-in; existing refresh chains continue"],
+       ["nonverbal_feedback_enabled", "bool not null default false", "whether trainees may use camera-based non-verbal feedback in self-practice. Off until an admin allows it"]]},
      {t:"memberships", b:"Growth: per-org. A person's role in an organisation. A user may hold several, in several orgs.", f:[
        ["org_id", "uuid not null → organizations.id CASCADE", ""],
        ["user_id", "uuid not null → users.id CASCADE", "indexed"],
@@ -1008,7 +1009,25 @@ const SCHEMA = [
        ["message_count", "integer null", ""]]},
      {t:"attempt_live_coverage", b:"Growth: per-attempt. One durable live-coverage snapshot per practice attempt. Unlike the base models, this table has no separate <em>id</em> or timestamps.", flags:["no updated_at"], f:[
        ["attempt_id", "uuid not null → attempts.id CASCADE", "primary key"],
-       ["snapshot", "jsonb not null", "Engine-validated coverage items and last processed sequence; labels are read from the frozen rubric"]],
+       ["snapshot", "jsonb not null", "Engine-validated coverage items and last processed sequence; labels are read from the frozen rubric"]]},
+     {t:"nonverbal_consents", b:"Growth: per-user. One row per person who answered the camera-feedback invitation. Retention: kept while the account exists; withdrawing sets <em>withdrawn_at</em> and deletes the person's batches and summaries. One person's consent to camera-based non-verbal feedback. No <em>id</em> or timestamps beyond those named.", flags:["no updated_at"], f:[
+       ["user_id", "uuid not null → users.id CASCADE", "primary key"],
+       ["version", "text not null", "the wording version the person agreed to"],
+       ["consented_at", "timestamptz not null", ""],
+       ["withdrawn_at", "timestamptz null", "set when they turn it off"]]},
+     {t:"attempt_nonverbal_batches", b:"Growth: per-turn. About 6 rows a minute during an attempt that uses the feature. Retention: deleted when the summary is written; also removed by erasure, retention and withdrawn consent. Up to 30 one-second measurements (numbers only, never video) posted by the candidate's browser.", flags:["no updated_at"], f:[
+       ["attempt_id", "uuid not null → attempts.id CASCADE", "composite primary key with <em>seq</em>"],
+       ["seq", "int not null", "the browser's batch number; a repeat is ignored"],
+       ["skew_ms", "bigint not null", "server clock minus the browser's, to line samples up with the transcript"],
+       ["samples", "jsonb not null", "list of <em>{at_ms, face, away, yaw, pitch, smile, nod}</em>"],
+       ["received_at", "timestamptz not null", ""]]},
+     {t:"attempt_nonverbal_summaries", b:"Growth: per-attempt. One row per attempt that used the feature. Retention: removed by erasure, retention and withdrawn consent. The facts and the written non-verbal section for one attempt. Candidate-only; never part of a mark.", flags:["no updated_at"], f:[
+       ["attempt_id", "uuid not null → attempts.id CASCADE", "primary key"],
+       ["state", "text not null", "<em>ready</em>, <em>insufficient</em> or <em>failed</em>"],
+       ["facts", "jsonb not null", "measured facts the section was written from"],
+       ["feedback", "jsonb null", "the written section; null unless <em>ready</em>"],
+       ["model_used", "text null", ""],
+       ["created_at", "timestamptz not null default now()", ""]],
       r:[["Why", "Upserted by serialized <em>coverage</em> jobs. Coverage records observed behaviours, not grades; exam-slot attempts never receive this coaching feed."]]},
      {t:"assessment_results", b:"Growth: per-attempt. What the engine scored, kept immutably.", f:[
        ["attempt_id", "uuid not null → attempts.id CASCADE", ""],
@@ -1619,6 +1638,9 @@ const API = [
    ["GET","/api/v1/attempts/{attempt_id}","BEARER","Status, station and timing"],
    ["GET","/api/v1/attempts/{attempt_id}/brief","BEARER","What the candidate reads before the patient is called"],
    ["GET","/api/v1/attempts/{attempt_id}/coverage","BEARER","Read Coverage"],
+   ["GET","/api/v1/attempts/{attempt_id}/nonverbal","BEARER","Read Nonverbal"],
+   ["POST","/api/v1/attempts/{attempt_id}/nonverbal-batches","BEARER","Post Nonverbal Batch"],
+   ["PUT","/api/v1/me/nonverbal-consent","BEARER","Put Nonverbal Consent"],
    ["POST","/api/v1/attempts/{attempt_id}/debriefs","BEARER","Start Debrief"],
    ["GET","/api/v1/attempts/{attempt_id}/feedback","BEARER","The attempt's marking as a feedback screen draws it: the rubric frozen on the attempt, its resolved display, and each result with the totals that rubric makes of it (total, maximum, pass, critical…"],
    ["GET","/api/v1/attempts/{attempt_id}/review","BEARER","The model answer: the patient's ideas and concerns, and the plan"],

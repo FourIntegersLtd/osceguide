@@ -1,15 +1,16 @@
 "use client";
 
-import { useSyncExternalStore, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { IconType } from "react-icons";
 import { HiOutlineInformationCircle } from "react-icons/hi2";
+import { useLocalPreference } from "@/foundation/hooks";
 import { cn } from "@/foundation/ui";
 import { b2cRoomFill } from "@/foundation/ui/productTokens";
-import {
-  getLiveCoverageHidden,
-  getLiveCoverageHiddenOnServer,
-  subscribeLiveCoverageHidden,
-} from "@/capabilities/attempt-runner/coverage/preference";
+import { LiveSideTabs } from "@/capabilities/attempt-runner/consultation/LiveSideTabs";
+import type { SideTab } from "@/capabilities/attempt-runner/consultation/sideTabPreference";
+import { liveCoverageHidden } from "@/capabilities/attempt-runner/coverage/preference";
+import { TurnOff } from "@/capabilities/attempt-runner/nonverbal/NonverbalCuesPanel";
+import { AlertDot } from "./AlertDot";
 
 const sectionCard = "flex min-w-0 flex-col overflow-hidden bg-osce-surface";
 /** Sections share one frame; a divider sits above each on a narrow screen and to its left on a wide one. */
@@ -51,6 +52,7 @@ export function ConsultationScreen({
   sticky = true,
   showTerms = true,
   coverage,
+  cues,
   fill = false,
 }: {
   panel: ReactNode;
@@ -61,20 +63,29 @@ export function ConsultationScreen({
   sticky?: boolean;
   showTerms?: boolean;
   coverage?: ReactNode;
+  /** Live non-verbal cues. With `coverage`, the right-hand column becomes a "Covered" | "Live cues" switch; without, the layout is unchanged. `cameraOn` + `onTurnOff`: the camera runs, so a collapsed column still shows that and a way to stop it. `alert`: a warning cue is active (a dot shows while "Covered" is showing); `defaultTab` shows until the candidate chooses. */
+  cues?: { panel: ReactNode; alert: boolean; defaultTab: SideTab; cameraOn: boolean; onTurnOff: () => void };
   /** The live room: from `lg`, take all the height the page gives it instead of 60vh (below that the room scrolls); and put the consultation card on the dark stage skin. */
   fill?: boolean;
 }) {
-  const coverageHidden = useSyncExternalStore(
-    subscribeLiveCoverageHidden,
-    getLiveCoverageHidden,
-    getLiveCoverageHiddenOnServer,
-  );
+  const coverageHidden = useLocalPreference(liveCoverageHidden);
   const collapsed = Boolean(coverage) && coverageHidden;
   return (
     <div className={cn(fill ? b2cRoomFill : "mb-8")}>
       {/* Hidden, live marking shrinks to a button above the cards, so the two
           cards take the full width; reopened, it takes its column back. */}
-      {collapsed && <div className="mb-3 flex justify-end">{coverage}</div>}
+      {collapsed && (
+        <div className="relative mb-3 flex justify-end">
+          {coverage}
+          {cues?.alert && <AlertDot className="absolute -right-1 -top-1 h-2.5 w-2.5" />}
+        </div>
+      )}
+      {collapsed && cues?.cameraOn && (
+        <p role="status" className="mb-3 flex items-center justify-end gap-3 text-osce-meta text-b2c-text-muted">
+          Camera on for cues
+          <TurnOff onClick={cues.onTurnOff} />
+        </p>
+      )}
       <div
         className={cn(
           "grid grid-cols-1 overflow-hidden border border-osce-border bg-osce-surface lg:min-h-[420px]",
@@ -105,7 +116,11 @@ export function ConsultationScreen({
           <div className="min-h-0 flex-1 overflow-y-auto">{aside}</div>
         </section>
 
-        {coverage && !collapsed && <section className={cn(sectionCard, sectionDivider, "lg:min-h-0")}>{coverage}</section>}
+        {coverage && !collapsed && (
+          <section className={cn(sectionCard, sectionDivider, "lg:min-h-0")}>
+            {cues ? <LiveSideTabs coverage={coverage} cues={cues.panel} alert={cues.alert} defaultTab={cues.defaultTab} /> : coverage}
+          </section>
+        )}
       </div>
 
       {showTerms && (

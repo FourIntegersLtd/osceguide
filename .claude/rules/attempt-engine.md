@@ -102,6 +102,14 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
 - `latest_scored` (the `/me/performance` read) is batched: `attempts_by_ids` and `latest_results_by_attempt`
   are one query each; a rubric looked up in the database is memoised per exam and snapshot.
 
+- **Non-verbal feedback** (`*_nonverbal.py`): numbers only, the video never leaves the browser; batches are deleted
+  when the summary is written; it never reaches a mark; candidate-only (`_ensure_visible`, `is_admin=False`).
+  A router imports a second schema module as `from app.features.attempts import schemas_nonverbal`, not
+  `from ...schemas_nonverbal import X` (`test_routers_are_thin`). A turn's `spoken_at` is the END of the turn (the
+  collector stamps it when the adapter reports it), so `build_facts` windows a turn as (previous `spoken_at`, its own].
+  A slice reaches the model summariser through `tutor_memory.service.transcript_summariser`, not its module. A new table also needs `api/docs/DATA-MODEL.md`
+  (growth class word first), `build_field_guide.py` plus its route list, and a product-guide `data-code` row per refusal.
+
 ## Deploys and laptops
 - Push to `main` touching `assessment/` deploys staging (K3s, namespace
   `assessment-platform-staging`); production only via "Promote workers to production"
@@ -121,3 +129,5 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
 - A male patient speaks with a female voice: the station's gender wording ("Male, 45", "Mr") was not recognised and silently became Female. Gender is read only by `osce_assessment.contracts.parse_gender`; a guard forbids a second hand-written set.
 - A reader queries `transcript_messages` directly and sees an empty transcript for a compacted attempt (the attempt is failed `empty_transcript`, the debrief says not ready, the export is blank).
 - A learner sits exam B's station on exam A's grant: `start_attempt` must compare the station's `exam_id` with the exam it resolves (`station_exam_mismatch`, 409) before entitlement; the client's `exam_code` alone is never trusted.
+
+- Non-verbal: `_store` writes a summary only if batches still exist and consent is live (withdrawal mid-model-call must leave nothing); orphan batches are swept inside `compact_transcripts`, not a new task.

@@ -104,7 +104,7 @@ export function FeedbackStep({
       </div>
       {marked ? <p className="text-osce-meta text-b2c-text-muted">{FEEDBACK_VS_DEBRIEF}</p> : null}
 
-      {tab === "latest" && <AttemptFeedback attemptId={attemptId} showLiveCoverage />}
+      {tab === "latest" && <AttemptFeedback attemptId={attemptId} showLiveCoverage showNonverbal />}
       {tab === "history" && (
         <FeedbackHistory stationVersionId={stationVersionId} entryId={entryId} stationName={brief?.station_title ?? review?.station_title ?? "this station"} />
       )}

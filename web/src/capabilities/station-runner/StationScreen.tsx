@@ -1,5 +1,7 @@
 "use client";
 import { LiveCoveragePanel } from "@/capabilities/attempt-runner/coverage/LiveCoveragePanel";
+import { NonverbalCuesPanel } from "@/capabilities/attempt-runner/nonverbal/NonverbalCuesPanel";
+import { useNonverbal } from "@/capabilities/attempt-runner/nonverbal/useNonverbal";
 import { consultationClock } from "@/capabilities/attempt-runner/consultation/consultationClock";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -203,6 +205,7 @@ export function StationScreen(props: StationScreenProps) {
   });
 
   const effectiveAction = attempt.exhausted || finishedAttemptId ? "review" : action;
+  const nonverbal = useNonverbal(effectiveAction === "attempt" ? attempt.attemptId : null, session.phase === "live");
   const steps = stepsFor(effectiveAction);
   const live = session.phase === "connecting" || session.phase === "live";
   const leaveGuard = useLeaveGuard(live);
@@ -456,6 +459,13 @@ export function StationScreen(props: StationScreenProps) {
           <ConsultationScreen
             fill={inRoom}
             coverage={effectiveAction === "attempt" ? <LiveCoveragePanel attemptId={attempt.attemptId} isLive={session.phase === "live"} patientJoined={session.patientJoined} /> : undefined}
+            cues={effectiveAction === "attempt" && nonverbal.read?.supported ? {
+              panel: <NonverbalCuesPanel nonverbal={nonverbal} isLive={session.phase === "live"} />,
+              alert: nonverbal.live.tone === "warning",
+              defaultTab: nonverbal.read.consented && !nonverbal.off ? "cues" : "covered",
+              cameraOn: nonverbal.capture.status === "running",
+              onTurnOff: nonverbal.turnOff,
+            } : undefined}
             sticky={effectiveAction === "attempt"}
             showTerms={effectiveAction === "attempt"}
             asideTitle={effectiveAction === "attempt" ? "Doctor information" : "Transcription"}

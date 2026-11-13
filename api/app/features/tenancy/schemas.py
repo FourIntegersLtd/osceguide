@@ -29,6 +29,8 @@ class OrganizationRead(BaseModel):
     require_staff_mfa: bool = False
     # Days after an attempt ends that its transcript is kept; null keeps it until a staff deletion.
     recording_retention_days: int | None = None
+    # Whether trainees may use camera-based non-verbal feedback in self-practice.
+    nonverbal_feedback_enabled: bool = False
     contact_name: str | None = None
     contact_email: str | None = None
     # The organisation this one sits under (a trust above its hospitals), or
@@ -70,6 +72,12 @@ class StaffMfaPolicy(BaseModel):
     """Whether this organisation's staff must sign in with a second factor."""
 
     require_staff_mfa: bool
+
+
+class NonverbalPolicy(BaseModel):
+    """Whether trainees here may use non-verbal feedback in self-practice."""
+
+    nonverbal_feedback_enabled: bool
 
 
 class UserSummary(BaseModel):

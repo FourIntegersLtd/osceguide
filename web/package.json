@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-mediapipe.mjs",
+    "prebuild": "node scripts/copy-mediapipe.mjs",
     "dev": "next dev --port 3100 --turbopack",
     "dev:webpack": "next dev --port 3100 --webpack",
     "build": "next build --webpack",
@@ -31,6 +33,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@livekit/components-react": "^2.9.17",
     "@livekit/components-styles": "^1.2.0",
+    "@mediapipe/tasks-vision": "1.2.3",
     "@sentry/nextjs": "^11.1.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

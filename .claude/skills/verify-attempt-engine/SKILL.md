@@ -98,6 +98,9 @@ It streams for ever — run it in the background and stop it after ~40s.
 
 ## Traps that look like bugs
 
+- A new job in `attempts/` must also be added to `tests/unit/test_jobs_registry.py` (`FEATURE_TASKS`) and
+  classified in `tests/guards/test_jobs_fail_visibly.py`; reaching another slice's model adapter needs a service function.
+
 - A change to transcript storage or compaction needs the committed-data races, which the per-test
   rollback cannot show: `cd api && poetry run pytest tests/integration/test_compaction_race.py -q`
   (local docker Postgres, never the production URL). Run `-p no:randomly` when reading a failure.

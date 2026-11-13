@@ -30,6 +30,7 @@ describe("content-security-policy", () => {
       "unsafe-inline would let any injected inline script run",
     );
     assert.ok(!scriptSrc.includes("'unsafe-eval'"), "no eval in a production policy");
+    assert.ok(scriptSrc.includes("'wasm-unsafe-eval'"), "the non-verbal face model compiles WebAssembly");
   });
 
   it("locks down the framing and object vectors X-Frame-Options only half-covered", () => {

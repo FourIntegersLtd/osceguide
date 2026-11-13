@@ -15,7 +15,7 @@ import tseslint from "typescript-eslint";
  * mountable anywhere else, and this is where that is caught.
  */
 export default defineConfig([
-  globalIgnores([".next/**", ".next-*/**", ".verify/**", "test-results/**", "playwright-report/**", "out/**", "next-env.d.ts"]),
+  globalIgnores([".next/**", ".next-*/**", ".verify/**", "test-results/**", "playwright-report/**", "out/**", "public/mediapipe/**", "next-env.d.ts"]),
   ...next,
   ...tseslint.configs.recommended,
   {

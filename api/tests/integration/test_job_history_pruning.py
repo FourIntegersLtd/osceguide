@@ -26,7 +26,8 @@ pytestmark = pytest.mark.db
 
 import_all_models()
 
-NOW = datetime(2026, 10, 31, 4, 45, tzinfo=UTC)
+# procrastinate prunes against Postgres now(), so the fixture ages are taken from the real clock.
+# A pinned date silently drifts: the "1 day old" job turned 14 days old and was pruned.
 KINDS = ("prune_probe_old_ok", "prune_probe_old_failed", "prune_probe_new_ok")
 
 
@@ -62,7 +63,7 @@ async def add_job(task: str, status: str, *, age_days: int) -> None:
                 "UPDATE procrastinate_events SET at = :at "
                 "WHERE job_id IN (SELECT id FROM procrastinate_jobs WHERE task_name = :task)"
             ),
-            {"at": NOW - timedelta(days=age_days), "task": task},
+            {"at": datetime.now(UTC) - timedelta(days=age_days), "task": task},
         )
 
 
@@ -99,7 +100,11 @@ async def test_the_real_delete_old_jobs_removes_old_succeeded_jobs_and_keeps_the
 
         app = get_jobs_app()
         async with app.open_async():
-            await service.run_job_pruning(committed, delete_old_jobs=app.job_manager.delete_old_jobs, now=NOW)
+            await service.run_job_pruning(
+                committed,
+                delete_old_jobs=app.job_manager.delete_old_jobs,
+                now=datetime.now(UTC),
+            )
 
         assert await probes_left() == ["prune_probe_new_ok", "prune_probe_old_failed"]
         async with committed() as session:

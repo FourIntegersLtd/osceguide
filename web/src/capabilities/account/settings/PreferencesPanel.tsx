@@ -19,6 +19,7 @@ import {
   type PracticeTimers,
   type PreferenceField,
 } from "@/capabilities/account/settings/preferencesModel";
+import { NonverbalPreferenceRow } from "@/capabilities/account/settings/NonverbalPreferenceRow";
 import { SettingsRow, SettingsRows } from "@/capabilities/account/settings/SettingsKit";
 import { Switch } from "@/foundation/ui";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
@@ -155,6 +156,7 @@ function PreferencesForm({ me }: { me: Me }) {
                 }
               />
             ) : null}
+            {practising ? <NonverbalPreferenceRow /> : null}
             <SettingsRow
               icon={HiOutlineClock}
               title="Extra reading time"

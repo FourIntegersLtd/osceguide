@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -255,3 +256,50 @@ class AttemptLiveCoverage(Base):
         primary_key=True,
     )
     snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+
+# --- Non-verbal feedback: numbers measured in the candidate's browser, never video.
+
+
+class NonverbalConsent(Base):
+    """One person's consent to camera-based non-verbal feedback, and when they withdrew it."""
+
+    __tablename__ = "nonverbal_consents"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    version: Mapped[str] = mapped_column(Text, nullable=False)
+    consented_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AttemptNonverbalBatch(Base):
+    """Up to 30 one-second samples posted by the browser; deleted once the summary is written."""
+
+    __tablename__ = "attempt_nonverbal_batches"
+
+    attempt_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("attempts.id", ondelete="CASCADE"), primary_key=True
+    )
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Server clock minus the browser's clock when the batch was sent, to line samples up with turns.
+    skew_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    samples: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AttemptNonverbalSummary(Base):
+    """The facts and the written non-verbal section for one attempt. Never part of a mark."""
+
+    __tablename__ = "attempt_nonverbal_summaries"
+
+    attempt_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("attempts.id", ondelete="CASCADE"), primary_key=True
+    )
+    # ready | insufficient | failed
+    state: Mapped[str] = mapped_column(Text, nullable=False)
+    facts: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    feedback: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    model_used: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )

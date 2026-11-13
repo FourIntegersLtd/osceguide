@@ -722,3 +722,69 @@ async def test_an_org_admin_sets_the_contact_and_the_audit_names_them(
     assert [(r["actor_email"], r["summary"]) for r in updated] == [
         ("institution_admin-kings@example.com", "contact_email, contact_name")
     ]
+
+
+async def test_an_org_admin_switches_nonverbal_feedback_and_self_practice_follows(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The switch is the admin's, is audited, and decides `supported` on the org's self-practice attempt."""
+    from app.features.attempts import repository as attempts_repo
+    from app.features.identity import repository as identity_repo
+    from tests.support.catalog import ensure_exam
+
+    org_id = await seed_org(client, make_actor)
+    admin = await member_token(make_actor, org_id, "kings", "institution_admin")
+    user = await identity_repo.user_by_email(db_session, "institution_admin-kings@example.com")
+    exam = await ensure_exam(db_session, "sca")
+    assert user is not None and exam is not None
+    attempt = await attempts_repo.create_attempt(
+        db_session, user_id=user.id, exam_id=exam.id, kind="self_practice", org_id=org_id
+    )
+    read_url = f"/api/v1/attempts/{attempt.id}/nonverbal"
+
+    before = await client.get(read_url, headers=bearer(admin))
+    on = await client.patch(
+        "/api/v1/orgs/kings/nonverbal-feedback",
+        json={"nonverbal_feedback_enabled": True},
+        headers=bearer(admin),
+    )
+    after = await client.get(read_url, headers=bearer(admin))
+    audit = await client.get("/api/v1/orgs/kings/audit", headers=bearer(admin))
+
+    assert on.status_code == 200, on.text
+    assert on.json()["nonverbal_feedback_enabled"] is True
+    assert (before.json()["supported"], after.json()["supported"]) == (False, True)
+    changed = [r for r in audit.json()["items"] if r["action"] == "org.nonverbal_feedback_changed"]
+    assert [(r["actor_email"], r["summary"]) for r in changed] == [
+        ("institution_admin-kings@example.com", "Non-verbal feedback switched on")
+    ]
+
+
+async def test_a_non_admin_cannot_switch_nonverbal_feedback(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    org_id = await seed_org(client, make_actor)
+    for role in ("trainee", "supervisor"):
+        response = await client.patch(
+            "/api/v1/orgs/kings/nonverbal-feedback",
+            json={"nonverbal_feedback_enabled": True},
+            headers=bearer(await member_token(make_actor, org_id, "kings", role)),
+        )
+        assert response.status_code == 403, role
+        assert response.json()["code"] == "forbidden"
+
+
+async def test_an_admin_of_another_org_cannot_switch_this_orgs_nonverbal_feedback(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    kings_id = await seed_org(client, make_actor, "kings")
+    guys_id = await seed_org(client, make_actor, "guys")
+    response = await client.patch(
+        "/api/v1/orgs/kings/nonverbal-feedback",
+        json={"nonverbal_feedback_enabled": True},
+        headers=bearer(await member_token(make_actor, guys_id, "guys", "institution_admin")),
+    )
+    assert response.status_code == 403, response.text
+    kings = await client.get(
+        "/api/v1/orgs/kings",
+        headers=bearer(await member_token(make_actor, kings_id, "kings", "owner")),
+    )
+    assert kings.json()["nonverbal_feedback_enabled"] is False

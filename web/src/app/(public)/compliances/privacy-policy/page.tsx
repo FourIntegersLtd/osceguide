@@ -101,7 +101,26 @@ export default function PrivacyPolicy() {
             </div>
 
             <div>
-              <h3 className="font-semibold mb-4">4.3 Technical Data</h3>
+              <h3 className="font-semibold mb-4">
+                4.3 Camera and Non-verbal Analysis
+              </h3>
+              <p className="text-osce-ink-700 leading-relaxed mb-4">
+                Non-verbal feedback is optional and off by default. If you
+                turn it on, your browser uses your camera to measure things
+                such as where you are looking, nodding and smiling during a
+                consultation. The video is analysed on your device and is
+                never sent to us or recorded. Only per-second measurements are
+                sent, and we delete them once your feedback has been written.
+                The written non-verbal section is kept with the attempt and is
+                removed when the attempt is removed. We do not identify you
+                from your face, we do not infer emotions, and this feedback
+                never affects your marks. You can withdraw consent at any time
+                in your account settings, which deletes the data we hold.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="font-semibold mb-4">4.4 Technical Data</h3>
               <ul className="list-disc list-inside text-osce-ink-700 ml-6">
                 <li>IP address</li>
                 <li>Browser type</li>
@@ -161,6 +180,13 @@ export default function PrivacyPolicy() {
               regulations. We ensure that any data shared with these providers
               is done so in accordance with our privacy policy and applicable
               laws.
+            </p>
+
+            <p className="text-osce-ink-700 leading-relaxed">
+              If you choose non-verbal feedback (section 4.3), an AI model
+              writes a short description of your non-verbal behaviour from the
+              per-second measurements and your transcript. It never sees your
+              video and it has no effect on your marks.
             </p>
 
             <p className="text-osce-ink-700 leading-relaxed">
@@ -408,6 +434,16 @@ export default function PrivacyPolicy() {
                   <td className="px-6 py-4">
                     Progress tracking and personalized improvements
                   </td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4">Non-verbal measurements</td>
+                  <td className="px-6 py-4">Deleted once your feedback is written</td>
+                  <td className="px-6 py-4">Generating non-verbal feedback you asked for</td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4">Non-verbal feedback section</td>
+                  <td className="px-6 py-4">Kept with the attempt and removed with it</td>
+                  <td className="px-6 py-4">Progress tracking and personalized improvements</td>
                 </tr>
                 <tr>
                   <td className="px-6 py-4">Payment Records</td>

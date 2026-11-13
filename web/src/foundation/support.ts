@@ -9,7 +9,7 @@ export const COMPLIANCE_DATES = {
   terms: { effective: "January 1, 2025", updated: "March 23, 2026" },
   cookies: { updated: "December 31, 2024" },
   referrals: { effective: "January 1, 2025", updated: "September 26, 2026" },
-  privacy: { effective: "January 1, 2025", updated: "May 4, 2025" },
+  privacy: { effective: "January 1, 2025", updated: "November 13, 2026" },
   disclaimer: { effective: "January 1, 2025", updated: "April 3, 2025" },
 } as const;
 

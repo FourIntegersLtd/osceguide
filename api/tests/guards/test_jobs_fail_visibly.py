@@ -47,6 +47,9 @@ STATE: dict[str, str | None] = {
     "produce_summary_podcast": None,
     "transcribe_peer_session": None,
     "draft_import_template": None,
+    "summarise_attempt_nonverbal": (
+        "tests/http/test_attempts_nonverbal_summary.py::test_the_last_failed_try_stores_failed_with_the_facts"
+    ),
     "reply_as_assistant": (
         "tests/repository/test_community_assistant.py::test_a_failing_draft_fails_the_run_and_posts_nothing"
     ),

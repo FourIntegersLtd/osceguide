@@ -38,6 +38,7 @@ from app.features.assistant.router_help import router as help_router
 from app.features.assistant.router_worker import router as assistant_worker_router
 from app.features.attempts.router import router as attempts_router
 from app.features.attempts.router_coverage import router as attempts_coverage_router
+from app.features.attempts.router_nonverbal import router as attempts_nonverbal_router
 from app.features.attempts.router_platform import router as platform_attempts_router
 from app.features.attempts.router_roleplay import router as attempts_roleplay_router
 from app.features.attempts.router_trial import router as attempts_trial_router
@@ -136,6 +137,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(station_imports_router)
     router.include_router(attempts_router)
     router.include_router(attempts_coverage_router)
+    router.include_router(attempts_nonverbal_router)
     router.include_router(attempts_roleplay_router)
     router.include_router(platform_attempts_router)
     router.include_router(entitlements_router)

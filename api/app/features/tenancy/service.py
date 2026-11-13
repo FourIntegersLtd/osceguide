@@ -322,9 +322,38 @@ async def set_recording_retention(
     return _org_read(refreshed)
 
 
+async def set_nonverbal_feedback(
+    session: AsyncSession, org_id: uuid.UUID, *, enabled: bool, actor: Principal, now: datetime
+) -> OrganizationRead:
+    """Allow or stop camera-based non-verbal feedback in this organisation's self-practice."""
+    org = await repository.organization_by_id(session, org_id)
+    if org is None:
+        raise OrgNotFound()
+    await repository.update_organization(session, org_id, nonverbal_feedback_enabled=enabled)
+    await repository.write_audit(
+        session,
+        org_id=org_id,
+        actor_user_id=actor.user_id,
+        actor_email=actor.email,
+        action="org.nonverbal_feedback_changed",
+        at=now,
+        target_type="organization",
+        target_id=str(org_id),
+        summary=f"Non-verbal feedback switched {'on' if enabled else 'off'}",
+        meta={"nonverbal_feedback_enabled": enabled, "was": org.nonverbal_feedback_enabled},
+    )
+    refreshed = await repository.organization_by_id(session, org_id)
+    return _org_read(refreshed)
+
+
 async def retention_policies(session: AsyncSession) -> dict[uuid.UUID, int]:
     """Every organisation that keeps transcripts for a limited time, with the days. For the retention job."""
     return await repository.retention_policies(session)
+
+
+async def nonverbal_enabled(session: AsyncSession, org_id: uuid.UUID) -> bool:
+    """Whether the organisation allows camera-based non-verbal feedback in self-practice."""
+    return await repository.nonverbal_feedback_enabled(session, org_id)
 
 
 async def read_organization(session: AsyncSession, org_id: uuid.UUID) -> OrganizationRead:
@@ -408,6 +437,7 @@ def _org_read(org: Any) -> OrganizationRead:
         candidate_seats=org.candidate_seats,
         require_staff_mfa=org.require_staff_mfa,
         recording_retention_days=org.recording_retention_days,
+        nonverbal_feedback_enabled=org.nonverbal_feedback_enabled,
         contact_name=org.contact_name,
         contact_email=org.contact_email,
         parent_org_id=org.parent_org_id,

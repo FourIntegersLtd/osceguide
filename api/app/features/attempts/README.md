@@ -71,6 +71,9 @@ and the job that scores a delivered transcript.
 | GET | `/api/v1/attempts/{id}/roleplay` | owner | Post-consultation patient script for practising as the patient; explicit field allowlist |
 | POST | `/api/v1/attempts/{id}/debriefs` | owner | Recorded, finished library/self-practice consultation only; mock entries use the station-set route and its counters |
 | GET | `/api/v1/attempts/{id}/coverage` | owner | Persisted live coverage, separate from final marks; unsupported for exam slots, peer sessions and debriefs |
+| GET | `/api/v1/attempts/{id}/nonverbal` | owner | Candidate-only non-verbal feedback state, with the exam's own labels (`lingo`); `supported=false` for exams, peer, debrief, and an organisation with the switch off |
+| POST | `/api/v1/attempts/{id}/nonverbal-batches` | owner | 202. Needs consent (`nonverbal_consent_required`) and a supported attempt (`nonverbal_not_available`); a batch after the consultation ends is accepted and dropped; repeat `seq` ignored |
+| PUT | `/api/v1/me/nonverbal-consent` | bearer | Turn it on or off; off deletes every stored batch and summary of the person's attempts |
 | GET | `/api/v1/me/attempts` | bearer | This person's attempts, newest first. `station_version_id` and `set_entry_id` narrow it |
 | GET | `/api/v1/attempts/{id}/stream` | stream ticket | The attempt, pushed until it is marked. Replaces b2c's feedback-status stream and the two pollers behind it |
 | GET | `/api/v1/platform/users/{id}/attempts` | platform admin | One person's attempts with their marking state: transcript delivered, results, the newest scoring job. `?status=` narrows |
@@ -132,3 +135,14 @@ This is why `stations.LibraryStationRead` carries no `content`: browsing the
 library is open to every signed-in user, while these reads are owner-only and
 are reached only through an attempt, which the entitlement gate has already
 allowed.
+
+## Non-verbal feedback
+Camera measurements (one row of numbers a second, computed in the browser; video never leaves the device) arrive in
+`attempt_nonverbal_batches` (`repository_nonverbal.py`, `service_nonverbal.py`). Consent is `nonverbal_consents`; the
+written section is `attempt_nonverbal_summaries`. It never touches a mark. `domain_nonverbal_lingo.lingo_for` picks the exam's own
+wording from the attempt's frozen framework. Erasure, retention and `/me/export` cover the new rows.
+When the consultation completes, `complete_interaction` queues `summarise_attempt_nonverbal` (`jobs_nonverbal.py`, queue
+`coverage`) if batches exist. `domain_nonverbal.build_facts` lines the samples up with the turns (a turn's `spoken_at` is the
+END of that turn, so its window is previous `spoken_at` to its own); `service_nonverbal.summarise` reads in one session, calls the
+`TranscriptSummariser` with none open, then stores `ready`/`insufficient` (no model call) and deletes the batches. The last
+failed try stores `failed`. The read fills `at_seconds` and `quote` from the facts, never from the model.

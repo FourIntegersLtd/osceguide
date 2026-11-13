@@ -15,6 +15,7 @@ const ME_EVENT_NAMES = [
   "station_import.updated",
   "station.updated",
   "coverage",
+  "nonverbal",
   "message.received",
   "community_reply",
   "debrief",

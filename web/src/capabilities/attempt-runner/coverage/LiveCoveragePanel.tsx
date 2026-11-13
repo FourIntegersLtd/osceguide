@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback } from "react";
 import { HiOutlineClipboardDocumentCheck, HiOutlineEye, HiOutlineXMark } from "react-icons/hi2";
 import { B2CPanelCardHeader, B2CPanelCardHeaderIcon } from "@/foundation/ui";
 import { useAsync, useMeEvents } from "@/foundation/hooks";
 import { readCoverage, type CoverageUpdate } from "./api";
 import LiveCoverageFeed from "./LiveCoverageFeed";
-import { getLiveCoverageHidden, getLiveCoverageHiddenOnServer, setLiveCoverageHidden, subscribeLiveCoverageHidden } from "./preference";
+import { useLocalPreference } from "@/foundation/hooks";
+import { liveCoverageHidden } from "./preference";
 
 const EMPTY: CoverageUpdate = { supported: false, items: [], last_seq: -1 };
 
@@ -21,7 +22,7 @@ export function LiveCoveragePanel({ attemptId, isLive, patientJoined = true }: {
   /** The rubric is frozen when the patient's worker starts, so coverage is read again when it joins. */
   patientJoined?: boolean;
 }) {
-  const hidden = useSyncExternalStore(subscribeLiveCoverageHidden, getLiveCoverageHidden, getLiveCoverageHiddenOnServer);
+  const hidden = useLocalPreference(liveCoverageHidden);
   const state = useAsync((signal) => attemptId && !hidden
     ? readCoverage(attemptId, signal) : Promise.resolve(EMPTY), [attemptId, hidden, patientJoined]);
   const reload = state.reload;
@@ -37,7 +38,7 @@ export function LiveCoveragePanel({ attemptId, isLive, patientJoined = true }: {
     ),
   );
 
-  if (hidden) return <button type="button" onClick={() => setLiveCoverageHidden(false)}
+  if (hidden) return <button type="button" onClick={() => liveCoverageHidden.set(false)}
     className="flex items-center gap-1.5 whitespace-nowrap rounded-osce-md border border-osce-border bg-osce-surface px-3 py-1.5 text-osce-meta text-b2c-text-muted transition-colors hover:text-osce-ink-900 focus:outline-none focus:ring-2 focus:ring-osce-accent">
     <HiOutlineEye className="h-4 w-4" aria-hidden />Show live marking
   </button>;
@@ -50,7 +51,7 @@ export function LiveCoveragePanel({ attemptId, isLive, patientJoined = true }: {
       </span>
       <button
         type="button"
-        onClick={() => setLiveCoverageHidden(true)}
+        onClick={() => liveCoverageHidden.set(true)}
         aria-label="Hide live marking"
         className="shrink-0 rounded-osce-sm p-1 text-b2c-text-muted transition-colors hover:text-osce-ink-900 focus:outline-none focus:ring-2 focus:ring-osce-accent"
       >
