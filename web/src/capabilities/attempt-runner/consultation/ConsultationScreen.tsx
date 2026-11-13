@@ -7,7 +7,7 @@ import { useLocalPreference } from "@/foundation/hooks";
 import { cn } from "@/foundation/ui";
 import { b2cRoomFill } from "@/foundation/ui/productTokens";
 import { LiveSideTabs } from "@/capabilities/attempt-runner/consultation/LiveSideTabs";
-import type { SideTab } from "@/capabilities/attempt-runner/consultation/sideTabPreference";
+import { showCameraLine, sideTab, type SideTab } from "@/capabilities/attempt-runner/consultation/sideTabPreference";
 import { liveCoverageHidden } from "@/capabilities/attempt-runner/coverage/preference";
 import { TurnOff } from "@/capabilities/attempt-runner/nonverbal/NonverbalCuesPanel";
 import { AlertDot } from "./AlertDot";
@@ -70,6 +70,8 @@ export function ConsultationScreen({
 }) {
   const coverageHidden = useLocalPreference(liveCoverageHidden);
   const collapsed = Boolean(coverage) && coverageHidden;
+  const chosenTab = useLocalPreference(sideTab);
+  const cameraLine = showCameraLine({ cameraOn: Boolean(cues?.cameraOn), collapsed, tab: chosenTab ?? cues?.defaultTab ?? "covered" });
   return (
     <div className={cn(fill ? b2cRoomFill : "mb-8")}>
       {/* Hidden, live marking shrinks to a button above the cards, so the two
@@ -80,7 +82,7 @@ export function ConsultationScreen({
           {cues?.alert && <AlertDot className="absolute -right-1 -top-1 h-2.5 w-2.5" />}
         </div>
       )}
-      {collapsed && cues?.cameraOn && (
+      {cameraLine && cues && (
         <p role="status" className="mb-3 flex items-center justify-end gap-3 text-osce-meta text-b2c-text-muted">
           Camera on for cues
           <TurnOff onClick={cues.onTurnOff} />

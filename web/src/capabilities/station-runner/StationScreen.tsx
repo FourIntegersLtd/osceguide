@@ -463,7 +463,7 @@ export function StationScreen(props: StationScreenProps) {
               panel: <NonverbalCuesPanel nonverbal={nonverbal} isLive={session.phase === "live"} />,
               alert: nonverbal.live.tone === "warning",
               defaultTab: nonverbal.read.consented && !nonverbal.off ? "cues" : "covered",
-              cameraOn: nonverbal.capture.status === "running",
+              cameraOn: nonverbal.capture.status === "starting" || nonverbal.capture.status === "running",
               onTurnOff: nonverbal.turnOff,
             } : undefined}
             sticky={effectiveAction === "attempt"}

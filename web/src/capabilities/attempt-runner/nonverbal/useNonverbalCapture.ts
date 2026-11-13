@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { PlatformError } from "@/foundation/platform-client";
 import { postNonverbalBatch, type NonverbalBatch } from "./api";
 import { Batcher } from "./batcher";
 import { acquireCamera, releaseCamera } from "./camera";
 import { loadLandmarker } from "./landmarker";
+import { loadCaptureState, saveCaptureState, seqExhausted } from "./captureState";
 import { Sampler, type Sample } from "./sampler";
 import { frameSignal } from "./signals";
 import { FrameThrottle } from "./throttle";
@@ -52,8 +53,12 @@ export function useNonverbalCapture({ attemptId, active, onRefused }: { attemptI
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [samples, setSamples] = useState<Sample[]>([]);
   const [startedAtMs, setStartedAtMs] = useState<number | null>(null);
-  /** The next batch number per attempt, kept across pause and resume: the server drops a repeated (attempt, seq). */
-  const nextSeq = useRef<{ attemptId: string; seq: number } | null>(null);
+
+  // Samples belong to one attempt: drop them when it changes.
+  useEffect(() => {
+    setSamples([]);
+    setStartedAtMs(null);
+  }, [attemptId]);
 
   useEffect(() => {
     if (!active || !attemptId) return;
@@ -62,7 +67,12 @@ export function useNonverbalCapture({ attemptId, active, onRefused }: { attemptI
     let media: MediaStream | null = null;
     let video: HTMLVideoElement | null = null;
     let cancelFrame: () => void = () => {};
-    const batcher = new Batcher(BATCH_SIZE, nextSeq.current?.attemptId === attemptId ? nextSeq.current.seq : 0);
+    // Per-attempt state outlives this effect: the server drops a repeated (attempt, seq), and offsets must not go negative.
+    const prior = loadCaptureState(attemptId);
+    const attemptStartedAt = prior?.startedAtMs ?? Date.now();
+    const batcher = new Batcher(BATCH_SIZE, prior?.nextSeq ?? 0);
+    const persist = () => saveCaptureState(attemptId, { nextSeq: batcher.nextSeq, startedAtMs: attemptStartedAt });
+    persist();
 
     /** Stop the loop and give the camera back; safe to call twice. */
     const release = () => {
@@ -80,6 +90,8 @@ export function useNonverbalCapture({ attemptId, active, onRefused }: { attemptI
 
     const send = (batch: NonverbalBatch | null) => {
       if (!batch || !posting) return;
+      persist();
+      if (seqExhausted(batch.seq)) return;
       postNonverbalBatch(attemptId, batch).catch((error: unknown) => {
         if (!isRefusal(error)) return;
         posting = false;
@@ -141,7 +153,7 @@ export function useNonverbalCapture({ attemptId, active, onRefused }: { attemptI
           }
         };
         setStream(media);
-        setStartedAtMs(Date.now());
+        setStartedAtMs(attemptStartedAt);
         setStatus("running");
         schedule();
       } catch {
@@ -155,7 +167,7 @@ export function useNonverbalCapture({ attemptId, active, onRefused }: { attemptI
     return () => {
       cancelled = true;
       send(batcher.flush(Date.now()));
-      nextSeq.current = { attemptId, seq: batcher.nextSeq };
+      persist();
       release();
       setStatus("idle");
     };
