@@ -160,7 +160,7 @@ def test_an_away_span_is_attached_to_the_turn_it_started_in():
             "seq": 1,
             "start_seconds": 20,
             "quote": "My chest has been tight",
-            "note": "looked away for 8 of 20 seconds, no nods",
+            "note": "looked away for 8 of 20 seconds while listening, no nods",
         }
     ]
 
@@ -190,18 +190,33 @@ def test_nods_are_counted_for_the_patients_turns_only():
     assert (facts["nods_total"], facts["nods_while_patient_spoke"]) == (3, 2)
 
 
-def test_a_candidate_turn_after_the_patient_with_no_nods_and_three_seconds_away_is_notable():
-    facts = build_facts([(0, _series(61, away=(31, 32, 33)))], TURNS)
+def test_a_patient_turn_with_no_nods_and_three_seconds_away_is_notable():
+    """The patient's window is when the clinician was listening."""
+    facts = build_facts([(0, _series(61, away=(15, 16, 17)))], TURNS)
     assert facts["notable_turns"] == [
         {
-            "seq": 2,
-            "start_seconds": 31,
-            "quote": "Tell me more about it",
-            "note": "looked away for 3 of 30 seconds, no nods",
+            "seq": 1,
+            "start_seconds": 15,
+            "quote": "My chest has been tight",
+            "note": "looked away for 3 of 20 seconds while listening, no nods",
         }
     ]
-    with_nod = build_facts([(0, _series(61, away=(31, 32, 33), nods=(40,)))], TURNS)
+    with_nod = build_facts([(0, _series(61, away=(15, 16, 17), nods=(20,)))], TURNS)
     assert with_nod["notable_turns"] == []
+
+
+def test_a_candidate_turn_after_the_patient_is_not_notable_for_three_or_four_seconds_away():
+    """While the clinician is talking, nodding means nothing; only the five-second rule applies."""
+    for away in ((31, 32, 33), (31, 32, 33, 34)):
+        assert build_facts([(0, _series(61, away=away))], TURNS)["notable_turns"] == []
+    five = build_facts([(0, _series(61, away=range(31, 36)))], TURNS)
+    assert five["notable_turns"][0]["note"] == "looked away for 5 of 30 seconds while speaking"
+
+
+def test_a_first_turn_that_is_the_patient_is_notable_when_listened_to_without_nodding():
+    turns = [_turn(0, "assistant", 30, "Good morning, doctor"), _turn(1, "user", 60, "Hello")]
+    facts = build_facts([(0, _series(61, away=(10, 11, 12)))], turns)
+    assert [t["seq"] for t in facts["notable_turns"]] == [0]
 
 
 def test_a_quote_is_cut_at_160_characters():

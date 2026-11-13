@@ -28,12 +28,11 @@ function analysisVideo(stream: MediaStream): HTMLVideoElement {
   return video;
 }
 
-/** A refusal (every `nonverbal_` code) means consent is gone, stale, or the attempt cannot take cues. */
+/** A refusal (a `nonverbal_` code the batch route raises) means consent is gone or the attempt cannot take cues. */
 function isRefusal(error: unknown): boolean {
   if (!(error instanceof PlatformError)) return false;
   switch (error.code) {
     case "nonverbal_consent_required":
-    case "nonverbal_consent_version_stale":
     case "nonverbal_not_available":
       return true;
     default:
@@ -44,7 +43,7 @@ function isRefusal(error: unknown): boolean {
 /**
  * Runs the camera, the face landmarker and the sampler while `active`, entirely on this device.
  * The stream is never published to the room. Every tenth sample is posted as a batch; a failed
- * post is dropped so the consultation is never interrupted, and a refusal (any `nonverbal_` code)
+ * post is dropped so the consultation is never interrupted, and a refusal (see `isRefusal`)
  * releases the camera, stops posting and calls `onRefused` so the consent is re-read.
  * Frames come from requestVideoFrameCallback (requestAnimationFrame as a fallback), not a timer.
  */

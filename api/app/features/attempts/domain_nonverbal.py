@@ -32,7 +32,7 @@ SMILE_AT = 50
 SPAN_MIN_SECONDS = 5
 SPAN_MAX_GAP_MS = 3000  # a gap of up to two missing seconds does not break a run
 NOTABLE_AWAY_SECONDS = 5
-NOTABLE_AWAY_AFTER_PATIENT = 3
+NOTABLE_AWAY_LISTENING = 3  # on a patient turn, when the clinician was the listener
 QUOTE_CHARS = 160
 
 Batch = tuple[int, Sequence[dict[str, Any]]]
@@ -119,21 +119,30 @@ def _turn_stats(
 
 
 def _notable(stats: list[_TurnStats], turns: list[Turn], start_ms: int) -> list[dict[str, Any]]:
-    """Turns worth a comment: five seconds away, or a listener who looked away and did not nod."""
+    """Turns worth a comment: five seconds away on any turn, or three on a patient turn with no nods.
+
+    A patient turn's window is the clinician listening, so nods count there; on the clinician's own
+    turn they mean nothing, so that note carries the look-away alone.
+    """
     out = []
-    for index, (row, (seq, role, message, _)) in enumerate(zip(stats, turns, strict=True)):
-        after_patient = index > 0 and role != PATIENT_ROLE and turns[index - 1][1] == PATIENT_ROLE
+    for row, (seq, role, message, _) in zip(stats, turns, strict=True):
         away = row.away_seconds
-        listened_without_nodding = after_patient and row.nods == 0 and away >= NOTABLE_AWAY_AFTER_PATIENT
-        if away < NOTABLE_AWAY_SECONDS and not listened_without_nodding:
+        listening = role == PATIENT_ROLE
+        unnodded_listening = listening and row.nods == 0 and away >= NOTABLE_AWAY_LISTENING
+        if away < NOTABLE_AWAY_SECONDS and not unnodded_listening:
             continue
-        nods = "no nods" if row.nods == 0 else f"{row.nods} nod{'s' if row.nods > 1 else ''}"
+        note = f"looked away for {away} of {row.seconds} seconds"
+        if listening:
+            nods = "no nods" if row.nods == 0 else f"{row.nods} nod{'s' if row.nods > 1 else ''}"
+            note += f" while listening, {nods}"
+        else:
+            note += " while speaking"
         out.append(
             {
                 "seq": seq,
                 "start_seconds": ((row.first_away_ms or 0) - start_ms) // 1000,
                 "quote": message[:QUOTE_CHARS],
-                "note": f"looked away for {away} of {row.seconds} seconds, {nods}",
+                "note": note,
             }
         )
     return out

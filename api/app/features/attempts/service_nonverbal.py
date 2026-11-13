@@ -74,9 +74,10 @@ PROMPT = (
     "being said. Never state or imply what they felt, thought or intended, and never use the words "
     "empathy, emotion, anxious, nervous, bored, cold or uninterested about the clinician. Do not give "
     "a score. Do not comment on appearance. Each observation must refer to one turn that has a "
-    "bracketed note, by its turn number, and give one practical suggestion. If the measurements show "
-    "nothing to improve, return no observations and say so in the summary. Plain English, second "
-    "person, British spelling. Summary: at most 50 words."
+    "bracketed note, by its turn number, and give one practical suggestion. A note on a patient turn "
+    "describes the clinician while listening to the patient; a note on a clinician turn describes "
+    "them while speaking. If the measurements show nothing to improve, return no observations and say "
+    "so in the summary. Plain English, second person, British spelling. Summary: at most 50 words."
 )
 
 
