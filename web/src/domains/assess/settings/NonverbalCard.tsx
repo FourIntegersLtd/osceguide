@@ -57,7 +57,7 @@ export function NonverbalCard({ org, onSaved }: { org: Organization; onSaved: ()
         Allow non-verbal feedback in self-practice
       </label>
       <button type="button" className={cn(boardBtn("primary"), "self-start")} onClick={() => void save()} disabled={!changed || busy}>
-        {busy ? "Saving…" : "Save"}
+        {busy ? "Saving…" : "Save non-verbal setting"}
       </button>
     </SettingsCard>
   );
